@@ -1,0 +1,44 @@
+name: Central Platform CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  NODE_VERSION: '24'
+
+jobs:
+  dotnet-build-test:
+    name: .NET Build & Test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - run: dotnet restore desktop/Central.sln
+      - run: dotnet build desktop/Central.sln -c Release -p:Platform=x64 --no-restore
+      - run: dotnet test desktop/Central.Tests/ -c Release -p:Platform=x64 --no-build -v normal
+
+  angular-build:
+    name: Angular Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: cd web-client && npm ci && npx ng build --configuration production
+
+  container-images:
+    name: Build Containers
+    runs-on: ubuntu-latest
+    needs: [dotnet-build-test, angular-build]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Central.Api image
+        run: docker build -f desktop/Central.Api/Containerfile -t central-api:${{ github.sha }} desktop/
