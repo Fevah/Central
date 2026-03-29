@@ -11,6 +11,7 @@ export const routes: Routes = [
       { path: '', loadComponent: () => import('./modules/dashboard/components/dashboard.component').then(m => m.DashboardComponent) },
       { path: 'tasks', loadComponent: () => import('./modules/tasks/components/task-tree.component').then(m => m.TaskTreeComponent) },
       { path: 'kanban', loadComponent: () => import('./modules/tasks/components/kanban-board.component').then(m => m.KanbanBoardComponent) },
+      { path: 'admin', loadComponent: () => import('./modules/admin/components/admin-console.component').then(m => m.AdminConsoleComponent) },
     ]
   },
   { path: '**', redirectTo: '' }
