@@ -1,0 +1,44 @@
+# =============================================================================
+# Central.Api — ASP.NET Core 10 Minimal API Container
+# =============================================================================
+
+# Stage 1: Build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+# Copy project files for restore
+COPY Central.Core/Central.Core.csproj Central.Core/
+COPY Central.Data/Central.Data.csproj Central.Data/
+COPY Central.Api/Central.Api.csproj Central.Api/
+COPY Central.Api.Client/Central.Api.Client.csproj Central.Api.Client/
+COPY Central.Workflows/Central.Workflows.csproj Central.Workflows/
+COPY Central.Tenancy/Central.Tenancy.csproj Central.Tenancy/
+COPY Central.Licensing/Central.Licensing.csproj Central.Licensing/
+COPY Central.Security/Central.Security.csproj Central.Security/
+COPY Central.Collaboration/Central.Collaboration.csproj Central.Collaboration/
+COPY Central.Observability/Central.Observability.csproj Central.Observability/
+
+# Restore
+RUN dotnet restore Central.Api/Central.Api.csproj
+
+# Copy source + build
+COPY . .
+RUN dotnet publish Central.Api/Central.Api.csproj -c Release -o /app --no-restore
+
+# Stage 2: Runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine
+WORKDIR /app
+COPY --from=build /app .
+
+# Non-root user
+RUN adduser -D -u 1000 appuser
+USER appuser
+
+ENV ASPNETCORE_URLS=http://+:5000
+ENV ASPNETCORE_ENVIRONMENT=Production
+EXPOSE 5000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget -q --spider http://localhost:5000/health || exit 1
+
+ENTRYPOINT ["dotnet", "Central.Api.dll"]

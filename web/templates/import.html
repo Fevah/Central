@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Import — Central{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Import Data</h1>
+</div>
+
+{% if messages %}
+<div class="messages">
+  {% for msg in messages %}
+  <div class="alert alert-{{ msg.type }}">{{ msg.text }}</div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="import-grid">
+
+  <!-- Config files -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">PicOS Config Files</h2>
+    </div>
+    <div class="card-body">
+      <p>Upload one or more <code>.txt</code> PicOS config files (e.g. <code>MEP-91-CORE02.txt</code>).
+      The parser will extract all interfaces, VLANs, BGP, VRRP, routing, and QoS config.</p>
+      <form method="post" action="/import/configs" enctype="multipart/form-data">
+        <div class="file-drop" id="config-drop">
+          <input type="file" name="files" id="config-files" multiple accept=".txt" class="file-input"
+                 onchange="updateLabel(this, 'config-label')">
+          <label for="config-files" id="config-label" class="file-label">
+            Drop .txt files here or click to browse
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top: 1rem">Import Configs</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Excel guide -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Switch Guide (Excel)</h2>
+    </div>
+    <div class="card-body">
+      <p>Upload <code>switch_guide.xlsx</code> to import switch inventory and port-level connections.
+      Column names are auto-detected — works with any reasonable header naming.</p>
+      <form method="post" action="/import/guide" enctype="multipart/form-data">
+        <div class="file-drop" id="guide-drop">
+          <input type="file" name="file" id="guide-file" accept=".xlsx,.xls" class="file-input"
+                 onchange="updateLabel(this, 'guide-label')">
+          <label for="guide-file" id="guide-label" class="file-label">
+            Drop .xlsx file here or click to browse
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top: 1rem">Import Guide</button>
+      </form>
+    </div>
+  </div>
+
+</div>
+
+<div class="card" style="margin-top: 1.5rem">
+  <div class="card-header"><h2 class="card-title">Command-line Import</h2></div>
+  <div class="card-body">
+    <p>You can also run imports directly from the command line:</p>
+    <pre class="code-block">cd /central
+
+# Load all .txt configs in current directory + guide
+python parser/db_loader.py
+
+# Configs only
+python parser/db_loader.py --configs-only --config-dir .
+
+# Guide only
+python parser/db_loader.py --guide-only --guide switch_guide.xlsx</pre>
+  </div>
+</div>
+{% endblock %}

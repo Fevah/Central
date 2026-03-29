@@ -1,0 +1,68 @@
+<UserControl x:Class="Central.Module.Tasks.Views.GanttPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dxgn="http://schemas.devexpress.com/winfx/2008/xaml/gantt"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             xmlns:conv="clr-namespace:Central.Core.Converters;assembly=Central.Core">
+    <UserControl.Resources>
+        <conv:StringToBrushConverter x:Key="StringToBrush" />
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Toolbar -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="8,6">
+            <TextBlock Text="Project:" VerticalAlignment="Center" Foreground="#9CA3AF" Margin="0,0,4,0" />
+            <dxe:ComboBoxEdit x:Name="ProjectSelector" Width="180" Height="24" NullText="Select Project"
+                               IsTextEditable="False" EditValueChanged="ProjectSelector_Changed"
+                               DisplayMember="Name" ValueMember="Id" />
+            <TextBlock Text="  " />
+            <Button x:Name="ZoomInButton" Content="Zoom +" Padding="8,4" Margin="0,0,2,0" Click="ZoomIn_Click" />
+            <Button x:Name="ZoomOutButton" Content="Zoom -" Padding="8,4" Margin="0,0,2,0" Click="ZoomOut_Click" />
+            <Button x:Name="FitButton" Content="Fit All" Padding="8,4" Margin="0,0,8,0" Click="FitAll_Click" />
+            <Button x:Name="TodayButton" Content="Today" Padding="8,4" Margin="0,0,8,0" Click="Today_Click" />
+            <TextBlock Text="  " />
+            <Button x:Name="SaveBaselineButton" Content="Save Baseline" Padding="10,4" Margin="0,0,4,0"
+                    Click="SaveBaseline_Click" />
+            <dxe:CheckEdit x:Name="ShowBaselineCheck" Content="Show Baseline" Margin="4,0,0,0"
+                            EditValueChanged="ShowBaseline_Changed" />
+            <TextBlock Text="  " />
+            <dxe:CheckEdit x:Name="CriticalPathCheck" Content="Critical Path" Margin="4,0,0,0"
+                            EditValueChanged="CriticalPath_Changed" />
+        </StackPanel>
+
+        <!-- Gantt Chart -->
+        <dxgn:GanttControl x:Name="GanttChart" Grid.Row="1"
+                             AutoGenerateColumns="None">
+            <dxgn:GanttControl.View>
+                <dxgn:GanttView x:Name="GanttChartView"
+                                 KeyFieldName="Id"
+                                 ParentFieldName="ParentId"
+                                 StartDateMapping="StartDate"
+                                 FinishDateMapping="FinishDate"
+                                 NameMapping="Title"
+                                 ProgressMapping="ProgressPercent"
+                                 BaselineStartDateMapping="BaselineStartDate"
+                                 BaselineFinishDateMapping="BaselineFinishDate"
+                                 AutoExpandAllNodes="True"
+                                 ShowBaseline="False"
+                                 AllowEditing="True"
+                                 NavigationStyle="Cell" />
+            </dxgn:GanttControl.View>
+            <!-- Predecessor links bound via PredecessorLinksSource in code-behind -->
+            <dxgn:GanttControl.Columns>
+                <dxgn:GanttColumn FieldName="Id" Header="ID" Width="50" AllowEditing="False" Fixed="Left" />
+                <dxgn:GanttColumn FieldName="Title" Header="Task" Width="220" Fixed="Left" />
+                <dxgn:GanttColumn FieldName="StartDate" Header="Start" Width="90" />
+                <dxgn:GanttColumn FieldName="FinishDate" Header="Finish" Width="90" />
+                <dxgn:GanttColumn FieldName="Status" Header="Status" Width="80" AllowEditing="False" />
+                <dxgn:GanttColumn FieldName="AssignedToName" Header="Assigned" Width="100" AllowEditing="False" />
+                <dxgn:GanttColumn FieldName="Points" Header="Points" Width="55" />
+            </dxgn:GanttControl.Columns>
+        </dxgn:GanttControl>
+    </Grid>
+</UserControl>

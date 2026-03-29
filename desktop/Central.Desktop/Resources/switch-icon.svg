@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Network switch body -->
+  <path d="M4 10 L4 24 Q4 26 6 26 L26 26 Q28 26 28 24 L28 12 Q28 10 26 10 L8 10 Z"
+        fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+  <!-- Top panel line -->
+  <line x1="6" y1="15" x2="26" y2="15" stroke="currentColor" stroke-width="1.5"/>
+  <!-- Port indicators -->
+  <rect x="8"  y="19" width="3" height="4" fill="currentColor"/>
+  <rect x="13" y="19" width="3" height="4" fill="currentColor"/>
+  <rect x="18" y="19" width="3" height="4" fill="currentColor"/>
+  <rect x="23" y="19" width="3" height="4" fill="currentColor"/>
+  <!-- Angled top edge -->
+  <path d="M4 10 L8 6 L28 6 L28 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+</svg>

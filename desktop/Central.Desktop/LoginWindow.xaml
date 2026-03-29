@@ -1,0 +1,112 @@
+<dx:DXWindow x:Class="Central.Desktop.LoginWindow"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             Title="Central — Login"
+             Width="520" Height="700"
+             WindowStartupLocation="CenterScreen"
+             ResizeMode="NoResize"
+             ShowInTaskbar="True"
+             Loaded="LoginWindow_Loaded">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <Grid Margin="32">
+        <StackPanel VerticalAlignment="Center">
+            <!-- App header -->
+            <TextBlock Text="Central" FontSize="28" FontWeight="Bold"
+                       HorizontalAlignment="Center" Margin="0,0,0,4" />
+            <TextBlock Text="Network Configuration Platform" FontSize="12"
+                       Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"
+                       HorizontalAlignment="Center" Margin="0,0,0,24" />
+
+            <!-- SSO Provider buttons (dynamic — hidden if no external IdPs configured) -->
+            <StackPanel x:Name="SsoProvidersPanel" Visibility="Collapsed" Margin="0,0,0,16">
+                <!-- IdP discovery by email -->
+                <Border Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"
+                        CornerRadius="6" Padding="16" Margin="0,0,0,8">
+                    <StackPanel>
+                        <TextBlock Text="Single Sign-On" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,8" />
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBlock Text="Email:" Width="60" VerticalAlignment="Center" />
+                            <dxe:TextEdit x:Name="SsoEmailEdit" Width="260" NullText="you@company.com"
+                                           KeyDown="SsoEmail_KeyDown" />
+                            <Button Content="Go" Width="50" Margin="6,0,0,0" Click="SsoDiscover_Click" Height="24" />
+                        </StackPanel>
+
+                        <!-- Dynamic SSO buttons — populated at load from identity_providers -->
+                        <ItemsControl x:Name="SsoButtonsList" Margin="0,4,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Content="{Binding DisplayText}" Height="34" Margin="0,2"
+                                            Tag="{Binding ProviderId}"
+                                            Click="SsoProvider_Click"
+                                            HorizontalContentAlignment="Center">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Background" Value="{Binding ButtonColor}" />
+                                                <Setter Property="Foreground" Value="White" />
+                                                <Setter Property="FontWeight" Value="SemiBold" />
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <TextBlock Text="— or —" HorizontalAlignment="Center"
+                           Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"
+                           Margin="0,0,0,8" />
+            </StackPanel>
+
+            <!-- Windows auto-login section -->
+            <Border Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"
+                    CornerRadius="6" Padding="16" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Windows Authentication" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,8" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="User:" Width="60" VerticalAlignment="Center" />
+                        <TextBlock x:Name="WindowsUserText" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <Button x:Name="WindowsLoginButton" Content="Login with Windows Account"
+                            Height="32" Click="WindowsLogin_Click" />
+                </StackPanel>
+            </Border>
+
+            <!-- Separator -->
+            <TextBlock Text="— or —" HorizontalAlignment="Center"
+                       Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"
+                       Margin="0,0,0,16" />
+
+            <!-- Manual login section -->
+            <Border Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"
+                    CornerRadius="6" Padding="16" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Manual Login" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,8" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="Username:" Width="75" VerticalAlignment="Center" />
+                        <dxe:TextEdit x:Name="UsernameEdit" Width="230" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <TextBlock Text="Password:" Width="75" VerticalAlignment="Center" />
+                        <dxe:PasswordBoxEdit x:Name="PasswordEdit" Width="230" />
+                    </StackPanel>
+                    <Button x:Name="ManualLoginButton" Content="Login"
+                            Height="32" Click="ManualLogin_Click" />
+                </StackPanel>
+            </Border>
+
+            <!-- Offline mode -->
+            <Button x:Name="OfflineButton" Content="Continue Offline (Read Only)"
+                    Height="28" Click="OfflineLogin_Click"
+                    HorizontalAlignment="Center"
+                    Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
+
+            <!-- Status -->
+            <TextBlock x:Name="StatusText" Text="" Foreground="#EF4444"
+                       HorizontalAlignment="Center" Margin="0,12,0,0" TextWrapping="Wrap" />
+        </StackPanel>
+    </Grid>
+    </ScrollViewer>
+</dx:DXWindow>

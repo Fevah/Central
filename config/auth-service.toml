@@ -1,0 +1,35 @@
+# Auth Service Configuration — Central Platform Integration
+# Points to Central's local PostgreSQL pod + local Redis
+
+[server]
+host = "0.0.0.0"
+port = 8081
+workers = 4
+
+[database]
+host = "localhost"
+port = 5432
+username = "central"
+password = "central"
+database = "secure_auth"
+ssl_mode = "disable"
+pool_size = 10
+pool_timeout_seconds = 30
+use_secrets_manager = false
+
+[redis]
+url = "redis://localhost:6379"
+cluster_mode = false
+pool_size = 5
+use_secrets_manager = false
+
+[jwt]
+access_token_ttl_seconds = 900
+refresh_token_ttl_seconds = 604800
+issuer = "central-auth"
+audience = "central-platform"
+algorithm = "HS256"
+secret = "central-dev-jwt-secret-change-in-production-2026"
+
+[encryption]
+pii_key = "0123456789abcdef0123456789abcdef"

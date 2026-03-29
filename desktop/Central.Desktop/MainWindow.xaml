@@ -1,0 +1,1762 @@
+<dxr:DXRibbonWindow
+    x:Class="Central.Desktop.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+    xmlns:dxr="http://schemas.devexpress.com/winfx/2008/xaml/ribbon"
+    xmlns:dxb="http://schemas.devexpress.com/winfx/2008/xaml/bars"
+    xmlns:dxdo="http://schemas.devexpress.com/winfx/2008/xaml/docking"
+    xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+    xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+    xmlns:dxdiag="http://schemas.devexpress.com/winfx/2008/xaml/diagram"
+    xmlns:vm="clr-namespace:Central.Desktop.ViewModels"
+    xmlns:conv="clr-namespace:Central.Core.Converters;assembly=Central.Core"
+    xmlns:devViews="clr-namespace:Central.Module.Devices.Views;assembly=Central.Module.Devices"
+    xmlns:linkViews="clr-namespace:Central.Module.Links.Views;assembly=Central.Module.Links"
+    xmlns:swViews="clr-namespace:Central.Module.Switches.Views;assembly=Central.Module.Switches"
+    xmlns:rtViews="clr-namespace:Central.Module.Routing.Views;assembly=Central.Module.Routing"
+    xmlns:vlViews="clr-namespace:Central.Module.VLANs.Views;assembly=Central.Module.VLANs"
+    xmlns:admViews="clr-namespace:Central.Module.Admin.Views;assembly=Central.Module.Admin"
+    xmlns:sdViews="clr-namespace:Central.Module.ServiceDesk.Views;assembly=Central.Module.ServiceDesk"
+    xmlns:taskViews="clr-namespace:Central.Module.Tasks.Views;assembly=Central.Module.Tasks"
+    xmlns:gaViews="clr-namespace:Central.Module.GlobalAdmin.Views;assembly=Central.Module.GlobalAdmin"
+    xmlns:local="clr-namespace:Central.Desktop.Views"
+    Title="Central"
+    Icon="pack://application:,,,/central.png"
+    Width="1440" Height="900"
+    WindowStartupLocation="CenterScreen">
+
+    <dxr:DXRibbonWindow.DataContext>
+        <vm:MainViewModel />
+    </dxr:DXRibbonWindow.DataContext>
+
+    <dxr:DXRibbonWindow.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolVis" />
+        <conv:NullToBoolConverter x:Key="NullToBoolConverter" />
+        <conv:StringToBrushConverter x:Key="StringToBrush" />
+        <Style x:Key="DetailLabel" TargetType="TextBlock">
+            <Setter Property="Foreground"  Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
+            <Setter Property="FontSize"    Value="10" />
+            <Setter Property="Margin"      Value="0,0,0,1" />
+        </Style>
+        <Style x:Key="DetailValue" TargetType="TextBlock">
+            <Setter Property="FontSize"   Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style x:Key="ReservedRowStyle" TargetType="dxg:RowControl">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Row.Status}" Value="RESERVED">
+                    <Setter Property="Background" Value="#FDE9D9" />
+                    <Setter Property="Foreground" Value="#7A3B1E" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <!-- Cell style for NIC columns when their NIC status is RESERVED -->
+        <Style x:Key="Nic1ReservedCell" TargetType="dxg:LightweightCellEditor">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Row.Nic1Status}" Value="RESERVED">
+                    <Setter Property="Background" Value="#FDE9D9" />
+                    <Setter Property="Foreground" Value="#7A3B1E" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="Nic2ReservedCell" TargetType="dxg:LightweightCellEditor">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Row.Nic2Status}" Value="RESERVED">
+                    <Setter Property="Background" Value="#FDE9D9" />
+                    <Setter Property="Foreground" Value="#7A3B1E" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="Nic3ReservedCell" TargetType="dxg:LightweightCellEditor">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Row.Nic3Status}" Value="RESERVED">
+                    <Setter Property="Background" Value="#FDE9D9" />
+                    <Setter Property="Foreground" Value="#7A3B1E" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="Nic4ReservedCell" TargetType="dxg:LightweightCellEditor">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Row.Nic4Status}" Value="RESERVED">
+                    <Setter Property="Background" Value="#FDE9D9" />
+                    <Setter Property="Foreground" Value="#7A3B1E" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <!-- SSH Log row style: red for failed, green tint for success -->
+        <Style x:Key="SshLogRowStyle" TargetType="dxg:RowControl">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Row.Success}" Value="False">
+                    <Setter Property="Background" Value="#3C1414" />
+                    <Setter Property="Foreground" Value="#FF8888" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Row.Success}" Value="True">
+                    <Setter Property="Background" Value="#143C14" />
+                    <Setter Property="Foreground" Value="#88FF88" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </dxr:DXRibbonWindow.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />   <!-- Ribbon -->
+            <RowDefinition Height="*"    />   <!-- Content -->
+            <RowDefinition Height="24"   />   <!-- Status bar -->
+        </Grid.RowDefinitions>
+
+        <!-- ═══════════════════════════════════════════════ RIBBON ═══ -->
+        <dxr:RibbonControl x:Name="Ribbon" Grid.Row="0" RibbonStyle="Office2019"
+                           ToolbarShowMode="ShowAbove" AllowCustomization="True">
+
+            <!-- ═══ Quick Access Toolbar ═══ -->
+            <dxr:RibbonControl.ToolbarItems>
+                <dxb:BarButtonItem Content="Save Layout"
+                                   Glyph="{dx:DXImage Image=Save_16x16}"
+                                   ItemClick="GlobalSaveLayout_ItemClick" />
+                <dxb:BarButtonItem Content="Refresh"
+                                   Glyph="{dx:DXImage Image=Refresh_16x16}"
+                                   ItemClick="RefreshButton_ItemClick" />
+                <dxb:BarButtonItem Content="Undo"
+                                   Glyph="{dx:DXImage Image=Undo_16x16}"
+                                   ItemClick="UndoButton_ItemClick" />
+            </dxr:RibbonControl.ToolbarItems>
+
+            <!-- ═══ Backstage (File menu) ═══ -->
+            <dxr:RibbonControl.ApplicationMenu>
+                <dxr:BackstageViewControl>
+                    <!-- User Profile -->
+                    <dxr:BackstageTabItem x:Name="BackstageUserTab" Content="User Profile"
+                                          Glyph="{dx:DXImage Image=BOUser_16x16}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="24" MaxWidth="600">
+                            <TextBlock Text="User Profile" FontSize="22" FontWeight="Bold" Margin="0,0,0,16" />
+
+                            <!-- Identity card -->
+                            <Border Background="{DynamicResource {x:Static SystemColors.ControlBrushKey}}"
+                                    CornerRadius="8" Padding="20" Margin="0,0,0,16">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="64" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Width="48" Height="48" CornerRadius="24"
+                                            Background="#3B82F6" VerticalAlignment="Top" Margin="0,0,12,0">
+                                        <TextBlock x:Name="BackstageInitials" Text="CS" FontSize="18" FontWeight="Bold"
+                                                   Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock x:Name="BackstageDisplayName" Text="" FontSize="16" FontWeight="SemiBold" />
+                                        <TextBlock x:Name="BackstageUsername" Text="" FontSize="12"
+                                                   Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
+                                        <TextBlock x:Name="BackstageRole" Text="" FontSize="12" Margin="0,4,0,0"
+                                                   Foreground="#3B82F6" FontWeight="SemiBold" />
+                                        <TextBlock x:Name="BackstageEmail" Text="" FontSize="11" Margin="0,2,0,0"
+                                                   Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+
+                            <!-- Session info -->
+                            <TextBlock Text="SESSION" FontWeight="SemiBold" FontSize="11"
+                                       Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" Margin="0,0,0,8" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                <TextBlock Text="Login Type:" Width="110" />
+                                <TextBlock x:Name="BackstageLoginType" FontWeight="SemiBold" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                <TextBlock Text="Permissions:" Width="110" />
+                                <TextBlock x:Name="BackstagePermCount" FontWeight="SemiBold" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                                <TextBlock Text="Sites:" Width="110" />
+                                <TextBlock x:Name="BackstageSites" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            </StackPanel>
+
+                            <!-- Layout & Settings -->
+                            <TextBlock Text="SETTINGS" FontWeight="SemiBold" FontSize="11"
+                                       Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" Margin="0,0,0,8" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <Button x:Name="BackstageSaveLayout" Content="Save Layout" Width="130" Height="28" Margin="0,0,8,0" />
+                                <Button x:Name="BackstageResetLayout" Content="Reset Layout" Width="130" Height="28" Margin="0,0,8,0" />
+                                <Button x:Name="BackstageCloseAllPanels" Content="Close All Panels" Width="140" Height="28" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <Button x:Name="BackstageOpenDefaultPanels" Content="Open Default Panels" Width="160" Height="28" Margin="0,0,8,0" />
+                                <Button x:Name="BackstageRefreshData" Content="Refresh All Data" Width="140" Height="28" />
+                            </StackPanel>
+                            <CheckBox x:Name="BackstageHideReserved" Content="Hide reserved devices" Margin="0,8,0,4"
+                                      IsChecked="{Binding HideReserved, Mode=TwoWay}" />
+                            <CheckBox x:Name="BackstageAutoScan" Content="Enable auto ping scan" Margin="0,4,0,4"
+                                      IsChecked="{Binding IsScanEnabled, Mode=TwoWay}" />
+
+                            <!-- Recent Activity -->
+                            <TextBlock Text="RECENT ACTIVITY" FontWeight="SemiBold" FontSize="11"
+                                       Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" Margin="0,16,0,8" />
+                            <ListView x:Name="BackstageRecentActivity" Height="150"
+                                      Background="Transparent" BorderThickness="0"
+                                      Foreground="#D4D4D4" FontSize="11">
+                                <ListView.View>
+                                    <GridView>
+                                        <GridViewColumn Header="" Width="24" DisplayMemberBinding="{Binding Icon}" />
+                                        <GridViewColumn Header="Time" Width="70" DisplayMemberBinding="{Binding Time}" />
+                                        <GridViewColumn Header="Event" Width="350" DisplayMemberBinding="{Binding Title}" />
+                                    </GridView>
+                                </ListView.View>
+                            </ListView>
+                        </StackPanel>
+                        </ScrollViewer>
+                    </dxr:BackstageTabItem>
+
+                    <!-- Theme -->
+                    <dxr:BackstageTabItem x:Name="BackstageThemeTab" Content="Theme"
+                                          Glyph="{dx:DXImage Image=ChangeFontStyle_16x16}">
+                        <StackPanel Margin="24">
+                            <TextBlock Text="Application Theme" FontSize="22" FontWeight="Bold" Margin="0,0,0,16" />
+                            <TextBlock Text="Select a theme to change the appearance of the application."
+                                       Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"
+                                       Margin="0,0,0,16" />
+                            <dxb:GalleryControl x:Name="BackstageThemeGallery">
+                                <dxb:GalleryControl.Gallery>
+                                    <dxb:Gallery AllowFilter="True" ColCount="4" RowCount="8" />
+                                </dxb:GalleryControl.Gallery>
+                            </dxb:GalleryControl>
+                        </StackPanel>
+                    </dxr:BackstageTabItem>
+
+                    <!-- Connection -->
+                    <dxr:BackstageTabItem x:Name="BackstageConnectionTab" Content="Connection"
+                                          Glyph="{dx:DXImage Image=Database_16x16}">
+                        <StackPanel Margin="24" MaxWidth="500">
+                            <TextBlock Text="Connection Settings" FontSize="22" FontWeight="Bold" Margin="0,0,0,16" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="Mode:" Width="100" />
+                                <TextBlock x:Name="BackstageConnMode" FontWeight="SemiBold" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="Database:" Width="100" />
+                                <TextBlock x:Name="BackstageConnDb" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="Status:" Width="100" />
+                                <TextBlock x:Name="BackstageConnStatus" FontWeight="SemiBold" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="API Server:" Width="100" />
+                                <TextBlock x:Name="BackstageApiUrl" FontWeight="SemiBold" Text="Not configured" />
+                            </StackPanel>
+
+                            <TextBlock Text="DATA MODE" FontWeight="SemiBold" FontSize="11"
+                                       Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" Margin="0,16,0,8" />
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <Button x:Name="ModeDirectDbButton" Content="Direct DB (Standalone)"
+                                        Padding="12,6" Margin="0,0,8,0" />
+                                <Button x:Name="ModeApiButton" Content="API Server (Multi-user)"
+                                        Padding="12,6" Margin="0,0,8,0" />
+                                <Button x:Name="ModeTestApiButton" Content="Test API Connection"
+                                        Padding="12,6" />
+                            </StackPanel>
+                            <TextBlock x:Name="BackstageModeStatus" Text="" FontSize="11" Margin="0,4,0,0"
+                                       Foreground="#22C55E" />
+                        </StackPanel>
+                    </dxr:BackstageTabItem>
+
+                    <!-- Settings -->
+                    <dxr:BackstageTabItem x:Name="BackstageSettingsTab" Content="Settings"
+                                          Glyph="{dx:DXImage Image=EditDataSource_16x16}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel x:Name="BackstageSettingsPanel" Margin="24" MaxWidth="600">
+                                <TextBlock Text="Module Settings" FontSize="22" FontWeight="Bold" Margin="0,0,0,8" />
+                                <TextBlock Text="Settings are saved per user and persist across sessions."
+                                           Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"
+                                           Margin="0,0,0,16" />
+                                <!-- Dynamically populated by PopulateSettingsPanel() -->
+                            </StackPanel>
+                        </ScrollViewer>
+                    </dxr:BackstageTabItem>
+
+                    <!-- About -->
+                    <dxr:BackstageTabItem Content="About"
+                                          Glyph="{dx:DXImage Image=About_16x16}">
+                        <StackPanel Margin="24" MaxWidth="500">
+                            <TextBlock Text="Central" FontSize="28" FontWeight="Bold" Margin="0,0,0,4" />
+                            <TextBlock Text="Enterprise Infrastructure Platform" FontSize="14"
+                                       Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" Margin="0,0,0,16" />
+                            <TextBlock Text="Version 5.0 — Enterprise Desktop" FontSize="12" Margin="0,0,0,4" />
+                            <TextBlock Text=".NET 10 · DevExpress 25.2 · PostgreSQL 18 · Podman" FontSize="11"
+                                       Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" Margin="0,0,0,16" />
+                            <TextBlock Text="Network infrastructure, service desk, and IT operations management." FontSize="12"
+                                       TextWrapping="Wrap" Margin="0,0,0,8" />
+                            <TextBlock Text="11 projects · 23 module panels · JWT API · SignalR real-time" FontSize="11"
+                                       Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
+                        </StackPanel>
+                    </dxr:BackstageTabItem>
+
+                    <!-- Separator + buttons -->
+                    <dxr:BackstageSeparatorItem />
+                    <dxr:BackstageButtonItem x:Name="BackstageLogout" Content="Switch User"
+                                             Glyph="{dx:DXImage Image=Security_Permission_16x16}" />
+                    <dxr:BackstageButtonItem x:Name="BackstageExit" Content="Exit"
+                                             Glyph="{dx:DXImage Image=Close_16x16}" />
+                </dxr:BackstageViewControl>
+            </dxr:RibbonControl.ApplicationMenu>
+
+            <dxr:RibbonDefaultPageCategory x:Name="DefaultRibbonCategory">
+
+                <!-- ── Home Tab ── -->
+                <dxr:RibbonPage Caption="Home">
+                    <dxr:RibbonPageGroup Caption="Undo">
+                        <dxb:BarSplitButtonItem x:Name="UndoButton" Content="Undo"
+                                           LargeGlyph="{dx:DXImage Image=Undo_32x32}"
+                                           RibbonStyle="Large"
+                                           IsEnabled="False"
+                                           ItemClick="UndoButton_ItemClick" />
+                        <dxb:BarSplitButtonItem x:Name="RedoButton" Content="Redo"
+                                           LargeGlyph="{dx:DXImage Image=Redo_32x32}"
+                                           RibbonStyle="Large"
+                                           IsEnabled="False"
+                                           ItemClick="RedoButton_ItemClick" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Actions">
+                        <dxb:BarButtonItem Content="Add"
+                                           LargeGlyph="{dx:DXImage Image=AddItem_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="GlobalAdd_ItemClick" />
+                        <dxb:BarButtonItem Content="Delete"
+                                           LargeGlyph="{dx:DXImage Image=Delete_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="GlobalDelete_ItemClick" />
+                        <dxb:BarButtonItem Content="Edit"
+                                           LargeGlyph="{dx:DXImage Image=Edit_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="GlobalEdit_ItemClick" />
+                        <dxb:BarButtonItem Content="Refresh"
+                                           LargeGlyph="{dx:DXImage Image=Refresh_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="RefreshButton_ItemClick" />
+                        <dxb:BarButtonItem Content="Bulk Edit"
+                                           Glyph="{dx:DXImage Image=EditDataSource_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="BulkEditButton_ItemClick" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Row">
+                        <dxb:BarButtonItem Content="Move Up"
+                                           Glyph="{dx:DXImage Image=MoveUp_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="GlobalMoveUp_ItemClick" />
+                        <dxb:BarButtonItem Content="Move Down"
+                                           Glyph="{dx:DXImage Image=MoveDown_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="GlobalMoveDown_ItemClick" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Filter">
+                        <dxb:BarButtonItem Content="Clear Filter"
+                                           Glyph="{dx:DXImage Image=ClearFilter_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="GlobalClearFilter_ItemClick" />
+                        <dxb:BarCheckItem x:Name="GlobalAutoFilterToggle"
+                                          Content="Filter Row"
+                                          Glyph="{dx:DXImage Image=ShowAutoFilter_16x16}"
+                                          RibbonStyle="SmallWithText"
+                                          IsChecked="True"
+                                          CheckedChanged="GlobalAutoFilter_CheckedChanged" />
+                        <dxb:BarItemSeparator />
+                        <dxb:BarButtonItem Content="Save Filter"
+                                           Glyph="{dx:DXImage Image=Save_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="SaveFilter_ItemClick" />
+                        <dxb:BarSplitButtonItem x:Name="LoadFilterSplit" Content="Load Filter"
+                                                Glyph="{dx:DXImage Image=LoadFrom_16x16}"
+                                                RibbonStyle="SmallWithText"
+                                                ItemClick="LoadFilter_ItemClick" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Group">
+                        <dxb:BarButtonItem Content="Expand All"
+                                           Glyph="{dx:DXImage Image=ExpandAll_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="GlobalExpandAll_ItemClick" />
+                        <dxb:BarButtonItem Content="Collapse All"
+                                           Glyph="{dx:DXImage Image=CollapseAll_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="GlobalCollapseAll_ItemClick" />
+                        <dxb:BarButtonItem Content="Clear Grouping"
+                                           Glyph="{dx:DXImage Image=ClearGrouping_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="GlobalClearGrouping_ItemClick" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Layout">
+                        <dxb:BarButtonItem Content="Save Layout"
+                                           Glyph="{dx:DXImage Image=Save_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="GlobalSaveLayout_ItemClick" />
+                        <dxb:BarButtonItem Content="Reset Layout"
+                                           Glyph="{dx:DXImage Image=Reset_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="GlobalResetLayout_ItemClick" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="View">
+                        <dxb:BarCheckItem x:Name="ToggleSearchPanel" Content="Search Panel"
+                                          Glyph="{dx:DXImage Image=Find_16x16}"
+                                          RibbonStyle="SmallWithText"
+                                          IsChecked="False"
+                                          CheckedChanged="ToggleSearchPanel_CheckedChanged" />
+                        <dxb:BarCheckItem x:Name="ToggleAutoFilter" Content="Filter Row"
+                                          Glyph="{dx:DXImage Image=ShowAutoFilter_16x16}"
+                                          RibbonStyle="SmallWithText"
+                                          IsChecked="True"
+                                          CheckedChanged="ToggleAutoFilter_CheckedChanged" />
+                        <dxb:BarCheckItem x:Name="ToggleGroupPanel" Content="Group Panel"
+                                          Glyph="{dx:DXImage Image=GroupBy_16x16}"
+                                          RibbonStyle="SmallWithText"
+                                          IsChecked="True"
+                                          CheckedChanged="ToggleGroupPanel_CheckedChanged" />
+                        <dxb:BarCheckItem x:Name="ToggleGridLines" Content="Grid Lines"
+                                          Glyph="{dx:DXImage Image=Grid_16x16}"
+                                          RibbonStyle="SmallWithText"
+                                          IsChecked="False"
+                                          CheckedChanged="ToggleGridLines_CheckedChanged" />
+                        <dxb:BarCheckItem x:Name="ToggleSummary" Content="Summary Row"
+                                          Glyph="{dx:DXImage Image=Sum_16x16}"
+                                          RibbonStyle="SmallWithText"
+                                          IsChecked="False"
+                                          CheckedChanged="ToggleSummary_CheckedChanged" />
+                        <dxb:BarItemSeparator />
+                        <dxb:BarButtonItem Content="Best Fit"
+                                           Glyph="{dx:DXImage Image=BestFitColumns_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="BestFitColumns_ItemClick" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Theme">
+                        <dxr:RibbonGalleryBarItem x:Name="ThemeGalleryItem"
+                                                   Content="Theme"
+                                                   LargeGlyph="{dx:DXImage Image=ChangeFontStyle_32x32}"
+                                                   RibbonStyle="Large" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Data">
+                        <dxb:BarButtonItem Content="Test DB"
+                                           LargeGlyph="{dx:DXImage Image=Database_32x32}"
+                                           RibbonStyle="Large"
+                                           Command="{Binding TestConnectionCommand}" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Export">
+                        <dxb:BarButtonItem Content="Export Devices"
+                                           LargeGlyph="{dx:DXImage Image=ExportToXLS_32x32}"
+                                           RibbonStyle="Large"
+                                           Command="{Binding ExportDevicesCommand}" />
+                        <dxb:BarButtonItem Content="Import Data"
+                                           Glyph="{dx:DXImage Image=Import_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="ImportData_ItemClick" />
+                        <dxb:BarButtonItem Content="Print Preview"
+                                           Glyph="{dx:DXImage Image=Preview_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="PrintPreview_ItemClick" />
+                        <dxb:BarButtonItem Content="Column Chooser"
+                                           Glyph="{dx:DXImage Image=CustomizeGrid_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="ColumnChooser_ItemClick" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Web App">
+                        <dxb:BarButtonItem Content="Open Web App"
+                                           LargeGlyph="{dx:DXImage Image=Browser_32x32}"
+                                           RibbonStyle="Large"
+                                           Command="{Binding OpenWebAppCommand}" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Diagram">
+                        <dxb:BarCheckItem  Content="Network Diagram"
+                                           LargeGlyph="{dx:DXImage Image=ShowDependencies_32x32}"
+                                           RibbonStyle="Large"
+                                           IsChecked="{Binding IsDiagramPanelOpen, Mode=TwoWay}" />
+                    </dxr:RibbonPageGroup>
+                </dxr:RibbonPage>
+
+                <!-- ── Devices Tab ── -->
+                <dxr:RibbonPage Caption="Devices">
+                    <dxr:RibbonPageGroup Caption="Actions">
+                        <dxb:BarButtonItem Content="Refresh"
+                                           LargeGlyph="{dx:DXImage Image=Refresh_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="RefreshButton_ItemClick" />
+                        <dxb:BarButtonItem Content="New"
+                                           LargeGlyph="{dx:DXImage Image=AddItem_32x32}"
+                                           RibbonStyle="Large"
+                                           IsVisible="{Binding CanEditDevices}"
+                                           ItemClick="NewButton_ItemClick" />
+                        <dxb:BarButtonItem Content="Delete"
+                                           LargeGlyph="{dx:DXImage Image=Delete_32x32}"
+                                           RibbonStyle="Large"
+                                           IsVisible="{Binding CanDeleteDevices}"
+                                           ItemClick="DeleteButton_ItemClick" />
+                        <dxb:BarButtonItem Content="Edit"
+                                           LargeGlyph="{dx:DXImage Image=Edit_32x32}"
+                                           RibbonStyle="Large"
+                                           IsVisible="{Binding CanEditDevices}"
+                                           ItemClick="EditButton_ItemClick" />
+                        <dxb:BarButtonItem Content="Bulk Edit"
+                                           Glyph="{dx:DXImage Image=EditDataSource_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="BulkEditButton_ItemClick" />
+                    </dxr:RibbonPageGroup>
+
+                    <dxr:RibbonPageGroup Caption="Group By">
+                        <dxb:BarButtonItem Content="Building"
+                                           Glyph="{dx:DXImage Image=GroupBy_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           Command="{Binding GroupByBuildingCommand}" />
+                        <dxb:BarButtonItem Content="Device Type"
+                                           Glyph="{dx:DXImage Image=GroupBy_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           Command="{Binding GroupByTypeCommand}" />
+                        <dxb:BarButtonItem Content="Region"
+                                           Glyph="{dx:DXImage Image=GroupBy_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           Command="{Binding GroupByRegionCommand}" />
+                        <dxb:BarButtonItem Content="Clear Groups"
+                                           Glyph="{dx:DXImage Image=Cancel_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           Command="{Binding ClearGroupsCommand}" />
+                    </dxr:RibbonPageGroup>
+
+                    <dxr:RibbonPageGroup Caption="Filter">
+                        <dxb:BarCheckItem  Content="Hide Reserved"
+                                           Glyph="{dx:DXImage Image=Filter_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding HideReserved, Mode=TwoWay}" />
+                        <dxb:BarButtonItem Content="Clear Filters"
+                                           Glyph="{dx:DXImage Image=Cancel_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           Command="{Binding ClearFiltersCommand}" />
+                        <dxb:BarItemSeparator />
+                        <dxb:BarButtonItem Content="Save Filter"
+                                           Glyph="{dx:DXImage Image=Save_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="SaveFilter_ItemClick" />
+                        <dxb:BarSplitButtonItem Content="Load Filter"
+                                                Glyph="{dx:DXImage Image=LoadFrom_16x16}"
+                                                RibbonStyle="SmallWithText"
+                                                ItemClick="LoadFilter_ItemClick" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Deploy">
+                        <dxb:BarButtonItem Content="Send to Switch"
+                                           LargeGlyph="{dx:DXImage Image=Apply_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="SendToSwitchButton_Click" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup x:Name="VlanSiteGroup" Caption="VLANs">
+                        <dxb:BarCheckItem  x:Name="VlanDefaultToggle"
+                                           Content="Default"
+                                           Glyph="{dx:DXImage Image=ListBullets_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding ShowDefaultVlans, Mode=TwoWay}" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Connectivity">
+                        <dxb:BarButtonItem x:Name="PingAllButton" Content="Ping All"
+                                           LargeGlyph="{dx:DXImage Image=Refresh_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="PingAllButton_ItemClick" />
+                        <dxb:BarButtonItem x:Name="PingSelectedButton" Content="Ping Selected"
+                                           LargeGlyph="{dx:DXImage Image=Refresh_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="PingSelectedButton_ItemClick" />
+                        <dxb:BarCheckItem x:Name="ScanToggle" Content="Auto Scan"
+                                          Glyph="{dx:DXImage Image=Time_16x16}"
+                                          RibbonStyle="SmallWithText"
+                                          CheckedChanged="ScanToggle_CheckedChanged" />
+                        <dxb:BarButtonItem x:Name="SyncBgpButton" Content="Sync BGP"
+                                           Glyph="{dx:DXImage Image=TreeView_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="SyncBgpButton_ItemClick" />
+                        <dxb:BarButtonItem x:Name="SyncAllBgpButton" Content="Sync All BGP"
+                                           Glyph="{dx:DXImage Image=TreeView_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="SyncAllBgpButton_ItemClick" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Panels">
+                        <dxb:BarCheckItem  Content="Devices"
+                                           Glyph="{dx:DXImage Image=Grid_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsDevicesPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Master"
+                                           Glyph="{dx:DXImage Image=Grid_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsMasterPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="ASN"
+                                           Glyph="{dx:DXImage Image=TreeView_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsAsnPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="P2P"
+                                           Glyph="{dx:DXImage Image=TreeView_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsP2PPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="B2B"
+                                           Glyph="{dx:DXImage Image=TreeView_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsB2BPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="FW"
+                                           Glyph="{dx:DXImage Image=TreeView_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsFWPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="VLANs"
+                                           Glyph="{dx:DXImage Image=TreeView_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsVlansPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="MLAG"
+                                           Glyph="{dx:DXImage Image=TreeView_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsMlagPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="MSTP"
+                                           Glyph="{dx:DXImage Image=TreeView_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsMstpPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Srv AS"
+                                           Glyph="{dx:DXImage Image=TreeView_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsServerAsPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="IP Ranges"
+                                           Glyph="{dx:DXImage Image=TreeView_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsIpRangesPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Servers"
+                                           Glyph="{dx:DXImage Image=ServerMode_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsServersPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Switches"
+                                           Glyph="{dx:DXImage Image=ServerMode_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsSwitchesPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="BGP"
+                                           Glyph="{dx:DXImage Image=TreeView_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsBgpPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Tasks"
+                                           Glyph="{dx:DXImage Image=Task_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsTasksPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Backlog"
+                                           Glyph="{dx:DXImage Image=ListBullets_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsBacklogPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Sprint Plan"
+                                           Glyph="{dx:DXImage Image=Planning_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsSprintPlanPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Burndown"
+                                           Glyph="{dx:DXImage Image=ChartLine_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsBurndownPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Kanban"
+                                           Glyph="{dx:DXImage Image=KanbanBoard_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsKanbanPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Gantt"
+                                           Glyph="{dx:DXImage Image=GanttView_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsGanttPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="QA / Bugs"
+                                           Glyph="{dx:DXImage Image=Bug_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsQAPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="QA Dashboard"
+                                           Glyph="{dx:DXImage Image=ChartPie_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsQADashboardPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Reports"
+                                           Glyph="{dx:DXImage Image=Report_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsReportBuilderPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Dashboard"
+                                           Glyph="{dx:DXImage Image=ChartColumn_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsTaskDashboardPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Timesheet"
+                                           Glyph="{dx:DXImage Image=Time_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsTimesheetPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Activity"
+                                           Glyph="{dx:DXImage Image=News_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsActivityFeedPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="My Tasks"
+                                           Glyph="{dx:DXImage Image=BOUser_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsMyTasksPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Portfolio"
+                                           Glyph="{dx:DXImage Image=Hierarchy_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsPortfolioPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Import"
+                                           Glyph="{dx:DXImage Image=Import_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsTaskImportPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  x:Name="DetailsPanelToggle"
+                                           Content="Details"
+                                           LargeGlyph="{dx:DXImage Image=BOFileAttachment_32x32}"
+                                           RibbonStyle="Large"
+                                           IsChecked="{Binding IsDetailsPanelOpen, Mode=TwoWay}" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="BGP">
+                        <dxb:BarButtonItem Content="Sync Selected"
+                                           Glyph="{dx:DXImage Image=Download_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="SyncBgpButton_ItemClick" />
+                        <dxb:BarButtonItem Content="Sync All"
+                                           Glyph="{dx:DXImage Image=Refresh_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="SyncAllBgpButton_ItemClick" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Descriptions">
+                        <dxb:BarCheckItem Content="Live from Switch"
+                                          Glyph="{dx:DXImage Image=Refresh_16x16}"
+                                          RibbonStyle="SmallWithText"
+                                          IsChecked="{Binding ShowLiveDescriptions, Mode=TwoWay}" />
+                    </dxr:RibbonPageGroup>
+                </dxr:RibbonPage>
+
+                <!-- ── Switches Tab ── -->
+                <dxr:RibbonPage Caption="Switches" IsVisible="False">
+                    <dxr:RibbonPageGroup Caption="Actions">
+                        <dxb:BarButtonItem Content="New"
+                                           LargeGlyph="{dx:DXImage Image=AddItem_32x32}"
+                                           RibbonStyle="Large"
+                                           IsVisible="{Binding CanEditSwitches}"
+                                           ItemClick="NewButton_ItemClick" />
+                        <dxb:BarButtonItem Content="Delete"
+                                           LargeGlyph="{dx:DXImage Image=Delete_32x32}"
+                                           RibbonStyle="Large"
+                                           IsVisible="{Binding CanDeleteSwitches}"
+                                           ItemClick="DeleteButton_ItemClick" />
+                        <dxb:BarButtonItem Content="Edit"
+                                           LargeGlyph="{dx:DXImage Image=Edit_32x32}"
+                                           RibbonStyle="Large"
+                                           IsVisible="{Binding CanEditSwitches}"
+                                           ItemClick="EditButton_ItemClick" />
+                        <dxb:BarButtonItem Content="Bulk Edit"
+                                           Glyph="{dx:DXImage Image=EditDataSource_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="BulkEditButton_ItemClick" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Connectivity">
+                        <dxb:BarButtonItem Content="Ping All"
+                                           LargeGlyph="{dx:DXImage Image=Wireless_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="PingAllButton_ItemClick" />
+                        <dxb:BarButtonItem Content="Ping Selected"
+                                           LargeGlyph="{dx:DXImage Image=Status_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="PingSelectedButton_ItemClick" />
+                        <dxb:BarCheckItem  x:Name="ScanToggleButton"
+                                           Content="Auto Scan"
+                                           LargeGlyph="{dx:DXImage Image=Recurrence_32x32}"
+                                           RibbonStyle="Large"
+                                           IsChecked="{Binding IsScanEnabled, Mode=TwoWay}"
+                                           CheckedChanged="ScanToggle_CheckedChanged" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="BGP">
+                        <dxb:BarButtonItem Content="Sync BGP"
+                                           LargeGlyph="{dx:DXImage Image=Download_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="SyncBgpButton_ItemClick" />
+                        <dxb:BarButtonItem Content="Sync All BGP"
+                                           LargeGlyph="{dx:DXImage Image=Refresh_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="SyncAllBgpButton_ItemClick" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Deploy">
+                        <dxb:BarButtonItem Content="Deploy Link"
+                                           LargeGlyph="{dx:DXImage Image=Apply_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="DeployLinkButton_ItemClick" />
+                        <dxb:BarCheckItem  Content="Deploy Panel"
+                                           Glyph="{dx:DXImage Image=Apply_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsDeployPanelOpen, Mode=TwoWay}" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Panels">
+                        <dxb:BarCheckItem  Content="Devices"
+                                           LargeGlyph="{dx:DXImage Image=Grid_32x32}"
+                                           RibbonStyle="Large"
+                                           IsChecked="{Binding IsDevicesPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Switches"
+                                           LargeGlyph="{dx:DXImage Image=ServerMode_32x32}"
+                                           RibbonStyle="Large"
+                                           IsChecked="{Binding IsSwitchesPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="BGP"
+                                           LargeGlyph="{dx:DXImage Image=ShowDependencies_32x32}"
+                                           RibbonStyle="Large"
+                                           IsChecked="{Binding IsBgpPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Details"
+                                           LargeGlyph="{dx:DXImage Image=BOFileAttachment_32x32}"
+                                           RibbonStyle="Large"
+                                           IsChecked="{Binding IsDetailsPanelOpen, Mode=TwoWay}" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Data">
+                        <dxb:BarButtonItem Content="Refresh"
+                                           LargeGlyph="{dx:DXImage Image=Refresh_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="RefreshButton_ItemClick" />
+                        <dxb:BarButtonItem Content="Print Preview"
+                                           Glyph="{dx:DXImage Image=Preview_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="PrintPreview_ItemClick" />
+                        <dxb:BarButtonItem Content="Column Chooser"
+                                           Glyph="{dx:DXImage Image=CustomizeGrid_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="ColumnChooser_ItemClick" />
+                    </dxr:RibbonPageGroup>
+                </dxr:RibbonPage>
+
+                <!-- ── Admin Tab (Admin role only — visibility set in code-behind) ── -->
+                <dxr:RibbonPage x:Name="AdminRibbonTab" Caption="Admin">
+                    <dxr:RibbonPageGroup Caption="Actions">
+                        <dxb:BarButtonItem Content="New"
+                                           LargeGlyph="{dx:DXImage Image=AddItem_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="AdminNewButton_ItemClick" />
+                        <dxb:BarButtonItem Content="Edit"
+                                           LargeGlyph="{dx:DXImage Image=Edit_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="AdminEditButton_ItemClick" />
+                        <dxb:BarButtonItem Content="Set Password"
+                                           Glyph="{dx:DXImage Image=Security_Permission_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="SetPasswordButton_ItemClick" />
+                        <dxb:BarButtonItem Content="Delete"
+                                           LargeGlyph="{dx:DXImage Image=Delete_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="AdminDeleteButton_ItemClick" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Panels">
+                        <dxb:BarCheckItem  Content="Roles"
+                                           LargeGlyph="{dx:DXImage Image=BOPermission_32x32}"
+                                           RibbonStyle="Large"
+                                           IsChecked="{Binding IsRolesPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Users"
+                                           LargeGlyph="{dx:DXImage Image=BOUser_32x32}"
+                                           RibbonStyle="Large"
+                                           IsChecked="{Binding IsUsersPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Lookups"
+                                           LargeGlyph="{dx:DXImage Image=ListBox_32x32}"
+                                           RibbonStyle="Large"
+                                           IsChecked="{Binding IsLookupsPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Settings"
+                                           LargeGlyph="{dx:DXImage Image=EditDataSource_32x32}"
+                                           RibbonStyle="Large"
+                                           IsChecked="{Binding IsSettingsPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="SSH Logs"
+                                           LargeGlyph="{dx:DXImage Image=Show_32x32}"
+                                           RibbonStyle="Large"
+                                           IsChecked="{Binding IsSshLogsPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="App Log"
+                                           LargeGlyph="{dx:DXImage Image=BOReport_32x32}"
+                                           RibbonStyle="Large"
+                                           IsChecked="{Binding IsAppLogPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Jobs"
+                                           LargeGlyph="{dx:DXImage Image=Recurrence_32x32}"
+                                           RibbonStyle="Large"
+                                           IsChecked="{Binding IsJobsPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Ribbon Config"
+                                           Glyph="{dx:DXImage Image=LayoutPanel_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsRibbonConfigPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Integrations"
+                                           Glyph="{dx:DXImage Image=ServerMode_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsIntegrationsPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Details"
+                                           LargeGlyph="{dx:DXImage Image=BOFileAttachment_32x32}"
+                                           RibbonStyle="Large"
+                                           IsChecked="{Binding IsDetailsPanelOpen, Mode=TwoWay}" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Data">
+                        <dxb:BarButtonItem Content="Refresh"
+                                           LargeGlyph="{dx:DXImage Image=Refresh_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="RefreshButton_ItemClick" />
+                        <dxb:BarButtonItem Content="Print Preview"
+                                           Glyph="{dx:DXImage Image=Preview_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="PrintPreview_ItemClick" />
+                        <dxb:BarButtonItem Content="Column Chooser"
+                                           Glyph="{dx:DXImage Image=CustomizeGrid_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="ColumnChooser_ItemClick" />
+                        <dxb:BarItemSeparator />
+                        <dxb:BarButtonItem Content="Save Filter"
+                                           Glyph="{dx:DXImage Image=Save_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="SaveFilter_ItemClick" />
+                        <dxb:BarSplitButtonItem Content="Load Filter"
+                                                Glyph="{dx:DXImage Image=LoadFrom_16x16}"
+                                                RibbonStyle="SmallWithText"
+                                                ItemClick="LoadFilter_ItemClick" />
+                    </dxr:RibbonPageGroup>
+                </dxr:RibbonPage>
+
+                <!-- ── Builder Tab ── -->
+                <dxr:RibbonPage Caption="Builder" IsVisible="False">
+                    <dxr:RibbonPageGroup Caption="Actions">
+                        <dxb:BarButtonItem Content="Generate"
+                                           LargeGlyph="{dx:DXImage Image=Wizard_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="BuilderGenerate_ItemClick" />
+                        <dxb:BarButtonItem Content="Copy Config"
+                                           LargeGlyph="{dx:DXImage Image=Copy_16x16}"
+                                           RibbonStyle="Large"
+                                           ItemClick="BuilderCopy_ItemClick" />
+                        <dxb:BarButtonItem Content="Download"
+                                           LargeGlyph="{dx:DXImage Image=SaveTo_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="BuilderDownload_ItemClick" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Sections">
+                        <dxb:BarButtonItem Content="Enable All"
+                                           Glyph="{dx:DXImage Image=Apply_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="BuilderEnableAll_ItemClick" />
+                        <dxb:BarButtonItem Content="Disable All"
+                                           Glyph="{dx:DXImage Image=Cancel_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="BuilderDisableAll_ItemClick" />
+                        <dxb:BarButtonItem Content="Save Selections"
+                                           Glyph="{dx:DXImage Image=Save_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="BuilderSaveSelections_ItemClick" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Panels">
+                        <dxb:BarCheckItem Content="Builder"
+                                          LargeGlyph="{dx:DXImage Image=TreeView_32x32}"
+                                          RibbonStyle="Large"
+                                          IsChecked="{Binding IsBuilderPanelOpen, Mode=TwoWay}" />
+                    </dxr:RibbonPageGroup>
+                </dxr:RibbonPage>
+
+            </dxr:RibbonDefaultPageCategory>
+
+            <!-- ═══ Context Tabs — appear/disappear based on active panel ═══ -->
+            <dxr:RibbonPageCategory x:Name="LinksContextCategory" Caption="Link Tools"
+                                     Color="#3B82F6" IsVisible="{Binding IsLinkPanelActive}">
+                <dxr:RibbonPage Caption="Link Actions">
+                    <dxr:RibbonPageGroup Caption="Deploy">
+                        <dxb:BarButtonItem Content="Preview Config"
+                                           LargeGlyph="{dx:DXImage Image=Preview_16x16}"
+                                           RibbonStyle="Large"
+                                           ItemClick="DeployLinkButton_ItemClick" />
+                        <dxb:BarButtonItem Content="Deploy to Switch"
+                                           LargeGlyph="{dx:DXImage Image=SendBehind_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="DeployToSwitchButton_ItemClick" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Config">
+                        <dxb:BarButtonItem Content="Copy Config A"
+                                           Glyph="{dx:DXImage Image=Copy_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="CopyConfigA_ItemClick" />
+                        <dxb:BarButtonItem Content="Copy Config B"
+                                           Glyph="{dx:DXImage Image=Copy_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="CopyConfigB_ItemClick" />
+                    </dxr:RibbonPageGroup>
+                </dxr:RibbonPage>
+            </dxr:RibbonPageCategory>
+
+            <dxr:RibbonPageCategory x:Name="SwitchContextCategory" Caption="Switch Tools"
+                                     Color="#22C55E" IsVisible="{Binding IsSwitchPanelActive}">
+                <dxr:RibbonPage Caption="Connectivity">
+                    <dxr:RibbonPageGroup Caption="Operations">
+                        <dxb:BarButtonItem Content="Ping"
+                                           LargeGlyph="{dx:DXImage Image=Refresh_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="PingSingleSwitch_ItemClick" />
+                        <dxb:BarButtonItem Content="Download Config"
+                                           LargeGlyph="{dx:DXImage Image=Download_32x32}"
+                                           RibbonStyle="Large"
+                                           ItemClick="SyncConfigButton_Click" />
+                        <dxb:BarButtonItem Content="Sync BGP"
+                                           Glyph="{dx:DXImage Image=TreeView_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="SyncBgpButton_ItemClick" />
+                    </dxr:RibbonPageGroup>
+                </dxr:RibbonPage>
+            </dxr:RibbonPageCategory>
+
+            <dxr:RibbonPageCategory x:Name="AdminContextCategory" Caption="Admin Tools"
+                                     Color="#F59E0B" IsVisible="{Binding IsAdminPanelActive}">
+                <dxr:RibbonPage Caption="Admin Actions">
+                    <dxr:RibbonPageGroup Caption="User Management">
+                        <dxb:BarButtonItem Content="Set Password"
+                                           Glyph="{dx:DXImage Image=Security_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="SetPasswordButton_ItemClick" />
+                        <dxb:BarButtonItem Content="Setup MFA"
+                                           Glyph="{dx:DXImage Image=ProtectedAction_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="SetupMfaButton_ItemClick" />
+                        <dxb:BarButtonItem Content="New User"
+                                           Glyph="{dx:DXImage Image=AddItem_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           ItemClick="NewUserButton_ItemClick" />
+                    </dxr:RibbonPageGroup>
+                </dxr:RibbonPage>
+            </dxr:RibbonPageCategory>
+        </dxr:RibbonControl>
+
+        <!-- ═══════════════════════════════════════════════ DOCK LAYOUT ═══ -->
+        <dxdo:DockLayoutManager x:Name="DockManager" Grid.Row="1"
+                                FloatingMode="Desktop">
+            <dxdo:LayoutGroup Orientation="Horizontal">
+
+                <!-- Left nav panel -->
+                <dxdo:LayoutPanel Caption="Sites" AllowClose="False"
+                                  ItemWidth="200" AllowFloat="True">
+                    <ItemsControl ItemsSource="{Binding SiteSummaries}"
+                                  Padding="4">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border x:Name="SiteBorder"
+                                        Margin="2,2" Padding="8,6"
+                                        CornerRadius="4"
+                                        Cursor="Hand"
+                                        Background="#1A5276"
+                                        BorderThickness="1.5"
+                                        BorderBrush="#2E86C1"
+                                        MouseLeftButtonDown="SiteToggle_Click">
+                                    <StackPanel>
+                                        <TextBlock x:Name="SiteName" Text="{Binding Building}" FontWeight="SemiBold" FontSize="13"
+                                                   Foreground="#FFFFFF" />
+                                        <TextBlock x:Name="SiteInfo" Text="{Binding Summary}" FontSize="11" Margin="0,1,0,0"
+                                                   Foreground="#B0C4DE" />
+                                    </StackPanel>
+                                </Border>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding IsSelected}" Value="False">
+                                        <Setter TargetName="SiteBorder" Property="Background" Value="#3A3A3A" />
+                                        <Setter TargetName="SiteBorder" Property="BorderBrush" Value="#555555" />
+                                        <Setter TargetName="SiteBorder" Property="Opacity" Value="0.55" />
+                                        <Setter TargetName="SiteName" Property="Foreground" Value="#999999" />
+                                        <Setter TargetName="SiteInfo" Property="Foreground" Value="#666666" />
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </dxdo:LayoutPanel>
+
+                <!-- Main document group -->
+                <dxdo:DocumentGroup x:Name="MainDocumentGroup" Orientation="Vertical"
+                                       ClosePageButtonShowMode="InAllTabPageHeaders"
+                                       AllowFloat="True"
+                                       AllowDrag="True">
+
+                    <!-- ═══ Home Dashboard ═══ -->
+                    <dxdo:DocumentPanel x:Name="DashboardPanel"
+                                        Caption="Dashboard"
+                                        AllowClose="True">
+                        <local:DashboardPanel x:Name="DashboardGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- Devices Panel (extracted to Module.Devices) -->
+                    <dxdo:DocumentPanel x:Name="DevicesPanel"
+                                        Caption="Devices"
+                                        AllowClose="True">
+                        <devViews:DeviceGridPanel x:Name="DeviceGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- Master Device List Panel -->
+                    <!-- Master (extracted to Module.Devices) -->
+                    <dxdo:DocumentPanel x:Name="MasterPanel" Caption="Master Devices" AllowClose="True">
+                        <devViews:MasterGridPanel x:Name="MasterGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ASN Panel -->
+                    <!-- ASN (extracted to Module.Devices) -->
+                    <dxdo:DocumentPanel x:Name="AsnPanel" Caption="ASN" AllowClose="True">
+                        <devViews:AsnGridPanel x:Name="AsnGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- P2P Links Panel -->
+                    <!-- P2P Links (extracted to Module.Links) -->
+                    <dxdo:DocumentPanel x:Name="P2PPanel"
+                                        Caption="P2P Links"
+                                        AllowClose="True">
+                        <linkViews:P2PGridPanel x:Name="P2PGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- B2B Links (extracted to Module.Links) -->
+                    <dxdo:DocumentPanel x:Name="B2BPanel"
+                                        Caption="B2B Links"
+                                        AllowClose="True">
+                        <linkViews:B2BGridPanel x:Name="B2BGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- FW Links (extracted to Module.Links) -->
+                    <dxdo:DocumentPanel x:Name="FWPanel"
+                                        Caption="FW Links"
+                                        AllowClose="True">
+                        <linkViews:FWGridPanel x:Name="FWGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- VLANs Panel -->
+                    <!-- VLANs (extracted to Module.VLANs) -->
+                    <dxdo:DocumentPanel x:Name="VlansPanel"
+                                        Caption="VLANs"
+                                        AllowClose="True">
+                        <vlViews:VlanGridPanel x:Name="VlanGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- MLAG Panel -->
+                    <!-- MLAG (extracted to Module.Devices) -->
+                    <dxdo:DocumentPanel x:Name="MlagPanel" Caption="MLAG" AllowClose="True">
+                        <devViews:MlagGridPanel x:Name="MlagGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- MSTP (extracted to Module.Devices) -->
+                    <dxdo:DocumentPanel x:Name="MstpPanel" Caption="MSTP" AllowClose="True">
+                        <devViews:MstpGridPanel x:Name="MstpGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- Server AS (extracted to Module.Devices) -->
+                    <dxdo:DocumentPanel x:Name="ServerAsPanel" Caption="Server AS" AllowClose="True">
+                        <devViews:ServerAsGridPanel x:Name="ServerAsGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- IP Ranges Panel -->
+                    <!-- IP Ranges (extracted to Module.Devices) -->
+                    <dxdo:DocumentPanel x:Name="IpRangesPanel" Caption="IP Ranges" AllowClose="True">
+                        <devViews:IpRangesGridPanel x:Name="IpRangesGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- Servers Panel -->
+                    <dxdo:DocumentPanel x:Name="ServersPanel"
+                                        Caption="Servers"
+                                        AllowClose="True">
+                        <dxg:GridControl x:Name="ServersGrid"
+                                         ItemsSource="{Binding Servers}"
+                                         AutoGenerateColumns="None">
+                            <dxg:GridControl.View>
+                                <dxg:TableView x:Name="ServersView"
+                                               ShowGroupPanel="True" AllowColumnFiltering="True"
+                                               ShowFilterPanelMode="ShowAlways" NavigationStyle="Row"
+                                               AllowEditing="True">
+                                    <dxg:TableView.RowStyle>
+                                        <Style TargetType="dxg:RowControl" BasedOn="{StaticResource ReservedRowStyle}" />
+                                    </dxg:TableView.RowStyle>
+                                </dxg:TableView>
+                            </dxg:GridControl.View>
+                            <dxg:GridControl.Columns>
+                                <dxg:GridColumn FieldName="Building"    Header="Building"    Width="100" AllowGrouping="True" ReadOnly="True" />
+                                <dxg:GridColumn FieldName="ServerName"  Header="Server"      Width="180" ReadOnly="True" />
+                                <dxg:GridColumn FieldName="ServerAs"    Header="ASN"         Width="70"  ReadOnly="True" />
+                                <dxg:GridColumn FieldName="LoopbackIp"  Header="Loopback"    Width="130" ReadOnly="True" />
+                                <dxg:GridColumn FieldName="Nic1Ip"      Header="NIC1 IP"     Width="120" ReadOnly="True" CellStyle="{StaticResource Nic1ReservedCell}" />
+                                <dxg:GridColumn FieldName="Nic1Router"  Header="NIC1 Router" Width="120" ReadOnly="True" CellStyle="{StaticResource Nic1ReservedCell}" />
+                                <dxg:GridColumn FieldName="Nic1Subnet"  Header="NIC1 Subnet" Width="130" ReadOnly="True" CellStyle="{StaticResource Nic1ReservedCell}" />
+                                <dxg:GridColumn FieldName="Nic1Status"  Header="NIC1 Status" Width="90"  CellStyle="{StaticResource Nic1ReservedCell}">
+                                    <dxg:GridColumn.EditSettings>
+                                        <dxe:ComboBoxEditSettings IsTextEditable="False">
+                                            <dxe:ComboBoxEditSettings.Items>
+                                                <dxe:ComboBoxEditItem Content="Active" />
+                                                <dxe:ComboBoxEditItem Content="Down" />
+                                                <dxe:ComboBoxEditItem Content="RESERVED" />
+                                            </dxe:ComboBoxEditSettings.Items>
+                                        </dxe:ComboBoxEditSettings>
+                                    </dxg:GridColumn.EditSettings>
+                                </dxg:GridColumn>
+                                <dxg:GridColumn FieldName="Nic2Ip"      Header="NIC2 IP"     Width="120" ReadOnly="True" CellStyle="{StaticResource Nic2ReservedCell}" />
+                                <dxg:GridColumn FieldName="Nic2Router"  Header="NIC2 Router" Width="120" ReadOnly="True" CellStyle="{StaticResource Nic2ReservedCell}" />
+                                <dxg:GridColumn FieldName="Nic2Subnet"  Header="NIC2 Subnet" Width="130" ReadOnly="True" CellStyle="{StaticResource Nic2ReservedCell}" />
+                                <dxg:GridColumn FieldName="Nic2Status"  Header="NIC2 Status" Width="90"  CellStyle="{StaticResource Nic2ReservedCell}">
+                                    <dxg:GridColumn.EditSettings>
+                                        <dxe:ComboBoxEditSettings IsTextEditable="False">
+                                            <dxe:ComboBoxEditSettings.Items>
+                                                <dxe:ComboBoxEditItem Content="Active" />
+                                                <dxe:ComboBoxEditItem Content="Down" />
+                                                <dxe:ComboBoxEditItem Content="RESERVED" />
+                                            </dxe:ComboBoxEditSettings.Items>
+                                        </dxe:ComboBoxEditSettings>
+                                    </dxg:GridColumn.EditSettings>
+                                </dxg:GridColumn>
+                                <dxg:GridColumn FieldName="Nic3Ip"      Header="NIC3 IP"     Width="120" ReadOnly="True" CellStyle="{StaticResource Nic3ReservedCell}" />
+                                <dxg:GridColumn FieldName="Nic3Router"  Header="NIC3 Router" Width="120" ReadOnly="True" CellStyle="{StaticResource Nic3ReservedCell}" />
+                                <dxg:GridColumn FieldName="Nic3Subnet"  Header="NIC3 Subnet" Width="130" ReadOnly="True" CellStyle="{StaticResource Nic3ReservedCell}" />
+                                <dxg:GridColumn FieldName="Nic3Status"  Header="NIC3 Status" Width="90"  CellStyle="{StaticResource Nic3ReservedCell}">
+                                    <dxg:GridColumn.EditSettings>
+                                        <dxe:ComboBoxEditSettings IsTextEditable="False">
+                                            <dxe:ComboBoxEditSettings.Items>
+                                                <dxe:ComboBoxEditItem Content="Active" />
+                                                <dxe:ComboBoxEditItem Content="Down" />
+                                                <dxe:ComboBoxEditItem Content="RESERVED" />
+                                            </dxe:ComboBoxEditSettings.Items>
+                                        </dxe:ComboBoxEditSettings>
+                                    </dxg:GridColumn.EditSettings>
+                                </dxg:GridColumn>
+                                <dxg:GridColumn FieldName="Nic4Ip"      Header="NIC4 IP"     Width="120" ReadOnly="True" CellStyle="{StaticResource Nic4ReservedCell}" />
+                                <dxg:GridColumn FieldName="Nic4Router"  Header="NIC4 Router" Width="120" ReadOnly="True" CellStyle="{StaticResource Nic4ReservedCell}" />
+                                <dxg:GridColumn FieldName="Nic4Subnet"  Header="NIC4 Subnet" Width="130" ReadOnly="True" CellStyle="{StaticResource Nic4ReservedCell}" />
+                                <dxg:GridColumn FieldName="Nic4Status"  Header="NIC4 Status" Width="90"  CellStyle="{StaticResource Nic4ReservedCell}">
+                                    <dxg:GridColumn.EditSettings>
+                                        <dxe:ComboBoxEditSettings IsTextEditable="False">
+                                            <dxe:ComboBoxEditSettings.Items>
+                                                <dxe:ComboBoxEditItem Content="Active" />
+                                                <dxe:ComboBoxEditItem Content="Down" />
+                                                <dxe:ComboBoxEditItem Content="RESERVED" />
+                                            </dxe:ComboBoxEditSettings.Items>
+                                        </dxe:ComboBoxEditSettings>
+                                    </dxg:GridColumn.EditSettings>
+                                </dxg:GridColumn>
+                                <dxg:GridColumn FieldName="Status"      Header="Status"      Width="80" ReadOnly="True" />
+                            </dxg:GridControl.Columns>
+                        </dxg:GridControl>
+                    </dxdo:DocumentPanel>
+
+                    <!-- Configured Switches Panel -->
+                    <!-- Switches (extracted to Module.Switches) -->
+                    <dxdo:DocumentPanel x:Name="SwitchesPanel"
+                                        Caption="Configured Switches"
+                                        AllowClose="True">
+                        <swViews:SwitchGridPanel x:Name="SwitchGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- Roles & Permissions Panel -->
+                    <!-- Roles (extracted to Module.Admin) -->
+                    <dxdo:DocumentPanel x:Name="RolesPanel"
+                                        Caption="Roles &amp; Permissions"
+                                        AllowClose="True">
+                        <admViews:RolesPanel x:Name="RolesGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- Users (extracted to Module.Admin) -->
+                    <dxdo:DocumentPanel x:Name="UsersPanel"
+                                        Caption="Users"
+                                        AllowClose="True">
+                        <admViews:UsersPanel x:Name="UsersGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- Lookups (extracted to Module.Admin) -->
+                    <dxdo:DocumentPanel x:Name="LookupsPanel"
+                                        Caption="Lookup Values"
+                                        AllowClose="True">
+                        <admViews:LookupsPanel x:Name="LookupsGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- Settings Panel (toggled) -->
+                    <dxdo:DocumentPanel x:Name="SettingsPanel"
+                                        Caption="Settings"
+                                        AllowClose="True">
+                        <dxg:GridControl x:Name="SettingsGrid"
+                                         ItemsSource="{Binding ConfigRanges}"
+                                         AutoGenerateColumns="None"
+                                         CurrentItem="{Binding SelectedRange, Mode=TwoWay}">
+                            <dxg:GridControl.View>
+                                <dxg:TableView x:Name="SettingsView"
+                                               ShowGroupPanel="True"
+                                               AllowColumnFiltering="True"
+                                               ShowFilterPanelMode="ShowAlways"
+                                               NavigationStyle="Row"
+                                               AllowEditing="True"
+                                               NewItemRowPosition="Top" />
+                            </dxg:GridControl.View>
+                            <dxg:GridControl.Columns>
+                                <dxg:GridColumn FieldName="Category"    Header="Category"    Width="120" AllowGrouping="True">
+                                    <dxg:GridColumn.EditSettings>
+                                        <dxe:ComboBoxEditSettings IsTextEditable="True">
+                                            <dxe:ComboBoxEditSettings.Items>
+                                                <dxe:ComboBoxEditItem Content="asn" />
+                                                <dxe:ComboBoxEditItem Content="vlan" />
+                                                <dxe:ComboBoxEditItem Content="loopback_ip" />
+                                                <dxe:ComboBoxEditItem Content="management_ip" />
+                                            </dxe:ComboBoxEditSettings.Items>
+                                        </dxe:ComboBoxEditSettings>
+                                    </dxg:GridColumn.EditSettings>
+                                </dxg:GridColumn>
+                                <dxg:GridColumn FieldName="Name"        Header="Name"        Width="200" />
+                                <dxg:GridColumn FieldName="RangeStart"  Header="Range Start" Width="140" />
+                                <dxg:GridColumn FieldName="RangeEnd"    Header="Range End"   Width="140" />
+                                <dxg:GridColumn FieldName="Description" Header="Description" Width="250" />
+                                <dxg:GridColumn FieldName="SortOrder"   Header="Sort Order"  Width="90" />
+                            </dxg:GridControl.Columns>
+                        </dxg:GridControl>
+                    </dxdo:DocumentPanel>
+
+                    <!-- SSH Logs Panel (Admin only) -->
+                    <!-- SSH Logs (extracted to Module.Admin) -->
+                    <dxdo:DocumentPanel x:Name="SshLogsPanel" Caption="SSH Logs" AllowClose="True">
+                        <admViews:SshLogsPanel x:Name="SshLogsGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ App Log Panel ═══ -->
+                    <!-- App Log (extracted to Module.Admin) -->
+                    <dxdo:DocumentPanel x:Name="AppLogPanel"
+                                        Caption="App Log"
+                                        AllowClose="True">
+                        <admViews:AppLogPanel x:Name="AppLogGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <dxdo:DocumentPanel x:Name="JobsPanel"
+                                        Caption="Background Jobs"
+                                        AllowClose="True">
+                        <admViews:JobsPanel x:Name="JobsGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ Tasks Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="TasksPanel" Caption="Tasks"
+                                        AllowClose="True" ClosingBehavior="HideToClosedPanelsCollection">
+                        <taskViews:TaskTreePanel x:Name="TaskTreeGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <dxdo:DocumentPanel x:Name="BacklogPanel" Caption="Product Backlog"
+                                        AllowClose="True" ClosingBehavior="HideToClosedPanelsCollection">
+                        <taskViews:TaskBacklogPanel x:Name="BacklogGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <dxdo:DocumentPanel x:Name="SprintPlanningPanel" Caption="Sprint Planning"
+                                        AllowClose="True" ClosingBehavior="HideToClosedPanelsCollection">
+                        <taskViews:SprintPlanPanel x:Name="SprintPlanGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <dxdo:DocumentPanel x:Name="SprintBurndownDocPanel" Caption="Sprint Burndown"
+                                        AllowClose="True" ClosingBehavior="HideToClosedPanelsCollection">
+                        <taskViews:SprintBurndownPanel x:Name="SprintBurndownChartPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <dxdo:DocumentPanel x:Name="KanbanBoardDocPanel" Caption="Kanban Board"
+                                        AllowClose="True" ClosingBehavior="HideToClosedPanelsCollection">
+                        <taskViews:KanbanBoardPanel x:Name="KanbanBoardViewPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <dxdo:DocumentPanel x:Name="GanttDocPanel" Caption="Gantt Chart"
+                                        AllowClose="True" ClosingBehavior="HideToClosedPanelsCollection">
+                        <taskViews:GanttPanel x:Name="GanttViewPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <dxdo:DocumentPanel x:Name="QADocPanel" Caption="QA / Bugs"
+                                        AllowClose="True" ClosingBehavior="HideToClosedPanelsCollection">
+                        <taskViews:QAPanel x:Name="QAGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <dxdo:DocumentPanel x:Name="QADashboardDocPanel" Caption="QA Dashboard"
+                                        AllowClose="True" ClosingBehavior="HideToClosedPanelsCollection">
+                        <taskViews:QADashboardPanel x:Name="QADashboardViewPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <dxdo:DocumentPanel x:Name="ReportBuilderDocPanel" Caption="Report Builder"
+                                        AllowClose="True" ClosingBehavior="HideToClosedPanelsCollection">
+                        <taskViews:ReportBuilderPanel x:Name="ReportBuilderViewPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <dxdo:DocumentPanel x:Name="TaskDashboardDocPanel" Caption="Task Dashboard"
+                                        AllowClose="True" ClosingBehavior="HideToClosedPanelsCollection">
+                        <taskViews:TaskDashboardPanel x:Name="TaskDashboardViewPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <dxdo:DocumentPanel x:Name="TimesheetDocPanel" Caption="Timesheet"
+                                        AllowClose="True" ClosingBehavior="HideToClosedPanelsCollection">
+                        <taskViews:TimesheetPanel x:Name="TimesheetViewPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <dxdo:DocumentPanel x:Name="ActivityFeedDocPanel" Caption="Activity Feed"
+                                        AllowClose="True" ClosingBehavior="HideToClosedPanelsCollection">
+                        <taskViews:ActivityFeedPanel x:Name="ActivityFeedViewPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <dxdo:DocumentPanel x:Name="MyTasksDocPanel" Caption="My Tasks"
+                                        AllowClose="True" ClosingBehavior="HideToClosedPanelsCollection">
+                        <taskViews:MyTasksPanel x:Name="MyTasksViewPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <dxdo:DocumentPanel x:Name="PortfolioDocPanel" Caption="Portfolio"
+                                        AllowClose="True" ClosingBehavior="HideToClosedPanelsCollection">
+                        <taskViews:PortfolioPanel x:Name="PortfolioViewPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <dxdo:DocumentPanel x:Name="TaskImportDocPanel" Caption="Task Import"
+                                        AllowClose="True" ClosingBehavior="HideToClosedPanelsCollection">
+                        <taskViews:TaskImportPanel x:Name="TaskImportViewPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <dxdo:DocumentPanel x:Name="TaskDetailDocPanel" Caption="Task Detail"
+                                        AllowClose="True" ClosingBehavior="HideToClosedPanelsCollection">
+                        <taskViews:TaskDetailPanel x:Name="TaskDetailViewPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ Ribbon Config Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="RibbonConfigPanel"
+                                        Caption="Ribbon Configuration"
+                                        AllowClose="True">
+                        <dx:DXTabControl>
+                            <dx:DXTabItem Header="My Ribbon (User)">
+                                <admViews:RibbonTreePanel x:Name="RibbonTreeGridPanel" />
+                            </dx:DXTabItem>
+                            <dx:DXTabItem Header="Admin Config">
+                                <admViews:RibbonAdminTreePanel x:Name="RibbonAdminTreeGridPanel" />
+                            </dx:DXTabItem>
+                        </dx:DXTabControl>
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ Config Builder Panel ═══ -->
+                    <!-- Config Builder (extracted to Module.Links) -->
+                    <dxdo:DocumentPanel x:Name="BuilderPanel"
+                                        Caption="Config Builder"
+                                        AllowClose="True"
+                                        ClosingBehavior="HideToClosedPanelsCollection">
+                        <linkViews:BuilderPanel x:Name="BuilderGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ Service Desk Requests Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="ServiceDeskPanel"
+                                        Caption="Service Desk"
+                                        AllowClose="True">
+                        <sdViews:RequestGridPanel x:Name="RequestGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ SD Overview Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="SdOverviewPanel"
+                                        Caption="SD Overview"
+                                        AllowClose="True">
+                        <sdViews:OverviewChartPanel x:Name="OverviewChartPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ SD Tech Closures Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="SdTechClosuresPanel"
+                                        Caption="SD Tech Closures"
+                                        AllowClose="True">
+                        <sdViews:TechClosuresPanel x:Name="TechClosuresPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ SD Aging Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="SdAgingPanel"
+                                        Caption="SD Aging"
+                                        AllowClose="True">
+                        <sdViews:AgingChartPanel x:Name="AgingChartPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ SD Teams Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="SdTeamsPanel"
+                                        Caption="SD Teams"
+                                        AllowClose="True">
+                        <sdViews:TeamsPanel x:Name="TeamsPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ SD Groups Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="SdGroupsPanel"
+                                        Caption="SD Groups"
+                                        AllowClose="True">
+                        <sdViews:SdGroupsPanel x:Name="SdGroupsGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ SD Technicians Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="SdTechniciansPanel"
+                                        Caption="SD Technicians"
+                                        AllowClose="True">
+                        <sdViews:SdTechniciansPanel x:Name="SdTechGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ SD Group Categories Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="SdGroupCatsPanel"
+                                        Caption="SD Group Categories"
+                                        AllowClose="True">
+                        <sdViews:GroupCategoriesPanel x:Name="GroupCatsPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ SD Requesters Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="SdRequestersPanel"
+                                        Caption="SD Requesters"
+                                        AllowClose="True">
+                        <sdViews:SdRequestersPanel x:Name="SdReqGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ Integrations Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="IntegrationsPanel"
+                                        Caption="Integrations"
+                                        AllowClose="True">
+                        <admViews:IntegrationsPanel x:Name="IntegrationsGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ Icon Defaults Panel (Admin) ═══ -->
+                    <dxdo:DocumentPanel x:Name="IconDefaultsPanel"
+                                        Caption="Icon Defaults"
+                                        AllowClose="True">
+                        <admViews:IconDefaultsPanel x:Name="IconDefaultsGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ Icon Overrides Panel (User) ═══ -->
+                    <dxdo:DocumentPanel x:Name="IconOverridesPanel"
+                                        Caption="My Icon Overrides"
+                                        AllowClose="True">
+                        <admViews:IconOverridesPanel x:Name="IconOverridesGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ AD Browser Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="AdBrowserPanel"
+                                        Caption="AD Browser"
+                                        AllowClose="True">
+                        <admViews:AdBrowserPanel x:Name="AdBrowserGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ Migrations Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="MigrationsPanel"
+                                        Caption="Schema Migrations"
+                                        AllowClose="True">
+                        <admViews:MigrationsPanel x:Name="MigrationsGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ Purge Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="PurgePanel"
+                                        Caption="Purge Deleted Records"
+                                        AllowClose="True">
+                        <admViews:PurgePanel x:Name="PurgeGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ Backup Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="BackupPanel"
+                                        Caption="Database Backup"
+                                        AllowClose="True">
+                        <admViews:BackupPanel x:Name="BackupGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ Locations Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="LocationsPanel"
+                                        Caption="Locations"
+                                        AllowClose="True">
+                        <admViews:LocationsPanel x:Name="LocationsGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ Reference Config Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="ReferenceConfigPanel"
+                                        Caption="Reference Numbers"
+                                        AllowClose="True">
+                        <admViews:ReferenceConfigPanel x:Name="ReferenceConfigGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ Podman Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="PodmanPanel"
+                                        Caption="Podman Containers"
+                                        AllowClose="True">
+                        <admViews:PodmanPanel x:Name="PodmanGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ Identity Providers Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="IdentityProvidersPanel"
+                                        Caption="Identity Providers"
+                                        AllowClose="True">
+                        <admViews:IdentityProvidersPanel x:Name="IdentityProvidersGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ Auth Events Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="AuthEventsPanel"
+                                        Caption="Auth Events"
+                                        AllowClose="True">
+                        <admViews:AuthEventsPanel x:Name="AuthEventsGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ Scheduler Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="SchedulerPanel"
+                                        Caption="Schedule"
+                                        AllowClose="True">
+                        <admViews:SchedulerPanel x:Name="SchedulerGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ Sync Config Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="SyncConfigPanel"
+                                        Caption="Sync Engine"
+                                        AllowClose="True">
+                        <admViews:SyncConfigPanel x:Name="SyncConfigGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ API Keys Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="ApiKeysPanel"
+                                        Caption="API Keys"
+                                        AllowClose="True">
+                        <admViews:ApiKeysPanel x:Name="ApiKeysGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ Audit Log Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="AuditLogPanel"
+                                        Caption="Audit Log"
+                                        AllowClose="True">
+                        <admViews:AuditLogPanel x:Name="AuditLogGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ Notification Preferences Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="NotificationPrefsPanel"
+                                        Caption="My Notifications"
+                                        AllowClose="True">
+                        <admViews:NotificationPrefsPanel x:Name="NotificationPrefsGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ Active Sessions Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="SessionsPanel"
+                                        Caption="Active Sessions"
+                                        AllowClose="True">
+                        <admViews:SessionsPanel x:Name="SessionsGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- Diagram (extracted to Module.Routing) -->
+                    <dxdo:DocumentPanel x:Name="DiagramPanel"
+                                        Caption="Network Diagram"
+                                        AllowClose="True"
+                                        ClosingBehavior="HideToClosedPanelsCollection">
+                        <rtViews:DiagramPanel x:Name="DiagramGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ Config Compare Panel ═══ -->
+                    <dxdo:DocumentPanel x:Name="ComparePanel"
+                                        Caption="Config Compare"
+                                        AllowClose="True"
+                                        ClosingBehavior="HideToClosedPanelsCollection">
+                        <Grid x:Name="CompareContent" Background="#1E1E1E" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ Deploy Preview Panel ═══ -->
+                    <!-- Deploy (extracted to Module.Switches) -->
+                    <dxdo:DocumentPanel x:Name="DeployPanel"
+                                        Caption="Deploy Config"
+                                        AllowClose="True"
+                                        ClosingBehavior="HideToClosedPanelsCollection">
+                        <swViews:DeployPanel x:Name="DeployGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- ═══ BGP Panel ═══ -->
+                    <!-- BGP (extracted to Module.Routing) -->
+                    <dxdo:DocumentPanel x:Name="BgpPanel"
+                                        Caption="BGP"
+                                        AllowClose="True"
+                                        ClosingBehavior="HideToClosedPanelsCollection">
+                        <rtViews:BgpGridPanel x:Name="BgpGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- Global Admin panels -->
+                    <dxdo:DocumentPanel x:Name="GlobalTenantsPanel"
+                                        Caption="Tenants"
+                                        AllowClose="True"
+                                        ClosingBehavior="HideToClosedPanelsCollection">
+                        <gaViews:TenantsPanel x:Name="TenantsGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <dxdo:DocumentPanel x:Name="GlobalUsersPanel"
+                                        Caption="Global Users"
+                                        AllowClose="True"
+                                        ClosingBehavior="HideToClosedPanelsCollection">
+                        <gaViews:GlobalUsersPanel x:Name="GlobalUsersGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <dxdo:DocumentPanel x:Name="GlobalSubscriptionsPanel"
+                                        Caption="Subscriptions"
+                                        AllowClose="True"
+                                        ClosingBehavior="HideToClosedPanelsCollection">
+                        <gaViews:SubscriptionsPanel x:Name="SubscriptionsGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <dxdo:DocumentPanel x:Name="GlobalLicensesPanel"
+                                        Caption="Module Licenses"
+                                        AllowClose="True"
+                                        ClosingBehavior="HideToClosedPanelsCollection">
+                        <gaViews:ModuleLicensesPanel x:Name="LicensesGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <dxdo:DocumentPanel x:Name="PlatformDashboardPanel"
+                                        Caption="Platform Dashboard"
+                                        AllowClose="True"
+                                        ClosingBehavior="HideToClosedPanelsCollection">
+                        <gaViews:PlatformDashboardPanel x:Name="PlatformDashPanel" />
+                    </dxdo:DocumentPanel>
+
+                </dxdo:DocumentGroup>
+
+                <!-- ═══ Details — dockable right panel ═══ -->
+                <dxdo:LayoutPanel x:Name="DetailsPanel"
+                                  Caption="Details"
+                                  AllowClose="False"
+                                  AllowHide="True"
+                                  AllowFloat="True"
+                                  AllowDock="True"
+                                  ShowPinButton="True"
+                                  ItemWidth="380">
+                    <swViews:DetailTabsPanel x:Name="DetailTabsPanel" />
+                </dxdo:LayoutPanel>
+
+                <!-- SD Settings — separate from Details to avoid layout deadlock -->
+                <dxdo:LayoutPanel x:Name="SdSettingsLayoutPanel"
+                                  Caption="SD Settings"
+                                  AllowClose="False"
+                                  AllowHide="True"
+                                  AllowFloat="True"
+                                  AllowDock="True"
+                                  ShowPinButton="True"
+                                  ItemWidth="300"
+                                  Visibility="Collapsed">
+                    <sdViews:SdSettingsPanel x:Name="SdSettingsPanel" />
+                </dxdo:LayoutPanel>
+
+            </dxdo:LayoutGroup>
+        </dxdo:DockLayoutManager>
+
+        <!-- ═══════════════════════════════════════════════ STATUS BAR ═══ -->
+        <dxr:RibbonStatusBarControl Grid.Row="2">
+            <dxr:RibbonStatusBarControl.LeftItems>
+                <dxb:BarStaticItem x:Name="StatusBarDbIndicator">
+                    <dxb:BarStaticItem.ContentTemplate>
+                        <DataTemplate>
+                            <Ellipse Width="8" Height="8" Fill="{Binding DbStatus}" Margin="0,0,6,0" />
+                        </DataTemplate>
+                    </dxb:BarStaticItem.ContentTemplate>
+                </dxb:BarStaticItem>
+                <dxb:BarStaticItem Content="{Binding StatusText}" />
+            </dxr:RibbonStatusBarControl.LeftItems>
+            <dxr:RibbonStatusBarControl.RightItems>
+                <dxb:BarStaticItem Content="{Binding DeviceCountText}" />
+                <dxb:BarStaticItem Content="  ·  " />
+                <dxb:BarStaticItem x:Name="StatusBarAuthIndicator">
+                    <dxb:BarStaticItem.ContentTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="8" Height="8" Fill="{Binding ConnectionModeColor}" Margin="0,0,4,0" />
+                                <TextBlock Text="{Binding ConnectionModeText}" FontSize="11" Margin="0,0,6,0" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </dxb:BarStaticItem.ContentTemplate>
+                </dxb:BarStaticItem>
+                <dxb:BarStaticItem Content="  ·  " />
+                <dxb:BarStaticItem Content="{Binding CurrentUserDisplay}" />
+                <dxb:BarStaticItem Content="{Binding CurrentUserRole, StringFormat=' ({0})'}" />
+            </dxr:RibbonStatusBarControl.RightItems>
+        </dxr:RibbonStatusBarControl>
+
+        <!-- Global search overlay (Ctrl+F) -->
+        <Border x:Name="GlobalSearchBar" Grid.Row="1"
+                HorizontalAlignment="Right" VerticalAlignment="Top"
+                Margin="0,8,16,0" Padding="8,6"
+                Background="#1E293B" BorderBrush="#3B82F6" BorderThickness="1"
+                CornerRadius="6" Visibility="Collapsed"
+                MaxWidth="400">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#x1F50D;" FontSize="14" Margin="0,0,8,0" VerticalAlignment="Center" />
+                <TextBox x:Name="GlobalSearchBox" Width="280" Height="26"
+                         Background="#0F172A" Foreground="#F1F5F9" BorderThickness="0"
+                         FontSize="12" VerticalContentAlignment="Center"
+                         TextChanged="GlobalSearchBox_TextChanged"
+                         KeyDown="GlobalSearchBox_KeyDown" />
+                <TextBlock x:Name="GlobalSearchCount" Text="" FontSize="11"
+                           Foreground="#94A3B8" Margin="8,0,0,0" VerticalAlignment="Center" />
+            </StackPanel>
+        </Border>
+
+        <!-- Toast notification overlay -->
+        <Border x:Name="ToastBorder" Grid.Row="1"
+                HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                Margin="0,0,16,16" Padding="12,8"
+                Background="#1E293B" BorderBrush="#334155" BorderThickness="1"
+                CornerRadius="6" Visibility="Collapsed"
+                MaxWidth="400">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock x:Name="ToastIcon" Text="" FontSize="16" Margin="0,0,8,0" VerticalAlignment="Center" />
+                <StackPanel>
+                    <TextBlock x:Name="ToastTitle" Text="" FontWeight="SemiBold" FontSize="12" Foreground="#F1F5F9" />
+                    <TextBlock x:Name="ToastMessage" Text="" FontSize="11" Foreground="#94A3B8" TextWrapping="Wrap" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+    </Grid>
+</dxr:DXRibbonWindow>

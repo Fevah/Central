@@ -1,0 +1,45 @@
+<UserControl x:Class="Central.Desktop.Views.DashboardPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="8">
+        <StackPanel>
+            <!-- Header -->
+            <StackPanel Orientation="Horizontal" Margin="8,4,8,12">
+                <TextBlock Text="Central Dashboard" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+                <TextBlock x:Name="LastRefreshText" FontSize="11" Foreground="#808080"
+                           VerticalAlignment="Center" Margin="16,0,0,0" />
+                <Button Content="Refresh" Click="Refresh_Click" Padding="12,4" Margin="16,0,0,0"
+                        VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Platform KPIs row -->
+            <TextBlock Text="Platform Overview" FontSize="13" FontWeight="SemiBold" Margin="8,0,8,4" />
+            <WrapPanel x:Name="PlatformKpiPanel" Margin="4,0,4,16" />
+
+            <!-- Service Desk KPIs row -->
+            <TextBlock Text="Service Desk" FontSize="13" FontWeight="SemiBold" Margin="8,0,8,4" />
+            <WrapPanel x:Name="ServiceDeskKpiPanel" Margin="4,0,4,16" />
+
+            <!-- System Health row -->
+            <TextBlock Text="System Health" FontSize="13" FontWeight="SemiBold" Margin="8,0,8,4" />
+            <WrapPanel x:Name="SystemHealthPanel" Margin="4,0,4,16" />
+
+            <!-- Recent Activity -->
+            <TextBlock Text="Recent Activity" FontSize="13" FontWeight="SemiBold" Margin="8,0,8,4" />
+            <Border Background="#2A2A2A" CornerRadius="6" Padding="8" Margin="8,0,8,8" MaxHeight="300">
+                <ItemsControl x:Name="ActivityList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" Margin="0,2">
+                                <TextBlock Text="{Binding Time}" Width="60" Foreground="#808080" FontSize="11" />
+                                <TextBlock Text="{Binding Icon}" Width="20" FontSize="12" />
+                                <TextBlock Text="{Binding Message}" FontSize="11" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -1,0 +1,82 @@
+<dx:DXWindow x:Class="Central.Desktop.ImportWizardDialog"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             Title="Import Data"
+             Width="750" Height="600"
+             WindowStartupLocation="CenterOwner"
+             ShowInTaskbar="False">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Step 1: File selection -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,8">
+            <TextBlock Text="1. Select CSV File" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,4" />
+            <StackPanel Orientation="Horizontal">
+                <dxe:TextEdit x:Name="FilePathEdit" Width="550" IsReadOnly="True" NullText="Choose a CSV file..." />
+                <Button Content="Browse..." Click="Browse_Click" Padding="12,4" Margin="8,0,0,0" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Step 2: Target table -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,8">
+            <TextBlock Text="2. Target Table" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,4" />
+            <StackPanel Orientation="Horizontal">
+                <dxe:ComboBoxEdit x:Name="TargetTableCombo" Width="300" NullText="Select target table..."
+                                   IsTextEditable="True" EditValueChanged="TargetTable_Changed" />
+                <TextBlock Text="Upsert Key:" VerticalAlignment="Center" Margin="16,0,4,0" />
+                <dxe:TextEdit x:Name="UpsertKeyEdit" Width="150" Text="id" />
+            </StackPanel>
+        </StackPanel>
+
+        <!-- Step 3: Preview + Field Mapping -->
+        <TextBlock Grid.Row="2" Text="3. Field Mapping (CSV Column → Target Column)" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,4" />
+
+        <dxg:GridControl x:Name="MappingGrid" Grid.Row="3" AutoGenerateColumns="None">
+            <dxg:GridControl.View>
+                <dxg:TableView AllowEditing="True" NavigationStyle="Cell" ShowGroupPanel="False" />
+            </dxg:GridControl.View>
+            <dxg:GridControl.Columns>
+                <dxg:GridColumn FieldName="SourceColumn" Header="CSV Column" Width="180" ReadOnly="True" />
+                <dxg:GridColumn FieldName="SampleValue" Header="Sample" Width="180" ReadOnly="True" />
+                <dxg:GridColumn FieldName="TargetColumn" Header="Target Column" Width="180" />
+                <dxg:GridColumn FieldName="ConverterType" Header="Converter" Width="100">
+                    <dxg:GridColumn.EditSettings>
+                        <dxe:ComboBoxEditSettings IsTextEditable="False">
+                            <dxe:ComboBoxEditSettings.Items>
+                                <dxe:ComboBoxEditItem Content="direct" />
+                                <dxe:ComboBoxEditItem Content="constant" />
+                                <dxe:ComboBoxEditItem Content="expression" />
+                                <dxe:ComboBoxEditItem Content="date_format" />
+                                <dxe:ComboBoxEditItem Content="combine" />
+                                <dxe:ComboBoxEditItem Content="split" />
+                            </dxe:ComboBoxEditSettings.Items>
+                        </dxe:ComboBoxEditSettings>
+                    </dxg:GridColumn.EditSettings>
+                </dxg:GridColumn>
+                <dxg:GridColumn FieldName="Skip" Header="Skip" Width="50" />
+            </dxg:GridControl.Columns>
+        </dxg:GridControl>
+
+        <!-- Preview info -->
+        <StackPanel Grid.Row="4" Orientation="Horizontal" Margin="0,8,0,8">
+            <TextBlock x:Name="PreviewLabel" Foreground="#9CA3AF" FontSize="11" VerticalAlignment="Center" />
+        </StackPanel>
+
+        <!-- Actions -->
+        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
+            <TextBlock x:Name="StatusLabel" VerticalAlignment="Center" Foreground="#9CA3AF" FontSize="11" Margin="0,0,16,0" />
+            <Button Content="Import" Click="Import_Click" Padding="20,6" FontWeight="SemiBold" Margin="0,0,4,0" />
+            <Button Content="Cancel" Padding="16,6" IsCancel="True" />
+        </StackPanel>
+    </Grid>
+</dx:DXWindow>

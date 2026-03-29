@@ -1,0 +1,39 @@
+<UserControl x:Class="Central.Module.GlobalAdmin.Views.PlatformDashboardPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+        <StackPanel>
+            <TextBlock Text="Platform Overview" FontSize="20" FontWeight="Bold" Margin="0,0,0,16"
+                       Foreground="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
+
+            <WrapPanel>
+                <!-- Tenants card -->
+                <Border Background="#1E3A5F" CornerRadius="8" Padding="20" Margin="0,0,12,12" MinWidth="180">
+                    <StackPanel>
+                        <TextBlock x:Name="TotalTenantsText" Text="0" FontSize="36" FontWeight="Bold" Foreground="White" />
+                        <TextBlock Text="Total Tenants" FontSize="13" Foreground="#AAB8C2" />
+                        <TextBlock x:Name="ActiveTenantsText" Text="0 active" FontSize="12" Foreground="#6B8299" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Users card -->
+                <Border Background="#1E3A5F" CornerRadius="8" Padding="20" Margin="0,0,12,12" MinWidth="180">
+                    <StackPanel>
+                        <TextBlock x:Name="TotalUsersText" Text="0" FontSize="36" FontWeight="Bold" Foreground="White" />
+                        <TextBlock Text="Global Users" FontSize="13" Foreground="#AAB8C2" />
+                        <TextBlock x:Name="VerifiedUsersText" Text="0 verified" FontSize="12" Foreground="#6B8299" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Subscriptions card -->
+                <Border Background="#1E3A5F" CornerRadius="8" Padding="20" Margin="0,0,12,12" MinWidth="180">
+                    <StackPanel>
+                        <TextBlock x:Name="ActiveSubsText" Text="0" FontSize="36" FontWeight="Bold" Foreground="White" />
+                        <TextBlock Text="Active Subscriptions" FontSize="13" Foreground="#AAB8C2" />
+                    </StackPanel>
+                </Border>
+            </WrapPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

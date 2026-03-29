@@ -1,0 +1,48 @@
+# Build outputs
+desktop/**/bin/
+desktop/**/obj/
+web-client/node_modules/
+web-client/dist/
+web-client/.angular/
+
+# IDE
+.vs/
+.vscode/
+*.suo
+*.user
+
+# Backup dumps
+*.dump
+*.bak
+
+# Secrets
+.env
+*.pfx
+*.key
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Temp
+*.tmp
+crash.log
+
+# Large binaries
+*.exe
+*.dll
+!desktop/**/*.dll
+
+# Python
+__pycache__/
+*.pyc
+
+# Logs
+logs/
+*.log
+
+# NuGet
+*.nupkg
+
+# SecureAPP symlink/copy (separate repo)
+SecureAPP/

@@ -1,0 +1,44 @@
+<UserControl x:Class="Central.Module.Admin.Views.NotificationPrefsPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="4">
+            <TextBlock Text="My Notification Preferences" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" Margin="0,0,16,0" />
+            <Button Content="Save All" Click="SaveAll_Click" Padding="12,4" Margin="0,0,4,0" FontWeight="SemiBold" />
+            <Button Content="Refresh" Click="Refresh_Click" Padding="12,4" Margin="0,0,16,0" />
+            <TextBlock x:Name="StatusLabel" VerticalAlignment="Center" Foreground="#9CA3AF" FontSize="11" />
+        </StackPanel>
+
+        <dxg:GridControl x:Name="PrefsGrid" Grid.Row="1" AutoGenerateColumns="None" SelectionMode="Row">
+            <dxg:GridControl.View>
+                <dxg:TableView AllowEditing="True" NavigationStyle="Cell"
+                               CellValueChanged="PrefsView_CellValueChanged" />
+            </dxg:GridControl.View>
+            <dxg:GridControl.Columns>
+                <dxg:GridColumn FieldName="EventDescription" Header="Event" Width="250" ReadOnly="True" />
+                <dxg:GridColumn FieldName="EventType" Header="Type" Width="130" ReadOnly="True" />
+                <dxg:GridColumn FieldName="Channel" Header="Channel" Width="100">
+                    <dxg:GridColumn.EditSettings>
+                        <dxe:ComboBoxEditSettings IsTextEditable="False">
+                            <dxe:ComboBoxEditSettings.Items>
+                                <dxe:ComboBoxEditItem Content="toast" />
+                                <dxe:ComboBoxEditItem Content="email" />
+                                <dxe:ComboBoxEditItem Content="both" />
+                                <dxe:ComboBoxEditItem Content="none" />
+                            </dxe:ComboBoxEditSettings.Items>
+                        </dxe:ComboBoxEditSettings>
+                    </dxg:GridColumn.EditSettings>
+                </dxg:GridColumn>
+                <dxg:GridColumn FieldName="IsEnabled" Header="Enabled" Width="65" />
+            </dxg:GridControl.Columns>
+        </dxg:GridControl>
+    </Grid>
+</UserControl>

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Generate Config — {{ switch.hostname }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <a href="/switches/{{ switch.hostname }}" class="breadcrumb">← {{ switch.hostname }}</a>
+    <h1>Generated Config</h1>
+    <div class="subtitle">PicOS set-commands &nbsp;·&nbsp; {{ switch.site }} &nbsp;·&nbsp; <span class="badge badge-{{ switch.role }}">{{ switch.role }}</span></div>
+  </div>
+  <div class="btn-group">
+    <button class="btn" onclick="copyConfig()">Copy</button>
+    <a href="/generate/{{ switch.hostname }}/raw" class="btn" download="{{ switch.hostname }}.txt">Download</a>
+  </div>
+</div>
+
+<div class="config-toolbar">
+  <span class="config-stats">
+    {{ config_text.splitlines()|length }} lines
+    &nbsp;·&nbsp;
+    {{ config_text.splitlines()|selectattr|list|length }} non-empty lines
+  </span>
+  <label class="checkbox-label">
+    <input type="checkbox" id="wrap-toggle" onchange="toggleWrap()"> Wrap long lines
+  </label>
+</div>
+
+<pre class="config-block" id="config-output">{{ config_text }}</pre>
+
+<div id="copy-toast" class="toast hidden">Copied to clipboard!</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Running Config {{ cfg.downloaded_at.strftime('%Y-%m-%d %H:%M') if cfg.downloaded_at else '' }} — {{ switch.hostname }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <a href="/switches/{{ switch.hostname }}/running-configs" class="breadcrumb">&larr; Config History</a>
+    <h1>{{ switch.hostname }} &middot; Running Config</h1>
+    <div class="subtitle">
+      Downloaded {{ cfg.downloaded_at.strftime('%Y-%m-%d %H:%M:%S UTC') if cfg.downloaded_at else '—' }}
+      {% if cfg.source_ip %} &middot; from {{ cfg.source_ip }}{% endif %}
+      {% if cfg.line_count %} &middot; {{ cfg.line_count }} lines{% endif %}
+    </div>
+  </div>
+  <div class="btn-group">
+    <a href="/switches/{{ switch.hostname }}/running-configs/{{ cfg.id }}/download" class="btn btn-primary">Download .txt</a>
+  </div>
+</div>
+
+{% if cfg.diff_from_prev %}
+<details style="margin-bottom:1.5rem">
+  <summary style="cursor:pointer;color:var(--text-muted);font-size:0.875rem;margin-bottom:0.5rem">
+    Show diff vs previous download
+  </summary>
+  <pre class="config-block" style="font-size:0.8rem;max-height:400px;overflow:auto">{% for line in cfg.diff_from_prev.splitlines() %}{% if line.startswith('+') and not line.startswith('+++') %}<span style="color:var(--success)">{{ line }}</span>{% elif line.startswith('-') and not line.startswith('---') %}<span style="color:var(--danger)">{{ line }}</span>{% elif line.startswith('@@') %}<span style="color:var(--accent)">{{ line }}</span>{% else %}{{ line }}{% endif %}
+{% endfor %}</pre>
+</details>
+{% endif %}
+
+<div class="config-block config-numbered" style="max-height:70vh;overflow:auto;font-size:0.8rem">
+  <table class="config-lines">
+    {% for line in (cfg.config_text or '').splitlines() %}
+    <tr>
+      <td class="line-num">{{ loop.index }}</td>
+      <td class="line-text">{{ line }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,66 @@
+<UserControl x:Class="Central.Module.ServiceDesk.Views.TeamsPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors">
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="300" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Teams grid -->
+        <Grid Grid.Column="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="4">
+                <TextBlock Text="Service Desk Teams" FontSize="13" FontWeight="SemiBold" Foreground="#E0E0E0"
+                           VerticalAlignment="Center" />
+                <Button Content="Add Team" Margin="15,0,4,0" Padding="10,3" Click="AddTeam_Click" />
+                <Button Content="Delete" Padding="10,3" Click="DeleteTeam_Click" />
+            </StackPanel>
+
+            <dxg:GridControl x:Name="TeamsGrid" Grid.Row="1" AutoGenerateColumns="None"
+                             CurrentItemChanged="TeamsGrid_CurrentItemChanged">
+                <dxg:GridControl.View>
+                    <dxg:TableView AllowEditing="True" ShowGroupPanel="False"
+                                   NavigationStyle="Cell" ShowAutoFilterRow="False"
+                                   ValidateRow="TeamsGrid_ValidateRow" />
+                </dxg:GridControl.View>
+                <dxg:GridControl.Columns>
+                    <dxg:GridColumn FieldName="Name" Header="Team Name" Width="200" />
+                    <dxg:GridColumn FieldName="SortOrder" Header="Order" Width="60" />
+                    <dxg:GridColumn FieldName="MemberCount" Header="Members" Width="70" ReadOnly="True" />
+                </dxg:GridControl.Columns>
+            </dxg:GridControl>
+        </Grid>
+
+        <!-- Members panel -->
+        <Border Grid.Column="1" BorderBrush="#333" BorderThickness="1,0,0,0" Padding="8">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Text="Team Members" FontSize="13" FontWeight="SemiBold"
+                           Foreground="#E0E0E0" Margin="0,0,0,6" />
+
+                <TextBlock x:Name="SelectedTeamLabel" Grid.Row="1" Foreground="#808080" Margin="0,0,0,6"
+                           Text="Select a team to assign members" />
+
+                <dxe:ListBoxEdit x:Name="MembersList" Grid.Row="2"
+                                 ShowBorder="False" ItemsSource="{x:Null}">
+                    <dxe:ListBoxEdit.StyleSettings>
+                        <dxe:CheckedListBoxEditStyleSettings />
+                    </dxe:ListBoxEdit.StyleSettings>
+                </dxe:ListBoxEdit>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,48 @@
+<UserControl x:Class="Central.Module.ServiceDesk.Views.TechClosuresPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dxc="http://schemas.devexpress.com/winfx/2008/xaml/charts">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="4,4,4,2">
+            <TextBlock Text="Technician Daily Closures" FontSize="13" FontWeight="SemiBold" Foreground="#E0E0E0" />
+            <TextBlock Foreground="#808080" Margin="8,0,0,0" VerticalAlignment="Center">
+                <Run Text="Target:" />
+                <Run x:Name="ExpectedLabel" Text="5" Foreground="#F59E0B" FontWeight="Bold" />
+                <Run Text="/day" />
+            </TextBlock>
+        </StackPanel>
+
+        <Expander Grid.Row="1" Header="Filters" Foreground="#B0B0B0" FontSize="11" IsExpanded="False" Margin="4,0,4,2">
+            <WrapPanel x:Name="FilterPanel" Margin="4" />
+        </Expander>
+
+        <dxc:ChartControl x:Name="TechChart" Grid.Row="2"
+                           MouseDoubleClick="TechChart_MouseDoubleClick">
+            <dxc:ChartControl.CrosshairOptions>
+                <dxc:CrosshairOptions ShowArgumentLabels="True" ShowValueLabels="True" ShowArgumentLine="True" />
+            </dxc:ChartControl.CrosshairOptions>
+            <dxc:XYDiagram2D>
+                <dxc:XYDiagram2D.AxisX>
+                    <dxc:AxisX2D GridLinesVisible="True" GridLinesBrush="#222">
+                        <dxc:AxisX2D.Label><dxc:AxisLabel Foreground="#B0B0B0" /></dxc:AxisX2D.Label>
+                    </dxc:AxisX2D>
+                </dxc:XYDiagram2D.AxisX>
+                <dxc:XYDiagram2D.AxisY>
+                    <dxc:AxisY2D GridLinesVisible="True" GridLinesBrush="#222">
+                        <dxc:AxisY2D.Label><dxc:AxisLabel Foreground="#B0B0B0" /></dxc:AxisY2D.Label>
+                    </dxc:AxisY2D>
+                </dxc:XYDiagram2D.AxisY>
+            </dxc:XYDiagram2D>
+            <dxc:ChartControl.Legend>
+                <dxc:Legend HorizontalPosition="Right" VerticalPosition="Top" Foreground="#B0B0B0" />
+            </dxc:ChartControl.Legend>
+        </dxc:ChartControl>
+    </Grid>
+</UserControl>

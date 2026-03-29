@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} — Central{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    {% if switch %}<a href="/switches/{{ switch.hostname }}" class="breadcrumb">← {{ switch.hostname }}</a>{% else %}<a href="/" class="breadcrumb">← Dashboard</a>{% endif %}
+    <h1>{{ title }}</h1>
+  </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="card" style="max-width: 600px">
+  <div class="card-body">
+    <form method="post" action="{{ action }}">
+      <div class="form-grid">
+
+        <div class="field">
+          <label class="field-label">Hostname *</label>
+          <input type="text" name="hostname" class="field-input"
+                 value="{{ switch.hostname if switch else '' }}"
+                 {% if switch %}readonly{% endif %}
+                 placeholder="MEP-91-CORE02" required>
+          {% if switch %}<span class="field-hint">Hostname cannot be changed after creation.</span>{% endif %}
+        </div>
+
+        <div class="field">
+          <label class="field-label">Site</label>
+          <input type="text" name="site" class="field-input"
+                 value="{{ switch.site if switch else '' }}"
+                 placeholder="MEP-91">
+        </div>
+
+        <div class="field">
+          <label class="field-label">Role</label>
+          <select name="role" class="field-input">
+            {% for r in ['core','l1','l2','access','distribution'] %}
+            <option value="{{ r }}" {% if (switch and switch.role == r) or (not switch and r == 'core') %}selected{% endif %}>{{ r }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="field-label">PicOS Version</label>
+          <input type="text" name="picos_version" class="field-input"
+                 value="{{ switch.picos_version if switch else '4.6' }}"
+                 placeholder="4.6">
+        </div>
+
+        <div class="field">
+          <label class="field-label">Loopback IP</label>
+          <input type="text" name="loopback_ip" class="field-input"
+                 value="{{ switch.loopback_ip if switch else '' }}"
+                 placeholder="10.255.91.2">
+        </div>
+
+        <div class="field">
+          <label class="field-label">Loopback Prefix</label>
+          <input type="number" name="loopback_prefix" class="field-input"
+                 value="{{ switch.loopback_prefix if switch else 32 }}"
+                 min="1" max="32">
+        </div>
+
+        <div class="field">
+          <label class="field-label">SSH Root Login</label>
+          <select name="ssh_root_login" class="field-input">
+            {% for v in ['allow', 'deny', 'deny-password'] %}
+            <option value="{{ v }}" {% if switch and switch.ssh_root_login == v %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="field field-wide">
+          <label class="checkbox-label">
+            <input type="checkbox" name="management_vrf"
+                   {% if switch and switch.management_vrf %}checked{% elif not switch %}checked{% endif %}>
+            Enable Management VRF
+          </label>
+        </div>
+
+        <div class="field field-wide">
+          <label class="checkbox-label">
+            <input type="checkbox" name="inband_enabled"
+                   {% if switch and switch.inband_enabled %}checked{% elif not switch %}checked{% endif %}>
+            Enable Inband Management
+          </label>
+        </div>
+
+        <div class="field field-wide" style="border-top:1px solid var(--border);padding-top:1rem;margin-top:0.5rem">
+          <span class="field-label" style="color:var(--text-muted);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.05em">Connectivity</span>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Management IP</label>
+          <input type="text" name="management_ip" class="field-input"
+                 value="{{ switch.management_ip if switch and switch.management_ip else '' }}"
+                 placeholder="10.14.152.1">
+          <span class="field-hint">VLAN-152 management address for ping/SSH</span>
+        </div>
+
+        <div class="field">
+          <label class="field-label">SSH Username</label>
+          <input type="text" name="ssh_username" class="field-input"
+                 value="{{ switch.ssh_username if switch and switch.ssh_username else 'root' }}"
+                 placeholder="root">
+        </div>
+
+        <div class="field">
+          <label class="field-label">SSH Port</label>
+          <input type="number" name="ssh_port" class="field-input"
+                 value="{{ switch.ssh_port if switch and switch.ssh_port else 22 }}"
+                 min="1" max="65535" placeholder="22">
+        </div>
+
+        <div class="field">
+          <label class="field-label">SSH Password</label>
+          <input type="password" name="ssh_password" class="field-input"
+                 value=""
+                 placeholder="Leave blank to keep existing">
+          <span class="field-hint">Stored in plaintext — local tool only</span>
+        </div>
+
+      </div>
+
+      <div style="margin-top: 1.5rem; display:flex; gap: 0.5rem">
+        <button type="submit" class="btn btn-primary">
+          {% if switch %}Save Changes{% else %}Create Switch{% endif %}
+        </button>
+        {% if switch %}
+        <a href="/switches/{{ switch.hostname }}" class="btn">Cancel</a>
+        {% else %}
+        <a href="/" class="btn">Cancel</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

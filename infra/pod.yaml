@@ -1,0 +1,96 @@
+# =============================================================================
+# Central Podman Pod
+# =============================================================================
+# Runs PostgreSQL locally inside a Podman pod.
+# Uses: podman play kube infra/pod.yaml
+#
+# Start:  podman play kube infra/pod.yaml
+# Stop:   podman play kube --down infra/pod.yaml
+# Logs:   podman logs central-postgres
+# Shell:  podman exec -it central-postgres psql -U central -d central
+# =============================================================================
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: central
+  labels:
+    app: central
+spec:
+  restartPolicy: Always
+  containers:
+    - name: postgres
+      image: docker.io/library/postgres:18-alpine
+      ports:
+        - containerPort: 5432
+          hostPort: 5432
+          protocol: TCP
+      env:
+        - name: POSTGRES_DB
+          value: central
+        - name: POSTGRES_USER
+          value: central
+        - name: POSTGRES_PASSWORD
+          value: central
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        # Tune PG for 4GB container — shared_buffers=1GB, work_mem=64MB
+        - name: POSTGRES_INITDB_ARGS
+          value: "--data-checksums"
+        - name: POSTGRES_HOST_AUTH_METHOD
+          value: scram-sha-256
+      command: ["postgres"]
+      args:
+        - "-c"
+        - "shared_buffers=2GB"
+        - "-c"
+        - "work_mem=128MB"
+        - "-c"
+        - "effective_cache_size=6GB"
+        - "-c"
+        - "maintenance_work_mem=512MB"
+        - "-c"
+        - "max_connections=200"
+      volumeMounts:
+        - name: pgdata
+          mountPath: /var/lib/postgresql/data
+        - name: initdb
+          mountPath: /docker-entrypoint-initdb.d
+          readOnly: true
+      resources:
+        requests:
+          memory: "2Gi"
+        limits:
+          memory: "8Gi"
+
+    # --- API Server ---
+    # Build: cd desktop && podman build -f Central.Api/Dockerfile -t central-api .
+    - name: api
+      image: localhost/central-api:latest
+      ports:
+        - containerPort: 5000
+          hostPort: 5000
+          protocol: TCP
+      env:
+        - name: CENTRAL_DSN
+          value: "Host=localhost;Port=5432;Database=central;Username=central;Password=central"
+        - name: ASPNETCORE_URLS
+          value: "http://+:5000"
+        - name: CENTRAL_JWT_SECRET
+          value: "Central-Production-Key-Override-This!"
+        - name: CENTRAL_CREDENTIAL_KEY
+          value: "Central-Production-Credential-Key-Override!"
+      resources:
+        requests:
+          memory: "512Mi"
+        limits:
+          memory: "2Gi"
+
+  volumes:
+    - name: pgdata
+      persistentVolumeClaim:
+        claimName: central-pgdata
+    - name: initdb
+      hostPath:
+        path: ./db
+        type: Directory

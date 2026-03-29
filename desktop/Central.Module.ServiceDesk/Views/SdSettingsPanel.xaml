@@ -1,0 +1,188 @@
+<UserControl x:Class="Central.Module.ServiceDesk.Views.SdSettingsPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core">
+
+    <dx:DXTabControl>
+
+        <!-- ══════════════════════════════════════════════ -->
+        <!-- TAB 1: FILTERS                                 -->
+        <!-- ══════════════════════════════════════════════ -->
+        <dx:DXTabItem Header="Filters">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="8">
+
+                    <TextBlock Text="TIME RANGE" FontSize="10" FontWeight="Bold" Foreground="#808080" Margin="0,0,0,4" />
+                    <dxe:ComboBoxEdit x:Name="RangeCombo" IsTextEditable="False" Margin="0,0,0,4"
+                                      EditValueChanged="OnFilterChanged">
+                        <dxe:ComboBoxEditItem Content="This Week" />
+                        <dxe:ComboBoxEditItem Content="Last 2 Weeks" />
+                        <dxe:ComboBoxEditItem Content="This Month" />
+                        <dxe:ComboBoxEditItem Content="Last 3 Months" />
+                        <dxe:ComboBoxEditItem Content="Last 6 Months" />
+                        <dxe:ComboBoxEditItem Content="This Year" />
+                    </dxe:ComboBoxEdit>
+
+                    <TextBlock Text="Time Scale" FontSize="10" Foreground="#909090" Margin="0,4,0,2" />
+                    <dxe:ComboBoxEdit x:Name="ScaleCombo" IsTextEditable="False" Margin="0,0,0,8"
+                                      EditValueChanged="OnFilterChanged">
+                        <dxe:ComboBoxEditItem Content="Day" />
+                        <dxe:ComboBoxEditItem Content="Week" />
+                        <dxe:ComboBoxEditItem Content="Month" />
+                    </dxe:ComboBoxEdit>
+
+                    <Separator Margin="0,4,0,8" />
+
+                    <TextBlock Text="TECHNICIANS" FontSize="10" FontWeight="Bold" Foreground="#808080" Margin="0,0,0,4" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <Button Content="All" Padding="6,2" Margin="0,0,4,0" FontSize="10" Click="TechSelectAll_Click" />
+                        <Button Content="None" Padding="6,2" Margin="0,0,4,0" FontSize="10" Click="TechSelectNone_Click" />
+                    </StackPanel>
+                    <StackPanel x:Name="TechTeamsPanel" Margin="0,0,0,4" />
+                    <StackPanel x:Name="TechCheckPanel" Margin="0,0,0,8" />
+
+                    <Separator Margin="0,4,0,8" />
+
+                    <TextBlock Text="GROUPS" FontSize="10" FontWeight="Bold" Foreground="#808080" Margin="0,0,0,4" />
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                        <Button Content="All" Padding="6,2" Margin="0,0,4,0" FontSize="10" Click="GroupSelectAll_Click" />
+                        <Button Content="None" Padding="6,2" Margin="0,0,4,0" FontSize="10" Click="GroupSelectNone_Click" />
+                    </StackPanel>
+                    <StackPanel x:Name="GroupCategoryPanel" Margin="0,0,0,4" />
+                    <StackPanel x:Name="GroupCheckPanel" Margin="0,0,0,8" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Content="Apply" Padding="12,4" Margin="0,0,6,0" Click="Apply_Click" />
+                        <Button Content="Reset" Padding="12,4" Click="Reset_Click" />
+                    </StackPanel>
+
+                </StackPanel>
+            </ScrollViewer>
+        </dx:DXTabItem>
+
+        <!-- ══════════════════════════════════════════════ -->
+        <!-- TAB 2: CHARTS                                  -->
+        <!-- ══════════════════════════════════════════════ -->
+        <dx:DXTabItem Header="Charts">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="8">
+
+                    <TextBlock Text="KPI CARDS" FontSize="10" FontWeight="Bold" Foreground="#808080" Margin="0,0,0,4" />
+                    <CheckBox x:Name="ShowKpiCards" Content="Show KPI Cards" IsChecked="True"
+                              Foreground="#C0C0C0" Margin="0,0,0,8" Click="OnFilterChanged" />
+
+                    <Separator Margin="0,4,0,8" />
+
+                    <TextBlock Text="OVERVIEW OVERLAYS" FontSize="10" FontWeight="Bold" Foreground="#808080" Margin="0,0,0,4" />
+                    <CheckBox x:Name="ShowOpenLine" Content="Open Issues Line" IsChecked="True"
+                              Foreground="#D4A04A" Margin="0,0,0,2" Click="OnFilterChanged" />
+                    <CheckBox x:Name="ShowResolutionLine" Content="Avg Resolution Line" IsChecked="True"
+                              Foreground="#4A7AB5" Margin="0,0,0,2" Click="OnFilterChanged" />
+                    <CheckBox x:Name="ShowTotalCreatedLine" Content="Total Created Line" IsChecked="False"
+                              Foreground="#8B3A3A" Margin="0,0,0,2" Click="OnFilterChanged" />
+                    <CheckBox x:Name="ShowTotalClosedLine" Content="Total Closed Line" IsChecked="False"
+                              Foreground="#8B9A5B" Margin="0,0,0,2" Click="OnFilterChanged" />
+                    <CheckBox x:Name="ShowTargetLine" Content="Target Line (Tech Closures)" IsChecked="True"
+                              Foreground="#C0C0C0" Margin="0,0,0,8" Click="OnFilterChanged" />
+
+                    <Separator Margin="0,4,0,8" />
+
+                    <TextBlock Text="CHART TYPE" FontSize="10" FontWeight="Bold" Foreground="#808080" Margin="0,0,0,4" />
+                    <dxe:ComboBoxEdit x:Name="ChartTypeCombo" IsTextEditable="False" Margin="0,0,0,8"
+                                      EditValueChanged="OnFilterChanged">
+                        <dxe:ComboBoxEditItem Content="Side-by-Side Bar" />
+                        <dxe:ComboBoxEditItem Content="Stacked Bar" />
+                        <dxe:ComboBoxEditItem Content="Full Stacked Bar (100%)" />
+                        <dxe:ComboBoxEditItem Content="Side-by-Side Stacked" />
+                        <dxe:ComboBoxEditItem Content="Line" />
+                        <dxe:ComboBoxEditItem Content="Spline" />
+                        <dxe:ComboBoxEditItem Content="Area" />
+                        <dxe:ComboBoxEditItem Content="Stacked Area" />
+                    </dxe:ComboBoxEdit>
+
+                    <Separator Margin="0,4,0,8" />
+
+                    <TextBlock Text="BAR OPTIONS" FontSize="10" FontWeight="Bold" Foreground="#808080" Margin="0,0,0,4" />
+                    <CheckBox x:Name="ShowBarLabels" Content="Show Values on Bars" IsChecked="False"
+                              Foreground="#C0C0C0" Margin="0,0,0,2" Click="OnFilterChanged" />
+
+                    <TextBlock Text="Bar Style" FontSize="10" Foreground="#909090" Margin="0,6,0,2" />
+                    <dxe:ComboBoxEdit x:Name="BarStyleCombo" IsTextEditable="False" Margin="0,0,0,8"
+                                      EditValueChanged="OnFilterChanged">
+                        <dxe:ComboBoxEditItem Content="Flat" />
+                        <dxe:ComboBoxEditItem Content="Gradient" />
+                        <dxe:ComboBoxEditItem Content="Glass" />
+                        <dxe:ComboBoxEditItem Content="3D" />
+                    </dxe:ComboBoxEdit>
+
+                    <Separator Margin="0,4,0,8" />
+
+                    <TextBlock Text="CHART THEME" FontSize="10" FontWeight="Bold" Foreground="#808080" Margin="0,0,0,4" />
+                    <dxe:ComboBoxEdit x:Name="ChartThemeCombo" IsTextEditable="False" Margin="0,0,0,8"
+                                      EditValueChanged="OnFilterChanged">
+                        <dxe:ComboBoxEditItem Content="Dark (Default)" />
+                        <dxe:ComboBoxEditItem Content="Light" />
+                        <dxe:ComboBoxEditItem Content="Blue" />
+                        <dxe:ComboBoxEditItem Content="Colourful" />
+                    </dxe:ComboBoxEdit>
+
+                </StackPanel>
+            </ScrollViewer>
+        </dx:DXTabItem>
+
+        <!-- ══════════════════════════════════════════════ -->
+        <!-- TAB 3: GRID SETTINGS                           -->
+        <!-- ══════════════════════════════════════════════ -->
+        <dx:DXTabItem Header="Grid">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="8">
+
+                    <TextBlock Text="DISPLAY" FontSize="10" FontWeight="Bold" Foreground="#808080" Margin="0,0,0,4" />
+                    <CheckBox x:Name="ShowGroupPanel" Content="Group Panel" IsChecked="True"
+                              Foreground="#C0C0C0" Margin="0,0,0,2" Click="OnGridOptionChanged" />
+                    <CheckBox x:Name="ShowAutoFilter" Content="Auto Filter Row" IsChecked="True"
+                              Foreground="#C0C0C0" Margin="0,0,0,2" Click="OnGridOptionChanged" />
+                    <CheckBox x:Name="ShowTotalSummary" Content="Total Summary" IsChecked="True"
+                              Foreground="#C0C0C0" Margin="0,0,0,2" Click="OnGridOptionChanged" />
+                    <CheckBox x:Name="AlternateRows" Content="Alternate Row Colors" IsChecked="True"
+                              Foreground="#C0C0C0" Margin="0,0,0,2" Click="OnGridOptionChanged" />
+                    <CheckBox x:Name="ShowSearchPanel" Content="Search Panel" IsChecked="True"
+                              Foreground="#C0C0C0" Margin="0,0,0,2" Click="OnGridOptionChanged" />
+                    <CheckBox x:Name="ShowFilterPanel" Content="Filter Panel" IsChecked="True"
+                              Foreground="#C0C0C0" Margin="0,0,0,8" Click="OnGridOptionChanged" />
+
+                    <Separator Margin="0,4,0,8" />
+
+                    <TextBlock Text="GRID STYLE" FontSize="10" FontWeight="Bold" Foreground="#808080" Margin="0,0,0,4" />
+                    <dxe:ComboBoxEdit x:Name="GridStyleCombo" IsTextEditable="False" Margin="0,0,0,8"
+                                      EditValueChanged="OnGridOptionChanged">
+                        <dxe:ComboBoxEditItem Content="Default" />
+                        <dxe:ComboBoxEditItem Content="Compact" />
+                        <dxe:ComboBoxEditItem Content="Comfortable" />
+                    </dxe:ComboBoxEdit>
+
+                    <Separator Margin="0,4,0,8" />
+
+                    <TextBlock Text="LAYOUT" FontSize="10" FontWeight="Bold" Foreground="#808080" Margin="0,0,0,4" />
+                    <Button x:Name="ColumnChooserBtn" Content="Column Chooser" Padding="10,4" Margin="0,0,0,4"
+                            Click="ColumnChooser_Click" />
+                    <Button x:Name="BestFitBtn" Content="Best Fit Columns" Padding="10,4" Margin="0,0,0,4"
+                            Click="BestFit_Click" />
+                    <Button x:Name="SaveLayoutBtn" Content="Save Layout" Padding="10,4" Margin="0,0,0,4"
+                            Click="SaveLayout_Click" />
+                    <Button x:Name="RestoreLayoutBtn" Content="Restore Default Layout" Padding="10,4" Margin="0,0,0,4"
+                            Click="RestoreLayout_Click" />
+                    <Button x:Name="ClearSortBtn" Content="Clear All Sorting" Padding="10,4" Margin="0,0,0,4"
+                            Click="ClearSort_Click" />
+                    <Button x:Name="ClearFilterBtn" Content="Clear All Filters" Padding="10,4" Margin="0,0,0,4"
+                            Click="ClearFilter_Click" />
+                    <Button x:Name="ClearGroupBtn" Content="Clear Grouping" Padding="10,4" Margin="0,0,0,8"
+                            Click="ClearGrouping_Click" />
+
+                </StackPanel>
+            </ScrollViewer>
+        </dx:DXTabItem>
+
+    </dx:DXTabControl>
+</UserControl>

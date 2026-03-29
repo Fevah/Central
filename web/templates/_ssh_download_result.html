@@ -1,0 +1,12 @@
+{% if result.success %}
+<span class="badge-status ok">
+  ✓ Downloaded
+  {% if result.config_text %} {{ result.config_text.splitlines()|length }} lines{% endif %}
+  {% if result.duration_ms %} · {{ result.duration_ms|round(0)|int }} ms{% endif %}
+  &nbsp;<a href="/switches/{{ hostname }}/running-configs" style="color:inherit;opacity:0.8">View history →</a>
+</span>
+{% else %}
+<span class="badge-status fail">
+  ✗ Download failed · {{ result.error or 'Unknown error' }}
+</span>
+{% endif %}

@@ -1,0 +1,158 @@
+# =============================================================================
+# SwitchBuilder Vagrant VM
+# =============================================================================
+# Provisions a local Linux VM with:
+#   - 8 GB RAM
+#   - 100 GB storage
+#   - Podman installed
+#   - PostgreSQL pod running at startup
+#   - Python 3.11 + dependencies
+#
+# Requirements:
+#   vagrant, VirtualBox or VMware Workstation
+#
+# Usage:
+#   vagrant up          # provision and start
+#   vagrant ssh         # SSH into VM
+#   vagrant halt        # shut down VM
+#   vagrant destroy -f  # remove VM completely
+# =============================================================================
+
+Vagrant.configure("2") do |config|
+  config.vm.box     = "generic/ubuntu2204"
+  config.vm.box_check_update = false
+  config.vm.hostname = "switchbuilder"
+
+  # Network — forward PostgreSQL to host
+  config.vm.network "forwarded_port",
+    guest: 5432,
+    host:  5432,
+    host_ip: "127.0.0.1",
+    id: "postgres"
+
+  # Private network for host<->VM comms
+  config.vm.network "private_network", ip: "192.168.56.10"
+
+  # Shared folder — project root maps to /switchbuilder inside VM
+  config.vm.synced_folder "../", "/switchbuilder",
+    type: "virtualbox",
+    owner: "vagrant",
+    group: "vagrant"
+
+  # -------------------------------------------------------------------------
+  # VirtualBox provider settings
+  # -------------------------------------------------------------------------
+  config.vm.provider "virtualbox" do |vb|
+    vb.name   = "switchbuilder-vm"
+    vb.memory = 8192   # 8 GB
+    vb.cpus   = 4
+
+    # 100 GB dynamic disk (primary disk is usually already defined by the box;
+    # we add a second data disk for PostgreSQL data)
+    data_disk = File.expand_path("../switchbuilder-data.vdi", __FILE__)
+    unless File.exist?(data_disk)
+      vb.customize [
+        "createmedium", "disk",
+        "--filename", data_disk,
+        "--size",     100 * 1024,   # 100 GB in MB
+        "--format",   "VDI",
+        "--variant",  "Standard"    # dynamic allocation
+      ]
+    end
+    vb.customize [
+      "storageattach", :id,
+      "--storagectl", "SATA Controller",
+      "--port",       1,
+      "--device",     0,
+      "--type",       "hdd",
+      "--medium",     data_disk
+    ]
+
+    vb.customize ["modifyvm", :id, "--ioapic",      "on"]
+    vb.customize ["modifyvm", :id, "--vram",        "16"]
+    vb.customize ["modifyvm", :id, "--graphicscontroller", "vmsvga"]
+  end
+
+  # -------------------------------------------------------------------------
+  # VMware Workstation provider (alternative)
+  # -------------------------------------------------------------------------
+  config.vm.provider "vmware_workstation" do |vmw|
+    vmw.vmx["displayName"] = "switchbuilder-vm"
+    vmw.vmx["memsize"]     = "8192"
+    vmw.vmx["numvcpus"]    = "4"
+  end
+
+  # -------------------------------------------------------------------------
+  # Provisioning script
+  # -------------------------------------------------------------------------
+  config.vm.provision "shell", privileged: true, inline: <<-SHELL
+    set -euo pipefail
+    export DEBIAN_FRONTEND=noninteractive
+
+    echo "=== Updating system ==="
+    apt-get update -qq
+    apt-get upgrade -y -qq
+
+    echo "=== Installing dependencies ==="
+    apt-get install -y -qq \
+      curl wget git vim nano \
+      python3 python3-pip python3-venv \
+      podman buildah skopeo \
+      postgresql-client \
+      parted e2fsprogs
+
+    echo "=== Formatting data disk ==="
+    DATA_DISK="/dev/sdb"
+    DATA_MOUNT="/data"
+    if [ -b "$DATA_DISK" ] && ! mountpoint -q "$DATA_MOUNT"; then
+      parted -s "$DATA_DISK" mklabel gpt
+      parted -s "$DATA_DISK" mkpart primary ext4 0% 100%
+      mkfs.ext4 -F "${DATA_DISK}1"
+      mkdir -p "$DATA_MOUNT"
+      echo "${DATA_DISK}1 $DATA_MOUNT ext4 defaults 0 2" >> /etc/fstab
+      mount -a
+      chown vagrant:vagrant "$DATA_MOUNT"
+    fi
+
+    echo "=== Configuring Podman for vagrant user ==="
+    # Enable lingering so user services persist after logout
+    loginctl enable-linger vagrant 2>/dev/null || true
+
+    # Configure registries
+    cat > /etc/containers/registries.conf.d/shortnames.conf << 'EOF'
+[registries.search]
+registries = ["docker.io", "quay.io"]
+EOF
+
+    echo "=== Installing Python dependencies ==="
+    sudo -u vagrant pip3 install --user \
+      psycopg2-binary \
+      openpyxl \
+      --quiet
+
+    echo "=== Starting SwitchBuilder Podman pod ==="
+    sudo -u vagrant bash /switchbuilder/infra/setup.sh setup || true
+
+    echo "=== System info ==="
+    echo "RAM: $(free -h | awk '/^Mem:/ {print $2}')"
+    echo "Disk: $(df -h /data 2>/dev/null || df -h /)"
+    echo "Python: $(python3 --version)"
+    echo "Podman: $(podman --version)"
+    echo ""
+    echo "================================================================"
+    echo "  SwitchBuilder VM ready!"
+    echo "  SSH:         vagrant ssh"
+    echo "  Project:     /switchbuilder"
+    echo "  PostgreSQL:  localhost:5432"
+    echo "  DSN: postgresql://switchbuilder:switchbuilder@localhost:5432/switchbuilder"
+    echo "================================================================"
+  SHELL
+
+  # Auto-start Podman pod on subsequent boots (not first provision)
+  config.vm.provision "shell",
+    run: "always",
+    privileged: false,
+    inline: <<-SHELL
+      /switchbuilder/infra/setup.sh start 2>/dev/null || true
+    SHELL
+end

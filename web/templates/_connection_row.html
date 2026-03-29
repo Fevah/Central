@@ -1,0 +1,19 @@
+<tr id="conn-{{ conn.id }}" class="{% if not conn.enabled %}row-disabled{% endif %}">
+  <td class="mono">{{ conn.local_port or '—' }}</td>
+  <td>{{ conn.remote_device or '—' }}</td>
+  <td class="mono">{{ conn.remote_port or '—' }}</td>
+  <td>
+    {% if conn.connection_type %}
+    <span class="badge badge-{{ conn.connection_type }}">{{ conn.connection_type }}</span>
+    {% else %}—{% endif %}
+  </td>
+  <td class="small">{{ conn.notes or '' }}</td>
+  <td>
+    <button class="toggle-btn {% if conn.enabled %}toggle-on{% else %}toggle-off{% endif %}"
+            hx-post="/guide/toggle/{{ conn.id }}"
+            hx-target="#conn-{{ conn.id }}"
+            hx-swap="outerHTML">
+      {% if conn.enabled %}Enabled{% else %}Disabled{% endif %}
+    </button>
+  </td>
+</tr>

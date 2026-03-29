@@ -1,0 +1,484 @@
+<UserControl x:Class="Central.Module.Switches.Views.DetailTabsPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             xmlns:conv="clr-namespace:Central.Core.Converters;assembly=Central.Core">
+    <UserControl.Resources>
+        <conv:StringToBrushConverter x:Key="StringToBrush" />
+        <BooleanToVisibilityConverter x:Key="BoolVis" />
+        <Style x:Key="DetailLabel" TargetType="TextBlock">
+            <Setter Property="Foreground"  Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
+            <Setter Property="FontSize"    Value="10" />
+            <Setter Property="Margin"      Value="0,0,0,1" />
+        </Style>
+        <Style x:Key="DetailValue" TargetType="TextBlock">
+            <Setter Property="FontSize"   Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+    </UserControl.Resources>
+                    <dx:DXTabControl x:Name="DetailsTabs"
+                                     TabContentCacheMode="CacheAllTabs"
+                                     >
+                        <dx:DXTabControl.View>
+                            <dx:TabControlStretchView DragDropMode="ReorderOnly" />
+                        </dx:DXTabControl.View>
+                        <!-- ═══ Properties Tab ═══ -->
+                        <dx:DXTabItem Header="Properties">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel Margin="12,10">
+
+                            <!-- ═══ Device Details ═══ -->
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ActivePanel}" Value="Devices">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="Select a device in the grid"
+                                           Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"
+                                           FontStyle="Italic" FontSize="13" Margin="0,40,0,0" HorizontalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasSelectedDevice}" Value="False">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <StackPanel>
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasSelectedDevice}" Value="False">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <TextBlock Text="{Binding SelectedDevice.SwitchName}" FontSize="17" FontWeight="Bold" TextWrapping="Wrap" Margin="0,0,0,2" />
+                                    <TextBlock Text="{Binding SelectedDevice.Id, StringFormat='ID: {0}'}" Style="{StaticResource DetailLabel}" Margin="0,0,0,12" />
+                                    <TextBlock Text="IDENTITY" Style="{StaticResource DetailLabel}" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                    <Separator Margin="0,0,0,8" />
+                                    <Grid Margin="0,0,0,4">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,8,0"><TextBlock Style="{StaticResource DetailLabel}" Text="Device Type" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedDevice.DeviceType, FallbackValue='—'}" /></StackPanel>
+                                        <StackPanel Grid.Column="1"><TextBlock Style="{StaticResource DetailLabel}" Text="Status" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedDevice.Status, FallbackValue='—'}" /></StackPanel>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,12">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,8,0"><TextBlock Style="{StaticResource DetailLabel}" Text="Building" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedDevice.Building, FallbackValue='—'}" /></StackPanel>
+                                        <StackPanel Grid.Column="1"><TextBlock Style="{StaticResource DetailLabel}" Text="Region" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedDevice.Region, FallbackValue='—'}" /></StackPanel>
+                                    </Grid>
+                                    <TextBlock Text="NETWORK" Style="{StaticResource DetailLabel}" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                    <Separator Margin="0,0,0,8" />
+                                    <StackPanel Margin="0,0,0,4"><TextBlock Style="{StaticResource DetailLabel}" Text="Primary IP" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedDevice.Ip, FallbackValue='—'}" /></StackPanel>
+                                    <Grid Margin="0,0,0,4">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,8,0"><TextBlock Style="{StaticResource DetailLabel}" Text="Management IP" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedDevice.ManagementIp, FallbackValue='—'}" /></StackPanel>
+                                        <StackPanel Grid.Column="1"><TextBlock Style="{StaticResource DetailLabel}" Text="Mgmt L3 IP" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedDevice.MgmtL3Ip, FallbackValue='—'}" /></StackPanel>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,4">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,8,0"><TextBlock Style="{StaticResource DetailLabel}" Text="Loopback IP" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedDevice.LoopbackIp, FallbackValue='—'}" /></StackPanel>
+                                        <StackPanel Grid.Column="1"><TextBlock Style="{StaticResource DetailLabel}" Text="Loopback Subnet" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedDevice.LoopbackSubnet, FallbackValue='—'}" /></StackPanel>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,12">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,8,0"><TextBlock Style="{StaticResource DetailLabel}" Text="ASN" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedDevice.Asn, FallbackValue='—'}" /></StackPanel>
+                                        <StackPanel Grid.Column="1"><TextBlock Style="{StaticResource DetailLabel}" Text="MLAG Domain" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedDevice.MlagDomain, FallbackValue='—'}" /></StackPanel>
+                                    </Grid>
+                                    <TextBlock Text="CONFIG" Style="{StaticResource DetailLabel}" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                    <Separator Margin="0,0,0,8" />
+                                    <StackPanel Margin="0,0,0,4"><TextBlock Style="{StaticResource DetailLabel}" Text="AE Range" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedDevice.AeRange, FallbackValue='—'}" /></StackPanel>
+                                    <StackPanel Margin="0,0,0,12">
+                                        <TextBlock Style="{StaticResource DetailLabel}" Text="Config Link" />
+                                        <TextBlock Style="{StaticResource DetailValue}" Visibility="{Binding SelectedDevice.IsLinked, Converter={StaticResource BoolVis}}">
+                                            <Hyperlink CommandParameter="{Binding SelectedDevice}" Command="{Binding OpenDeviceCommand}">⚙ Open Config</Hyperlink>
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <TextBlock Text="NOTES" Style="{StaticResource DetailLabel}" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                    <Separator Margin="0,0,0,8" />
+                                    <TextBlock Text="{Binding SelectedDevice.Notes, FallbackValue='—'}" TextWrapping="Wrap" FontSize="12" />
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- ═══ ASN Details ═══ -->
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ActivePanel}" Value="Asn">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="Select an ASN in the grid"
+                                           Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"
+                                           FontStyle="Italic" FontSize="13" Margin="0,40,0,0" HorizontalAlignment="Center">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasSelectedAsn}" Value="False">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <StackPanel Visibility="{Binding HasSelectedAsn, Converter={StaticResource BoolVis}}">
+                                    <TextBlock Text="ASN" Style="{StaticResource DetailLabel}" FontWeight="Bold" FontSize="18" Margin="0,0,0,8" />
+                                    <Separator Margin="0,0,0,12" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,8,0"><TextBlock Style="{StaticResource DetailLabel}" Text="ASN" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedAsn.Asn, FallbackValue='—'}" FontSize="18" FontWeight="Bold" /></StackPanel>
+                                        <StackPanel Grid.Column="1"><TextBlock Style="{StaticResource DetailLabel}" Text="Type" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedAsn.AsnType, FallbackValue='—'}" /></StackPanel>
+                                    </Grid>
+                                    <StackPanel Margin="0,8,0,4"><TextBlock Style="{StaticResource DetailLabel}" Text="Description" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedAsn.Description, FallbackValue='—'}" TextWrapping="Wrap" /></StackPanel>
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,8,0"><TextBlock Style="{StaticResource DetailLabel}" Text="Device Count" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedAsn.DeviceCount, FallbackValue='0'}" /></StackPanel>
+                                        <StackPanel Grid.Column="1"><TextBlock Style="{StaticResource DetailLabel}" Text="Sort Order" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedAsn.SortOrder, FallbackValue='0'}" /></StackPanel>
+                                    </Grid>
+                                    <TextBlock Text="BOUND DEVICES" Style="{StaticResource DetailLabel}" FontWeight="SemiBold" Margin="0,16,0,4" />
+                                    <Separator Margin="0,0,0,8" />
+                                    <ListBox x:Name="AsnDevicesList" Background="Transparent" BorderThickness="0"
+                                            >
+                                        <ListBox.ItemContainerStyle>
+                                            <Style TargetType="ListBoxItem">
+                                                <Setter Property="Foreground" Value="#90CAF9" />
+                                                <Setter Property="Cursor" Value="Hand" />
+                                                <Setter Property="Padding" Value="4,2" />
+                                                <Setter Property="FontSize" Value="12" />
+                                            </Style>
+                                        </ListBox.ItemContainerStyle>
+                                    </ListBox>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- ═══ Switch Details ═══ -->
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ActivePanel}" Value="Switches">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="Select a switch in the grid" Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" FontStyle="Italic" FontSize="13" Margin="0,40,0,0" HorizontalAlignment="Center">
+                                    <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding HasSelectedSwitch}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                </TextBlock>
+                                <StackPanel>
+                                    <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Visible" /><Style.Triggers><DataTrigger Binding="{Binding HasSelectedSwitch}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></StackPanel.Style>
+                                    <TextBlock Text="{Binding SelectedSwitch.Hostname}" FontSize="17" FontWeight="Bold" TextWrapping="Wrap" Margin="0,0,0,12" />
+                                    <TextBlock Text="IDENTITY" Style="{StaticResource DetailLabel}" FontWeight="SemiBold" Margin="0,0,0,4" /><Separator Margin="0,0,0,8" />
+                                    <Grid Margin="0,0,0,4">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,8,0"><TextBlock Style="{StaticResource DetailLabel}" Text="Site" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedSwitch.Site, FallbackValue='—'}" /></StackPanel>
+                                        <StackPanel Grid.Column="1"><TextBlock Style="{StaticResource DetailLabel}" Text="Role" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedSwitch.Role, FallbackValue='—'}" /></StackPanel>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,12">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,8,0"><TextBlock Style="{StaticResource DetailLabel}" Text="PicOS Version" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedSwitch.PicosVersion, FallbackValue='—'}" /></StackPanel>
+                                        <StackPanel Grid.Column="1"><TextBlock Style="{StaticResource DetailLabel}" Text="SSH Port" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedSwitch.SshPort}" /></StackPanel>
+                                    </Grid>
+                                    <TextBlock Text="NETWORK" Style="{StaticResource DetailLabel}" FontWeight="SemiBold" Margin="0,0,0,4" /><Separator Margin="0,0,0,8" />
+                                    <StackPanel Margin="0,0,0,4"><TextBlock Style="{StaticResource DetailLabel}" Text="Loopback" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedSwitch.LoopbackDisplay, FallbackValue='—'}" /></StackPanel>
+                                    <StackPanel Margin="0,0,0,4"><TextBlock Style="{StaticResource DetailLabel}" Text="Management IP" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedSwitch.ManagementIp, FallbackValue='—'}" /></StackPanel>
+                                    <StackPanel Margin="0,0,0,4"><TextBlock Style="{StaticResource DetailLabel}" Text="SSH Username" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedSwitch.SshUsername, FallbackValue='—'}" /></StackPanel>
+                                    <StackPanel Margin="0,0,0,12">
+                                        <TextBlock Style="{StaticResource DetailLabel}" Text="SSH Override IP (leave blank for mgmt IP)" />
+                                        <TextBox x:Name="SshOverrideIpBox" Text="{Binding SelectedSwitch.SshOverrideIp, UpdateSourceTrigger=PropertyChanged}"
+                                                 FontSize="12" Padding="4,2" />
+                                    </StackPanel>
+                                    <TextBlock Text="STATUS" Style="{StaticResource DetailLabel}" FontWeight="SemiBold" Margin="0,0,0,4" /><Separator Margin="0,0,0,8" />
+                                    <Grid Margin="0,0,0,4">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,8,0"><TextBlock Style="{StaticResource DetailLabel}" Text="Ping" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedSwitch.PingStatus, FallbackValue='—'}" /></StackPanel>
+                                        <StackPanel Grid.Column="1"><TextBlock Style="{StaticResource DetailLabel}" Text="SSH" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedSwitch.SshStatus, FallbackValue='—'}" /></StackPanel>
+                                    </Grid>
+                                    <Grid Margin="0,0,0,4">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,8,0"><TextBlock Style="{StaticResource DetailLabel}" Text="Last Ping" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedSwitch.LastPingAt, FallbackValue='—'}" /></StackPanel>
+                                        <StackPanel Grid.Column="1"><TextBlock Style="{StaticResource DetailLabel}" Text="Last SSH" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedSwitch.LastSshAt, FallbackValue='—'}" /></StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- ═══ Admin Lookup Details ═══ -->
+                            <StackPanel>
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ActivePanel}" Value="Admin">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="Select a lookup value" Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" FontStyle="Italic" FontSize="13" Margin="0,40,0,0" HorizontalAlignment="Center">
+                                    <TextBlock.Style><Style TargetType="TextBlock"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding HasSelectedLookup}" Value="False"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></TextBlock.Style>
+                                </TextBlock>
+                                <StackPanel>
+                                    <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Visible" /><Style.Triggers><DataTrigger Binding="{Binding HasSelectedLookup}" Value="False"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></StackPanel.Style>
+                                    <TextBlock Text="{Binding SelectedLookup.Value}" FontSize="17" FontWeight="Bold" TextWrapping="Wrap" Margin="0,0,0,12" />
+                                    <TextBlock Text="DETAILS" Style="{StaticResource DetailLabel}" FontWeight="SemiBold" Margin="0,0,0,4" /><Separator Margin="0,0,0,8" />
+                                    <StackPanel Margin="0,0,0,4"><TextBlock Style="{StaticResource DetailLabel}" Text="Category" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedLookup.Category, FallbackValue='—'}" /></StackPanel>
+                                    <StackPanel Margin="0,0,0,4"><TextBlock Style="{StaticResource DetailLabel}" Text="Value" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedLookup.Value, FallbackValue='—'}" /></StackPanel>
+                                    <StackPanel Margin="0,0,0,4"><TextBlock Style="{StaticResource DetailLabel}" Text="Sort Order" /><TextBlock Style="{StaticResource DetailValue}" Text="{Binding SelectedLookup.SortOrder}" /></StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+
+                        </StackPanel>
+                    </ScrollViewer>
+                        </dx:DXTabItem>
+
+                        <!-- ═══ Config Tab (switches only) ═══ -->
+                        <dx:DXTabItem x:Name="ConfigTab" Header="Config" Visibility="Collapsed">
+                            <DockPanel>
+                                <!-- Sync button bar -->
+                                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="8,8,8,4">
+                                    <Button x:Name="SyncConfigButton" Content="Sync Config"
+                                            Padding="12,4" Margin="0,0,8,0"
+                                            />
+                                    <Button x:Name="CompareConfigButton" Content="Compare"
+                                            Padding="12,4" Margin="0,0,8,0"
+                                            ToolTip="Select two versions to compare" />
+                                    <Button x:Name="DeleteConfigVersionButton" Content="Delete"
+                                            Padding="12,4" Margin="0,0,8,0"
+                                            ToolTip="Delete selected version" />
+                                    <TextBlock x:Name="SyncStatusText" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"
+                                               FontSize="11" Text="" />
+                                </StackPanel>
+                                <Separator DockPanel.Dock="Top" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="220" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <!-- Version list -->
+                                    <DockPanel Grid.Column="0" Background="#181818">
+                                        <TextBlock DockPanel.Dock="Top" Text="Config Versions" FontWeight="SemiBold"
+                                                   Foreground="#D4D4D4" FontSize="11" Margin="8,6,8,4" />
+                                        <Separator DockPanel.Dock="Top" />
+                                        <ListView x:Name="ConfigVersionsList" FontSize="11"
+                                                  Background="#181818" Foreground="#D4D4D4" BorderThickness="0"
+                                                  SelectionMode="Extended"
+                                                 >
+                                            <ListView.View>
+                                                <GridView>
+                                                    <GridViewColumn Header="Ver" Width="36" DisplayMemberBinding="{Binding DisplayVersion}" />
+                                                    <GridViewColumn Header="Date" Width="120" DisplayMemberBinding="{Binding DisplayDate}" />
+                                                    <GridViewColumn Header="Lines" Width="42" DisplayMemberBinding="{Binding LineCount}" />
+                                                </GridView>
+                                            </ListView.View>
+                                        </ListView>
+                                    </DockPanel>
+                                    <GridSplitter Grid.Column="1" Width="3" Background="#333" ResizeBehavior="PreviousAndNext" />
+                                    <!-- Config text / compare display -->
+                                    <Grid Grid.Column="2">
+                                        <!-- Single config view (normal mode) -->
+                                        <DockPanel x:Name="SingleConfigPanel">
+                                            <TextBlock x:Name="ConfigViewHeader" DockPanel.Dock="Top" FontSize="11"
+                                                       Foreground="#888" Margin="8,4,8,2" Text="" />
+                                            <RichTextBox x:Name="ConfigTextBox"
+                                                         IsReadOnly="True"
+                                                         VerticalScrollBarVisibility="Auto"
+                                                         HorizontalScrollBarVisibility="Auto"
+                                                         FontFamily="Consolas"
+                                                         FontSize="11"
+                                                         Background="#1E1E1E"
+                                                         Foreground="#D4D4D4"
+                                                         BorderThickness="0" />
+                                        </DockPanel>
+                                        <!-- Compare mode removed — now opens as dockable DX panels -->
+                                    </Grid>
+                                </Grid>
+                            </DockPanel>
+                        </dx:DXTabItem>
+
+                        <!-- ═══ Log Tab ═══ -->
+                        <dx:DXTabItem Header="Log">
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="Change History" FontWeight="SemiBold" Margin="8,8,8,4" />
+                                <Separator DockPanel.Dock="Top" />
+                                <ListView x:Name="AuditLogList" FontSize="11"
+                                          Background="#1E1E1E" Foreground="#D4D4D4" BorderThickness="0">
+                                    <ListView.View>
+                                        <GridView>
+                                            <GridViewColumn Header="Time"     Width="140" DisplayMemberBinding="{Binding Timestamp}" />
+                                            <GridViewColumn Header="User"     Width="80"  DisplayMemberBinding="{Binding Operator}" />
+                                            <GridViewColumn Header="Action"   Width="100" DisplayMemberBinding="{Binding Action}" />
+                                            <GridViewColumn Header="Field"    Width="90"  DisplayMemberBinding="{Binding Field}" />
+                                            <GridViewColumn Header="Old"      Width="100" DisplayMemberBinding="{Binding OldValue}" />
+                                            <GridViewColumn Header="New"      Width="100" DisplayMemberBinding="{Binding NewValue}" />
+                                            <GridViewColumn Header="Notes"    Width="150" DisplayMemberBinding="{Binding Description}" />
+                                        </GridView>
+                                    </ListView.View>
+                                </ListView>
+                            </DockPanel>
+                        </dx:DXTabItem>
+
+                        <!-- ═══ Backups Tab (switches only) ═══ -->
+                        <dx:DXTabItem x:Name="BackupsTab" Header="Backups" Visibility="Collapsed">
+                            <DockPanel>
+                                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="8,8,8,4">
+                                    <Button x:Name="BackupNowButton" Content="Backup Now"
+                                            Padding="12,4" Margin="0,0,8,0"
+                                            />
+                                    <Button x:Name="RestoreBackupButton" Content="Restore Selected"
+                                            Padding="12,4" Margin="0,0,8,0"
+                                            />
+                                    <TextBlock x:Name="BackupStatusText" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"
+                                               FontSize="11" />
+                                </StackPanel>
+                                <Separator DockPanel.Dock="Top" />
+                                <ListView x:Name="BackupsList" FontSize="11"
+                                          Background="#1E1E1E" Foreground="#D4D4D4" BorderThickness="0">
+                                    <ListView.View>
+                                        <GridView>
+                                            <GridViewColumn Header="Date"     Width="150" DisplayMemberBinding="{Binding CreatedAt}" />
+                                            <GridViewColumn Header="User"     Width="80"  DisplayMemberBinding="{Binding Operator}" />
+                                            <GridViewColumn Header="Description" Width="200">
+                                                <GridViewColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <TextBox Text="{Binding Description, Mode=OneWay}"
+                                                                 Background="Transparent" BorderThickness="0"
+                                                                 Foreground="#D4D4D4" FontSize="11"
+                                                                 />
+                                                    </DataTemplate>
+                                                </GridViewColumn.CellTemplate>
+                                            </GridViewColumn>
+                                            <GridViewColumn Header="Lines"    Width="60"  DisplayMemberBinding="{Binding LineCount}" />
+                                        </GridView>
+                                    </ListView.View>
+                                </ListView>
+                            </DockPanel>
+                        </dx:DXTabItem>
+                        <!-- ═══ Version Tab ═══ -->
+                        <dx:DXTabItem x:Name="VersionTab" Header="Version" Visibility="Collapsed">
+                            <DockPanel>
+                                <StackPanel DockPanel.Dock="Top" Margin="8">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <TextBlock Style="{StaticResource DetailLabel}" Text="Hardware Model" Width="140" />
+                                        <TextBlock x:Name="VersionModel" Style="{StaticResource DetailValue}" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <TextBlock Style="{StaticResource DetailLabel}" Text="MAC Address" Width="140" />
+                                        <TextBlock x:Name="VersionMac" Style="{StaticResource DetailValue}" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <TextBlock Style="{StaticResource DetailLabel}" Text="L2/L3 Version" Width="140" />
+                                        <TextBlock x:Name="VersionL2L3" Style="{StaticResource DetailValue}" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <TextBlock Style="{StaticResource DetailLabel}" Text="L2/L3 Date" Width="140" />
+                                        <TextBlock x:Name="VersionL2L3Date" Style="{StaticResource DetailValue}" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <TextBlock Style="{StaticResource DetailLabel}" Text="Linux Version" Width="140" />
+                                        <TextBlock x:Name="VersionLinux" Style="{StaticResource DetailValue}" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <TextBlock Style="{StaticResource DetailLabel}" Text="OVS/OF Version" Width="140" />
+                                        <TextBlock x:Name="VersionOvs" Style="{StaticResource DetailValue}" />
+                                    </StackPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                        <TextBlock Style="{StaticResource DetailLabel}" Text="Captured" Width="140" />
+                                        <TextBlock x:Name="VersionCapturedAt" Style="{StaticResource DetailValue}" />
+                                    </StackPanel>
+                                </StackPanel>
+                                <Separator DockPanel.Dock="Top" />
+                                <TextBox x:Name="VersionRawText" IsReadOnly="True"
+                                         FontFamily="Cascadia Mono, Consolas, Courier New" FontSize="11"
+                                         Background="#1E1E1E" Foreground="#D4D4D4" BorderThickness="0"
+                                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                         TextWrapping="NoWrap" AcceptsReturn="True" />
+                            </DockPanel>
+                        </dx:DXTabItem>
+
+                        <!-- ═══ Interfaces Tab (switches only) ═══ -->
+                        <dx:DXTabItem x:Name="InterfacesTab" Header="Interfaces" Visibility="Collapsed">
+                            <DockPanel>
+                                <TextBlock x:Name="InterfaceSummaryText" DockPanel.Dock="Top"
+                                           FontSize="11" Foreground="#9CA3AF" Margin="8,4"
+                                           Text="" />
+                            <dxg:GridControl x:Name="InterfacesGrid"
+                                             ItemsSource="{Binding SwitchInterfaces}"
+                                             AutoGenerateColumns="None">
+                                <dxg:GridControl.View>
+                                    <dxg:TableView ShowGroupPanel="False"
+                                                   AllowColumnFiltering="True"
+                                                   ShowAutoFilterRow="True"
+                                                   ShowTotalSummary="False"
+                                                   NavigationStyle="Row"
+                                                   AllowEditing="False"
+                                                   ShowFilterPanelMode="ShowAlways" />
+                                </dxg:GridControl.View>
+                                <dxg:GridControl.Columns>
+                                    <dxg:GridColumn FieldName="LinkStatus" Header="Link" Width="50" HorizontalHeaderContentAlignment="Center">
+                                        <dxg:GridColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="●"
+                                                           Foreground="{Binding RowData.Row.StatusColor, Converter={StaticResource StringToBrush}}"
+                                                           FontSize="14" FontWeight="Bold"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </DataTemplate>
+                                        </dxg:GridColumn.CellTemplate>
+                                    </dxg:GridColumn>
+                                    <dxg:GridColumn FieldName="InterfaceName" Header="Interface"  Width="140" />
+                                    <dxg:GridColumn FieldName="AdminStatus"   Header="Admin"      Width="60" />
+                                    <dxg:GridColumn FieldName="LinkStatus"    Header="Status"     Width="60" />
+                                    <dxg:GridColumn FieldName="Speed"         Header="Speed"      Width="80" />
+                                    <dxg:GridColumn FieldName="Mtu"           Header="MTU"        Width="60" />
+                                    <dxg:GridColumn FieldName="Description"   Header="Description" Width="200" />
+                                    <dxg:GridColumn FieldName="LldpHost"     Header="LLDP Host"   Width="150" />
+                                    <dxg:GridColumn FieldName="LldpPort"     Header="LLDP Port"   Width="120" />
+                                    <dxg:GridColumn FieldName="ModuleType"   Header="Module"      Width="120" />
+                                    <dxg:GridColumn FieldName="TxPower"      Header="Tx (dBm)"    Width="80" />
+                                    <dxg:GridColumn FieldName="RxPower"      Header="Rx (dBm)"    Width="80">
+                                        <dxg:GridColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding RowData.Row.RxPower}"
+                                                           Foreground="{Binding RowData.Row.RxColor, Converter={StaticResource StringToBrush}}"
+                                                           FontWeight="SemiBold" />
+                                            </DataTemplate>
+                                        </dxg:GridColumn.CellTemplate>
+                                    </dxg:GridColumn>
+                                    <dxg:GridColumn FieldName="OpticsTemp"   Header="Temp"        Width="70" />
+                                </dxg:GridControl.Columns>
+                                <dxg:GridControl.TotalSummary>
+                                    <dxg:GridSummaryItem SummaryType="Count" FieldName="InterfaceName" DisplayFormat="{}Total: {0}" />
+                                </dxg:GridControl.TotalSummary>
+                            </dxg:GridControl>
+                            </DockPanel>
+                        </dx:DXTabItem>
+                    </dx:DXTabControl>
+</UserControl>

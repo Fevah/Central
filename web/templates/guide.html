@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Switch Guide — Central{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Switch Guide</h1>
+  <a href="/import" class="btn">Import Guide</a>
+</div>
+
+<!-- Filters -->
+<form class="filter-bar" method="get" action="/guide">
+  <select name="site" onchange="this.form.submit()">
+    <option value="">All sites</option>
+    {% for s in sites %}
+    <option value="{{ s }}" {% if s == current_site %}selected{% endif %}>{{ s }}</option>
+    {% endfor %}
+  </select>
+  <input type="text" name="search" value="{{ search }}" placeholder="Search switch name, IP, model…">
+  <button type="submit" class="btn">Filter</button>
+  {% if current_site or search %}
+  <a href="/guide" class="btn btn-ghost">Clear</a>
+  {% endif %}
+</form>
+
+{% if guide %}
+<table class="table table-hover">
+  <thead>
+    <tr>
+      <th>Switch Name</th>
+      <th>Site</th>
+      <th>Model</th>
+      <th>Management IP</th>
+      <th>Uplink</th>
+      <th>Connections</th>
+      <th>Status</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for sw in guide %}
+    <tr>
+      <td><a href="/guide/{{ sw.id }}">{{ sw.switch_name or '—' }}</a></td>
+      <td>{{ sw.site or '—' }}</td>
+      <td>{{ sw.model or '—' }}</td>
+      <td class="mono">{{ sw.management_ip or '—' }}</td>
+      <td>
+        {% if sw.uplink_switch %}
+        <span class="small">{{ sw.uplink_switch }}{% if sw.uplink_port %} / {{ sw.uplink_port }}{% endif %}</span>
+        {% else %}—{% endif %}
+      </td>
+      <td>
+        {% if sw.connection_count %}
+        <span class="conn-count">
+          <span class="conn-enabled">{{ sw.enabled_count }}</span>/<span>{{ sw.connection_count }}</span>
+        </span>
+        {% else %}—{% endif %}
+      </td>
+      <td>
+        {% if sw.enabled %}
+        <span class="badge badge-success">active</span>
+        {% else %}
+        <span class="badge badge-muted">disabled</span>
+        {% endif %}
+      </td>
+      <td>
+        <a href="/guide/{{ sw.id }}" class="btn btn-sm">Connections</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+  <h2>No guide data loaded</h2>
+  <p>Import your <code>switch_guide.xlsx</code> file to get started.</p>
+  <a href="/import" class="btn btn-primary">Import Guide</a>
+</div>
+{% endif %}
+{% endblock %}

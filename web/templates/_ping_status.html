@@ -1,0 +1,11 @@
+{% if result.reachable %}
+<span class="badge-status ok">
+  ✓ Reachable{% if result.latency_ms %} · {{ result.latency_ms|round(1) }} ms{% endif %}
+  <span class="muted-note">{{ ip }}</span>
+</span>
+{% else %}
+<span class="badge-status fail">
+  ✗ Unreachable
+  <span class="muted-note">{{ result.error or ip }}</span>
+</span>
+{% endif %}

@@ -1,0 +1,195 @@
+<UserControl x:Class="Central.Module.Devices.Views.DeviceGridPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolVis" />
+        <conv:StringToBrushConverter x:Key="StringToBrush"
+            xmlns:conv="clr-namespace:Central.Core.Converters;assembly=Central.Core" />
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Quick search bar -->
+        <Border Grid.Row="0" Padding="8,5" BorderThickness="0,0,0,1"
+                BorderBrush="{DynamicResource {x:Static SystemColors.ControlLightBrushKey}}">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <dxe:TextEdit x:Name="DevicesSearch"
+                              NullText="🔍  Search devices, IPs, ASN, building…"
+                              Width="300"
+                              EditValueChanged="DevicesSearch_EditValueChanged" />
+                <TextBlock Margin="12,0,0,0" VerticalAlignment="Center"
+                           Text="{Binding DeviceCountText}"
+                           Opacity="0.6" FontSize="12" />
+            </StackPanel>
+        </Border>
+
+        <!-- Devices Grid -->
+        <dxg:GridControl x:Name="DevicesGrid"
+                         Grid.Row="1"
+                         ItemsSource="{Binding Devices}"
+                         CurrentItem="{Binding SelectedDevice, Mode=TwoWay}"
+                         AutoGenerateColumns="None">
+
+            <dxg:GridControl.View>
+                <dxg:TableView x:Name="DevicesView"
+                               AutoWidth="False"
+                               ShowGroupPanel="True"
+                               AllowColumnFiltering="True"
+                               ShowFilterPanelMode="ShowAlways"
+                               ShowTotalSummary="False"
+                               NavigationStyle="Cell"
+                               AllowEditing="True"
+                               NewItemRowPosition="Top"
+                               ShowAutoFilterRow="True"
+                               SearchPanelNullText="Search..."
+                               UseEvenRowBackground="True"
+                               CellValueChanged="DevicesView_CellValueChanged">
+                    <dxg:TableView.RowStyle>
+                        <Style TargetType="dxg:RowControl">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Row.Status}" Value="RESERVED">
+                                    <Setter Property="Foreground" Value="#808080" />
+                                    <Setter Property="FontStyle" Value="Italic" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </dxg:TableView.RowStyle>
+                </dxg:TableView>
+            </dxg:GridControl.View>
+
+            <dxg:GridControl.Columns>
+                <!-- Status dot column -->
+                <dxg:GridColumn FieldName="StatusColor" Header="" Width="28" AllowEditing="False"
+                                AllowSorting="False" AllowColumnFiltering="False" Fixed="Left">
+                    <dxg:GridColumn.CellTemplate>
+                        <DataTemplate>
+                            <Ellipse Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                     Fill="{Binding RowData.Row.StatusColor, Converter={StaticResource StringToBrush}}" />
+                        </DataTemplate>
+                    </dxg:GridColumn.CellTemplate>
+                </dxg:GridColumn>
+                <dxg:GridColumn FieldName="SwitchName"     Header="Device"          Width="190" AllowGrouping="True" Fixed="Left" />
+
+                <dxg:GridColumn FieldName="Status"         Header="Status"          Width="90"  AllowGrouping="True">
+                    <dxg:GridColumn.EditSettings>
+                        <dxe:ComboBoxEditSettings x:Name="StatusCombo" IsTextEditable="True" />
+                    </dxg:GridColumn.EditSettings>
+                </dxg:GridColumn>
+
+                <dxg:GridColumn FieldName="DeviceType"     Header="Type"            Width="150" AllowGrouping="True">
+                    <dxg:GridColumn.EditSettings>
+                        <dxe:ComboBoxEditSettings x:Name="DeviceTypeCombo" IsTextEditable="True" />
+                    </dxg:GridColumn.EditSettings>
+                </dxg:GridColumn>
+
+                <dxg:GridColumn FieldName="Building"       Header="Building"        Width="100" AllowGrouping="True">
+                    <dxg:GridColumn.EditSettings>
+                        <dxe:ComboBoxEditSettings x:Name="BuildingCombo" IsTextEditable="True" />
+                    </dxg:GridColumn.EditSettings>
+                </dxg:GridColumn>
+
+                <dxg:GridColumn FieldName="Region"         Header="Region"          Width="90"  AllowGrouping="True">
+                    <dxg:GridColumn.EditSettings>
+                        <dxe:ComboBoxEditSettings x:Name="RegionCombo" IsTextEditable="True" />
+                    </dxg:GridColumn.EditSettings>
+                </dxg:GridColumn>
+
+                <dxg:GridColumn FieldName="Ip"             Header="Primary IP"      Width="135" />
+                <dxg:GridColumn FieldName="ManagementIp"   Header="Mgmt IP"         Width="135" />
+                <dxg:GridColumn FieldName="MgmtL3Ip"       Header="Mgmt L3 IP"      Width="135" Visible="False" />
+                <dxg:GridColumn FieldName="LoopbackIp"     Header="Loopback"        Width="120" />
+                <dxg:GridColumn FieldName="LoopbackSubnet" Header="Loopback Subnet" Width="145" Visible="False" />
+                <dxg:GridColumn FieldName="Asn"            Header="ASN"             Width="80">
+                    <dxg:GridColumn.EditSettings>
+                        <dxe:ComboBoxEditSettings x:Name="DevicesAsnCombo"
+                                                  ValueMember="Asn" DisplayMember="Asn"
+                                                  IsTextEditable="True" ImmediatePopup="True"
+                                                  AutoComplete="True" IncrementalFiltering="True"
+                                                  PopupMaxHeight="350" PopupMinWidth="550">
+                            <dxe:ComboBoxEditSettings.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="70" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="60" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding Asn}" FontWeight="SemiBold" Margin="4,2" />
+                                        <TextBlock Grid.Column="1" Text="{Binding Description}" Foreground="#90CAF9" Margin="4,2" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="2" Text="{Binding DeviceCount, StringFormat='{}{0} dev'}" Foreground="#888" Margin="4,2" HorizontalAlignment="Right" />
+                                    </Grid>
+                                </DataTemplate>
+                            </dxe:ComboBoxEditSettings.ItemTemplate>
+                        </dxe:ComboBoxEditSettings>
+                    </dxg:GridColumn.EditSettings>
+                </dxg:GridColumn>
+                <dxg:GridColumn FieldName="MlagDomain"     Header="MLAG"            Width="70" />
+                <dxg:GridColumn FieldName="AeRange"        Header="AE Range"        Width="80"  Visible="False" />
+                <dxg:GridColumn FieldName="Site"           Header="Site"            Width="90"  Visible="False" />
+                <dxg:GridColumn FieldName="Floor"          Header="Floor"           Width="70"  Visible="False" />
+                <dxg:GridColumn FieldName="Rack"           Header="Rack"            Width="90"  Visible="False" />
+                <dxg:GridColumn FieldName="Model"          Header="Model"           Width="130" Visible="False" />
+                <dxg:GridColumn FieldName="SerialNumber"   Header="Serial #"        Width="130" Visible="False" />
+                <dxg:GridColumn FieldName="UplinkSwitch"   Header="Uplink Switch"   Width="150" Visible="False" />
+                <dxg:GridColumn FieldName="UplinkPort"     Header="Uplink Port"     Width="100" Visible="False" />
+                <dxg:GridColumn FieldName="Notes"          Header="Notes"           Width="200" Visible="False" />
+                <dxg:GridColumn FieldName="LinkedHostname" Header="Config"          Width="110" AllowEditing="False">
+                    <dxg:GridColumn.CellTemplate>
+                        <DataTemplate>
+                            <Button VerticalAlignment="Center" HorizontalAlignment="Center"
+                                    Visibility="{Binding RowData.Row.IsLinked,
+                                        Converter={StaticResource BoolVis}}"
+                                    CommandParameter="{Binding RowData.Row}"
+                                    Cursor="Hand" ToolTip="Open Config"
+                                    Background="Transparent" BorderBrush="Transparent" Padding="4,2">
+                                <Image Source="{dx:DXImage Image=Open_16x16}" Width="16" Height="16" />
+                            </Button>
+                        </DataTemplate>
+                    </dxg:GridColumn.CellTemplate>
+                </dxg:GridColumn>
+            </dxg:GridControl.Columns>
+
+            <!-- Summary footer -->
+            <dxg:GridControl.TotalSummary>
+                <dxg:GridSummaryItem SummaryType="Count" FieldName="SwitchName" DisplayFormat="{}Total: {0}" />
+            </dxg:GridControl.TotalSummary>
+
+            <!-- Group summaries -->
+            <dxg:GridControl.GroupSummary>
+                <dxg:GridSummaryItem SummaryType="Count" DisplayFormat="{}{0} devices" />
+            </dxg:GridControl.GroupSummary>
+
+            <!-- Master-detail: expand device → show all links involving this device -->
+            <dxg:GridControl.DetailDescriptor>
+                <dxg:DataControlDetailDescriptor ItemsSourcePath="DetailLinks">
+                    <dxg:GridControl AutoGenerateColumns="None">
+                        <dxg:GridControl.View>
+                            <dxg:TableView ShowGroupPanel="False" ShowColumnHeaders="True"
+                                           AllowEditing="False" NavigationStyle="Row"
+                                           ShowTotalSummary="True" />
+                        </dxg:GridControl.View>
+                        <dxg:GridControl.Columns>
+                            <dxg:GridColumn FieldName="LinkType"     Header="Type"        Width="60" />
+                            <dxg:GridColumn FieldName="RemoteDevice" Header="Remote Device" Width="180" />
+                            <dxg:GridColumn FieldName="LocalPort"    Header="Local Port"  Width="100" />
+                            <dxg:GridColumn FieldName="RemotePort"   Header="Remote Port" Width="100" />
+                            <dxg:GridColumn FieldName="Vlan"         Header="VLAN"        Width="70" />
+                            <dxg:GridColumn FieldName="Subnet"       Header="Subnet"      Width="130" />
+                            <dxg:GridColumn FieldName="Status"       Header="Status"      Width="80" />
+                        </dxg:GridControl.Columns>
+                        <dxg:GridControl.TotalSummary>
+                            <dxg:GridSummaryItem SummaryType="Count" FieldName="LinkType" DisplayFormat="{}Links: {0}" />
+                        </dxg:GridControl.TotalSummary>
+                    </dxg:GridControl>
+                </dxg:DataControlDetailDescriptor>
+            </dxg:GridControl.DetailDescriptor>
+        </dxg:GridControl>
+    </Grid>
+</UserControl>

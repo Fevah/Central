@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Running Configs — {{ switch.hostname }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <a href="/switches/{{ switch.hostname }}" class="breadcrumb">&larr; {{ switch.hostname }}</a>
+    <h1>Running Config History</h1>
+    <div class="subtitle">Downloaded configs from {{ switch.hostname }}{% if switch.management_ip %} &middot; {{ switch.management_ip }}{% endif %}</div>
+  </div>
+  <div class="btn-group">
+    <button class="btn btn-primary" id="compare-btn" disabled onclick="openCompare()">Compare Selected</button>
+  </div>
+</div>
+
+{% if configs %}
+<table class="table">
+  <thead>
+    <tr>
+      <th style="width:2.5rem">
+        <span style="font-size:0.7rem;color:var(--text-muted)" title="Select two configs to compare">CMP</span>
+      </th>
+      <th>Downloaded</th>
+      <th>Lines</th>
+      <th>Source IP</th>
+      <th>Changes</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for cfg in configs %}
+    <tr>
+      <td>
+        <input type="checkbox" class="compare-check" value="{{ cfg.id }}" onchange="updateCompare()">
+      </td>
+      <td class="mono">{{ cfg.downloaded_at.strftime('%Y-%m-%d %H:%M:%S') if cfg.downloaded_at else '—' }}</td>
+      <td class="mono">{{ cfg.line_count or '—' }}</td>
+      <td class="mono">{{ cfg.source_ip or '—' }}</td>
+      <td>
+        {% if cfg.has_diff %}
+          <span class="badge badge-warning">Changed</span>
+        {% else %}
+          <span class="badge badge-muted">No diff</span>
+        {% endif %}
+      </td>
+      <td style="display:flex;gap:0.5rem">
+        <a href="/switches/{{ switch.hostname }}/running-configs/{{ cfg.id }}" class="btn btn-sm">View</a>
+        <a href="/switches/{{ switch.hostname }}/running-configs/{{ cfg.id }}/download" class="btn btn-sm">Download</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<script>
+function updateCompare() {
+  const checks = document.querySelectorAll('.compare-check:checked');
+  const btn = document.getElementById('compare-btn');
+  btn.disabled = checks.length !== 2;
+  // Disable unchecked boxes when 2 are selected
+  const allChecks = document.querySelectorAll('.compare-check');
+  allChecks.forEach(cb => {
+    if (!cb.checked) cb.disabled = checks.length >= 2;
+  });
+}
+function openCompare() {
+  const checks = document.querySelectorAll('.compare-check:checked');
+  if (checks.length !== 2) return;
+  const ids = Array.from(checks).map(c => c.value);
+  window.location.href = '/switches/{{ switch.hostname }}/running-configs/compare?left=' + ids[0] + '&right=' + ids[1];
+}
+</script>
+{% else %}
+<div class="empty-state" style="padding:3rem;text-align:center">
+  <p style="color:var(--text-muted);margin-bottom:1rem">No running configs downloaded yet.</p>
+  <a href="/switches/{{ switch.hostname }}" class="btn btn-primary">Go to Switch</a>
+</div>
+{% endif %}
+{% endblock %}

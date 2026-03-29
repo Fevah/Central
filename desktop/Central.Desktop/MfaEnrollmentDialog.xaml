@@ -1,0 +1,67 @@
+<dx:DXWindow x:Class="Central.Desktop.MfaEnrollmentDialog"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             Title="Setup Two-Factor Authentication"
+             Width="450" Height="520"
+             WindowStartupLocation="CenterOwner"
+             ShowInTaskbar="False">
+    <Grid Margin="16">
+        <StackPanel>
+            <!-- Step 1: Instructions -->
+            <TextBlock Text="Two-Factor Authentication (TOTP)" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
+            <TextBlock TextWrapping="Wrap" Margin="0,0,0,16" Foreground="#B0B0B0">
+                Scan the QR code below with your authenticator app (Google Authenticator, Microsoft Authenticator, Authy, etc.)
+                or enter the secret key manually.
+            </TextBlock>
+
+            <!-- Step 2: QR URI (user copies to authenticator) -->
+            <Border Background="#2A2A2A" CornerRadius="6" Padding="12" Margin="0,0,0,12" HorizontalAlignment="Center">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock Text="Manual entry key:" FontSize="11" Foreground="#808080" Margin="0,0,0,4" />
+                    <TextBlock x:Name="SecretKeyText" FontFamily="Consolas" FontSize="14" FontWeight="SemiBold"
+                               Foreground="#22C55E" HorizontalAlignment="Center" />
+                    <TextBlock Text="(Copy this into your authenticator app)" FontSize="10" Foreground="#606060" Margin="0,4,0,0" HorizontalAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <!-- QR URI for copy -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,16">
+                <TextBlock Text="QR URI:" Foreground="#808080" VerticalAlignment="Center" Margin="0,0,4,0" />
+                <dxe:TextEdit x:Name="QrUriText" Width="300" IsReadOnly="True" FontSize="10" />
+                <Button Content="Copy" Click="CopyUri_Click" Padding="8,2" Margin="4,0,0,0" />
+            </StackPanel>
+
+            <!-- Step 3: Verify code -->
+            <Border Background="#1E3A2E" CornerRadius="6" Padding="12" Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock Text="Verify Setup" FontWeight="SemiBold" Margin="0,0,0,8" />
+                    <TextBlock Text="Enter the 6-digit code from your authenticator app:" FontSize="11" Foreground="#B0B0B0" Margin="0,0,0,8" />
+                    <StackPanel Orientation="Horizontal">
+                        <dxe:TextEdit x:Name="VerifyCodeEdit" Width="120" FontSize="16" FontFamily="Consolas"
+                                       MaxLength="6" HorizontalContentAlignment="Center"
+                                       KeyDown="VerifyCode_KeyDown" />
+                        <Button Content="Verify &amp; Enable" Click="Verify_Click" Padding="16,4" Margin="8,0,0,0"
+                                FontWeight="SemiBold" />
+                    </StackPanel>
+                    <TextBlock x:Name="VerifyStatus" Text="" Margin="0,8,0,0" FontSize="11" />
+                </StackPanel>
+            </Border>
+
+            <!-- Recovery codes (shown after verification) -->
+            <Border x:Name="RecoveryCodesPanel" Background="#2A2A2A" CornerRadius="6" Padding="12" Visibility="Collapsed">
+                <StackPanel>
+                    <TextBlock Text="Recovery Codes" FontWeight="SemiBold" Foreground="#F59E0B" Margin="0,0,0,4" />
+                    <TextBlock Text="Save these codes — each can be used once if you lose your authenticator." FontSize="11" Foreground="#B0B0B0" Margin="0,0,0,8" TextWrapping="Wrap" />
+                    <TextBlock x:Name="RecoveryCodesText" FontFamily="Consolas" FontSize="12" />
+                    <Button Content="Copy Recovery Codes" Click="CopyRecoveryCodes_Click" Padding="12,4" Margin="0,8,0,0" HorizontalAlignment="Left" />
+                </StackPanel>
+            </Border>
+
+            <!-- Cancel -->
+            <Button Content="Cancel" Click="Cancel_Click" Padding="16,4" HorizontalAlignment="Right"
+                    Margin="0,12,0,0" IsCancel="True" />
+        </StackPanel>
+    </Grid>
+</dx:DXWindow>
