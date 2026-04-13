@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Polygon Points="30.5,30.5 8.5,30.5 8.5,1.5 23.5,1.5 30.5,8.5" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Path Data="M23.707,1H8v9.5h1V2h14v7h7v21H9v-1.5H8v2.5h23V8.293L23.707,1zM24,8V2.707L29.293,8H24z" Fill="#383838"/>
+      <Rectangle Canvas.Left="1.562" Canvas.Top="12.823" Width="16.938" Height="13.77" Fill="#FFFFFF"/>
+      <Ellipse Canvas.Left="12.1" Canvas.Top="14" Width="3.894" Height="3.884" Fill="#F7DA8E" Stroke="#E57428" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+      <Path Data="M1.513,21.15l3.472,-3.286L14.322,26.7H1.513C1.513,26.7,1.484,21.178,1.513,21.15z" Fill="#92CBEE"/>
+      <Polygon Points="9.75,22.175 12.609,19.469 18.386,24.77 18.386,26.592 14.302,26.592" Fill="#92CBEE" StrokeLineJoin="Miter"/>
+      <Path Data="M1.513,21.115l3.472,-3.286l9.337,8.836M18.465,24.897l-5.835,-5.522l-2.889,2.734" Stroke="#0964B0" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Rectangle Canvas.Left="1.5" Canvas.Top="12.5" Width="17" Height="13.985" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

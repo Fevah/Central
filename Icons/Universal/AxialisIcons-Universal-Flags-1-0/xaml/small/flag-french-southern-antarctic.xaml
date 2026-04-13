@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M0,2h16v12H0V2z" Fill="#77A2D6"/>
+      <Path Data="M0,2h16v12H0V2z" Opacity="0.15"/>
+      <Rectangle Canvas.Left="5.333" Canvas.Top="2" Width="2.667" Height="6" Fill="#F37980"/>
+      <Rectangle Canvas.Left="2.667" Canvas.Top="2" Width="2.667" Height="6" Fill="#FFFFFF"/>
+      <Rectangle Canvas.Top="2" Width="2.667" Height="6" Fill="#77A2D6"/>
+      <Polyline Points="12.281,8.831 12.281,7.61 12.774,7.61 13.138,7.013 12.255,7.013 12.255,6.623 13.372,6.623 13.762,6 10.074,6 10.464,6.623 11.581,6.623 11.581,8.805 10.75,7.48 9.605,9.273 10.15,9.273 10.254,9.065 11.189,9.065 11.916,10.364 12.643,9.065 13.578,9.065 13.682,9.273 14.227,9.273 13.084,7.481 12.281,8.831" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polyline Points="10.514,8.675 10.748,8.259 10.982,8.675 10.514,8.675" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polyline Points="12.904,8.675 13.138,8.259 13.372,8.675 12.904,8.675" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="12.54,11.273 12.176,11.559 12.306,12.001 11.942,11.715 11.552,12.001 11.708,11.559 11.318,11.273 11.786,11.273 11.942,10.831 12.072,11.273" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="11.164,10.234 10.8,10.52 10.93,10.962 10.566,10.676 10.176,10.962 10.332,10.52 9.942,10.234 10.41,10.234 10.566,9.792 10.696,10.234" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="13.917,10.234 13.553,10.52 13.683,10.962 13.319,10.676 12.929,10.962 13.085,10.52 12.695,10.234 13.163,10.234 13.319,9.792 13.449,10.234" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="9.034,7.87 9.164,7.428 8.8,7.143 9.268,7.143 9.398,6.701 9.554,7.143 10.022,7.143 9.632,7.429 9.788,7.871 9.398,7.585" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="14.852,7.87 14.488,7.584 14.098,7.87 14.254,7.428 13.864,7.142 14.332,7.142 14.488,6.7 14.618,7.142 15.086,7.142 14.722,7.428" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Path Data="M16,14H0V2h16V14zM1,13h14V3H1V13z" Fill="#211F20" Opacity="0.20"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

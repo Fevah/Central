@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Left="2.5" Canvas.Top="6.5" Width="27" Height="12.5" Fill="#FFFFFF"/>
+      <Polygon Points="3,19 3,7 29,7 29,19 30,19 30,6 2,6 2,19" Fill="#383838" StrokeLineJoin="Miter"/>
+      <Rectangle Canvas.Left="8" Canvas.Top="6.5" Width="1" Height="12.5" Fill="#383838"/>
+      <Path Data="M26,10.5H12M26,13.5H12M26,16.5H12" Stroke="#787979" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Rectangle Canvas.Left="2.5" Canvas.Top="1.5" Width="27" Height="5" Fill="#FFFFFF" Stroke="#228BCB" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M25,3h2v2h-2V3zM21,5h2V3h-2V5zM17,5h2V3h-2V5z" Fill="#383838"/>
+      <Rectangle Canvas.Left="3.5" Canvas.Top="20.5" Width="10" Height="10" Fill="#FFFFFF"/>
+      <Path Data="M4,27v3h9v-9H4v3H3v-4h11v11H3v-4H4z" Fill="#020202"/>
+      <Rectangle Canvas.Left="18.5" Canvas.Top="20.5" Width="10" Height="10" Fill="#FFFFFF"/>
+      <Path Data="M19,27v3h9v-9h-9v3h-1v-4h11v11H18v-4H19z" Fill="#020202"/>
+      <Path Data="M22,26h-8.5v-1h8.5V26z" Fill="#020202"/>
+      <Path Data="M6.5,26H1v-1h5.5V26z" Fill="#020202"/>
+      <Path Data="M31,26h-2.5v-1h2.5V26z" Fill="#020202"/>
+      <Path Data="M23.5,23.5c1.105,0,2,0.895,2,2c0,1.105,-0.895,2,-2,2s-2,-0.895,-2,-2C21.5,24.395,22.395,23.5,23.5,23.5z" Fill="#FFFFFF"/>
+      <Path Data="M21,25.5c0,-1.379,1.121,-2.5,2.5,-2.5s2.5,1.121,2.5,2.5s-1.121,2.5,-2.5,2.5S21,26.879,21,25.5zM22,25.5c0,0.827,0.673,1.5,1.5,1.5s1.5,-0.673,1.5,-1.5s-0.673,-1.5,-1.5,-1.5S22,24.673,22,25.5z" Fill="#238BCB"/>
+      <Path Data="M8.5,23.5c1.105,0,2,0.895,2,2c0,1.105,-0.895,2,-2,2s-2,-0.895,-2,-2C6.5,24.395,7.395,23.5,8.5,23.5z" Fill="#FFFFFF"/>
+      <Path Data="M6,25.5c0,-1.379,1.121,-2.5,2.5,-2.5s2.5,1.121,2.5,2.5s-1.121,2.5,-2.5,2.5S6,26.879,6,25.5zM7,25.5c0,0.827,0.673,1.5,1.5,1.5s1.5,-0.673,1.5,-1.5s-0.673,-1.5,-1.5,-1.5S7,24.673,7,25.5z" Fill="#238BCB"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

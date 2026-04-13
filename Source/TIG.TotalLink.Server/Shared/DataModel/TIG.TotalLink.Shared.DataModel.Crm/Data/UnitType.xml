@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<UnitTypes>
+  <UnitType Code="APT" Name="Apartment" />
+  <UnitType Code="FY" Name="Factory" />
+  <UnitType Code="F" Name="Flat" />
+  <UnitType Code="MB" Name="Marine berth" />
+  <UnitType Code="OFF" Name="Office" />
+  <UnitType Code="RM" Name="Room" />
+  <UnitType Code="SHED" Name="Shed" />
+  <UnitType Code="SHOP" Name="Shop" />
+  <UnitType Code="SITE" Name="Site" />
+  <UnitType Code="SL" Name="Stall" />
+  <UnitType Code="SE" Name="Suite" />
+  <UnitType Code="U" Name="Unit" />
+  <UnitType Code="VLLA" Name="Villa" />
+  <UnitType Code="WE" Name="Warehouse" />
+</UnitTypes>

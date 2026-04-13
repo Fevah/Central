@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Polyline Points="12.014,27.31 10.03,31.5 5.452,31.5 7.968,26.732" Fill="#FFFFFF" Stroke="#787979" StrokeThickness="1" StrokeMiterLimit="1" StrokeLineJoin="Miter"/>
+      <Polyline Points="18.816,27.31 20.945,31.5 25.523,31.5 23.151,26.732" Fill="#FFFFFF" Stroke="#787979" StrokeThickness="1" StrokeMiterLimit="1" StrokeLineJoin="Miter"/>
+      <Path Data="M13.4,2.5c0,0,-4.328,0,-4.902,0c-0.986,0,-1.973,0.969,-2.266,1.937c-0.293,0.969,-1.226,3.861,-1.466,4.774c-0.24,0.913,-0.267,2.02,-0.267,2.767c0,0.747,0,8.727,0,10.609c0,1.66,1.3,3.597,1.866,3.736c0.507,0.124,5.337,0.913,8.605,1.077l1.013,0.004c3.336,-0.142,8.23,-0.833,8.623,-1.081c0.439,-0.277,1.892,-2.075,1.892,-3.736c0,-1.882,0,-9.862,0,-10.609c0,-0.747,-0.027,-1.854,-0.27,-2.767c-0.243,-0.913,-1.189,-3.806,-1.487,-4.774C24.446,3.469,23.445,2.5,22.445,2.5c-0.617,0,-4.845,0,-4.845,0" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Line X1="4.7" Y1="10.5" X2="26.4" Y2="10.5" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Line X1="15.5" Y1="4.9" X2="15.5" Y2="10.5" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Line X1="14" Y1="24.5" X2="17" Y2="24.5" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Ellipse Canvas.Left="12.9" Canvas.Top="0" Width="5.3" Height="5.3" Fill="#FFFFFF" Stroke="#ED8730" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Ellipse Canvas.Left="6.929" Canvas.Top="14.005" Width="5.296" Height="5.348" Fill="#FFFFFF" Stroke="#ED8730" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Ellipse Canvas.Left="18.789" Canvas.Top="14.005" Width="5.296" Height="5.348" Fill="#FFFFFF" Stroke="#ED8730" StrokeThickness="1" StrokeMiterLimit="1"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SyncMapping>
+  <EntityMappings>
+    <EntityMapping Name="PhysicalStocks">
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Oid" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Oid" Type="System.Guid" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="SkuId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Sku" Type="Sku" Convert="Entity(Oid, [SkuId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="PhysicalStockTypeId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="PhysicalStockType" Type="PhysicalStockType" Convert="Entity(Oid, [PhysicalStockTypeId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Quantity" Type="System.Int32" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Quantity" Type="System.Int32" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="BinLocationId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="BinLocation" Type="BinLocation" Convert="Entity(Oid, [BinLocationId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+    </EntityMapping>
+  </EntityMappings>
+</SyncMapping>

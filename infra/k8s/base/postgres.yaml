@@ -1,0 +1,273 @@
+# =============================================================================
+# PostgreSQL HA — Primary + Streaming Replica inside K8s
+# =============================================================================
+# 2 pods on worker nodes labeled role=database.
+# postgres-0 = primary (read-write), postgres-1 = replica (read-only).
+# Uses pg_basebackup for initial clone, WAL streaming for replication.
+# =============================================================================
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-credentials
+  namespace: central
+type: Opaque
+stringData:
+  POSTGRES_USER: "central"
+  POSTGRES_PASSWORD: "central"
+  POSTGRES_DB: "central"
+  REPLICATION_USER: "replicator"
+  REPLICATION_PASSWORD: "replicator"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+  namespace: central
+data:
+  01-create-auth-db.sql: |
+    -- Create secure_auth database for auth-service
+    SELECT 'CREATE DATABASE secure_auth OWNER central'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'secure_auth')\gexec
+
+  02-tune.sql: |
+    ALTER SYSTEM SET shared_buffers = '2GB';
+    ALTER SYSTEM SET work_mem = '128MB';
+    ALTER SYSTEM SET effective_cache_size = '6GB';
+    ALTER SYSTEM SET maintenance_work_mem = '512MB';
+    ALTER SYSTEM SET max_connections = 200;
+    ALTER SYSTEM SET wal_buffers = '64MB';
+    ALTER SYSTEM SET checkpoint_completion_target = 0.9;
+    ALTER SYSTEM SET wal_level = 'replica';
+    ALTER SYSTEM SET max_wal_senders = 5;
+    ALTER SYSTEM SET wal_keep_size = '512MB';
+    ALTER SYSTEM SET hot_standby = 'on';
+    SELECT pg_reload_conf();
+
+  03-create-replication-user.sql: |
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'replicator') THEN
+        CREATE ROLE replicator WITH REPLICATION LOGIN PASSWORD 'replicator';
+      END IF;
+    END $$;
+
+  04-pg-hba-replication.sh: |
+    #!/bin/bash
+    # Append replication entry to pg_hba.conf if not present
+    if ! grep -q "replicator" "$PGDATA/pg_hba.conf" 2>/dev/null; then
+      echo "host replication replicator all scram-sha-256" >> "$PGDATA/pg_hba.conf"
+      pg_ctl reload -D "$PGDATA" 2>/dev/null || true
+    fi
+
+---
+# ConfigMap for replica bootstrap script
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-replica-init
+  namespace: central
+data:
+  setup-replica.sh: |
+    #!/bin/bash
+    set -e
+
+    PGDATA="/var/lib/postgresql/data/pgdata"
+    PRIMARY_HOST="postgres-0.postgres.central.svc.cluster.local"
+
+    # If PGDATA is empty or missing, bootstrap from primary
+    if [ ! -f "$PGDATA/PG_VERSION" ]; then
+      echo "Bootstrapping replica from $PRIMARY_HOST..."
+
+      # Wait for primary to be ready
+      until pg_isready -h "$PRIMARY_HOST" -U central -d central; do
+        echo "Waiting for primary..."
+        sleep 3
+      done
+
+      # Clone from primary
+      PGPASSWORD=replicator pg_basebackup \
+        -h "$PRIMARY_HOST" \
+        -U replicator \
+        -D "$PGDATA" \
+        -Fp -Xs -P -R
+
+      echo "Replica bootstrap complete."
+    fi
+
+    # Ensure standby signal exists
+    touch "$PGDATA/standby.signal"
+
+    # Set primary_conninfo if not in postgresql.auto.conf
+    if ! grep -q "primary_conninfo" "$PGDATA/postgresql.auto.conf" 2>/dev/null; then
+      echo "primary_conninfo = 'host=$PRIMARY_HOST port=5432 user=replicator password=replicator'" >> "$PGDATA/postgresql.auto.conf"
+    fi
+
+    exec postgres
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: central
+  labels:
+    app: postgres
+    app.kubernetes.io/part-of: central-platform
+spec:
+  serviceName: postgres
+  replicas: 2
+  podManagementPolicy: OrderedReady
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+        app.kubernetes.io/part-of: central-platform
+    spec:
+      nodeSelector:
+        role: database
+      terminationGracePeriodSeconds: 60
+      # Anti-affinity: spread primary and replica across different nodes
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: postgres
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: postgres
+          image: postgres:18-alpine
+          ports:
+            - containerPort: 5432
+              name: postgres
+          envFrom:
+            - secretRef:
+                name: postgres-credentials
+          env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          # Primary (postgres-0) uses standard entrypoint
+          # Replica (postgres-1+) uses the replica bootstrap script
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              if [ "$POD_NAME" = "postgres-0" ]; then
+                echo "Starting as PRIMARY"
+                docker-entrypoint.sh postgres
+              else
+                echo "Starting as REPLICA"
+                /scripts/setup-replica.sh
+              fi
+          volumeMounts:
+            - name: pgdata
+              mountPath: /var/lib/postgresql/data
+            - name: init-scripts
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+            - name: replica-scripts
+              mountPath: /scripts
+              readOnly: true
+          resources:
+            requests:
+              cpu: "1"
+              memory: 2Gi
+            limits:
+              cpu: "4"
+              memory: 8Gi
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "central", "-d", "central"]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "central", "-d", "central"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: init-scripts
+          configMap:
+            name: postgres-init
+        - name: replica-scripts
+          configMap:
+            name: postgres-replica-init
+            defaultMode: 0755
+  volumeClaimTemplates:
+    - metadata:
+        name: pgdata
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 50Gi
+
+---
+# Headless service for StatefulSet DNS
+# postgres-0.postgres.central.svc.cluster.local = primary
+# postgres-1.postgres.central.svc.cluster.local = replica
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: central
+  labels:
+    app: postgres
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres
+
+---
+# LoadBalancer: primary (read-write) — services connect here
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-primary
+  namespace: central
+  labels:
+    app: postgres
+    role: primary
+spec:
+  type: LoadBalancer
+  selector:
+    app: postgres
+    statefulset.kubernetes.io/pod-name: postgres-0
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres
+
+---
+# LoadBalancer: replica (read-only) — for read-heavy queries
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-replica
+  namespace: central
+  labels:
+    app: postgres
+    role: replica
+spec:
+  type: LoadBalancer
+  selector:
+    app: postgres
+    statefulset.kubernetes.io/pod-name: postgres-1
+  ports:
+    - port: 5432
+      targetPort: 5432
+      name: postgres

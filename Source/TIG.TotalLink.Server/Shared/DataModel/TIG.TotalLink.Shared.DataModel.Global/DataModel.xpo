@@ -1,0 +1,72 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataBaseObjectModel xmlns:dm0="http://schemas.microsoft.com/VisualStudio/2008/DslTools/Core" dslVersion="1.0.0.0" Id="bf342d5a-9cd4-4188-b4f3-b6bd14f31438" namespace="TIG.TotalLink.Shared.DataModel.Global" dataBaseShemaInfo="H4sIAAAAAAAEANVY224bNxB9D5B/EPxsSrwvGawVtHaSGq1bI7IDv/IyVLaVdoW92M7fd9aSZctO2gSVJfRBgjgcijw7wzNnNn97O58NrqFuiqo8OmBDevB2/PpV/rNrYNJWtZvCaZmqAXqVzZvbpjg6+Ny2izej0c3NzfBGDKt6OuKUstHV2W+T8BnmjhRl07oywMF6Vfz3VQe462CQXzg/g6bf8m58b3lkuDf97uYwvlpU53V1XUSo89GDee35ruxt47buIB+tBuvJk6LpDZeL6FoYJzdr0GnTuPb90BXxNI6pY1FzzYmPOhGZVEasMZwkkZkIUoOz+B8r5/Xi42rWzctmA8Q3zTjRY1hOjvuf+eiRYcPxn+D9KMTHMJUAFsACEdFSIoU0xHkjSHTK0swYg6NnMHH56D8gfV/MAD9tH8ld482iFUZ6SriljMhgA/EBMqLwK3DFvWZ023h/cTjfwrTGQ8UJhK4u2i97gM5BSck0UUw7IrUWxKsoCQ2Z99ooqaN+Aehn3awtFjM4ca3zyDXN7pE7LoIDqzHUGSJPXBLjM0xyq6hlIKhw/AWQn7umuanquHvAIXKRPN5lTgPHUCtJHFeJWG8idzEwpdwLAL5soN4PjRkRudUsEW5CJJJDJM4BEM9tyIIFZZjfNuDTpieyvnzuIcJaG6tBOJJk8ERmEgsVGAy4wSvNdVCGb53HTpsJ1Cgg9gSZAkbUSU+cQsKWNOB9jrxPau9jpj0X2+evM3DlUrV8gBKQwFE77R551NGZaIBwTTG7paLESORw5k0IITEks7ht5JNusajqtleGEFF5BYhdvQ/yjhQDL4QnigsgkilPjI04FIIlGWP0Lr0Q+ONqPndlvCjmUHXt7qFz7hSqE0VoliF06xLWLYRukgFrggGhw4tBL0sIfbrvDb0QNosuiyQqjlItZZ5YRyUqNwF42RPjP8DpX7Ou+ojvbkEm0LZFOd1J+4EXW0mLQlxbFggKVoq05yyxUXkqTfIxPdfl/7/2A3EJR7HLol4jpzOO7K4zQ5DRvZOGIadv/XJ/crNuH52WZJExDKF2CUncYg+CFVthIRNS+8Cwufx+TbaNdF5WtNnV4g//J151tpO8Tk4Z7XUvWUSvTAXt67fAtjoa5aUNPGVbzev3Bcwi2324WZZUpsESjCz2HFwqYhjqNW690iKEyCzbarhX4weX/KF23xkHo6X50/IV0PgErt/dLrCmN8O+NxteMzVkh4PV9FE/GqohPRwcYweHtf+ohK7FhDkcnHd+VoRf4ctF9ReUR96YyDIlY4alGqtUPrrf4m6/4xn2QdD0AfjYrZ9u/lPEo0EqblfnWpomXdowfYR5dQ1PHZfWp77HqEvHl2X47MppL1DvxstH87Uz5PhkFlC3xZ7P9o1j5CvFCb0KgbJtVjn6zLzhfAJNMcWffWvydMXm3OtX+ejJu7/x31kS0DMkFAAA" generateStoredProcedures="false" fieldNameCase="Unchanged" fieldNamePrefix="_" xmlns="http://schemas.microsoft.com/dsltools/ORMDataModel">
+  <classes>
+    <dataBaseObjectModelHasClasses Id="a2c963b3-ddea-4639-b2d8-5af962c3d2ad">
+      <xpObject Id="0a1d6262-bd6f-4f57-9882-f378de46ea9e" name="XpoProvider" baseClass="TIG.TotalLink.Shared.DataModel.Core.DataObjectBase" userFileName="XpoProvider" designerFileName="XpoProvider.Designer" className="XpoProvider" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Core.DataObjectBase" virtualName="XpoProvider">
+        <fields>
+          <generalXpObjectHasFields Id="d592f455-0848-4d21-a9f7-137f80248f67">
+            <field Id="53e1ce9e-3d90-4348-ab83-da5907888ab8" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="d428d289-6b78-4cf3-98d4-0cd2e01e1915">
+            <field Id="7d9384b0-2901-4c9c-bce7-5ce7c252b610" name="FileFilter" virtualColumnType="String" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="a6f0ac2c-745a-462e-a5a9-769324b9a6cf">
+            <field Id="72e54416-516a-4663-b5d4-0c7bb68546d6" name="HasIntegratedSecurity" columnType="Boolean" virtualColumnType="Boolean" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="533087df-befe-4639-a8e1-b5e21c5479c0">
+            <field Id="a23cae96-bc7a-4f24-8b73-d95091e303a2" name="HasMultipleDatabases" columnType="Boolean" virtualColumnType="Boolean" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="98162873-6f42-4027-9eda-f4aded8961f9">
+            <field Id="cd23fb48-20c2-4654-a25f-9b8d2adc155a" name="HasPassword" columnType="Boolean" virtualColumnType="Boolean" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="22f098ce-6fee-476f-b40d-b4cf727219e2">
+            <field Id="83d2961f-28cd-42ed-aaee-b29c7c9e581b" name="HasUserName" columnType="Boolean" virtualColumnType="Boolean" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="68a8ff55-02ad-4722-bb15-c5f52fae65c0">
+            <field Id="66896e3a-f4cb-4742-be88-285d426c5820" name="IsFileBased" columnType="Boolean" virtualColumnType="Boolean" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="59d7cdce-f71c-4846-9f7e-44ea32613793">
+            <field Id="0eaeea4b-a5e7-40c6-bd2f-9bbbd76b23d6" name="IsServerBased" columnType="Boolean" virtualColumnType="Boolean" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="99a3faf1-6d64-4287-9a05-227a042868e3">
+            <field Id="d6da8d8e-260d-4450-846a-1b8cccf18b7d" name="MeanSchemaGeneration" columnType="Boolean" virtualColumnType="Boolean" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="9c3b9ccc-bb4d-48f8-bce1-ebfe4c9bc691">
+            <field Id="d00ea33b-523e-415b-89db-5331f4dddbaf" name="SupportStoredProcedures" columnType="Boolean" virtualColumnType="Boolean" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="655d3f8d-a466-40e9-b799-3e98cfd908c6">
+            <externalPersistentTypeMoniker Id="9d59e292-8da4-4348-a816-4bf8320ea71f" />
+          </inheritance>
+        </superClass>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="a777a117-e538-484a-a635-48192be60ca3">
+      <externalPersistentType Id="9d59e292-8da4-4348-a816-4bf8320ea71f" name="TIG.TotalLink.Shared.DataModel.Core.DataObjectBase" nameSpace="TIG.TotalLink.Shared.DataModel.Core" virtualName="DataObjectBase" assemblyName="W:\TIG\TotalLink3\Source\TIG.TotalLink.Server\Shared\Core\TIG.TotalLink.Shared.DataModel.Core\bin\Debug\TIG.TotalLink.Shared.DataModel.Core.dll" deferredDeletion="False" optimisticLocking="False" addReferenceToAssembly="false" hasDefaultConstructor="true" hasSessionSpecifiedConstructor="false">
+        <fields>
+          <generalXpObjectHasFields Id="4d5f1ced-609d-4919-b8c4-9ba594fd8a0d">
+            <externalPersistentTypeField Id="7e085974-b1ed-4fa1-8a63-6daee4c2cd11" name="Oid" virtualColumnType="Guid" key="true" />
+          </generalXpObjectHasFields>
+        </fields>
+      </externalPersistentType>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="74a0b654-a4bd-4a0f-be57-ef6f25ba5e6e">
+      <xpObject Id="8cc54983-691c-4b00-a5a9-9d5b048fbdf8" name="Setting" baseClass="TIG.TotalLink.Shared.DataModel.Core.DataObjectBase" userFileName="Setting" designerFileName="Setting.Designer" className="Setting" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Core.DataObjectBase" virtualName="Setting">
+        <fields>
+          <generalXpObjectHasFields Id="da9129df-de47-4435-8a52-0e40395055fe">
+            <field Id="b003a062-0b67-412b-a678-bbdba48123df" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="b6d430bc-1ef9-43d9-a188-a08e7a3a8449">
+            <field Id="541d11a9-6afd-49b0-be85-40346bc1882a" name="Value" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="1000" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="e68c0edb-ff8f-4607-b423-8f8c0e14b6b6">
+            <externalPersistentTypeMoniker Id="9d59e292-8da4-4348-a816-4bf8320ea71f" />
+          </inheritance>
+        </superClass>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+  </classes>
+</dataBaseObjectModel>

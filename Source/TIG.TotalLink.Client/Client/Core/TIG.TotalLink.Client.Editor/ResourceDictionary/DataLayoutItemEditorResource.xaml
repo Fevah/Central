@@ -1,0 +1,495 @@
+﻿<ResourceDictionary x:Class="TIG.TotalLink.Client.MVVM.ResourceDictionary.DataLayoutItemEditorResource"
+                    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+                    xmlns:control="clr-namespace:TIG.TotalLink.Client.Editor.Control"
+                    xmlns:definition="clr-namespace:TIG.TotalLink.Client.Editor.Definition"
+                    xmlns:converter="clr-namespace:TIG.TotalLink.Client.Editor.Converter"
+                    xmlns:behavior="clr-namespace:TIG.TotalLink.Client.Editor.Behavior"
+                    xmlns:view="clr-namespace:TIG.TotalLink.Client.Editor.View"
+                    xmlns:dxmvvm="http://schemas.devexpress.com/winfx/2008/xaml/mvvm"
+                    xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+                    xmlns:themes="http://schemas.devexpress.com/winfx/2008/xaml/editors/themekeys">
+
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/TIG.TotalLink.Client.Editor;component/ResourceDictionary/EditorResource.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <converter:BoolToEditorPlacementConverter x:Key="BoolToEditorPlacementConverter" />
+    <dx:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    <converter:GuidToNullConverter x:Key="GuidToNullConverter" />
+    <converter:IntToDecimalConverter x:Key="IntToDecimalConverter" />
+    <converter:UniversalToLocalDateTimeConverter x:Key="UniversalToLocalDateTimeConverter" />
+    <converter:MultiMethodToValueConverter x:Key="MultiMethodToValueConverter" />
+    <converter:StringCleanConverter x:Key="StringCleanConverter" />
+    <converter:MultiPropertyConverter x:Key="MultiPropertyConverter" />
+    <dx:ObjectToStringConverter x:Key="ObjectToStringConverter" />
+    <converter:FormatCountConverter x:Key="FormatCountConverter" />
+    <converter:ByteArrayToImageSourceConverter x:Key="ByteArrayToImageSourceConverter" />
+
+    <!-- ****************************** -->
+    <!-- * DATA LAYOUT ITEM TEMPLATES * -->
+    <!-- ****************************** -->
+
+    <!-- Defines templates for editors that appear in a field of a DataLayoutControl. (e.g. DetailWidgetView) -->
+
+    <!-- Default -->
+    <DataTemplate x:Key="DefaultDataLayoutItemTemplate">
+    </DataTemplate>
+
+    <!-- Text -->
+    <DataTemplate x:Key="TextDataLayoutItemTemplate">
+        <control:DataLayoutItemEx>
+            <dxe:ButtonEdit x:Name="PART_Editor"
+                            AllowDefaultButton="False"
+                            HorizontalContentAlignment="Left"
+                            MaskType="{Binding Path=EditorWrapper.Editor.(definition:TextEditorDefinition.MaskType), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                            Mask="{Binding Path=EditorWrapper.Editor.(definition:TextEditorDefinition.RegexMask), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                            MaxLength="{Binding Path=EditorWrapper.MaxLength, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                            IsReadOnly="{Binding Path=EditorWrapper.IsReadOnly, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                            AllowNullInput="{Binding Path=EditorWrapper.AllowNull, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                            NullValueButtonPlacement="{Binding Path=EditorWrapper.AllowNull, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}, Converter={StaticResource BoolToEditorPlacementConverter}}"
+                            behavior:CommitOnEnterPressedBehaviour.Property="dxe:BaseEdit.EditValue" />
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- Spin -->
+    <DataTemplate x:Key="SpinDataLayoutItemTemplate">
+        <control:DataLayoutItemEx EditValueConverter="{StaticResource IntToDecimalConverter}">
+            <dxe:SpinEdit x:Name="PART_Editor"
+                          IsFloatValue="False"
+                          EditValuePostMode="Delayed"
+                          MaskType="Numeric"
+                          Mask="D"
+                          MaskUseAsDisplayFormat="False"
+                          DisplayFormatString="{Binding Path=EditorWrapper.Editor.(definition:SpinEditorDefinition.DisplayFormat), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                          MaxLength="{Binding Path=EditorWrapper.MaxLength, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                          IsReadOnly="{Binding Path=EditorWrapper.IsReadOnly, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                          AllowNullInput="{Binding Path=EditorWrapper.AllowNull, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                          NullValueButtonPlacement="{Binding Path=EditorWrapper.AllowNull, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}, Converter={StaticResource BoolToEditorPlacementConverter}}"
+                          MinValue="{Binding Path=EditorWrapper.Editor.(definition:SpinEditorDefinition.MinValue), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                          MaxValue="{Binding Path=EditorWrapper.Editor.(definition:SpinEditorDefinition.MaxValue), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                          Increment="{Binding Path=EditorWrapper.Editor.(definition:SpinEditorDefinition.Increment), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                          behavior:CommitOnEnterPressedBehaviour.Property="dxe:BaseEdit.EditValue" />
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- Checkbox -->
+    <DataTemplate x:Key="CheckboxDataLayoutItemTemplate">
+        <control:DataLayoutItemEx>
+            <dxe:CheckEdit x:Name="PART_Editor"
+                           IsReadOnly="{Binding Path=EditorWrapper.IsReadOnly, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                           IsThreeState="{Binding Path=EditorWrapper.AllowNull, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}" />
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- Grid -->
+    <DataTemplate x:Key="GridDataLayoutItemTemplate">
+        <control:DataLayoutItemEx MinHeight="100"
+                                  VerticalAlignment="Stretch">
+            <view:GridEdit x:Name="PART_Editor"
+                           EditorDefinition="{Binding Path=EditorWrapper.Editor, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                           EditBarVisible="{Binding Path=EditorWrapper.Editor.ShowToolBar, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"></view:GridEdit>
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- PopupGrid -->
+    <DataTemplate x:Key="PopupGridDataLayoutItemTemplate">
+        <control:DataLayoutItemEx>
+            <dxe:PopupBaseEdit EditMode="Standalone"
+                               IsTextEditable="False"
+                               IsReadOnly="True"
+                               ShowSizeGrip="True"
+                               PopupMinHeight="100"
+                               PopupMaxHeight="400"
+                               DisplayTextConverter="{StaticResource FormatCountConverter}">
+                <dxmvvm:Interaction.Behaviors>
+                    <behavior:DataObjectPropertyNameBindingBehavior TargetPropertyName="EditValue"
+                                                                    Path="{Binding Path=EditorWrapper.FieldName, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                                                                    BindingMode="OneWay" />
+                </dxmvvm:Interaction.Behaviors>
+                <dxe:PopupBaseEdit.PopupContentTemplate>
+                    <ControlTemplate>
+                        <view:GridEdit EditorDefinition="{Binding Path=EditorWrapper.Editor, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                                       ShowBorder="False" />
+                    </ControlTemplate>
+                </dxe:PopupBaseEdit.PopupContentTemplate>
+            </dxe:PopupBaseEdit>
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- LookUp -->
+    <DataTemplate x:Key="LookUpDataLayoutItemTemplate">
+        <control:DataLayoutItemEx>
+            <view:LookUpEdit x:Name="PART_Editor"
+                             EditMode="Standalone"
+                             ShowSizeGrip="True"
+                             ValidateOnTextInput="False"
+                             PopupMinHeight="100"
+                             PopupMaxHeight="400"
+                             EditorDefinition="{Binding Path=EditorWrapper.Editor, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                             IsReadOnly="{Binding Path=EditorWrapper.IsReadOnly, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                             AllowNullInput="{Binding Path=EditorWrapper.AllowNull, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                             NullValueButtonPlacement="{Binding Path=EditorWrapper.AllowNull, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}, Converter={StaticResource BoolToEditorPlacementConverter}}" />
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- Label -->
+    <DataTemplate x:Key="LabelDataLayoutItemTemplate">
+        <control:DataLayoutItemEx EditValuePropertyName="Text"
+                                  EditValueConverter="{StaticResource ObjectToStringConverter}">
+            <Label HorizontalContentAlignment="Stretch">
+                <TextBlock x:Name="PART_Editor"
+                           TextWrapping="{Binding Path=EditorWrapper.Editor.(definition:LabelEditorDefinition.TextWrapping), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                           TextTrimming="{Binding Path=EditorWrapper.Editor.(definition:LabelEditorDefinition.TextTrimming), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                           TextAlignment="{Binding Path=EditorWrapper.Editor.(definition:LabelEditorDefinition.TextAlignment), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}" />
+            </Label>
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- Password -->
+    <DataTemplate x:Key="PasswordDataLayoutItemTemplate">
+        <control:DataLayoutItemEx>
+            <dxe:PasswordBoxEdit x:Name="PART_Editor"
+                                 IsReadOnly="{Binding Path=EditorWrapper.IsReadOnly, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                                 AllowNullInput="{Binding Path=EditorWrapper.AllowNull, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                                 MaxLength="{Binding Path=EditorWrapper.MaxLength, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                                 behavior:CommitOnEnterPressedBehaviour.Property="dxe:BaseEdit.EditValue" />
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- Id -->
+    <DataTemplate x:Key="IdDataLayoutItemTemplate">
+        <control:DataLayoutItemEx EditValueConverter="{StaticResource GuidToNullConverter}">
+            <dxe:TextEdit x:Name="PART_Editor"
+                          IsReadOnly="True" />
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- Progress -->
+    <DataTemplate x:Key="ProgressDataLayoutItemTemplate">
+        <control:DataLayoutItemEx>
+            <dxe:ProgressBarEdit x:Name="PART_Editor"
+                                 EditMode="Standalone"
+                                 EditValue="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 Minimum="{Binding Path=EditorWrapper.Editor.(definition:ProgressEditorDefinition.ActualMinimum), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                                 Maximum="{Binding Path=EditorWrapper.Editor.(definition:ProgressEditorDefinition.ActualMaximum), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                                 ContentDisplayMode="Value"
+                                 IsPercent="True"
+                                 DisplayFormatString="p0" />
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- RichText -->
+    <DataTemplate x:Key="RichTextDataLayoutItemTemplate">
+        <control:DataLayoutItemEx HorizontalAlignment="Stretch"
+                                  VerticalAlignment="Stretch"
+                                  MinHeight="100">
+            <view:RichTextEdit x:Name="PART_Editor"
+                               SaveCommand="{Binding Path=DefaultSaveCommand, RelativeSource={RelativeSource Self}}"
+                               CancelCommand="{Binding Path=DefaultCancelCommand, RelativeSource={RelativeSource Self}}" />
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- DateTime -->
+    <DataTemplate x:Key="DateTimeDataLayoutItemTemplate">
+        <control:DataLayoutItemEx EditValueConverter="{StaticResource UniversalToLocalDateTimeConverter}">
+            <dxe:DateEdit x:Name="PART_Editor"
+                          MaskUseAsDisplayFormat="True"
+                          Mask="{Binding Path=EditorWrapper.Editor.(definition:DateTimeEditorDefinition.Mask), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                          IsReadOnly="{Binding Path=EditorWrapper.IsReadOnly, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                          AllowNullInput="{Binding Path=EditorWrapper.AllowNull, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                          behavior:CommitOnEnterPressedBehaviour.Property="dxe:BaseEdit.EditValue">
+                <dxe:DateEdit.StyleSettings>
+                    <dxe:DateEditPickerStyleSettings />
+                </dxe:DateEdit.StyleSettings>
+            </dxe:DateEdit>
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- HyperLink -->
+    <DataTemplate x:Key="HyperLinkDataLayoutItemTemplate">
+        <control:DataLayoutItemEx>
+            <dxe:ButtonEdit x:Name="PART_Editor"
+                            AllowDefaultButton="False"
+                            IsReadOnly="{Binding Path=EditorWrapper.IsReadOnly, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                            AllowNullInput="{Binding Path=EditorWrapper.AllowNull, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                            TextDecorations="{Binding Path=EditorWrapper.Editor.(definition:HyperLinkEditorDefinition.TextDecoration), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                            MaxLength="{Binding Path=EditorWrapper.MaxLength, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                            Foreground="{Binding Path=EditorWrapper.Editor.(definition:HyperLinkEditorDefinition.TextBrush), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                            NullValueButtonPlacement="{Binding Path=EditorWrapper.AllowNull, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}, Converter={StaticResource BoolToEditorPlacementConverter}}"
+                            behavior:CommitOnEnterPressedBehaviour.Property="dxe:BaseEdit.EditValue">
+                <dxmvvm:Interaction.Triggers>
+                    <dxmvvm:EventToCommand EventName="PreviewMouseUp"
+                                           Command="{Binding Path=EditorWrapper.Editor.(definition:HyperLinkEditorDefinition.EditCommand), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}" />
+                    <dxmvvm:EventToCommand EventName="LostFocus"
+                                           Command="{Binding Path=EditorWrapper.Editor.(definition:HyperLinkEditorDefinition.OutCommand), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}" />
+                    <dxmvvm:EventToCommand EventName="MouseDoubleClick"
+                                           Command="{Binding Path=EditorWrapper.Editor.(definition:HyperLinkEditorDefinition.OpenCommand), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                                           CommandParameter="{Binding ElementName=PART_Editor, Path=EditValue}" />
+                </dxmvvm:Interaction.Triggers>
+            </dxe:ButtonEdit>
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- IncrementingTime -->
+    <DataTemplate x:Key="IncrementingTimeDataLayoutItemTemplate">
+        <control:DataLayoutItemEx HorizontalAlignment="Stretch">
+            <view:IncrementingTimeEdit x:Name="PART_Editor" />
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!--Comment-->
+    <DataTemplate x:Key="CommentDataLayoutItemTemplate">
+        <control:DataLayoutItemEx HorizontalAlignment="Stretch"
+                                  MinHeight="100">
+            <view:CommentEdit x:Name="PART_Editor" />
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- Memo -->
+    <DataTemplate x:Key="MemoDataLayoutItemTemplate">
+        <control:DataLayoutItemEx>
+            <dxe:MemoEdit x:Name="PART_Editor"
+                          ShowIcon="False"
+                          PopupMinWidth="400"
+                          PopupMinHeight="300"
+                          DisplayTextConverter="{StaticResource StringCleanConverter}"
+                          MaxLength="{Binding Path=EditorWrapper.MaxLength, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                          IsReadOnly="{Binding Path=EditorWrapper.IsReadOnly, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                          AllowNullInput="{Binding Path=EditorWrapper.AllowNull, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                          NullValueButtonPlacement="{Binding Path=EditorWrapper.AllowNull, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}, Converter={StaticResource BoolToEditorPlacementConverter}}" />
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- Currency -->
+    <DataTemplate x:Key="CurrencyDataLayoutItemTemplate">
+        <control:DataLayoutItemEx>
+            <dxe:ButtonEdit x:Name="PART_Editor"
+                            AllowDefaultButton="False"
+                            HorizontalContentAlignment="Right"
+                            DisplayFormatString="C2"
+                            MaskType="Numeric"
+                            Mask="C4"
+                            MaskUseAsDisplayFormat="False"
+                            IsReadOnly="{Binding Path=EditorWrapper.IsReadOnly, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                            AllowNullInput="{Binding Path=EditorWrapper.AllowNull, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                            NullValueButtonPlacement="{Binding Path=EditorWrapper.AllowNull, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}, Converter={StaticResource BoolToEditorPlacementConverter}}"
+                            behavior:CommitOnEnterPressedBehaviour.Property="dxe:BaseEdit.EditValue" />
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- Option -->
+    <DataTemplate x:Key="OptionDataLayoutItemTemplate">
+        <control:DataLayoutItemEx>
+            <dxe:ListBoxEdit x:Name="PART_Editor"
+                             StyleSettings="{dxe:RadioListBoxEditStyleSettings}"
+                             ValueMember="Key"
+                             DisplayMember="Value"
+                             Padding="4"
+                             ShowBorder="{Binding Path=EditorWrapper.Editor.(definition:OptionEditorDefinition.ShowBorder), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                             ItemsSource="{Binding Path=EditorWrapper.Editor.(definition:OptionEditorDefinition.ItemsSource), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                             IsReadOnly="{Binding Path=EditorWrapper.IsReadOnly, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}" />
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- PopupOption -->
+    <DataTemplate x:Key="PopupOptionDataLayoutItemTemplate">
+        <control:DataLayoutItemEx>
+            <dxe:PopupBaseEdit x:Name="PART_Editor"
+                               EditMode="Standalone"
+                               FocusPopupOnOpen="True"
+                               IsTextEditable="False">
+                <dxe:PopupBaseEdit.EditNonEditableTemplate>
+                    <ControlTemplate>
+                        <TextBlock>
+                            <TextBlock.Text>
+                                <MultiBinding Converter="{StaticResource MultiMethodToValueConverter}"
+                                              ConverterParameter="GetText">
+                                    <Binding Path="EditorWrapper.Editor"
+                                             RelativeSource="{RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}" />
+                                    <Binding Path="EditValue"
+                                             RelativeSource="{RelativeSource FindAncestor, AncestorType={x:Type dxe:PopupBaseEdit}}" />
+                                </MultiBinding>
+                            </TextBlock.Text>
+                        </TextBlock>
+                    </ControlTemplate>
+                </dxe:PopupBaseEdit.EditNonEditableTemplate>
+                <dxe:PopupBaseEdit.PopupContentTemplate>
+                    <ControlTemplate>
+                        <dxe:ListBoxEdit StyleSettings="{dxe:RadioListBoxEditStyleSettings}"
+                                         ValueMember="Key"
+                                         DisplayMember="Value"
+                                         Padding="4"
+                                         MaxHeight="200"
+                                         EditValue="{Binding Path=(dxe:BaseEdit.OwnerEdit).EditValue, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, RelativeSource={RelativeSource TemplatedParent}}"
+                                         ItemsSource="{Binding Path=EditorWrapper.Editor.(definition:OptionEditorDefinition.ItemsSource), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                                         IsReadOnly="{Binding Path=EditorWrapper.IsReadOnly, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}" />
+                    </ControlTemplate>
+                </dxe:PopupBaseEdit.PopupContentTemplate>
+            </dxe:PopupBaseEdit>
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- Button -->
+    <DataTemplate x:Key="ButtonDataLayoutItemTemplate">
+        <control:DataLayoutItemEx>
+            <Button x:Name="PART_Editor"
+                    Content="{Binding Path=EditorWrapper.Editor.(definition:ButtonEditorDefinition.ActualButtonText), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}">
+                <Button.Command>
+                    <MultiBinding Converter="{StaticResource MultiPropertyConverter}"
+                                  Mode="OneWay">
+                        <Binding />
+                        <Binding Path="EditorWrapper.FieldName"
+                                 RelativeSource="{RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}" />
+                    </MultiBinding>
+                </Button.Command>
+            </Button>
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- ListBox -->
+    <DataTemplate x:Key="ListBoxDataLayoutItemTemplate">
+        <control:DataLayoutItemEx EditValuePropertyName="ItemsSource"
+                                  MinHeight="100"
+                                  VerticalAlignment="Stretch">
+            <dxe:ListBoxEdit x:Name="PART_Editor" />
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- CheckedListBox -->
+    <DataTemplate x:Key="CheckedListBoxDataLayoutItemTemplate">
+        <control:DataLayoutItemEx EditValuePropertyName="CheckedItems"
+                                  MinHeight="100"
+                                  VerticalAlignment="Stretch">
+            <control:CheckedListBox x:Name="PART_Editor"
+                                    SelectionMode="Multiple"
+                                    ItemTemplate="{StaticResource CheckedListBoxItemTemplate}">
+                <control:CheckedListBox.ItemsSource>
+                    <MultiBinding Converter="{StaticResource MultiPropertyConverter}"
+                                  Mode="OneWay">
+                        <Binding />
+                        <Binding Path="EditorWrapper.Editor.(definition:CheckedListBoxEditorDefinition.ItemsSourcePropertyName)"
+                                 RelativeSource="{RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}" />
+                    </MultiBinding>
+                </control:CheckedListBox.ItemsSource>
+            </control:CheckedListBox>
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- Decimal -->
+    <DataTemplate x:Key="DecimalDataLayoutItemTemplate">
+        <control:DataLayoutItemEx>
+            <dxe:ButtonEdit x:Name="PART_Editor"
+                            AllowDefaultButton="False"
+                            HorizontalContentAlignment="Right"
+                            MaskType="Numeric"
+                            MaskUseAsDisplayFormat="True"
+                            Mask="{Binding Path=EditorWrapper.Editor.(definition:DecimalEditorDefinition.Mask), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                            IsReadOnly="{Binding Path=EditorWrapper.IsReadOnly, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                            AllowNullInput="{Binding Path=EditorWrapper.AllowNull, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                            NullValueButtonPlacement="{Binding Path=EditorWrapper.AllowNull, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}, Converter={StaticResource BoolToEditorPlacementConverter}}"
+                            behavior:CommitOnEnterPressedBehaviour.Property="dxe:BaseEdit.EditValue" />
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- Combo -->
+    <DataTemplate x:Key="ComboDataLayoutItemTemplate">
+        <control:DataLayoutItemEx>
+            <dxe:ComboBoxEdit x:Name="PART_Editor"
+                              EditMode="Standalone"
+                              ValueMember="Key"
+                              DisplayMember="Value"
+                              AutoComplete="True"
+                              HorizontalContentAlignment="Stretch"
+                              ItemsSource="{Binding Path=EditorWrapper.Editor.(definition:ComboEditorDefinition.ItemsSource), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                              IsReadOnly="{Binding Path=EditorWrapper.IsReadOnly, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                              AllowNullInput="{Binding Path=EditorWrapper.AllowNull, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                              NullValueButtonPlacement="{Binding Path=EditorWrapper.AllowNull, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}, Converter={StaticResource BoolToEditorPlacementConverter}}"
+                              AllowDefaultButton="{Binding Path=EditorWrapper.Editor.(definition:ComboEditorDefinition.AllowPopup), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                              behavior:CommitOnEnterPressedBehaviour.Property="dxe:BaseEdit.EditValue">
+                <dxe:ComboBoxEdit.EditTemplate>
+                    <ControlTemplate>
+                        <Grid>
+                            <Grid.ToolTip>
+                                <MultiBinding Converter="{StaticResource MultiMethodToValueConverter}"
+                                              ConverterParameter="GetToolTip">
+                                    <Binding Path="EditorWrapper.Editor"
+                                             RelativeSource="{RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}" />
+                                    <Binding Path="EditValue"
+                                             RelativeSource="{RelativeSource FindAncestor, AncestorType={x:Type dxe:PopupBaseEdit}}" />
+                                </MultiBinding>
+                            </Grid.ToolTip>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Image Grid.Column="0"
+                                   Visibility="{Binding Path=EditorWrapper.Editor.(definition:ComboEditorDefinition.IsImageVisible), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}, Converter={StaticResource BoolToVisibilityConverter}}"
+                                   Margin="3,3,0,3"
+                                   Width="16"
+                                   Height="16">
+                                <Image.Source>
+                                    <MultiBinding Converter="{StaticResource MultiMethodToValueConverter}"
+                                                  ConverterParameter="GetImage">
+                                        <Binding Path="EditorWrapper.Editor"
+                                                 RelativeSource="{RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}" />
+                                        <Binding Path="EditValue"
+                                                 RelativeSource="{RelativeSource FindAncestor, AncestorType={x:Type dxe:PopupBaseEdit}}" />
+                                    </MultiBinding>
+                                </Image.Source>
+                            </Image>
+                            <TextBox Grid.Column="1"
+                                     Name="PART_Editor"
+                                     Padding="1"
+                                     Style="{DynamicResource {themes:TextEditThemeKey ResourceKey=TextInplaceStyle}}"
+                                     Visibility="{Binding Path=EditorWrapper.Editor.(definition:ComboEditorDefinition.IsTextVisible), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        </Grid>
+                    </ControlTemplate>
+                </dxe:ComboBoxEdit.EditTemplate>
+                <dxe:ComboBoxEdit.ItemTemplate>
+                    <DataTemplate>
+                        <Grid ToolTip="{Binding Value.ToolTip}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Image Grid.Column="0"
+                                   Source="{Binding Value.Image}"
+                                   Visibility="{Binding Path=EditorWrapper.Editor.(definition:ComboEditorDefinition.IsImageVisible), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}, Converter={StaticResource BoolToVisibilityConverter}}"
+                                   Margin="0,0,3,0"
+                                   Width="16"
+                                   Height="16" />
+                            <TextBlock Grid.Column="1"
+                                       Padding="1,1,1,0"
+                                       Text="{Binding Value.Text}"
+                                       Visibility="{Binding Path=EditorWrapper.Editor.(definition:ComboEditorDefinition.IsTextVisible), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        </Grid>
+                    </DataTemplate>
+                </dxe:ComboBoxEdit.ItemTemplate>
+            </dxe:ComboBoxEdit>
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- Upload -->
+    <DataTemplate x:Key="UploadDataLayoutItemTemplate">
+        <control:DataLayoutItemEx>
+            <view:UploadEdit x:Name="PART_Editor"
+                             EditorDefinition="{Binding Path=EditorWrapper.Editor, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}" />
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+    <!-- Image -->
+    <DataTemplate x:Key="ImageDataLayoutItemTemplate">
+        <control:DataLayoutItemEx EditValueConverter="{StaticResource ByteArrayToImageSourceConverter}"
+                                  VerticalAlignment="Center">
+            <dxe:ImageEdit x:Name="PART_Editor"
+                           Stretch="None"
+                           MaxHeight="34"
+                           ShowBorder="{Binding Path=EditorWrapper.Editor.(definition:ImageEditorDefinition.ShowBorder), RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                           IsReadOnly="{Binding Path=EditorWrapper.IsReadOnly, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}"
+                           AllowNullInput="{Binding Path=EditorWrapper.AllowNull, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type control:DataLayoutItemEx}}}" />
+        </control:DataLayoutItemEx>
+    </DataTemplate>
+
+</ResourceDictionary>

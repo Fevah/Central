@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <rect x="0.5" y="0.5" width="15" height="15" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M5.5,1v14M10.5,1v14" fill="none" stroke="#787979" stroke-width="1" stroke-miterlimit="1" opacity="0.6"/>
+    <rect x="0.5" y="3.5" width="15" height="10" fill="none" stroke="#FFFFFF" stroke-width="1" stroke-miterlimit="1" opacity="0.5"/>
+    <rect x="0.5" y="4.5" width="15" height="8" fill="#92CBEE" stroke="#0964B0" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <path d="M11.567,11.868c-0.117,0,-0.228,-0.045,-0.311,-0.128l-1.077,-1.068c-0.084,-0.083,-0.13,-0.194,-0.131,-0.312c0,-0.118,0.045,-0.229,0.128,-0.313l0.344,-0.347H8.742C8.498,9.7,8.3,9.502,8.3,9.258V7.742c0,-0.244,0.198,-0.442,0.442,-0.442h1.779l-0.344,-0.347c-0.083,-0.084,-0.129,-0.195,-0.128,-0.313c0.001,-0.118,0.047,-0.229,0.131,-0.312l1.077,-1.068c0.083,-0.083,0.194,-0.128,0.311,-0.128c0.119,0,0.23,0.046,0.314,0.131l2.901,2.926c0.17,0.171,0.17,0.45,0,0.622l-2.901,2.926C11.797,11.821,11.686,11.868,11.567,11.868z" fill="#FFFFFF" opacity="0.5"/>
+    <path d="M11.21,6.291L13.4,8.5l-2.19,2.209M13.312,8.5L9,8.5" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M4.442,11.868c0.117,0,0.228,-0.045,0.311,-0.128l1.077,-1.068c0.084,-0.083,0.13,-0.194,0.131,-0.312c0,-0.118,-0.045,-0.229,-0.128,-0.313L5.488,9.7h1.779c0.244,0,0.442,-0.198,0.442,-0.442V7.742c0,-0.244,-0.198,-0.442,-0.442,-0.442H5.488l0.344,-0.347c0.083,-0.084,0.129,-0.195,0.128,-0.313c-0.001,-0.118,-0.047,-0.229,-0.131,-0.312L4.753,5.26c-0.083,-0.083,-0.194,-0.128,-0.311,-0.128c-0.119,0,-0.23,0.046,-0.314,0.131L1.227,8.189c-0.17,0.171,-0.17,0.45,0,0.622l2.901,2.926C4.212,11.821,4.323,11.868,4.442,11.868z" fill="#FFFFFF" opacity="0.5"/>
+    <path d="M4.799,10.709L2.609,8.5l2.19,-2.209M7.009,8.5l-4.312,0" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+  </g>
+</svg>

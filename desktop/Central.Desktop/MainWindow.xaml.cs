@@ -3991,7 +3991,7 @@ public partial class MainWindow
     {
         try
         {
-            var apiUrl = App.Settings?.Get<string>("api.url") ?? "http://localhost:5000";
+            var apiUrl = App.Settings?.Get<string>("api.url") ?? "http://192.168.56.203:8000";
             using var client = new Central.Api.Client.CentralApiClient(apiUrl);
             var loginResult = await client.LoginAsync(AuthContext.Instance.CurrentUser?.Username ?? Environment.UserName);
             if (loginResult == null) { VM.StatusText = "Jobs: API login failed"; return; }
@@ -4039,7 +4039,7 @@ public partial class MainWindow
         {
             try
             {
-                var apiUrl = App.Settings?.Get<string>("api.url") ?? "http://localhost:5000";
+                var apiUrl = App.Settings?.Get<string>("api.url") ?? "http://192.168.56.203:8000";
                 using var client = new Central.Api.Client.CentralApiClient(apiUrl);
                 var login = await client.LoginAsync(AuthContext.Instance.CurrentUser?.Username ?? Environment.UserName);
                 if (login == null) { VM.StatusText = "Jobs: API login failed"; return; }
@@ -5786,7 +5786,7 @@ public partial class MainWindow
         };
         ModeApiButton.Click += async (_, _) =>
         {
-            var url = App.Settings?.Get<string>("api.url") ?? "http://localhost:5000";
+            var url = App.Settings?.Get<string>("api.url") ?? "http://192.168.56.203:8000";
             if (App.Connectivity != null)
             {
                 App.Connectivity.ApiUrl = url;
@@ -5812,7 +5812,7 @@ public partial class MainWindow
         };
         ModeTestApiButton.Click += async (_, _) =>
         {
-            var url = App.Settings?.Get<string>("api.url") ?? "http://localhost:5000";
+            var url = App.Settings?.Get<string>("api.url") ?? "http://192.168.56.203:8000";
             BackstageModeStatus.Text = "Testing...";
             try
             {

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M12.5,8.5M12.5,8.5" Fill="#FFFFFF" Opacity="0.5"/>
+      <Path Data="M13,3v-0.2929l2,-2v5.7906l-2,2.2V3zM14.2929,0l-3.8952,0l-2.1,2H12h0.2929L14.2929,0zM8,3v6h4V3H8z" Fill="#EEAC55"/>
+      <Polygon Points="15,0 15,0.7071 13,2.7071 13,3 13,8.6977 12.7166,9 12,9 12,3 8,3 8,2.2881 8.2977,2 12,2 12.2929,2 14.2929,0" Fill="#FFFFFF" StrokeLineJoin="Miter" Opacity="0.5"/>
+      <Path Data="M13,10.1v-0.0929l2,-2.2v5.4906l-2,2.4V10.1zM8,10v6h4v-6H8z" Fill="#6485C3"/>
+      <Polygon Points="15,6.6 15,7.8071 13,9.9071 13,10 13,15.6977 12.7166,16 12,16 12,10 8,10 8,9 12.6929,9" Fill="#FFFFFF" StrokeLineJoin="Miter" Opacity="0.5"/>
+      <Path Data="M4.5,10.5M4.5,10.5" Fill="#FFFFFF" Opacity="0.5"/>
+      <Path Data="M5,7v-0.2929l2,-2v3.7906l-2,2.2V7zM6.2929,4H2.3977l-2.1,2H4h0.2929L6.2929,4zM0,7l0,4h4V7H0z" Fill="#EEAC55"/>
+      <Polygon Points="7,4 7,4.7071 5,6.7071 5,7 5,10.6977 4.7166,11 4,11 4,7 0,7 0,6.2881 0.2977,6 4,6 4.2929,6 6.2929,4" Fill="#FFFFFF" StrokeLineJoin="Miter" Opacity="0.5"/>
+      <Path Data="M5,12.1v-0.0929l2,-2.2v3.4906l-2,2.4V12.1zM0,12l0,4h4v-4H0z" Fill="#6485C3"/>
+      <Polygon Points="7,8.6 7,9.8071 5,11.9071 5,12 5,15.6977 4.7166,16 4,16 4,12 0,12 0,11 4.6929,11" Fill="#FFFFFF" StrokeLineJoin="Miter" Opacity="0.5"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

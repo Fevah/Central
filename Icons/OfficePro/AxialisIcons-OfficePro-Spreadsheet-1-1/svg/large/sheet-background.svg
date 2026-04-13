@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <rect x="1.5" y="2.5" width="29" height="22" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <polygon points="16.5,24.5 1.5,24.5 1.5,28.5 12.533,28.5" fill="#92CBEE" stroke="#0964B0" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+    <polygon points="17.414,25.6 14.039,29 19.733,29 23.108,25.6" fill="#78797A" stroke-linejoin="miter" opacity="0.2"/>
+    <polygon points="21.708,25.6 19.325,28 15.031,28 14.039,29 19.742,29 23.117,25.6" fill="#78797A" stroke-linejoin="miter" opacity="0.3"/>
+    <polygon points="24.214,25.6 20.839,29 26.533,29 29.908,25.6" fill="#78797A" stroke-linejoin="miter" opacity="0.2"/>
+    <polygon points="28.508,25.6 26.125,28 21.831,28 20.839,29 26.542,29 29.917,25.6" fill="#78797A" stroke-linejoin="miter" opacity="0.3"/>
+    <path d="M15.5,24.5h15.5M31,24H15.5v1h15.5V24z" fill="none"/>
+    <path d="M9,9h7v1.147c-0.275,0.09,-0.581,0.143,-0.916,0.153c-0.087,0.012,-0.156,0.015,-0.191,0.015H9V9zM8,10.285V9H5.184C5.575,9.972,6.865,10.225,8,10.285zM16,14.874L12.622,18H16V14.874zM14.682,15.245L13.386,14H9v4h2.691L14.682,15.245zM10.752,12.439l-0.633,0.561h2.225l-0.583,-0.559C11.513,12.2,11.001,12.2,10.752,12.439zM23,14h-6v4h6V14zM24,18h5v-0.202c0,-0.096,-0.044,-0.189,-0.124,-0.266L25.178,14H24V18zM16,19H9v4h7V19zM17,9v0.534c0.153,-0.159,0.279,-0.338,0.378,-0.534H17zM9,8h7V5.757c-0.419,-0.176,-0.895,-0.275,-1.401,-0.275c-0.442,0,-0.861,0.076,-1.24,0.213C12.831,4.697,11.636,4,10.246,4c-0.44,0,-0.86,0.07,-1.246,0.197V8zM8,19H3.35l-0.35,0.311V23h5V19zM8,8V4.707c-0.598,0.439,-1.009,1.05,-1.124,1.741C5.966,6.669,5.273,7.265,5.105,8H8zM24,19v4h5v-4H24zM17,8h0.626c0.001,-0.031,0.002,-0.061,0.002,-0.092c0,-0.557,-0.234,-1.069,-0.628,-1.479V8zM8,18v-3.122L4.479,18H8zM23,19h-6v4h6V19zM21.619,10.599c-0.249,-0.238,-0.75,-0.238,-1,0L18.025,13H23v-1.081L21.619,10.599zM24,13h0.132l-0.132,-0.126V13z" fill="#1DB4C9" opacity="0.4"/>
+    <path d="M2,8.5h28M2,13.5h28M2,18.5h28M8.5,3v21M16.5,3v21M23.5,3v21" fill="none" stroke="#787979" stroke-width="1" stroke-miterlimit="1" opacity="0.5"/>
+    <rect x="2.5" y="3.5" width="27" height="20" fill="none" stroke="#FFFFFF" stroke-width="1" stroke-miterlimit="1" opacity="0.5"/>
+  </g>
+</svg>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M9.272,10.242l-2.781,2.749l-2.781,-2.749M6.491,12.84l0,-7.366c0,-1.095,0.888,-1.983,1.983,-1.983h4.517" Stroke="#228BCB" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M27.3,9.909c0,0,0,2.638,0,2.954c0,1.22,-2.862,2.638,-6.398,2.638c-3.536,0,-6.402,-1.417,-6.402,-2.623c0,-0.27,0,-2.969,0,-2.969" Fill="#F7DA8E" Stroke="#E57428" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M27.3,9.893c0,1.599,-2.83,2.668,-6.376,2.668c-3.547,0,-6.422,-1.07,-6.422,-2.668c0,-0.945,1.225,-1.995,3.198,-2.417" Fill="#F7DA8E" Stroke="#E57428" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M30.5,4.449c0,0,0,2.674,0,2.994c0,1.237,-2.862,2.673,-6.398,2.673c-3.536,0,-6.402,-1.436,-6.402,-2.658c0,-0.274,0,-3.008,0,-3.008" Fill="#F7DA8E" Stroke="#E57428" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M24.124,1.5C27.67,1.5,30.5,2.813,30.5,4.433s-2.83,2.704,-6.376,2.704c-3.547,0,-6.422,-1.084,-6.422,-2.704S20.577,1.5,24.124,1.5z" Fill="#F7DA8E" Stroke="#E57428" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M17.5,30.6H2.6v-2.028h14.9V30.6zM10.05,15.7L1.8,19.711v0.85h2v7.96h12.55v-7.96H18.3v-0.85L10.05,15.7z" Fill="#FFFFFF"/>
+      <Path Data="M17.5,30.6H2.6v-2.028h14.9V30.6zM10.05,15.7L1.8,19.711v0.85h2v7.96h12.55v-7.96H18.3v-0.85L10.05,15.7z" Fill="#C8C6C4" Opacity="0.4"/>
+      <Rectangle Canvas.Left="8.5" Canvas.Top="23.5" Width="3" Height="5" Fill="#F7DA8E" Stroke="#E57428" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+      <Polygon Points="17.5,28.5 2.5,28.5 2.5,30.5 17.517,30.5" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1" StrokeLineJoin="Miter"/>
+      <Path Data="M10,15.6l8.5,4.339V20.5H1.5v-0.561L10,15.6z" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M5.5,28.5v-8H3.5v8H5.5zM16.5,28.5v-8h-2v8H16.5z" Fill="#C8C6C4" Stroke="#383838" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+      <Line X1="1" Y1="30.5" X2="19" Y2="30.5" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Ellipse Canvas.Left="9" Canvas.Top="17.4" Width="2" Height="2" Fill="#78797A"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

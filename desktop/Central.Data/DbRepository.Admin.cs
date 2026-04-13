@@ -12,8 +12,7 @@ public partial class DbRepository
     public async Task<Dictionary<string, int>> GetSoftDeletedCountsAsync()
     {
         var counts = new Dictionary<string, int>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         foreach (var table in PurgeableTables)
         {
             try
@@ -31,8 +30,7 @@ public partial class DbRepository
     public async Task<int> PurgeSoftDeletedAsync(string tableName)
     {
         if (!PurgeableTables.Contains(tableName)) return 0;
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand($"DELETE FROM {tableName} WHERE is_deleted = true", conn);
         return await cmd.ExecuteNonQueryAsync();
     }
@@ -42,8 +40,7 @@ public partial class DbRepository
     public async Task<List<Country>> GetCountriesAsync()
     {
         var list = new List<Country>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT id, code, name, sort_order FROM countries ORDER BY sort_order, name", conn);
         await using var r = await cmd.ExecuteReaderAsync();
         while (await r.ReadAsync())
@@ -53,8 +50,7 @@ public partial class DbRepository
 
     public async Task UpsertCountryAsync(Country c)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (c.Id == 0)
         {
             await using var cmd = new NpgsqlCommand("INSERT INTO countries (code, name, sort_order) VALUES (@c, @n, @s) RETURNING id", conn);
@@ -72,8 +68,7 @@ public partial class DbRepository
 
     public async Task DeleteCountryAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM countries WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -82,8 +77,7 @@ public partial class DbRepository
     public async Task<List<Region>> GetRegionsAsync(int? countryId = null)
     {
         var list = new List<Region>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var where = countryId.HasValue ? "WHERE r.country_id=@cid" : "";
         await using var cmd = new NpgsqlCommand(
             $"SELECT r.id, r.country_id, r.code, r.name, r.sort_order, c.name FROM regions r JOIN countries c ON c.id=r.country_id {where} ORDER BY c.name, r.sort_order, r.name", conn);
@@ -96,8 +90,7 @@ public partial class DbRepository
 
     public async Task UpsertRegionAsync(Region rg)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (rg.Id == 0)
         {
             await using var cmd = new NpgsqlCommand("INSERT INTO regions (country_id, code, name, sort_order) VALUES (@cid, @c, @n, @s) RETURNING id", conn);
@@ -116,8 +109,7 @@ public partial class DbRepository
 
     public async Task DeleteRegionAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM regions WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -128,8 +120,7 @@ public partial class DbRepository
     public async Task<List<ReferenceConfig>> GetReferenceConfigsAsync()
     {
         var list = new List<ReferenceConfig>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, entity_type, prefix, suffix, pad_length, next_value, COALESCE(description,'') FROM reference_config ORDER BY entity_type", conn);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -145,8 +136,7 @@ public partial class DbRepository
 
     public async Task UpsertReferenceConfigAsync(ReferenceConfig rc)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             @"INSERT INTO reference_config (entity_type, prefix, suffix, pad_length, next_value, description)
               VALUES (@et, @p, @s, @pl, @nv, @d)
@@ -159,8 +149,7 @@ public partial class DbRepository
 
     public async Task<string> GetNextReferenceAsync(string entityType)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT next_reference(@t)", conn);
         cmd.Parameters.AddWithValue("t", entityType);
         return (string)(await cmd.ExecuteScalarAsync())!;
@@ -171,8 +160,7 @@ public partial class DbRepository
     public async Task<List<Appointment>> GetAppointmentsAsync(DateTime start, DateTime end)
     {
         var list = new List<Appointment>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             @"SELECT id, subject, COALESCE(description,''), start_time, end_time, all_day, COALESCE(location,''),
                       resource_id, status, label, COALESCE(recurrence_info,''), task_id, ticket_id, created_by, created_at
@@ -195,8 +183,7 @@ public partial class DbRepository
 
     public async Task UpsertAppointmentAsync(Appointment a)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (a.Id == 0)
         {
             await using var cmd = new NpgsqlCommand(
@@ -236,8 +223,7 @@ public partial class DbRepository
 
     public async Task DeleteAppointmentAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM appointments WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -246,8 +232,7 @@ public partial class DbRepository
     public async Task<List<AppointmentResource>> GetAppointmentResourcesAsync()
     {
         var list = new List<AppointmentResource>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, user_id, display_name, color, is_active FROM appointment_resources ORDER BY display_name", conn);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -265,8 +250,7 @@ public partial class DbRepository
     public async Task<List<PanelCustomizationRecord>> GetPanelCustomizationsAsync(int userId, string? panelName = null)
     {
         var list = new List<PanelCustomizationRecord>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var where = panelName != null ? "WHERE user_id=@uid AND panel_name=@pn" : "WHERE user_id=@uid";
         await using var cmd = new NpgsqlCommand(
             $"SELECT id, user_id, panel_name, setting_type, setting_key, setting_json::text FROM panel_customizations {where} ORDER BY panel_name, setting_type", conn);
@@ -284,8 +268,7 @@ public partial class DbRepository
 
     public async Task UpsertPanelCustomizationAsync(int userId, string panelName, string settingType, string settingKey, string settingJson)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             @"INSERT INTO panel_customizations (user_id, panel_name, setting_type, setting_key, setting_json)
                VALUES (@uid, @pn, @st, @sk, @sj::jsonb)
@@ -298,8 +281,7 @@ public partial class DbRepository
 
     public async Task DeletePanelCustomizationAsync(int userId, string panelName, string settingType)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "DELETE FROM panel_customizations WHERE user_id=@uid AND panel_name=@pn AND setting_type=@st", conn);
         cmd.Parameters.AddWithValue("uid", userId); cmd.Parameters.AddWithValue("pn", panelName); cmd.Parameters.AddWithValue("st", settingType);
@@ -321,8 +303,7 @@ public partial class DbRepository
 
     public async Task SetDefaultSavedFilterAsync(int userId, string panelName, int filterId)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var clear = new NpgsqlCommand(
             "UPDATE saved_filters SET is_default=false WHERE panel_name=@p AND (user_id=@u OR user_id IS NULL)", conn);
         clear.Parameters.AddWithValue("p", panelName); clear.Parameters.AddWithValue("u", userId);
@@ -336,8 +317,7 @@ public partial class DbRepository
 
     public async Task BulkUpsertAdUsersAsync(List<AppUser> users)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         foreach (var u in users)
         {
             await using var cmd = new NpgsqlCommand(

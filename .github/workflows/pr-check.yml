@@ -1,0 +1,59 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # Quick checks that block merge
+  dotnet:
+    name: .NET Build + 1900 Tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet build desktop/Central.sln -c Release -p:Platform=x64
+      - run: dotnet test desktop/Central.Tests/ -c Release -p:Platform=x64 --no-build
+
+  angular:
+    name: Angular Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: web-client/package-lock.json
+      - run: cd web-client && npm ci && npx ng build --configuration production
+
+  terraform:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: |
+          for mod in infra/modules/*/; do
+            cd "$mod" && terraform init -backend=false && terraform validate && cd "$GITHUB_WORKSPACE"
+          done
+
+  sql-lint:
+    name: SQL Migration Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check migration numbering
+        run: |
+          prev=0
+          for f in db/migrations/*.sql; do
+            num=$(basename "$f" | grep -oP '^\d+')
+            if [ "$num" -le "$prev" ]; then
+              echo "ERROR: Migration $f has non-sequential number ($num <= $prev)"
+              exit 1
+            fi
+            prev=$num
+          done
+          echo "All $prev migrations sequential"

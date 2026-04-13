@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <rect x="1.5" y="3.5" width="29" height="25" fill="#FFFFFF"/>
+    <rect x="1.5" y="3.5" width="29" height="8" fill="#C8C6C4"/>
+    <path d="M30.5,28.5H1.5V3.5h29V28.5zM1.5,11.5h28.8M1.5,7.5h28.8" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M28.394,7.474l-0.017,0.016M24.335,3.5l4.042,3.99M21.579,7.49l0.017,0.016M21.596,7.474l-0.017,0.016M17.537,3.5l4.042,3.99M28.377,7.49l0.017,0.016M21.579,7.49l-4.082,4.016M28.377,7.49l-4.082,4.016M3.941,3.5l4.042,3.99M14.781,7.49L10.7,11.506M7.984,7.49L8,7.506M7.984,7.49l-4.082,4.016M8,7.474l-0.017,0.016M14.781,7.49l0.017,0.016M14.798,7.474l-0.017,0.016M10.739,3.5l4.042,3.99" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <polygon points="11.5,15.654 11.5,24.346 20.5,20" fill="#FFFFFF" stroke="#228BCB" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+  </g>
+</svg>

@@ -1,0 +1,732 @@
+# =============================================================================
+# Central Platform Services — All microservices in K8s
+# =============================================================================
+
+# --- Central API (.NET) ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: central-api
+  namespace: central
+  labels: &api-labels
+    app: central-api
+    app.kubernetes.io/part-of: central-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: central-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels: *api-labels
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5000"
+    spec:
+      serviceAccountName: central-service
+      initContainers:
+        - name: wait-postgres
+          image: postgres:18-alpine
+          command: ["sh", "-c", "until pg_isready -h postgres -p 5432; do sleep 2; done"]
+      containers:
+        - name: central-api
+          image: 192.168.56.10:30500/central/central-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
+              name: http
+          env:
+            - name: CENTRAL_DSN
+              value: "Host=postgres;Port=5432;Database=central;Username=central;Password=central"
+            - name: ASPNETCORE_URLS
+              value: "http://+:5000"
+            - name: CENTRAL_AUTH_SERVICE_URL
+              value: "http://auth-service:8081"
+            - name: CENTRAL_DEFAULT_TENANT_ID
+              value: "00000000-0000-0000-0000-000000000001"
+          envFrom:
+            - secretRef:
+                name: central-secrets
+                optional: true
+          resources:
+            requests: { cpu: 200m, memory: 256Mi }
+            limits: { cpu: "1", memory: 1Gi }
+          livenessProbe:
+            httpGet: { path: /api/health, port: 5000 }
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /api/health, port: 5000 }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: central-api
+  namespace: central
+spec:
+  type: LoadBalancer
+  selector:
+    app: central-api
+  ports:
+    - port: 5000
+      targetPort: 5000
+      name: http
+
+---
+# --- Task Service (Rust) ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: task-service
+  namespace: central
+  labels:
+    app: task-service
+    app.kubernetes.io/part-of: central-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: task-service
+  template:
+    metadata:
+      labels:
+        app: task-service
+        app.kubernetes.io/part-of: central-platform
+    spec:
+      serviceAccountName: central-service
+      initContainers:
+        - name: wait-postgres
+          image: postgres:18-alpine
+          command: ["sh", "-c", "until pg_isready -h postgres -p 5432; do sleep 2; done"]
+      containers:
+        - name: task-service
+          image: 192.168.56.10:30500/central/task-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8085
+              name: http
+          env:
+            - name: DATABASE_URL
+              value: "postgres://central:central@postgres:5432/central"
+            - name: TASK_SERVICE_PORT
+              value: "8085"
+            - name: RUST_LOG
+              value: "task_service=info,tower_http=info,sqlx=warn"
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          livenessProbe:
+            httpGet: { path: /health, port: 8085 }
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /health, port: 8085 }
+            periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: task-service
+  namespace: central
+spec:
+  type: ClusterIP
+  selector:
+    app: task-service
+  ports:
+    - port: 8085
+      targetPort: 8085
+      name: http
+
+---
+# --- Storage Service (Rust) ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: storage-service
+  namespace: central
+  labels:
+    app: storage-service
+    app.kubernetes.io/part-of: central-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: storage-service
+  template:
+    metadata:
+      labels:
+        app: storage-service
+    spec:
+      serviceAccountName: central-service
+      initContainers:
+        - name: wait-postgres
+          image: postgres:18-alpine
+          command: ["sh", "-c", "until pg_isready -h postgres -p 5432; do sleep 2; done"]
+      containers:
+        - name: storage-service
+          image: 192.168.56.10:30500/central/storage-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8084
+              name: http
+          env:
+            - name: STORAGE__SERVER__HOST
+              value: "0.0.0.0"
+            - name: STORAGE__SERVER__PORT
+              value: "8084"
+            - name: STORAGE__SERVER__WORKERS
+              value: "4"
+            - name: STORAGE__DATABASE__HOST
+              value: "postgres"
+            - name: STORAGE__DATABASE__PORT
+              value: "5432"
+            - name: STORAGE__DATABASE__USERNAME
+              value: "central"
+            - name: STORAGE__DATABASE__PASSWORD
+              value: "central"
+            - name: STORAGE__DATABASE__DATABASE
+              value: "central"
+            - name: STORAGE__DATABASE__SSL_MODE
+              value: "disable"
+            - name: STORAGE__DATABASE__POOL_SIZE
+              value: "10"
+            - name: STORAGE__STORAGE__BACKEND
+              value: "minio"
+            - name: STORAGE__STORAGE__MAX_OBJECT_SIZE_MB
+              value: "512"
+            - name: STORAGE__STORAGE__PRESIGNED_URL_EXPIRY_SECS
+              value: "3600"
+            - name: STORAGE__MINIO__ENDPOINT
+              value: "http://minio:9000"
+            - name: STORAGE__MINIO__ACCESS_KEY
+              value: "minioadmin"
+            - name: STORAGE__MINIO__SECRET_KEY
+              value: "minioadmin"
+            - name: STORAGE__MINIO__REGION
+              value: "us-east-1"
+            - name: STORAGE__MINIO__DEFAULT_BUCKET
+              value: "central-storage"
+            - name: STORAGE__MINIO__FORCE_PATH_STYLE
+              value: "true"
+            - name: STORAGE__AUTH__AUTH_SERVICE_URL
+              value: "http://auth-service:8081"
+            - name: RUST_LOG
+              value: "storage_service=info,tower_http=info"
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          livenessProbe:
+            httpGet: { path: /health, port: 8084 }
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /health, port: 8084 }
+            periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: storage-service
+  namespace: central
+spec:
+  type: ClusterIP
+  selector:
+    app: storage-service
+  ports:
+    - port: 8084
+      targetPort: 8084
+      name: http
+
+---
+# --- Sync Service (Rust) ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sync-service
+  namespace: central
+  labels:
+    app: sync-service
+    app.kubernetes.io/part-of: central-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sync-service
+  template:
+    metadata:
+      labels:
+        app: sync-service
+    spec:
+      serviceAccountName: central-service
+      initContainers:
+        - name: wait-postgres
+          image: postgres:18-alpine
+          command: ["sh", "-c", "until pg_isready -h postgres -p 5432; do sleep 2; done"]
+      containers:
+        - name: sync-service
+          image: 192.168.56.10:30500/central/sync-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8083
+              name: http
+          env:
+            - name: SYNC__SERVER__HOST
+              value: "0.0.0.0"
+            - name: SYNC__SERVER__PORT
+              value: "8083"
+            - name: SYNC__SERVER__WORKERS
+              value: "4"
+            - name: SYNC__DATABASE__HOST
+              value: "postgres"
+            - name: SYNC__DATABASE__PORT
+              value: "5432"
+            - name: SYNC__DATABASE__USERNAME
+              value: "central"
+            - name: SYNC__DATABASE__PASSWORD
+              value: "central"
+            - name: SYNC__DATABASE__DATABASE
+              value: "central"
+            - name: SYNC__DATABASE__SSL_MODE
+              value: "disable"
+            - name: SYNC__DATABASE__POOL_SIZE
+              value: "10"
+            - name: SYNC__REDIS__URL
+              value: "redis://redis:6379"
+            - name: SYNC__REDIS__POOL_SIZE
+              value: "5"
+            - name: SYNC__SYNC__MAX_BATCH_SIZE
+              value: "100"
+            - name: SYNC__SYNC__CHANGE_RETENTION_DAYS
+              value: "90"
+            - name: SYNC__SYNC__SSE_HEARTBEAT_SECS
+              value: "30"
+            - name: SYNC__AUTH__AUTH_SERVICE_URL
+              value: "http://auth-service:8081"
+            - name: RUST_LOG
+              value: "sync_service=info,tower_http=info"
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          livenessProbe:
+            httpGet: { path: /health, port: 8083 }
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /health, port: 8083 }
+            periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sync-service
+  namespace: central
+spec:
+  type: ClusterIP
+  selector:
+    app: sync-service
+  ports:
+    - port: 8083
+      targetPort: 8083
+      name: http
+
+---
+# --- Admin Service (Rust) ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-service
+  namespace: central
+  labels:
+    app: admin-service
+    app.kubernetes.io/part-of: central-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: admin-service
+  template:
+    metadata:
+      labels:
+        app: admin-service
+    spec:
+      serviceAccountName: central-service
+      containers:
+        - name: admin-service
+          image: 192.168.56.10:30500/central/admin-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: ADMIN__SERVER__HOST
+              value: "0.0.0.0"
+            - name: ADMIN__SERVER__PORT
+              value: "8080"
+            - name: ADMIN__DATABASE__HOST
+              value: "postgres"
+            - name: ADMIN__DATABASE__PORT
+              value: "5432"
+            - name: ADMIN__DATABASE__USERNAME
+              value: "central"
+            - name: ADMIN__DATABASE__PASSWORD
+              value: "central"
+            - name: ADMIN__DATABASE__DATABASE
+              value: "central"
+            - name: ADMIN__REDIS__URL
+              value: "redis://redis:6379"
+            - name: RUST_LOG
+              value: "admin_service=info,tower_http=info"
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          livenessProbe:
+            httpGet: { path: /health, port: 8080 }
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /health, port: 8080 }
+            periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin-service
+  namespace: central
+spec:
+  type: ClusterIP
+  selector:
+    app: admin-service
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+
+---
+# --- Audit Service (Rust) ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: audit-service
+  namespace: central
+  labels:
+    app: audit-service
+    app.kubernetes.io/part-of: central-platform
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: audit-service
+  template:
+    metadata:
+      labels:
+        app: audit-service
+    spec:
+      serviceAccountName: central-service
+      containers:
+        - name: audit-service
+          image: 192.168.56.10:30500/central/audit-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8082
+              name: http
+          env:
+            - name: AUDIT__SERVER__HOST
+              value: "0.0.0.0"
+            - name: AUDIT__SERVER__PORT
+              value: "8082"
+            - name: AUDIT__DATABASE__HOST
+              value: "postgres"
+            - name: AUDIT__DATABASE__PORT
+              value: "5432"
+            - name: AUDIT__DATABASE__USERNAME
+              value: "central"
+            - name: AUDIT__DATABASE__PASSWORD
+              value: "central"
+            - name: AUDIT__DATABASE__DATABASE
+              value: "central"
+            - name: RUST_LOG
+              value: "audit_service=info,tower_http=info"
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          livenessProbe:
+            httpGet: { path: /health, port: 8082 }
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /health, port: 8082 }
+            periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: audit-service
+  namespace: central
+spec:
+  type: ClusterIP
+  selector:
+    app: audit-service
+  ports:
+    - port: 8082
+      targetPort: 8082
+      name: http
+
+---
+# --- Auth Service (Rust) ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: central
+  labels: &auth-labels
+    app: auth-service
+    app.kubernetes.io/part-of: central-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels: *auth-labels
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8081"
+    spec:
+      serviceAccountName: central-service
+      initContainers:
+        - name: wait-postgres
+          image: postgres:18-alpine
+          command: ["sh", "-c", "until pg_isready -h postgres -p 5432 -d secure_auth; do sleep 2; done"]
+      containers:
+        - name: auth-service
+          image: 192.168.56.10:30500/central/auth-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081
+              name: http
+          env:
+            - name: DATABASE_HOST
+              value: "postgres"
+            - name: DATABASE_PORT
+              value: "5432"
+            - name: DATABASE_NAME
+              value: "secure_auth"
+            - name: DATABASE_USER
+              value: "central"
+            - name: DATABASE_PASSWORD
+              value: "central"
+            - name: REDIS_URL
+              value: "redis://redis:6379"
+            - name: AUTH__JWT__SIGNING_KEY
+              value: "Central-Auth-Shared-JWT-Key-Override-This-In-Production-32bytes!"
+            - name: AUTH__JWT__ISSUER
+              value: "central-auth"
+            - name: AUTH__JWT__AUDIENCE
+              value: "central"
+            - name: AUTH__ENCRYPTION__KEY
+              value: "Q2VudHJhbC1BdXRoLUVuY3J5cHRpb24tS2V5LTMyYnl0ZXMh"
+            - name: AUTH__SERVER__PORT
+              value: "8081"
+            - name: RUST_LOG
+              value: "auth_service=info,tower_http=info"
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          startupProbe:
+            httpGet: { path: /health, port: 8081 }
+            failureThreshold: 24
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 8081 }
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /health, port: 8081 }
+            periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: central
+spec:
+  type: ClusterIP
+  selector:
+    app: auth-service
+  ports:
+    - port: 8081
+      targetPort: 8081
+      name: http
+
+---
+# --- HPA for elastic scaling ---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: central-api-hpa
+  namespace: central
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: central-api
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 70 }
+    - type: Resource
+      resource:
+        name: memory
+        target: { type: Utilization, averageUtilization: 80 }
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: auth-service-hpa
+  namespace: central
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: auth-service
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 70 }
+
+---
+# --- API Gateway (Rust) ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: central
+  labels:
+    app: gateway
+    app.kubernetes.io/part-of: central-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+        app.kubernetes.io/part-of: central-platform
+    spec:
+      serviceAccountName: central-service
+      containers:
+        - name: gateway
+          image: 192.168.56.10:30500/central/gateway-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: GATEWAY_PORT
+              value: "8000"
+            - name: AUTH_SERVICE_URL
+              value: "http://auth-service:8081"
+            - name: CENTRAL_API_URL
+              value: "http://central-api:5000"
+            - name: AUTH_SERVICE_JWT_SECRET
+              value: "Central-Auth-Shared-JWT-Key-Override-This-In-Production-32bytes!"
+            - name: RUST_LOG
+              value: "gateway_service=info,tower_http=info"
+          resources:
+            requests: { cpu: 100m, memory: 64Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+          livenessProbe:
+            httpGet: { path: /ready, port: 8000 }
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /ready, port: 8000 }
+            periodSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: central
+spec:
+  type: LoadBalancer
+  selector:
+    app: gateway
+  ports:
+    - port: 8000
+      targetPort: 8000
+      name: http
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: gateway-hpa
+  namespace: central
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: gateway
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 60 }
+
+---
+# --- PDB for zero-downtime ---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: central-api-pdb
+  namespace: central
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: central-api
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: auth-service-pdb
+  namespace: central
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: auth-service
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: postgres-pdb
+  namespace: central
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: postgres

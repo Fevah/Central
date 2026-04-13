@@ -1,0 +1,4 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<AddressValidationApis>
+  <AddressValidationApi Name="Addressify" Webpage="http://www.addressify.com.au" BaseUrl="http://api.addressify.com.au" />
+</AddressValidationApis>

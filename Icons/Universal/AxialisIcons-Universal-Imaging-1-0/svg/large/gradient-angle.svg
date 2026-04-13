@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="24px" height="24px" viewBox="0 0 24 24" enable-background="new 0 0 24 24" xml:space="preserve">
+  <g id="icon">
+    <path d="M22,22H2V2h20V22z" fill="#FFFFFF" opacity="0.5"/>
+    <path d="M24,24H0V0h24V24zM2,22h20V2H2V22z" fill="#7B7B7B"/>
+    <g>
+      <polygon points="12,12 10.5902,3 7.2323,3" fill="#8C8E90" stroke-linejoin="miter"/>
+      <polygon points="3,3.7526 12,12 7.2896,3 3,3" fill="#939598" stroke-linejoin="miter"/>
+      <polygon points="3,8.366 12,12 3,3.6251" fill="#9B9DA0" stroke-linejoin="miter"/>
+      <polygon points="3,11.9835 12,12 3,8.2524" fill="#A5A7AA" stroke-linejoin="miter"/>
+      <polygon points="21,12 12,12 21,15.5911" fill="#DEDFE0" stroke-linejoin="miter"/>
+      <polygon points="21,15.5779 12,12 21,20.2894" fill="#D8D9DA" stroke-linejoin="miter"/>
+      <polygon points="21,20.2783 12,12 16.6902,21 21,21" fill="#D1D3D4" stroke-linejoin="miter"/>
+      <polygon points="12,12 13.379,21 16.728,21" fill="#CBCCCE" stroke-linejoin="miter"/>
+      <polygon points="12,12 10.5487,21 13.5113,21" fill="#C4C6C8" stroke-linejoin="miter"/>
+      <polygon points="10.5902,21 12,12 7.2323,21" fill="#BEC0C2" stroke-linejoin="miter"/>
+      <polygon points="3,21 7.2896,21 12,12 3,20.2474" fill="#B8BABC" stroke-linejoin="miter"/>
+      <polygon points="3,20.3749 12,12 3,15.634" fill="#B1B3B6" stroke-linejoin="miter"/>
+      <polygon points="3,15.7476 12,12 3,12.0165" fill="#ABADB0" stroke-linejoin="miter"/>
+      <polygon points="21,12 21,8.4089 12,12" fill="#E6E7E8" stroke-linejoin="miter"/>
+      <polygon points="21,8.4221 21,3.7106 12,12" fill="#EFEFF0" stroke-linejoin="miter"/>
+      <polygon points="21,3 16.6902,3 12,12 21,3.7217" fill="#F6F6F6" stroke-linejoin="miter"/>
+      <polygon points="13.379,3 12,12 16.728,3" fill="#7E8083" stroke-linejoin="miter"/>
+      <polygon points="12,12 13.5113,3 10.5487,3" fill="#86888A" stroke-linejoin="miter"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M0.5,12.5V3.5h14v9H0.5z" Fill="#FFFFFF" Opacity="0.4"/>
+      <Path Data="M0,13V3h15v3h1v4h-1v3H0zM1,4v8h13V4H1z" Fill="#6D6E71"/>
+      <Rectangle Canvas.Left="-0.5" Canvas.Top="7.5" Width="6" Height="1" RenderTransformOrigin="0.0833333 -7.5" Fill="#CB525D">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="-1.83697e-16 1 -1 -1.83697e-16 10.5 5.5"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+    </Canvas>
+  </Canvas>
+</Viewbox>

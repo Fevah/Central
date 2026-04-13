@@ -1,0 +1,136 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{91AA6D14-173C-4814-9909-E4FDB2C27DE4}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>TIG.TotalLink.Shared.DataModel.Purchasing</RootNamespace>
+    <AssemblyName>TIG.TotalLink.Shared.DataModel.Purchasing</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <SccProjectName>SAK</SccProjectName>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccProvider>SAK</SccProvider>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Dev|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Dev\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;TEST</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Test|AnyCPU'">
+    <OutputPath>bin\Test\</OutputPath>
+    <DefineConstants>TRACE;TEST</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="DevExpress.Data.v15.1, Version=15.1.5.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" />
+    <Reference Include="DevExpress.Xpo.v15.1, Version=15.1.5.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="DataModelCode\PurchaseOrder.cs" />
+    <Compile Include="DataModelCode\PurchaseOrder.Designer.cs">
+      <DependentUpon>PurchaseOrder.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\PurchaseOrderItem.cs" />
+    <Compile Include="DataModelCode\PurchaseOrderItem.Designer.cs">
+      <DependentUpon>PurchaseOrderItem.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\PurchaseOrderReceipt.cs" />
+    <Compile Include="DataModelCode\PurchaseOrderReceipt.Designer.cs">
+      <DependentUpon>PurchaseOrderReceipt.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\PurchaseOrderReceiptItem.cs" />
+    <Compile Include="DataModelCode\PurchaseOrderReceiptItem.Designer.cs">
+      <DependentUpon>PurchaseOrderReceiptItem.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\PurchaseOrderReceiptStatus.cs" />
+    <Compile Include="DataModelCode\PurchaseOrderReceiptStatus.Designer.cs">
+      <DependentUpon>PurchaseOrderReceiptStatus.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\PurchaseOrderStatus.cs" />
+    <Compile Include="DataModelCode\PurchaseOrderStatus.Designer.cs">
+      <DependentUpon>PurchaseOrderStatus.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Populate.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Data\PurchaseReceiptStatus.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Data\PurchaseOrderStatus.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Core\TIG.TotalLink.Shared.DataModel.Core\TIG.TotalLink.Shared.DataModel.Core.csproj">
+      <Project>{FB358652-45F1-4410-99DA-19D72833DCD6}</Project>
+      <Name>TIG.TotalLink.Shared.DataModel.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TIG.TotalLink.Shared.DataModel.Admin\TIG.TotalLink.Shared.DataModel.Admin.csproj">
+      <Project>{678fb5bb-cceb-454f-b9bc-3a19892b3f68}</Project>
+      <Name>TIG.TotalLink.Shared.DataModel.Admin</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TIG.TotalLink.Shared.DataModel.Crm\TIG.TotalLink.Shared.DataModel.Crm.csproj">
+      <Project>{94c4e03b-0a4f-430b-9d77-3c686b6c7b6d}</Project>
+      <Name>TIG.TotalLink.Shared.DataModel.Crm</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TIG.TotalLink.Shared.DataModel.Inventory\TIG.TotalLink.Shared.DataModel.Inventory.csproj">
+      <Project>{4f8afa84-c1c2-44f2-84ee-4de70065a63f}</Project>
+      <Name>TIG.TotalLink.Shared.DataModel.Inventory</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="DataModel.xpo" />
+    <None Include="DataModel.xpo.diagram">
+      <DependentUpon>DataModel.xpo</DependentUpon>
+    </None>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>:: Copy the datamodel dll and pdb files to the Global method service Module directory
+xcopy /Y "$(TargetPath)" "$(ProjectDir)..\..\..\Server\MethodService\TIG.TotalLink.Server.MethodService.Global\bin\Module\"
+xcopy /Y "$(TargetDir)$(TargetName).pdb" "$(ProjectDir)..\..\..\Server\MethodService\TIG.TotalLink.Server.MethodService.Global\bin\Module\"</PostBuildEvent>
+  </PropertyGroup>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

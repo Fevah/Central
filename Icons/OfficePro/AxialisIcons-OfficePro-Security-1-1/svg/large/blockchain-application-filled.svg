@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <rect x="2.5" y="6.5" width="27" height="12.5" fill="#FFFFFF"/>
+    <polygon points="3,19 3,7 29,7 29,19 30,19 30,6 2,6 2,19" fill="#383838" stroke-linejoin="miter"/>
+    <rect x="8" y="6.5" width="1" height="12.5" fill="#383838"/>
+    <path d="M26,10.5H12M26,13.5H12M26,16.5H12" fill="none" stroke="#787979" stroke-width="1" stroke-miterlimit="1"/>
+    <rect x="2.5" y="1.5" width="27" height="5" fill="#92CBEE" stroke="#0964B0" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M25,3h2v2h-2V3zM21,5h2V3h-2V5zM17,5h2V3h-2V5z" fill="#383838"/>
+    <rect x="3.5" y="20.5" width="10" height="10" fill="#FFFFFF"/>
+    <path d="M4,27v3h9v-9H4v3H3v-4h11v11H3v-4H4z" fill="#020202"/>
+    <rect x="18.5" y="20.5" width="10" height="10" fill="#FFFFFF"/>
+    <path d="M19,27v3h9v-9h-9v3h-1v-4h11v11H18v-4H19z" fill="#020202"/>
+    <path d="M22,26h-8.5v-1h8.5V26z" fill="#020202"/>
+    <path d="M6.5,26H1v-1h5.5V26z" fill="#020202"/>
+    <path d="M31,26h-2.5v-1h2.5V26z" fill="#020202"/>
+    <path d="M23.5,23.5c1.105,0,2,0.895,2,2c0,1.105,-0.895,2,-2,2s-2,-0.895,-2,-2C21.5,24.395,22.395,23.5,23.5,23.5z" fill="#92CBEE"/>
+    <path d="M21,25.5c0,-1.379,1.121,-2.5,2.5,-2.5s2.5,1.121,2.5,2.5s-1.121,2.5,-2.5,2.5S21,26.879,21,25.5zM22,25.5c0,0.827,0.673,1.5,1.5,1.5s1.5,-0.673,1.5,-1.5s-0.673,-1.5,-1.5,-1.5S22,24.673,22,25.5z" fill="#0964B0"/>
+    <path d="M8.5,23.5c1.105,0,2,0.895,2,2c0,1.105,-0.895,2,-2,2s-2,-0.895,-2,-2C6.5,24.395,7.395,23.5,8.5,23.5z" fill="#92CBEE"/>
+    <path d="M6,25.5c0,-1.379,1.121,-2.5,2.5,-2.5s2.5,1.121,2.5,2.5s-1.121,2.5,-2.5,2.5S6,26.879,6,25.5zM7,25.5c0,0.827,0.673,1.5,1.5,1.5s1.5,-0.673,1.5,-1.5s-0.673,-1.5,-1.5,-1.5S7,24.673,7,25.5z" fill="#0964B0"/>
+  </g>
+</svg>

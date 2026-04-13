@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SyncMapping>
+  <EntityMappings>
+    <EntityMapping Name="Address">
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Oid" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Oid" Type="System.Guid" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Label" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Label" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="IsDefault" Type="System.Boolean" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="IsDefault" Type="System.Boolean" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="AttentionTo" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="AttentionTo" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="UnitType" Type="UnitType" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="UnitTypeId" Type="System.Guid" Convert="Property([UnitType], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="UnitNumber" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="UnitNumber" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="StreetNumber" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="StreetNumber" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="StreetName" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="StreetName" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="StreetType" Type="StreetType" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="StreetTypeId" Type="System.Guid" Convert="Property([StreetType], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="LegacyLine1" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="LegacyLine1" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="LegacyLine2" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="LegacyLine2" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="City" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="City" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="ValidationAPI" Type="AddressValidationApi" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="ValidationAPIId" Type="System.Guid" Convert="Property([ValidationAPI], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="ValidationDate" Type="System.DateTime" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="ValidationDate" Type="System.DateTime" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="CompanyName" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="CompanyName" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Longitude" Type="System.Decimal" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Longitude" Type="System.Decimal" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Latitude" Type="System.Decimal" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Latitude" Type="System.Decimal" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="AddressType" Type="AddressType" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="AddressTypeId" Type="System.Guid" Convert="Property([AddressType], Oid, System.Guid)"/>
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Contact" Type="System.Contact" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="ContactId" Type="System.Guid" Convert="Property([Contact], Oid, System.Guid)"/>
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Postcode" Type="Postcode" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="PostcodeId" Type="System.Guid" Convert="Property([Postcode], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+    </EntityMapping>
+  </EntityMappings>
+</SyncMapping>

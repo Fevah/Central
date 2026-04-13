@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <rect x="2.748" y="2.629" width="10.659" height="10.836" fill="#FFFFFF"/>
+    <path d="M2.508,9.716L4.76,7.472l6.054,6.036H2.508C2.508,13.508,2.489,9.735,2.508,9.716z" fill="#92CBEE"/>
+    <polygon points="7.849,10.416 9.703,8.568 13.449,12.189 13.449,13.434 10.801,13.434" fill="#92CBEE" stroke-linejoin="miter"/>
+    <path d="M2.508,9.692L4.76,7.448l6.054,6.036M13.5,12.276L9.716,8.504l-1.873,1.867" fill="none" stroke="#0964B0" stroke-width="0.9" stroke-miterlimit="1"/>
+    <circle cx="10.5" cy="5.5" r="1.1" fill="#F7DA8E" stroke="#E57428" stroke-width="0.8" stroke-linecap="round" stroke-miterlimit="1"/>
+    <polyline points="2.5,16 2.5,2.5 16,2.5" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+    <polyline points="0,13.5 13.5,13.5 13.5,0" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+  </g>
+</svg>

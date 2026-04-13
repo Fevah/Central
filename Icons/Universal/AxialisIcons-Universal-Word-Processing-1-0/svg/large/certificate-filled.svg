@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="24px" height="24px" viewBox="0 0 24 24" enable-background="new 0 0 24 24" xml:space="preserve">
+  <g id="icon">
+    <path d="M3.4741,0.75v11.0241c-1.2049,0.6443,-2.0252,1.9162,-2.0252,3.3805c0,1.6189,1.0028,3.0021,2.4193,3.5625l0.0043,0.0076l-0.6501,-0.1948L1.45,21.6996l1.5464,0.0183l1.1072,0.9321l0.6795,-2.326l1.666,2.926h16.5251V0.75H3.4741z" fill="#FFFFFF" opacity="0.5"/>
+    <polygon points="24,24 12,24 12,22 22,22 22,2 5,2 5,9 3,9 3,0 24,0" fill="#7B7B7B" stroke-linejoin="miter"/>
+    <path d="M20,7H7V4h13V7z" fill="#6485C3"/>
+    <path d="M20,12h-8.2v1h8.2V12zM20,14h-8.2v1h8.2V14zM20,16h-8.8v1h8.8V16zM20,18h-8.5v1h8.5V18zM20,10h-9.3v1h9.3V10z" fill="#B7B7B7"/>
+    <path d="M5.1548,20.2505c-1.2425,0,-2.3863,-0.4201,-3.2993,-1.1246L0.0753,22.2303l2.3757,0.0274L4.1541,24l1.0336,-3.6738L6.2213,24l1.703,-1.7423L10.3,22.2303l-1.8006,-3.1401C7.579,19.8161,6.418,20.2505,5.1548,20.2505z" fill="#CB525D"/>
+    <ellipse cx="5.1548" cy="14.8441" rx="4.5347" ry="4.5343" fill="#CB525D"/>
+  </g>
+</svg>

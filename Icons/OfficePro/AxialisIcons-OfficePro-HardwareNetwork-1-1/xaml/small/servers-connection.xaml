@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M7.5,9.5H0.5V6.5h7V9.5zM7.5,9.5H0.5v6h7V9.5z" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M6,8.5H4V7.5h2V8.5z" Fill="#238BCB"/>
+      <Ellipse Canvas.Left="3" Canvas.Top="12" Width="2" Height="2" Fill="#78797A"/>
+      <Polygon Points="8.5,0.5 8.5,3.5 8.5,5 9,5 9,9.5 15.5,9.5 15.5,3.5 15.5,0.5" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Path Data="M8,0v5h1V4h6v5H9v1h7V0H8zM15,3H9V1h6V3z" Fill="#383838"/>
+      <Path Data="M14,2.5h-2V1.5h2V2.5z" Fill="#238BCB"/>
+      <Ellipse Canvas.Left="11" Canvas.Top="6" Width="2" Height="2" Fill="#78797A"/>
+      <Rectangle Canvas.Left="2" Canvas.Top="2" Width="1" Height="1" Fill="#238BCB"/>
+      <Rectangle Canvas.Left="4" Canvas.Top="2" Width="1" Height="1" Fill="#238BCB"/>
+      <Rectangle Canvas.Left="6" Canvas.Top="2" Width="1" Height="1" Fill="#238BCB"/>
+      <Rectangle Canvas.Left="2" Canvas.Top="4" Width="1" Height="1" Fill="#238BCB"/>
+      <Rectangle Canvas.Left="13" Canvas.Top="13" Width="1" Height="1" Fill="#238BCB"/>
+      <Rectangle Canvas.Left="11" Canvas.Top="13" Width="1" Height="1" Fill="#238BCB"/>
+      <Rectangle Canvas.Left="9" Canvas.Top="13" Width="1" Height="1" Fill="#238BCB"/>
+      <Rectangle Canvas.Left="13" Canvas.Top="11" Width="1" Height="1" Fill="#238BCB"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

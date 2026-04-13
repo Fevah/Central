@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M29,27.5H3c-0.825,0,-1.5,-0.675,-1.5,-1.5V7c0,-0.825,0.675,-1.5,1.5,-1.5h26c0.825,0,1.5,0.675,1.5,1.5v19C30.5,26.825,29.825,27.5,29,27.5z" Fill="#FFFFFF"/>
+      <Path Data="M29,27.5H3c-0.825,0,-1.5,-0.675,-1.5,-1.5V7c0,-0.825,0.675,-1.5,1.5,-1.5h26c0.825,0,1.5,0.675,1.5,1.5v19C30.5,26.825,29.825,27.5,29,27.5z" Fill="#C8C6C4" Opacity="0.3"/>
+      <Path Data="M29,27.5H3c-0.825,0,-1.5,-0.675,-1.5,-1.5V7c0,-0.825,0.675,-1.5,1.5,-1.5h26c0.825,0,1.5,0.675,1.5,1.5v19C30.5,26.825,29.825,27.5,29,27.5z" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M22.072,14.832c-0.588,0.442,-1.319,0.703,-2.11,0.703c-1.943,0,-3.518,-1.575,-3.518,-3.518c0,-1.941,1.575,-3.517,3.518,-3.517c0.791,0,1.522,0.261,2.11,0.703" Fill="#F3B8B8" Stroke="#E42D2C" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+      <Path Data="M21.872,9.203c-0.855,0.641,-1.407,1.663,-1.407,2.813s0.552,2.174,1.407,2.815c0.588,0.442,1.319,0.703,2.11,0.703c1.943,0,3.518,-1.575,3.518,-3.518C27.5,10.075,25.925,8.5,23.982,8.5C23.191,8.5,22.46,8.761,21.872,9.203z" Fill="#F7DA8E" Stroke="#E57428" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+      <Line X1="5" Y1="24.5" X2="15" Y2="24.5" Stroke="#787979" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Line X1="5" Y1="22.5" X2="13" Y2="22.5" Stroke="#787979" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Rectangle Canvas.Left="5.5" Canvas.Top="9.5" Width="3" Height="3" Fill="#F7DA8E" Stroke="#E57428" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+      <Path Data="M9,18.5H5l0,0H9L9,18.5zM15,18.5h-4l0,0H15L15,18.5zM21,18.5h-4l0,0H21L21,18.5zM27,18.5h-4l0,0H27L27,18.5z" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

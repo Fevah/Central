@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Settings>
+  <Setting Name="Main_Provider" >
+    <Value>
+      <Query Type="TIG.TotalLink.Shared.DataModel.Global.XpoProvider" Criteria="Name = 'MSSqlServer2005CacheRoot'" Property="Oid" />
+    </Value>
+  </Setting>
+  <Setting Name="Main_UseServer" Value="True" />
+  <Setting Name="Main_ServerName" Value="TotalLinkLive\TotalLinkLive" />
+  <Setting Name="Main_DatabaseName" Value="TotalLink3" />
+  <Setting Name="Main_UserName" Value="nbsapp" />
+  <Setting Name="Main_Password" Value="##qwerty123" />
+  
+  <Setting Name="Repository_Provider" >
+    <Value>
+      <Query Type="TIG.TotalLink.Shared.DataModel.Global.XpoProvider" Criteria="Name = 'MSSqlServer2005CacheRoot'" Property="Oid" />
+    </Value>
+  </Setting>
+  <Setting Name="Repository_UseServer" Value="True" />
+  <Setting Name="Repository_ServerName" Value="TotalLinkLive\TotalLinkLive" />
+  <Setting Name="Repository_DatabaseName" Value="TotalLink3_Repository" />
+  <Setting Name="Repository_UserName" Value="nbsapp" />
+  <Setting Name="Repository_Password" Value="##qwerty123" />
+
+  <Setting Name="SystemCode" Value="11" />
+  <Setting Name="ReferenceValueFormat" Value="{2:#}{0:00}{1:00}" />
+  <Setting Name="ReferenceDisplayFormat" Value="{0:####-####-####-####-####}" />
+  <Setting Name="ReferenceDisplayClean" Value="^\D*" />
+
+</Settings>

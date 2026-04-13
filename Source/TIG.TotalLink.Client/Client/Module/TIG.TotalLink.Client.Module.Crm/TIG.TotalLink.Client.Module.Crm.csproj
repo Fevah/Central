@@ -1,0 +1,466 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{AF8E0EAC-E1B8-435C-970D-6AA4BA59E070}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>TIG.TotalLink.Client.Module.Crm</RootNamespace>
+    <AssemblyName>TIG.TotalLink.Client.Module.Crm</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <SccProjectName>SAK</SccProjectName>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccProvider>SAK</SccProvider>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Dev|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Dev\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;TEST</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Test|AnyCPU'">
+    <OutputPath>bin\Test\</OutputPath>
+    <DefineConstants>TRACE;TEST</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Autofac, Version=3.5.0.0, Culture=neutral, PublicKeyToken=17863af14b0044da, processorArchitecture=MSIL">
+      <HintPath>..\..\..\packages\Autofac.3.5.2\lib\net40\Autofac.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="DevExpress.Data.v15.1, Version=15.1.5.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="DevExpress.Mvvm.v15.1, Version=15.1.5.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="DevExpress.Xpf.Core.v15.1, Version=15.1.5.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL" />
+    <Reference Include="DevExpress.Xpf.LayoutControl.v15.1, Version=15.1.5.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL" />
+    <Reference Include="DevExpress.Xpo.v15.1, Version=15.1.5.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+    <Reference Include="WindowsBase" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\Address.cs">
+      <Link>DataModel\Address.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\Address.Designer.cs">
+      <Link>DataModel\Address.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\AddressType.cs">
+      <Link>DataModel\AddressType.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\AddressType.Designer.cs">
+      <Link>DataModel\AddressType.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\AddressValidationApi.cs">
+      <Link>DataModel\AddressValidationApi.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\AddressValidationApi.Designer.cs">
+      <Link>DataModel\AddressValidationApi.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\Branch.cs">
+      <Link>DataModel\Branch.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\Branch.Designer.cs">
+      <Link>DataModel\Branch.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\BranchType.cs">
+      <Link>DataModel\BranchType.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\BranchType.Designer.cs">
+      <Link>DataModel\BranchType.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\Business.cs">
+      <Link>DataModel\Business.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\Business.Designer.cs">
+      <Link>DataModel\Business.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\BusinessType.cs">
+      <Link>DataModel\BusinessType.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\BusinessType.Designer.cs">
+      <Link>DataModel\BusinessType.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\Chain.cs">
+      <Link>DataModel\Chain.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\Chain.Designer.cs">
+      <Link>DataModel\Chain.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\ChatType.cs">
+      <Link>DataModel\ChatType.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\ChatType.Designer.cs">
+      <Link>DataModel\ChatType.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\Company.cs">
+      <Link>DataModel\Company.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\Company.Designer.cs">
+      <Link>DataModel\Company.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\Contact.cs">
+      <Link>DataModel\Contact.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\Contact.Designer.cs">
+      <Link>DataModel\Contact.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\ContactGroup.cs">
+      <Link>DataModel\ContactGroup.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\ContactGroup.Designer.cs">
+      <Link>DataModel\ContactGroup.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\ContactGroupLink.cs">
+      <Link>DataModel\ContactGroupLink.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\ContactGroupLink.Designer.cs">
+      <Link>DataModel\ContactGroupLink.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\ContactLink.cs">
+      <Link>DataModel\ContactLink.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\ContactLink.Designer.cs">
+      <Link>DataModel\ContactLink.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\ContactLinkType.cs">
+      <Link>DataModel\ContactLinkType.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\ContactLinkType.Designer.cs">
+      <Link>DataModel\ContactLinkType.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\Currency.cs">
+      <Link>DataModel\Currency.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\Currency.Designer.cs">
+      <Link>DataModel\Currency.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\ExchangeRate.cs">
+      <Link>DataModel\ExchangeRate.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\ExchangeRate.Designer.cs">
+      <Link>DataModel\ExchangeRate.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\GlobalRegion.cs">
+      <Link>DataModel\GlobalRegion.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\GlobalRegion.Designer.cs">
+      <Link>DataModel\GlobalRegion.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\Industry.cs">
+      <Link>DataModel\Industry.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\Industry.Designer.cs">
+      <Link>DataModel\Industry.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\IndustryClass.cs">
+      <Link>DataModel\IndustryClass.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\IndustryClass.Designer.cs">
+      <Link>DataModel\IndustryClass.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\Language.cs">
+      <Link>DataModel\Language.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\Language.Designer.cs">
+      <Link>DataModel\Language.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\OwnershipType.cs">
+      <Link>DataModel\OwnershipType.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\OwnershipType.Designer.cs">
+      <Link>DataModel\OwnershipType.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\PaymentMethod.cs">
+      <Link>DataModel\PaymentMethod.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\PaymentMethod.Designer.cs">
+      <Link>DataModel\PaymentMethod.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\PaymentTerms.cs">
+      <Link>DataModel\PaymentTerms.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\PaymentTerms.Designer.cs">
+      <Link>DataModel\PaymentTerms.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\Person.cs">
+      <Link>DataModel\Person.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\Person.Designer.cs">
+      <Link>DataModel\Person.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\ReminderTerms.cs">
+      <Link>DataModel\ReminderTerms.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\ReminderTerms.Designer.cs">
+      <Link>DataModel\ReminderTerms.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\ShipmentMethod.cs">
+      <Link>DataModel\ShipmentMethod.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\ShipmentMethod.Designer.cs">
+      <Link>DataModel\ShipmentMethod.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\StaffRole.cs">
+      <Link>DataModel\StaffRole.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\StaffRole.Designer.cs">
+      <Link>DataModel\StaffRole.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\StreetType.cs">
+      <Link>DataModel\StreetType.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\StreetType.Designer.cs">
+      <Link>DataModel\StreetType.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\Title.cs">
+      <Link>DataModel\Title.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\Title.Designer.cs">
+      <Link>DataModel\Title.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\UnitType.cs">
+      <Link>DataModel\UnitType.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\DataModelCode\UnitType.Designer.cs">
+      <Link>DataModel\UnitType.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\Facade\TIG.TotalLink.Shared.Facade.Crm\CrmFacade.cs">
+      <Link>Facade\CrmFacade.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\Facade\TIG.TotalLink.Shared.Facade.Crm\ICrmFacade.cs">
+      <Link>Facade\ICrmFacade.cs</Link>
+    </Compile>
+    <Compile Include="CrmModule.cs" />
+    <Compile Include="Metadata\Address.cs" />
+    <Compile Include="Metadata\AddressType.cs" />
+    <Compile Include="Metadata\AddressValidationApi.cs" />
+    <Compile Include="Metadata\Chain.cs" />
+    <Compile Include="Metadata\Company.cs" />
+    <Compile Include="Metadata\Branch.cs" />
+    <Compile Include="Metadata\BusinessType.cs" />
+    <Compile Include="Metadata\ChatType.cs" />
+    <Compile Include="Metadata\Business.cs" />
+    <Compile Include="Metadata\Person.cs" />
+    <Compile Include="Metadata\Currency.cs" />
+    <Compile Include="Metadata\Contact.cs" />
+    <Compile Include="Metadata\ContactGroup.cs" />
+    <Compile Include="Metadata\ContactGroupLink.cs" />
+    <Compile Include="Metadata\ContactLink.cs" />
+    <Compile Include="Metadata\ContactLinkType.cs" />
+    <Compile Include="Metadata\BranchType.cs" />
+    <Compile Include="Metadata\GlobalRegion.cs" />
+    <Compile Include="Metadata\Industry.cs" />
+    <Compile Include="Metadata\IndustryClass.cs" />
+    <Compile Include="Metadata\Language.cs" />
+    <Compile Include="Metadata\OwnershipType.cs" />
+    <Compile Include="Metadata\ShipmentMethod.cs" />
+    <Compile Include="Metadata\PaymentMethod.cs" />
+    <Compile Include="Metadata\PaymentTerms.cs" />
+    <Compile Include="Metadata\ReminderTerms.cs" />
+    <Compile Include="Metadata\StaffRole.cs" />
+    <Compile Include="Metadata\StreetType.cs" />
+    <Compile Include="Metadata\Title.cs" />
+    <Compile Include="Metadata\UnitType.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Uploader\PersonUploaderDataModel.cs" />
+    <Compile Include="Uploader\CompanyUploaderDataModel.cs" />
+    <Compile Include="Uploader\VendorUploaderDataModel.cs" />
+    <Compile Include="ViewModel\Widget\Contact\PersonUploaderViewModel.cs" />
+    <Compile Include="ViewModel\Widget\Contact\PersonImporterViewModel.cs" />
+    <Compile Include="ViewModel\Widget\Contact\CompanyListViewModel.cs" />
+    <Compile Include="ViewModel\Widget\Contact\ChainListViewModel.cs" />
+    <Compile Include="ViewModel\Widget\Contact\CompanyImporterViewModel.cs" />
+    <Compile Include="ViewModel\Widget\Contact\CompanyUploaderViewModel.cs" />
+    <Compile Include="ViewModel\Widget\Contact\BusinessListViewModel.cs" />
+    <Compile Include="ViewModel\Widget\Contact\BranchListViewModel.cs" />
+    <Compile Include="ViewModel\Widget\Contact\PersonListViewModel.cs" />
+    <Compile Include="ViewModel\Widget\Contact\ContactListViewModel.cs" />
+    <Compile Include="ViewModel\Widget\Contact\VendorImporterViewModel.cs" />
+    <Compile Include="ViewModel\Widget\Contact\VendorUploaderViewModel.cs" />
+    <Compile Include="View\Widget\Contact\PersonUploaderView.xaml.cs">
+      <DependentUpon>PersonUploaderView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="View\Widget\Contact\PersonImporterView.xaml.cs">
+      <DependentUpon>PersonImporterView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="View\Widget\Contact\CompanyListView.xaml.cs">
+      <DependentUpon>CompanyListView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="View\Widget\Contact\ChainListView.xaml.cs">
+      <DependentUpon>ChainListView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="View\Widget\Contact\BusinessListView.xaml.cs">
+      <DependentUpon>BusinessListView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="View\Widget\Contact\BranchListView.xaml.cs">
+      <DependentUpon>BranchListView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="View\Widget\Contact\PersonListView.xaml.cs">
+      <DependentUpon>PersonListView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="View\Widget\Contact\ContactListView.xaml.cs">
+      <DependentUpon>ContactListView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="View\Widget\Contact\CompanyImporterView.xaml.cs">
+      <DependentUpon>CompanyImporterView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="View\Widget\Contact\CompanyUploaderView.xaml.cs">
+      <DependentUpon>CompanyUploaderView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="View\Widget\Contact\VendorImporterView.xaml.cs">
+      <DependentUpon>VendorImporterView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="View\Widget\Contact\VendorUploaderView.xaml.cs">
+      <DependentUpon>VendorUploaderView.xaml</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\TIG.TotalLink.Server\Shared\Core\TIG.TotalLink.Shared.Contract.Core\TIG.TotalLink.Shared.Contract.Core.csproj">
+      <Project>{66FF44D2-D1AB-4B4A-B59F-367F7AE204CC}</Project>
+      <Name>TIG.TotalLink.Shared.Contract.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\..\TIG.TotalLink.Server\Shared\Core\TIG.TotalLink.Shared.DataModel.Core\TIG.TotalLink.Shared.DataModel.Core.csproj">
+      <Project>{FB358652-45F1-4410-99DA-19D72833DCD6}</Project>
+      <Name>TIG.TotalLink.Shared.DataModel.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\..\TIG.TotalLink.Server\Shared\Core\TIG.TotalLink.Shared.Facade.Core\TIG.TotalLink.Shared.Facade.Core.csproj">
+      <Project>{629AE438-FB3F-4E91-895D-3B3F4D3F2896}</Project>
+      <Name>TIG.TotalLink.Shared.Facade.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Core\TIG.TotalLink.Client.Core\TIG.TotalLink.Client.Core.csproj">
+      <Project>{87A632E6-6784-41A3-95AE-8B534B1DDED4}</Project>
+      <Name>TIG.TotalLink.Client.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Core\TIG.TotalLink.Client.Editor\TIG.TotalLink.Client.Editor.csproj">
+      <Project>{6F2C492B-8DDF-40B0-82F6-48AFEC451241}</Project>
+      <Name>TIG.TotalLink.Client.Editor</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Core\TIG.TotalLink.Client.Undo\TIG.TotalLink.Client.Undo.csproj">
+      <Project>{D90F4A85-EAAB-44D1-A40D-19F1E18DB27A}</Project>
+      <Name>TIG.TotalLink.Client.Undo</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TIG.TotalLink.Client.Module.Admin\TIG.TotalLink.Client.Module.Admin.csproj">
+      <Project>{233f0b6b-17bf-4389-9b8d-b5bdb1ff86dd}</Project>
+      <Name>TIG.TotalLink.Client.Module.Admin</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="View\Widget\Contact\PersonUploaderView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="View\Widget\Contact\PersonImporterView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="View\Widget\Contact\CompanyListView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="View\Widget\Contact\ChainListView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="View\Widget\Contact\BusinessListView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="View\Widget\Contact\BranchListView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="View\Widget\Contact\PersonListView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="View\Widget\Contact\ContactListView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="View\Widget\Contact\CompanyImporterView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="View\Widget\Contact\CompanyUploaderView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="View\Widget\Contact\VendorImporterView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="View\Widget\Contact\VendorUploaderView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(SolutionDir)\.nuget\NuGet.targets')" Text="$([System.String]::Format('$(ErrorText)', '$(SolutionDir)\.nuget\NuGet.targets'))" />
+  </Target>
+  <PropertyGroup>
+    <PostBuildEvent>:: Copy the module dll and pdb files to the Client application Module directory
+xcopy /Y "$(TargetPath)" "$(ProjectDir)..\..\Host\TIG.TotalLink.Client\bin\$(ConfigurationName)\Module\"
+xcopy /Y "$(TargetDir)$(TargetName).pdb" "$(ProjectDir)..\..\Host\TIG.TotalLink.Client\bin\$(ConfigurationName)\Module\"
+</PostBuildEvent>
+  </PropertyGroup>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

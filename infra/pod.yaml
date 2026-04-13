@@ -1,13 +1,17 @@
 # =============================================================================
 # Central Podman Pod
 # =============================================================================
-# Runs PostgreSQL locally inside a Podman pod.
+# Runs PostgreSQL + Redis + Central API + Auth Service in a single pod.
 # Uses: podman play kube infra/pod.yaml
 #
 # Start:  podman play kube infra/pod.yaml
 # Stop:   podman play kube --down infra/pod.yaml
 # Logs:   podman logs central-postgres
 # Shell:  podman exec -it central-postgres psql -U central -d central
+#
+# Auth service (Rust):
+#   Build: cd /path/to/SecureAPP && podman build -f services/auth-service/Containerfile -t auth-service .
+#   Health: curl http://localhost:8081/health
 # =============================================================================
 
 apiVersion: v1
@@ -34,7 +38,6 @@ spec:
           value: central
         - name: PGDATA
           value: /var/lib/postgresql/data/pgdata
-        # Tune PG for 4GB container — shared_buffers=1GB, work_mem=64MB
         - name: POSTGRES_INITDB_ARGS
           value: "--data-checksums"
         - name: POSTGRES_HOST_AUTH_METHOD
@@ -63,7 +66,30 @@ spec:
         limits:
           memory: "8Gi"
 
-    # --- API Server ---
+    # --- Redis (session store for auth-service) ---
+    - name: redis
+      image: docker.io/library/redis:7-alpine
+      ports:
+        - containerPort: 6379
+          hostPort: 6379
+          protocol: TCP
+      command: ["redis-server"]
+      args:
+        - "--maxmemory"
+        - "256mb"
+        - "--maxmemory-policy"
+        - "allkeys-lru"
+        - "--save"
+        - ""
+        - "--appendonly"
+        - "no"
+      resources:
+        requests:
+          memory: "128Mi"
+        limits:
+          memory: "512Mi"
+
+    # --- API Server (.NET) ---
     # Build: cd desktop && podman build -f Central.Api/Dockerfile -t central-api .
     - name: api
       image: localhost/central-api:latest
@@ -80,11 +106,68 @@ spec:
           value: "Central-Production-Key-Override-This!"
         - name: CENTRAL_CREDENTIAL_KEY
           value: "Central-Production-Credential-Key-Override!"
+        # Auth-service integration (Phase 1 merge)
+        - name: CENTRAL_AUTH_SERVICE_URL
+          value: "http://localhost:8081"
+        - name: CENTRAL_DEFAULT_TENANT_ID
+          value: "00000000-0000-0000-0000-000000000001"
       resources:
         requests:
           memory: "512Mi"
         limits:
           memory: "2Gi"
+
+    # --- Auth Service (Rust/Axum) ---
+    # Build: cd /path/to/SecureAPP && podman build -f services/auth-service/Containerfile -t auth-service .
+    - name: auth-service
+      image: localhost/auth-service:latest
+      ports:
+        - containerPort: 8081
+          hostPort: 8081
+          protocol: TCP
+      env:
+        # Database — uses separate DB on same PG instance
+        - name: DATABASE_HOST
+          value: "localhost"
+        - name: DATABASE_PORT
+          value: "5432"
+        - name: DATABASE_NAME
+          value: "secure_auth"
+        - name: DATABASE_USER
+          value: "central"
+        - name: DATABASE_PASSWORD
+          value: "central"
+        # Redis — session store
+        - name: REDIS_URL
+          value: "redis://localhost:6379"
+        # JWT — shared secret for Central.Api to validate tokens
+        - name: AUTH__JWT__SIGNING_KEY
+          value: "Central-Auth-Shared-JWT-Key-Override-This-In-Production-32bytes!"
+        - name: AUTH__JWT__ISSUER
+          value: "central-auth"
+        - name: AUTH__JWT__AUDIENCE
+          value: "central"
+        - name: AUTH__JWT__ACCESS_TOKEN_TTL_SECONDS
+          value: "900"
+        - name: AUTH__JWT__REFRESH_TOKEN_TTL_SECONDS
+          value: "604800"
+        # Encryption — PII at rest
+        - name: AUTH__ENCRYPTION__KEY
+          value: "Q2VudHJhbC1BdXRoLUVuY3J5cHRpb24tS2V5LTMyYnl0ZXMh"
+        # Server
+        - name: AUTH__SERVER__PORT
+          value: "8081"
+        - name: AUTH__APP_NAME
+          value: "Central"
+        - name: AUTH__PUBLIC_URL
+          value: "http://localhost:8081"
+        - name: RUST_LOG
+          value: "auth_service=info,tower_http=info"
+      resources:
+        requests:
+          memory: "128Mi"
+        limits:
+          memory: "512Mi"
 
   volumes:
     - name: pgdata

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: central
+  labels:
+    app.kubernetes.io/part-of: central-platform
+    app.kubernetes.io/managed-by: terragrunt

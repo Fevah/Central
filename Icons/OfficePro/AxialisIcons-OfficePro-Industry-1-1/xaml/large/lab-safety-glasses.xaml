@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M16.601,9.5c14.678,0,12.905,0.705,13.785,6.171c0,1.986,0.587,5.818,-6.013,7.229c-7.479,0,-3.373,-7.229,-8.359,-7.229c-4.986,0.176,-1.76,7.934,-8.469,7.068c-2.57,0,-5.903,-1.55,-5.903,-7.244C2.229,9.5,2.523,9.5,16.601,9.5z" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1.1" StrokeMiterLimit="1"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

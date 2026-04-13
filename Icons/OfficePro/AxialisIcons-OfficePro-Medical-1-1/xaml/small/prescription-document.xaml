@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Polygon Points="13.5,15.5 1.5,15.5 1.5,0.5 9.533,0.5 13.5,4.557" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1" StrokeLineJoin="Miter"/>
+      <Polyline Points="13.5,4.5 9.5,4.5 9.5,0.5" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1" StrokeLineJoin="Miter"/>
+      <Path Data="M3.492,4.679h1.226c0.285,0,0.542,-0.026,0.77,-0.077c0.228,-0.052,0.423,-0.125,0.585,-0.221c0.162,-0.096,0.286,-0.212,0.374,-0.35c0.087,-0.138,0.131,-0.319,0.131,-0.493c0,-0.36,-0.154,-0.619,-0.461,-0.786C5.81,2.584,5.368,2.5,4.793,2.5H3.492V4.679zM3.492,7.129V4.624M4.853,4.679L8.049,8.6M5.111,8.6l2.938,-3.284" Fill="#FFFFFF" Stroke="#228BCB" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Line X1="3" Y1="10.5" X2="12" Y2="10.5" Stroke="#787979" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Line X1="9" Y1="8.5" X2="12" Y2="8.5" Stroke="#787979" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Line X1="9" Y1="6.5" X2="12" Y2="6.5" Stroke="#787979" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Line X1="3" Y1="12.5" X2="12" Y2="12.5" Stroke="#787979" StrokeThickness="1" StrokeMiterLimit="1"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

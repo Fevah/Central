@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="24" Height="24" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Left="2.25" Canvas.Top="2.25" Width="19.65" Height="19.4988" Fill="#FFFFFF" Opacity="0.5"/>
+      <Path Data="M24,3V1.5h-1.5V0h-1.5v1.5H3V0H1.5v1.5H0v1.5h1.5v18H0v1.5h1.5v1.5h1.5v-1.5h18v1.5h1.5v-1.5h1.5v-1.5h-1.5V3H24zM21,21H3V3h18V21z" Fill="#6D6E71"/>
+      <Rectangle Canvas.Left="4.5" Canvas.Top="4.5" Width="15" Height="15" Fill="#FFFFFF"/>
+      <Rectangle Canvas.Left="11.25" Canvas.Top="-2.25" Width="1.5" Height="15" RenderTransformOrigin="-7.5 0.15" Fill="#6486C4">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="-1.83697e-16 1 -1 -1.83697e-16 17.25 -6.75"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Rectangle Canvas.Left="11.25" Canvas.Top="-0.75" Width="1.5" Height="15" RenderTransformOrigin="-7.5 0.05" Fill="#6486C4" Opacity="0.9">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="-1.83697e-16 1 -1 -1.83697e-16 18.75 -5.25"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Rectangle Canvas.Left="11.25" Canvas.Top="0.75" Width="1.5" Height="15" RenderTransformOrigin="-7.5 -0.05" Fill="#6486C4" Opacity="0.8">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="-1.83697e-16 1 -1 -1.83697e-16 20.25 -3.75"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Rectangle Canvas.Left="11.25" Canvas.Top="2.25" Width="1.5" Height="15" RenderTransformOrigin="-7.5 -0.15" Fill="#6486C4" Opacity="0.7">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="-1.83697e-16 1 -1 -1.83697e-16 21.75 -2.25"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Rectangle Canvas.Left="11.25" Canvas.Top="3.75" Width="1.5" Height="15" RenderTransformOrigin="-7.5 -0.25" Fill="#6486C4" Opacity="0.6">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="-1.83697e-16 1 -1 -1.83697e-16 23.25 -0.75"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Rectangle Canvas.Left="11.25" Canvas.Top="5.25" Width="1.5" Height="15" RenderTransformOrigin="-7.5 -0.35" Fill="#6486C4" Opacity="0.5">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="-1.83697e-16 1 -1 -1.83697e-16 24.75 0.75"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Rectangle Canvas.Left="11.25" Canvas.Top="6.75" Width="1.5" Height="15" RenderTransformOrigin="-7.5 -0.45" Fill="#6486C4" Opacity="0.4">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="-1.83697e-16 1 -1 -1.83697e-16 26.25 2.25"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Rectangle Canvas.Left="11.25" Canvas.Top="8.25" Width="1.5" Height="15" RenderTransformOrigin="-7.5 -0.55" Fill="#6486C4" Opacity="0.3">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="-1.83697e-16 1 -1 -1.83697e-16 27.75 3.75"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Rectangle Canvas.Left="11.25" Canvas.Top="9.75" Width="1.5" Height="15" RenderTransformOrigin="-7.5 -0.65" Fill="#6486C4" Opacity="0.2">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="-1.83697e-16 1 -1 -1.83697e-16 29.25 5.25"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Rectangle Canvas.Left="11.25" Canvas.Top="11.25" Width="1.5" Height="15" RenderTransformOrigin="-7.5 -0.75" Fill="#6486C4" Opacity="0.1">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="-1.83697e-16 1 -1 -1.83697e-16 30.75 6.75"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+    </Canvas>
+  </Canvas>
+</Viewbox>

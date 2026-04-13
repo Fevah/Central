@@ -1,0 +1,33 @@
+---
+# Join worker nodes to the K8s cluster
+
+- name: Get join command from master
+  shell: cat /tmp/k8s_join_command.sh
+  delegate_to: k8s-master
+  register: join_cmd
+  changed_when: false
+
+- name: Check if already joined
+  stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: kubelet_conf
+
+- name: Join cluster
+  shell: "{{ join_cmd.stdout }}"
+  when: not kubelet_conf.stat.exists
+
+- name: Wait for node to be Ready
+  shell: |
+    kubectl --kubeconfig=/home/vagrant/.kube/config wait \
+      --for=condition=Ready node/{{ inventory_hostname }} --timeout=120s
+  delegate_to: k8s-master
+  become_user: vagrant
+  retries: 5
+  delay: 10
+
+- name: Label worker node
+  shell: |
+    kubectl --kubeconfig=/home/vagrant/.kube/config label node {{ inventory_hostname }} \
+      {{ node_labels | default('role=general') }} --overwrite
+  delegate_to: k8s-master
+  become_user: vagrant

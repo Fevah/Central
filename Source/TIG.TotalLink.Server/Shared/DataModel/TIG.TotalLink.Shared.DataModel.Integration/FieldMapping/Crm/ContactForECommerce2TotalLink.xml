@@ -1,0 +1,522 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SyncMapping>
+  <Enums>
+    <Enum Name="Gender">
+      <Field Name="Male" Value="Male" />
+      <Field Name="Female" Value="Female"/>
+    </Enum>
+    <Enum Name="BlockType">
+      <Field Name="Ship" Value="Ship" />
+      <Field Name="Invoice" Value="Invoice"/>
+      <Field Name="All" Value="All"/>
+    </Enum>
+  </Enums>
+  <EntityMappings>
+    <EntityMapping Name="Contacts">
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Oid" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Oid" Type="System.Guid" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Reference" Type="System.Int64" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Reference" Type="System.Int64" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="LegacyReference" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="LegacyReference" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="ExternalReference" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="ExternalReference" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="CreditLimit" Type="System.Decimal" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="CreditLimit" Type="System.Decimal" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="ContactType" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="ObjectType" Type="XPObjectType" Convert="Entity(TypeName, [ContactType], System.String)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="IndustryClassId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="IndustryClass" Type="IndustryClass" Convert="Entity(Oid, [IndustryClassId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Email" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Email" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Webpage" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Webpage" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="CurrencyId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Currency" Type="Currency"  Convert="Entity(Oid, [CurrencyId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="LanguageId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Language" Type="Language"  Convert="Entity(Oid, [LanguageId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="FirstName" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="FirstName" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="MiddleName" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="MiddleName" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="LastName" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="LastName" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Gender" Type="System.Int32" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Gender" Type="Enum.Gender" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="TitleId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Title" Type="Title"  Convert="Entity(Oid, [TitleId], System.Guid)"/>
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Birthdate" Type="System.DateTime" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Birthdate" Type="System.DateTime" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Nickname" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Nickname" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="TotalStores" Type="System.Int32" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="TotalStores" Type="System.Int32" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="TotalEmployees" Type="System.Int32" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="TotalEmployees" Type="System.Int32" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="GlobalRegionId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="GlobalRegion" Type="GlobalRegion"  Convert="Entity(Oid, [GlobalRegionId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="HomePhone" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="HomePhone" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="HomePhone2" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="HomePhone2" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Mobile" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Mobile" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Fax" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Fax" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="BusinessPhone" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="BusinessPhone" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="BusinessPhone2" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="BusinessPhone2" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="BusinessFax" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="BusinessFax" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="BusinessMobile" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="BusinessMobile" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Pager" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Pager" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Facebook" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Facebook" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Twitter" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Twitter" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="InternetChat" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="InternetChat" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="InternetChatTypeId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="InternetChatType" Type="ChatType"  Convert="Entity(Oid, [InternetChatTypeId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Blocked" Type="System.Int32" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Blocked" Type="Enum.BlockType" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="BlockedReason" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="BlockedReason" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="AllowLineDiscount" Type="System.Boolean" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="AllowLineDiscount" Type="System.Boolean" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="GSTIncluded" Type="System.Boolean" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="GSTIncluded" Type="System.Boolean" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="PrepaymentPercent" Type="System.Decimal" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="PrepaymentPercent" Type="System.Decimal" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="BackOrderNotAccepted" Type="System.Boolean" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="BackOrderNotAccepted" Type="System.Boolean" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="PaymentTermsId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="PaymentTerms" Type="PaymentTerms"  Convert="Entity(Oid, [PaymentTermsId], System.Guid)"/>
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="ReminderTermsId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="ReminderTerms" Type="ReminderTerms"  Convert="Entity(Oid, [ReminderTermsId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="CashFlowPaymentTermsId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="CashFlowPaymentTerms" Type="PaymentTerms"  Convert="Entity(Oid, [CashFlowPaymentTermsId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="ACN" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="ACN" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="ABN" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="ABN" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="CompanyRegistered" Type="System.Boolean" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="CompanyRegistered" Type="System.Boolean" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="PaymentMethodId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="PaymentMethod" Type="PaymentMethod"  Convert="Entity(Oid, [PaymentMethodId], System.Guid)"/>
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="OwnershipTypeId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="OwnershipType" Type="OwnershipType"  Convert="Entity(Oid, [OwnershipTypeId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="BranchNumber" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="BranchNumber" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="BusinessExtension" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="BusinessExtension" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="SearchName" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="SearchName" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="BusinessTypeId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="BusinessType" Type="BusinessType"  Convert="Entity(Oid, [BusinessTypeId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="GSTBusinessPostingGroupId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="GSTBusinessPostingGroup" Type="PostingGroup"  Convert="Entity(Oid, [GSTBusinessPostingGroupId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="GeneralBusinessPostingGroupId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="GeneralBusinessPostingGroup" Type="PostingGroup"  Convert="Entity(Oid, [GeneralBusinessPostingGroupId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="ContactPostingGroupId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="ContactPostingGroup" Type="PostingGroup"  Convert="Entity(Oid, [ContactPostingGroupId], System.Guid)"/>
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="ShipmentMethodId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="ShipmentMethod" Type="ShipmentMethod"  Convert="Entity(Oid, [ShipmentMethodId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="LegacySource" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="LegacySource" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="AllowPartialDelivery" Type="System.Boolean" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="AllowPartialDelivery" Type="System.Boolean" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="IsVendor" Type="System.Boolean" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="IsVendor" Type="System.Boolean" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="BranchTypeId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="BranchType" Type="BranchType" Convert="Entity(Oid, [BranchType], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="StaffRoleId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="StaffRole" Type="StaffRole" Convert="Entity(Oid, [StaffRole], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="SubsidyName" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="SubsidyName" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="SubsidyValue" Type="System.Decimal" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="SubsidyValue" Type="System.Decimal" />
+        </TargetFields>
+      </FieldMapping>
+    </EntityMapping>
+  </EntityMappings>
+</SyncMapping>

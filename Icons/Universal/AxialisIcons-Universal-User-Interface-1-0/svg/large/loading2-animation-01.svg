@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="24px" height="24px" viewBox="0 0 24 24" enable-background="new 0 0 24 24" xml:space="preserve">
+  <g id="icon">
+    <path d="M12,24C5.3832,24,0,18.6276,0,12.024c0,-3.1941,1.2496,-6.2002,3.5186,-8.4644l0.4431,-0.4424l1.8052,1.8016l-0.4433,0.4423C3.5373,7.1438,2.5535,9.51,2.5535,12.024c0,5.1984,4.2377,9.4276,9.4465,9.4276s9.4465,-4.2292,9.4465,-9.4276c0,-2.514,-0.9838,-4.8803,-2.7701,-6.663l-0.4433,-0.4423l1.8052,-1.8015l0.4432,0.4424C22.7504,5.8238,24,8.8299,24,12.024C24,18.6276,18.6168,24,12,24z" fill="#6486C4"/>
+  </g>
+</svg>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="24" Height="24" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Left="0" Canvas.Top="1.75" Width="24" Height="19.5" Fill="#FFFFFF"/>
+      <Rectangle Canvas.Left="12.75" Canvas.Top="1.75" Width="11.25" Height="1.5" Fill="#F37980"/>
+      <Rectangle Canvas.Left="12.75" Canvas.Top="4.75" Width="11.25" Height="1.5" Fill="#F37980"/>
+      <Rectangle Canvas.Left="12.75" Canvas.Top="7.75" Width="11.25" Height="1.5" Fill="#F37980"/>
+      <Rectangle Canvas.Left="12.75" Canvas.Top="10.75" Width="11.25" Height="1.5" Fill="#F37980"/>
+      <Rectangle Canvas.Left="0" Canvas.Top="13.75" Width="24" Height="1.5" Fill="#F37980"/>
+      <Rectangle Canvas.Left="0" Canvas.Top="16.75" Width="24" Height="1.5" Fill="#F37980"/>
+      <Rectangle Canvas.Left="0" Canvas.Top="19.75" Width="24" Height="1.5" Fill="#F37980"/>
+      <Rectangle Canvas.Left="0" Canvas.Top="1.75" Width="13.5" Height="10.5" Fill="#77A1D5"/>
+      <Polygon Points="11.0175,10.144 10.527,9.787 11.1465,9.787 11.3385,9.208 11.5065,9.787 12.1305,9.787 11.6205,10.15 11.8185,10.7245 11.3235,10.36 10.833,10.726" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="8.0175,10.144 7.527,9.787 8.1465,9.787 8.3385,9.208 8.5065,9.787 9.1305,9.787 8.6205,10.15 8.8185,10.7245 8.3235,10.36 7.833,10.726" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="5.0175,10.144 4.527,9.787 5.1465,9.787 5.3385,9.208 5.5065,9.787 6.1305,9.787 5.6205,10.15 5.8185,10.7245 5.3235,10.36 4.833,10.726" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="2.0175,10.144 1.527,9.787 2.1465,9.787 2.3385,9.208 2.5065,9.787 3.1305,9.787 2.6205,10.15 2.8185,10.7245 2.3235,10.36 1.833,10.726" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="9.5175,8.569 9.027,8.212 9.6465,8.212 9.8385,7.633 10.0065,8.212 10.6305,8.212 10.1235,8.575 10.3215,9.1495 9.8265,8.785 9.336,9.151" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="6.5175,8.569 6.027,8.212 6.6465,8.212 6.8385,7.633 7.0065,8.212 7.6305,8.212 7.1235,8.575 7.3215,9.1495 6.8265,8.785 6.336,9.151" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="3.5175,8.569 3.027,8.212 3.6465,8.212 3.8385,7.633 4.0065,8.212 4.6305,8.212 4.1235,8.575 4.3215,9.1495 3.8265,8.785 3.336,9.151" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="11.0175,7.069 10.527,6.712 11.1465,6.712 11.3385,6.133 11.5065,6.712 12.1305,6.712 11.6235,7.075 11.8215,7.6495 11.3265,7.285 10.836,7.651" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="8.0175,7.069 7.527,6.712 8.1465,6.712 8.3385,6.133 8.5065,6.712 9.1305,6.712 8.6235,7.075 8.8215,7.6495 8.3265,7.285 7.836,7.651" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="5.0175,7.069 4.527,6.712 5.1465,6.712 5.3385,6.133 5.5065,6.712 6.1305,6.712 5.6235,7.075 5.8215,7.6495 5.3265,7.285 4.836,7.651" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="2.0175,7.069 1.527,6.712 2.1465,6.712 2.3385,6.133 2.5065,6.712 3.1305,6.712 2.6235,7.075 2.8215,7.6495 2.3265,7.285 1.836,7.651" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="9.5175,5.569 9.027,5.212 9.6465,5.212 9.8385,4.633 10.0065,5.212 10.6305,5.212 10.1235,5.575 10.3215,6.1495 9.8265,5.785 9.336,6.151" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="6.5175,5.569 6.027,5.212 6.6465,5.212 6.8385,4.633 7.0065,5.212 7.6305,5.212 7.1235,5.575 7.3215,6.1495 6.8265,5.785 6.336,6.151" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="3.5175,5.569 3.027,5.212 3.6465,5.212 3.8385,4.633 4.0065,5.212 4.6305,5.212 4.1235,5.575 4.3215,6.1495 3.8265,5.785 3.336,6.151" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="11.0175,4.069 10.527,3.712 11.1465,3.712 11.3385,3.133 11.5065,3.712 12.1305,3.712 11.6235,4.075 11.8215,4.6495 11.3265,4.285 10.836,4.651" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="8.0175,4.069 7.527,3.712 8.1465,3.712 8.3385,3.133 8.5065,3.712 9.1305,3.712 8.6235,4.075 8.8215,4.6495 8.3265,4.285 7.836,4.651" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="5.0175,4.069 4.527,3.712 5.1465,3.712 5.3385,3.133 5.5065,3.712 6.1305,3.712 5.6235,4.075 5.8215,4.6495 5.3265,4.285 4.836,4.651" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="2.0175,4.069 1.527,3.712 2.1465,3.712 2.3385,3.133 2.5065,3.712 3.1305,3.712 2.6235,4.075 2.8215,4.6495 2.3265,4.285 1.836,4.651" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Path Data="M24,21.25H0v-19.5h24V21.25zM1.5,19.75h21v-16.5H1.5V19.75z" Fill="#211F20" Opacity="0.20"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

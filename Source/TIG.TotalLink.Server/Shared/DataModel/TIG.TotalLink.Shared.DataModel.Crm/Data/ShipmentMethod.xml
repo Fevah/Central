@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ShipmentMethods>
+  <ShipmentMethod Code="COURIER" Name="Courier" />
+  <ShipmentMethod Code="FOB" Name="Free On Board"/>
+  <ShipmentMethod Code="FIS" Name="Free Into Store"/>
+  <ShipmentMethod Code="POD" Name="Price On Delivery"/>
+</ShipmentMethods>

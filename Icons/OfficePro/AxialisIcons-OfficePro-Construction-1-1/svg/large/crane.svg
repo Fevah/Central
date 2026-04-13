@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <path d="M8.5,16.5c0,1.657,-1.343,4,-3,4s-3,-2.343,-3,-4s1.343,-2,3,-2S8.5,14.843,8.5,16.5z" fill="#FFFFFF" stroke="#A0519F" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M5.5,20.5v1.022c0,0.502,0.313,0.94,0.776,1.135c0.75,0.316,1.267,1.076,1.221,1.952c-0.053,1.01,-0.88,1.837,-1.889,1.889C4.454,26.558,3.5,25.64,3.5,24.5" fill="none" stroke="#A0519F" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="5.5" y1="10.5" x2="5.5" y2="14.5" fill="none" stroke="#A0519F" stroke-width="1" stroke-miterlimit="1"/>
+    <rect x="14.5" y="10.5" width="6" height="20" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="11.5" y1="30.5" x2="23.5" y2="30.5" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M14.5,29.5l6.05,-5.95M14.5,17.5l6.05,6.05M20.5,11.5l-6.05,6.05" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M26.5,6.5H6.98c-0.57,0,-1.123,0.194,-1.567,0.55L1.6,10.34c-0.066,0.053,-0.029,0.16,0.056,0.16H26.5V6.5z" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M27.667,13.5h1.667c0.644,0,1.167,-0.522,1.167,-1.167V6.5h-4v5.833C26.5,12.978,27.022,13.5,27.667,13.5z" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="17.5" y1="6.5" x2="17.5" y2="1" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M8.1,6.5l9.4,-4.5M27.5,6.5L17.5,2" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M7.5,10.5l4.05,-4.05M15.55,10.5L11.5,6.45M15.5,10.5l4.05,-4.05M19.5,6.45l4.05,4.05" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+  </g>
+</svg>

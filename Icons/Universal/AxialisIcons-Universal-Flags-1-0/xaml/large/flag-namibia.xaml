@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="24" Height="24" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Polygon Points="0,3 0,21 0.012,21 23.988,3" Fill="#77A1D5" StrokeLineJoin="Miter"/>
+      <Polygon Points="24,21 24,3 23.988,3 0.012,21" Fill="#63BF80" StrokeLineJoin="Miter"/>
+      <Polygon Points="24,6.333 24,3 19.8135,3 0,17.517 0,21 4.1865,21" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="24,5.001 24,3 21.477,3 0,18.999 0,21 2.523,21" Fill="#F37980" StrokeLineJoin="Miter"/>
+      <Polygon Points="3.9495,9.741 5.1255,9.741 4.5375,11.334" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="0.75,7.545 2.343,8.133 2.343,6.957" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="4.5375,3.7575 3.9495,5.3505 5.1255,5.3505" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="8.325,7.545 6.732,6.957 6.732,8.133" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="2.643,10.8255 3.948,9.741 2.9295,9.153" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="1.257,5.652 2.3415,6.957 2.9295,5.9385" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="6.432,4.266 5.127,5.3505 6.1455,5.9385" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="7.818,9.4395 6.7335,8.1345 6.1455,9.153" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="1.257,9.4395 2.9295,9.153 2.3415,8.1345" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="2.643,4.266 2.9295,5.9385 3.948,5.3505" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="7.818,5.652 6.1455,5.9385 6.7335,6.957" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="6.432,10.8255 6.1455,9.153 5.127,9.741" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Ellipse Canvas.Left="2.673" Canvas.Top="5.6805" Width="3.729" Height="3.729" Fill="#F7CE73"/>
+      <Path Data="M24,21H0V3h24V21zM1.5,19.5h21V4.5H1.5V19.5z" Fill="#211F20" Opacity="0.20"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

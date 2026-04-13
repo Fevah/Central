@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <rect x="0.5" y="0.5" width="15" height="14" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <g>
+      <rect x="1.5" y="1.5" width="13" height="12" fill="#797A7D"/>
+      <path d="M14.5,4.898c-0.57,-1.423,-1.594,-2.615,-2.893,-3.398H4.393C3.094,2.283,2.07,3.475,1.5,4.898v5.204c0.57,1.423,1.594,2.615,2.893,3.398h7.214c1.299,-0.783,2.323,-1.975,2.893,-3.398V4.898z" fill="#7B7C7F"/>
+      <path d="M10.504,1.5H5.496C3.149,2.48,1.5,4.798,1.5,7.5c0,2.702,1.649,5.02,3.996,6h5.007c2.347,-0.98,3.996,-3.298,3.996,-6C14.5,4.798,12.851,2.48,10.504,1.5z" fill="#8A8C8E"/>
+      <circle cx="8" cy="7.5" r="6" fill="#939598"/>
+      <circle cx="8" cy="7.5" r="5.5" fill="#9D9FA2"/>
+      <circle cx="8" cy="7.5" r="5" fill="#A7A9AC"/>
+      <circle cx="8" cy="7.5" r="4.5" fill="#B1B3B6"/>
+      <circle cx="8" cy="7.5" r="4" fill="#BCBEC0"/>
+      <circle cx="8" cy="7.5" r="3.5" fill="#C7C8CA"/>
+      <circle cx="8" cy="7.5" r="3" fill="#D1D3D4"/>
+      <circle cx="8" cy="7.5" r="2.5" fill="#DADBDC"/>
+      <circle cx="8" cy="7.5" r="2" fill="#E0E1E2"/>
+      <circle cx="8" cy="7.5" r="1.5" fill="#E6E7E8"/>
+      <circle cx="8" cy="7.5" r="1" fill="#EBEBEC"/>
+      <circle cx="8" cy="7.5" r="0.5" fill="#EFEFF0"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Canvas>
+        <Rectangle Canvas.Left="2.6455" Canvas.Top="1.7277" Width="1.0927" Height="2.9282" RenderTransformOrigin="-2.42107 -0.590021" Fill="#EEAC55">
+          <Rectangle.RenderTransform>
+            <MatrixTransform Matrix="0.7071 -0.7071 0.7071 0.7071 -1.32211 3.19185"/>
+          </Rectangle.RenderTransform>
+        </Rectangle>
+        <Rectangle Canvas.Left="6.9536" Width="1.0927" Height="2.8715" Fill="#EEAC55"/>
+        <Rectangle Canvas.Left="10.344" Canvas.Top="2.6455" Width="2.9282" Height="1.0927" RenderTransformOrigin="-3.53255 -2.42107" Fill="#EEAC55">
+          <Rectangle.RenderTransform>
+            <MatrixTransform Matrix="0.7071 -0.7071 0.7071 0.7071 1.20154 9.28449"/>
+          </Rectangle.RenderTransform>
+        </Rectangle>
+        <Rectangle Canvas.Top="6.9536" Width="2.8715" Height="1.0927" Fill="#EEAC55"/>
+        <Rectangle Canvas.Left="12.1285" Canvas.Top="6.9536" Width="2.8715" Height="1.0927" Fill="#EEAC55"/>
+        <Path Data="M7.5,3.4613C5.273,3.4613,3.4613,5.273,3.4613,7.5c0,2.2269,1.8117,4.0387,4.0387,4.0387S11.5387,9.7269,11.5387,7.5C11.5387,5.273,9.727,3.4613,7.5,3.4613z" Fill="#EEAC55"/>
+        <Rectangle Canvas.Left="11.2618" Canvas.Top="10.344" Width="1.0927" Height="2.9282" RenderTransformOrigin="-10.3064 -3.53255" Fill="#EEAC55">
+          <Rectangle.RenderTransform>
+            <MatrixTransform Matrix="0.7071 -0.7071 0.7071 0.7071 -4.89109 11.8082"/>
+          </Rectangle.RenderTransform>
+        </Rectangle>
+        <Rectangle Canvas.Left="6.9536" Canvas.Top="12.1285" Width="1.0927" Height="2.8715" Fill="#EEAC55"/>
+        <Rectangle Canvas.Left="1.7277" Canvas.Top="11.2618" Width="2.9282" Height="1.0927" RenderTransformOrigin="-0.590021 -10.3064" Fill="#EEAC55">
+          <Rectangle.RenderTransform>
+            <MatrixTransform Matrix="0.7071 -0.7071 0.7071 0.7071 -7.41474 5.71551"/>
+          </Rectangle.RenderTransform>
+        </Rectangle>
+      </Canvas>
+    </Canvas>
+  </Canvas>
+</Viewbox>

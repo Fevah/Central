@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <rect x="17.5" y="6.5" width="11" height="8" fill="#FFFFFF"/>
+    <rect x="21.5" y="9.5" width="3" height="5" fill="#F7DA8E" stroke="#E57428" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <polygon points="29.5,14.5 16.5,14.5 16.5,16.5 29.517,16.5" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+    <path d="M23,1.6l7.5,4.339V6.5H15.5v-0.561L23,1.6z" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M19.5,14.5V6.5h-2v8H19.5zM28.5,14.5V6.5h-2v8H28.5z" fill="#C8C6C4" stroke="#383838" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <line x1="15" y1="16.5" x2="31" y2="16.5" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <circle cx="23" cy="4.4" r="1" fill="#78797A"/>
+    <rect x="3.5" y="20.5" width="11" height="8" fill="#FFFFFF"/>
+    <rect x="7.5" y="23.5" width="3" height="5" fill="#F7DA8E" stroke="#E57428" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <polygon points="15.5,28.5 2.5,28.5 2.5,30.5 15.517,30.5" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+    <path d="M9,15.6l7.5,4.339V20.5H1.5v-0.561L9,15.6z" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M5.5,28.5v-8H3.5v8H5.5zM14.5,28.5v-8h-2v8H14.5z" fill="#C8C6C4" stroke="#383838" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <line x1="1" y1="30.5" x2="17" y2="30.5" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <circle cx="9" cy="18.4" r="1" fill="#78797A"/>
+    <path d="M22.728,22.739l2.781,-2.749l2.781,2.749M25.509,20.141l0,6.366c0,1.095,-0.888,1.983,-1.983,1.983h-4.517" fill="none" stroke="#228BCB" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M9.272,9.242l-2.781,2.749L3.709,9.242M6.491,11.84l0,-6.366c0,-1.095,0.888,-1.983,1.983,-1.983h4.517" fill="none" stroke="#228BCB" stroke-width="1" stroke-miterlimit="1"/>
+  </g>
+</svg>

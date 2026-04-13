@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="24px" height="24px" viewBox="0 0 24 24" enable-background="new 0 0 24 24" xml:space="preserve">
+  <g id="icon">
+    <rect x="0" y="15" width="24" height="6" fill="#F37980"/>
+    <rect x="0" y="9" width="24" height="6" fill="#77A1D5"/>
+    <rect x="0" y="3" width="24" height="6" fill="#F7CE73"/>
+    <polygon points="12.423,10.7475 12.6705,10.2885 12.318,9.9 12.8475,10.0065 13.095,9.5475 13.1655,10.041 13.659,10.1475 13.2,10.359 13.2705,10.8885 12.918,10.5" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <polygon points="11.0115,10.5345 11.4705,10.746 11.223,10.287 11.577,9.9 11.0475,10.0065 10.8,9.5475 10.7295,10.077 10.2,10.1475 10.6935,10.395 10.6575,10.8885" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <polygon points="9.2475,11.1705 9.777,11.241 9.354,10.8885 9.531,10.4295 9.072,10.677 8.649,10.3245 8.826,10.854 8.364,11.1 8.8935,11.136 9.0345,11.6655" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <polygon points="7.836,12.405 8.3655,12.264 7.836,12.087 7.836,11.5575 7.518,11.9805 6.9885,11.8035 7.3065,12.2265 7.0245,12.615 7.518,12.474 7.8705,12.9" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <polygon points="7.023,13.9935 7.446,13.6755 6.882,13.7115 6.705,13.218 6.564,13.7115 6,13.7115 6.459,13.9935 6.318,14.487 6.741,14.169 7.2345,14.451" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <polygon points="16.977,13.923 16.8,14.418 17.259,14.1 17.682,14.418 17.541,13.9245 18,13.6425 17.436,13.6425 17.295,13.1835 17.118,13.6425 16.554,13.6425" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <polygon points="16.0935,12.3345 16.1295,12.828 16.4475,12.4395 16.941,12.546 16.623,12.1575 16.941,11.7345 16.4475,11.9115 16.095,11.523 16.095,12.0165 15.6,12.1935" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <polygon points="14.682,11.1345 14.8935,11.628 15.0345,11.0985 15.564,11.0625 15.105,10.815 15.246,10.2855 14.823,10.638 14.364,10.3905 14.5755,10.8495 14.1525,11.202" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <path d="M24,21H0V3h24V21zM1.5,19.5h21V4.5H1.5V19.5z" fill="#211F20" opacity="0.20"/>
+  </g>
+</svg>

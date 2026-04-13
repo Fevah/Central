@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <g>
+      <polygon points="30,28 27.9,28 27.9,26.8 28.8,26.8 28.8,25.9 30,25.9" fill="#383838" stroke-linejoin="miter"/>
+      <path d="M25.736,28h-3.245v-1.2h3.245V28zM20.327,28h-3.245v-1.2h3.245V28zM14.918,28h-3.245v-1.2h3.245V28zM9.509,28H6.264v-1.2h3.245V28z" fill="#383838"/>
+      <polygon points="4.1,28 2,28 2,25.9 3.2,25.9 3.2,26.8 4.1,26.8" fill="#383838" stroke-linejoin="miter"/>
+      <path d="M3.2,24.1H2v-2.7h1.2V24.1zM3.2,19.6H2v-2.7h1.2V19.6zM3.2,15.1H2v-2.7h1.2V15.1zM3.2,10.6H2V7.9h1.2V10.6z" fill="#383838"/>
+      <polygon points="3.2,6.1 2,6.1 2,4 4.1,4 4.1,5.2 3.2,5.2" fill="#383838" stroke-linejoin="miter"/>
+      <path d="M25.736,5.2h-3.245V4h3.245V5.2zM20.327,5.2h-3.245V4h3.245V5.2zM14.918,5.2h-3.245V4h3.245V5.2zM9.509,5.2H6.264V4h3.245V5.2z" fill="#383838"/>
+      <polygon points="30,6.1 28.8,6.1 28.8,5.2 27.9,5.2 27.9,4 30,4" fill="#383838" stroke-linejoin="miter"/>
+      <path d="M30,24.1h-1.2v-2.7h1.2V24.1zM30,19.6h-1.2v-2.7h1.2V19.6zM30,15.1h-1.2v-2.7h1.2V15.1zM30,10.6h-1.2V7.9h1.2V10.6z" fill="#383838"/>
+    </g>
+  </g>
+</svg>

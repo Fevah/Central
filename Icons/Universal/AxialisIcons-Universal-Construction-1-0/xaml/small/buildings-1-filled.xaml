@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Canvas>
+        <Path Data="M0,16h7V0H0V16zM4,2h1v1H4V2zM4,4h1v1H4V4zM4,6h1v1H4V6zM4,8h1v1H4V8zM4,10h1v1H4V10zM4,12h1v1H4V12zM2,2h1v1H2V2zM2,4h1v1H2V4zM2,6h1v1H2V6zM2,8h1v1H2V8zM2,10h1v1H2V10zM2,12h1v1H2V12z" Fill="#6485C3"/>
+        <Path Data="M8,2v14h7V2H8zM11,13h-1v-1h1V13zM11,11h-1v-1h1V11zM11,9h-1V8h1V9zM11,7h-1V6h1V7zM11,5h-1V4h1V5zM13,13h-1v-1h1V13zM13,11h-1v-1h1V11zM13,9h-1V8h1V9zM13,7h-1V6h1V7zM13,5h-1V4h1V5z" Fill="#6485C3"/>
+      </Canvas>
+      <Path Data="M3,2v1H2V2H3zM4,2v1h1V2H4zM2,4v1h1V4H2zM4,4v1h1V4H4zM2,6v1h1V6H2zM4,6v1h1V6H4zM2,8v1h1V8H2zM4,8v1h1V8H4zM2,10v1h1v-1H2zM4,10v1h1v-1H4zM4,12v1h1v-1H4zM2,12v1h1v-1H2zM10,4v1h1V4H10zM12,4v1h1V4H12zM10,6v1h1V6H10zM12,6v1h1V6H12zM10,8v1h1V8H10zM12,8v1h1V8H12zM10,10v1h1v-1H10zM12,10v1h1v-1H12zM12,12v1h1v-1H12zM10,12v1h1v-1H10z" Fill="#FFFFFF" Opacity="0.5"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

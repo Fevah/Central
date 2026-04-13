@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M12.499,9.012M10.477,6.885l-8.986,8.504c-0.005,0.005,0,0.013,0.007,0.01c0.564,-0.242,9.098,-4.06,10.465,-4.878c1.216,-0.727,0.695,-1.348,0.536,-1.509L10.477,6.885z" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M10.463,6.943M12.644,8.965M10.463,6.943c-0.026,0.102,0,0.214,0.077,0.292c0.151,0.154,0.332,0.304,0.472,0.438c0.526,0.501,0.815,0.75,1.351,1.226c0.056,0.049,0.127,0.077,0.202,0.077c0.027,0,0.054,-0.004,0.079,-0.011M12.644,8.965c0.024,-0.006,0.047,-0.016,0.069,-0.028c1.037,-0.58,1.782,-1.094,2.787,-1.86V1.999c-1.924,1.66,-3.722,3.19,-4.984,4.834c-0.026,0.033,-0.042,0.071,-0.052,0.11" Fill="#C8C6C4" Stroke="#383838" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+      <Path Data="M0.5,8.988l2.673,-2.271l3.452,-0.729L0.5,1.23V8.988z" Fill="#C8C6C4" Stroke="#383838" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

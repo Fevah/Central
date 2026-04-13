@@ -1,0 +1,155 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:dxr="http://schemas.devexpress.com/winfx/2008/xaml/ribbon"
+                    xmlns:templateSelector="clr-namespace:TIG.TotalLink.Client.Module.Admin.TemplateSelector"
+                    xmlns:category="clr-namespace:TIG.TotalLink.Client.Module.Admin.ViewModel.Ribbon.Category"
+                    xmlns:ribbon="clr-namespace:TIG.TotalLink.Client.Module.Admin.ViewModel.Ribbon"
+                    xmlns:dxb="http://schemas.devexpress.com/winfx/2008/xaml/bars"
+                    xmlns:item="clr-namespace:TIG.TotalLink.Client.Module.Admin.ViewModel.Ribbon.Item">
+
+    <templateSelector:RibbonItemTemplateSelector x:Key="RibbonItemTemplateSelector" />
+    <templateSelector:RibbonCategoryTemplateSelector x:Key="RibbonCategoryTemplateSelector" />
+
+    <!-- Ribbon Button Item template -->
+    <DataTemplate DataType="{x:Type item:RibbonButtonItemViewModel}">
+        <ContentControl>
+            <dxb:BarButtonItem Content="{Binding Name, Mode=OneWay}"
+                               Hint="{Binding Description}"
+                               Command="{Binding Command, Mode=OneWay}"
+                               CommandParameter="{Binding CommandParameter, Mode=OneWay}" />
+
+            <!--Glyph="{Binding SmallGlyph}"
+                    LargeGlyph="{Binding LargeGlyph}"-->
+
+        </ContentControl>
+    </DataTemplate>
+
+
+
+    <!-- Ribbon SubItem template -->
+    <!--
+    <DataTemplate DataType="{x:Type item:RibbonSubItemViewModel}">
+        <ContentControl>
+            <dxb:BarSubItem Content="{Binding DataModel.Name, Mode=OneWay}"
+                            Command="{Binding Command, Mode=OneWay}"
+                            CommandParameter="{Binding DataModel.CommandParameter, Mode=OneWay}"
+                            ItemLinksSource="{Binding RibbonItems, Mode=OneWay}"
+                            ItemTemplateSelector="{StaticResource RibbonItemTemplateSelector}" />
+            -->
+    <!--Glyph="{Binding SmallGlyph}"
+                                    LargeGlyph="{Binding LargeGlyph}"
+                                    GlyphAlignment="Left"
+                                    BarItemDisplayMode="ContentAndGlyph"-->
+    <!--
+        </ContentControl>
+    </DataTemplate>-->
+
+
+    <!--Ribbon Gallery Item template -->
+    <!--
+    <DataTemplate x:Key="RibbonGalleryItemTemplate"
+                  DataType="{x:Type gallery:RibbonGalleryItemViewModel}">
+        <ContentControl>
+            <dxb:GalleryItem Caption="{Binding Name, Mode=OneWay}"
+                             Glyph="{Binding Glyph, Mode=OneWay}" />
+        </ContentControl>
+    </DataTemplate>-->
+
+    <!-- Ribbon Separator Item template -->
+    <DataTemplate DataType="{x:Type item:RibbonSeparatorItemViewModel}">
+        <ContentControl>
+            <dxb:BarItemSeparator />
+        </ContentControl>
+    </DataTemplate>
+
+    <!--Ribbon Gallery Item Group template -->
+    <!--
+    <DataTemplate x:Key="RibbonGalleryGroupTemplate"
+                  DataType="{x:Type gallery:RibbonGalleryGroupViewModel}">
+        <ContentControl>
+            <dxb:GalleryItemGroup Caption="{Binding Name, Mode=OneWay}"
+                                  ItemsSource="{Binding GalleryItems, Mode=OneWay}"
+                                  ItemTemplate="{StaticResource RibbonGalleryItemTemplate}" />
+        </ContentControl>
+    </DataTemplate>-->
+
+
+    <!-- Ribbon Gallery Item template -->
+    <!--
+    <DataTemplate DataType="{x:Type item:RibbonGalleryItemViewModel}">
+        <ContentControl>
+            <dxr:RibbonGalleryBarItem Content="{Binding Name}">
+                <dxr:RibbonGalleryBarItem.Gallery>
+                    <dxb:Gallery GroupsSource="{Binding GalleryItemGroup}"
+                                 RowCount="{Binding RowCount, Mode=OneWay}"
+                                 GroupTemplate="{StaticResource RibbonGalleryGroupTemplate}"
+                                 x:Name="Gallery"
+                                 ItemCheckMode="Single"
+                                 ItemCaptionHorizontalAlignment="Center"
+                                 ItemGlyphLocation="Top"
+                                 IsItemCaptionVisible="False">
+                        <dxmvvm:Interaction.Behaviors>
+                            <dxmvvm:EventToCommand EventName="ItemChecked"
+                                                   Command="{Binding ItemCheckedCommand, Mode=OneWay}"
+                                                   CommandParameter="{Binding ElementName=Gallery, Path=CheckedItems, Mode=OneWay}" />
+                        </dxmvvm:Interaction.Behaviors>
+                    </dxb:Gallery>
+
+                </dxr:RibbonGalleryBarItem.Gallery>
+            </dxr:RibbonGalleryBarItem>
+        </ContentControl>
+    </DataTemplate>-->
+
+
+    <!-- Ribbon Group template -->
+    <DataTemplate x:Key="RibbonGroupTemplate"
+                  DataType="{x:Type ribbon:RibbonGroupViewModel}">
+        <ContentControl>
+            <dxr:RibbonPageGroup Caption="{Binding Name, Mode=OneWay}"
+                                 ShowCaptionButton="{Binding ShowCaptionButton, Mode=OneWay}"
+                                 CaptionButtonCommand="{Binding CaptionButtonCommand, Mode=OneWay}"
+                                 ItemLinksSource="{Binding RibbonItems, Mode=OneWay}"
+                                 ItemTemplateSelector="{StaticResource RibbonItemTemplateSelector}" />
+
+
+            <!--    Glyph="{Binding Glyph}"
+                    AllowCollapse="True"
+                    CaptionButtonCommand="{Binding}"-->
+
+        </ContentControl>
+    </DataTemplate>
+
+
+
+    <!--Ribbon Page template-->
+    <DataTemplate x:Key="RibbonPageTemplate"
+                  DataType="{x:Type ribbon:RibbonPageViewModel}">
+        <ContentControl>
+            <dxr:RibbonPage Caption="{Binding Name, Mode=OneWay}"
+                            GroupsSource="{Binding RibbonGroups, Mode=OneWay}"
+                            GroupTemplate="{StaticResource RibbonGroupTemplate}"
+                            IsSelected="{Binding IsSelected, Mode=OneWay}" />
+        </ContentControl>
+    </DataTemplate>
+
+
+    <!--Ribbon Default Category template-->
+    <DataTemplate DataType="{x:Type category:RibbonDefaultCategoryViewModel}">
+        <ContentControl>
+            <dxr:RibbonDefaultPageCategory PagesSource="{Binding RibbonPages, Mode=OneWay}"
+                                           PageTemplate="{StaticResource RibbonPageTemplate}" />
+        </ContentControl>
+    </DataTemplate>
+
+
+    <!--Ribbon Category template-->
+    <DataTemplate DataType="{x:Type category:RibbonCategoryViewModel}">
+        <ContentControl>
+            <dxr:RibbonPageCategory Caption="{Binding Name, Mode=OneWay}"
+                                    PagesSource="{Binding RibbonPages, Mode=OneWay}"
+                                    PageTemplate="{StaticResource RibbonPageTemplate}" />
+            <!--Caption="{Binding DataModel.Name, Mode=OneWay}"-->
+        </ContentControl>
+    </DataTemplate>
+
+</ResourceDictionary>

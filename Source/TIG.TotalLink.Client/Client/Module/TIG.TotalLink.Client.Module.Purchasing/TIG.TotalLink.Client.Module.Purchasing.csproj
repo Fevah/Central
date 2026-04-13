@@ -1,0 +1,220 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{ADFC1559-AD9C-4198-BF99-B7C2C71406E7}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>TIG.TotalLink.Client.Module.Purchasing</RootNamespace>
+    <AssemblyName>TIG.TotalLink.Client.Module.Purchasing</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <SccProjectName>SAK</SccProjectName>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccProvider>SAK</SccProvider>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Dev|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Dev\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;TEST</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Test|AnyCPU'">
+    <OutputPath>bin\Test\</OutputPath>
+    <DefineConstants>TRACE;TEST</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Autofac, Version=3.5.0.0, Culture=neutral, PublicKeyToken=17863af14b0044da, processorArchitecture=MSIL">
+      <HintPath>..\..\..\packages\Autofac.3.5.2\lib\net40\Autofac.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="DevExpress.Data.v15.1, Version=15.1.5.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL" />
+    <Reference Include="DevExpress.Mvvm.v15.1, Version=15.1.5.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL" />
+    <Reference Include="DevExpress.Xpo.v15.1, Version=15.1.5.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+    <Reference Include="WindowsBase" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Purchasing\DataModelCode\PurchaseOrder.cs">
+      <Link>DataModel\PurchaseOrder.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Purchasing\DataModelCode\PurchaseOrder.Designer.cs">
+      <Link>DataModel\PurchaseOrder.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Purchasing\DataModelCode\PurchaseOrderItem.cs">
+      <Link>DataModel\PurchaseOrderItem.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Purchasing\DataModelCode\PurchaseOrderItem.Designer.cs">
+      <Link>DataModel\PurchaseOrderItem.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Purchasing\DataModelCode\PurchaseOrderReceipt.cs">
+      <Link>DataModel\PurchaseOrderReceipt.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Purchasing\DataModelCode\PurchaseOrderReceipt.Designer.cs">
+      <Link>DataModel\PurchaseOrderReceipt.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Purchasing\DataModelCode\PurchaseOrderReceiptItem.cs">
+      <Link>DataModel\PurchaseOrderReceiptItem.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Purchasing\DataModelCode\PurchaseOrderReceiptItem.Designer.cs">
+      <Link>DataModel\PurchaseOrderReceiptItem.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Purchasing\DataModelCode\PurchaseOrderReceiptStatus.cs">
+      <Link>DataModel\PurchaseOrderReceiptStatus.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Purchasing\DataModelCode\PurchaseOrderReceiptStatus.Designer.cs">
+      <Link>DataModel\PurchaseOrderReceiptStatus.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Purchasing\DataModelCode\PurchaseOrderStatus.cs">
+      <Link>DataModel\PurchaseOrderStatus.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Purchasing\DataModelCode\PurchaseOrderStatus.Designer.cs">
+      <Link>DataModel\PurchaseOrderStatus.Designer.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\Facade\TIG.TotalLink.Shared.Facade.Purchasing\IPurchasingFacade.cs">
+      <Link>Facade\IPurchasingFacade.cs</Link>
+    </Compile>
+    <Compile Include="..\..\..\..\TIG.TotalLink.Server\Shared\Facade\TIG.TotalLink.Shared.Facade.Purchasing\PurchasingFacade.cs">
+      <Link>Facade\PurchasingFacade.cs</Link>
+    </Compile>
+    <Compile Include="PurchasingModule.cs" />
+    <Compile Include="Metadata\PurchaseReceipt.cs" />
+    <Compile Include="Metadata\PurchaseReceiptItem.cs" />
+    <Compile Include="Metadata\PurchaseReceiptStatus.cs" />
+    <Compile Include="Metadata\PurchaseOrderStatus.cs" />
+    <Compile Include="Metadata\PurchaseOrderItem.cs" />
+    <Compile Include="Metadata\PurchaseOrder.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ViewModel\Widget\PurchaseOrder\PurchaseOrderItemListViewModel.cs" />
+    <Compile Include="ViewModel\Widget\PurchaseReceipt\PurchaseReceiptItemListViewModel.cs" />
+    <Compile Include="ViewModel\Widget\PurchaseReceipt\PurchaseReceiptListViewModel.cs" />
+    <Compile Include="ViewModel\Widget\PurchaseOrder\PurchaseOrderListViewModel.cs" />
+    <Compile Include="View\Widget\PurchaseOrder\PurchaseOrderItemListView.xaml.cs">
+      <DependentUpon>PurchaseOrderItemListView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="View\Widget\PurchaseReceipt\PurchaseReceiptItemListView.xaml.cs">
+      <DependentUpon>PurchaseReceiptItemListView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="View\Widget\PurchaseReceipt\PurchaseReceiptListView.xaml.cs">
+      <DependentUpon>PurchaseReceiptListView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="View\Widget\PurchaseOrder\PurchaseOrderListView.xaml.cs">
+      <DependentUpon>PurchaseOrderListView.xaml</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="View\Widget\PurchaseOrder\PurchaseOrderItemListView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="View\Widget\PurchaseReceipt\PurchaseReceiptItemListView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="View\Widget\PurchaseReceipt\PurchaseReceiptListView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="View\Widget\PurchaseOrder\PurchaseOrderListView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\TIG.TotalLink.Server\Shared\Core\TIG.TotalLink.Shared.Contract.Core\TIG.TotalLink.Shared.Contract.Core.csproj">
+      <Project>{66FF44D2-D1AB-4B4A-B59F-367F7AE204CC}</Project>
+      <Name>TIG.TotalLink.Shared.Contract.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\..\TIG.TotalLink.Server\Shared\Core\TIG.TotalLink.Shared.DataModel.Core\TIG.TotalLink.Shared.DataModel.Core.csproj">
+      <Project>{fb358652-45f1-4410-99da-19d72833dcd6}</Project>
+      <Name>TIG.TotalLink.Shared.DataModel.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\..\TIG.TotalLink.Server\Shared\Core\TIG.TotalLink.Shared.Facade.Core\TIG.TotalLink.Shared.Facade.Core.csproj">
+      <Project>{629ae438-fb3f-4e91-895d-3b3f4d3f2896}</Project>
+      <Name>TIG.TotalLink.Shared.Facade.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Core\TIG.TotalLink.Client.Core\TIG.TotalLink.Client.Core.csproj">
+      <Project>{87A632E6-6784-41A3-95AE-8B534B1DDED4}</Project>
+      <Name>TIG.TotalLink.Client.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Core\TIG.TotalLink.Client.Editor\TIG.TotalLink.Client.Editor.csproj">
+      <Project>{6F2C492B-8DDF-40B0-82F6-48AFEC451241}</Project>
+      <Name>TIG.TotalLink.Client.Editor</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TIG.TotalLink.Client.Module.Admin\TIG.TotalLink.Client.Module.Admin.csproj">
+      <Project>{233F0B6B-17BF-4389-9B8D-B5BDB1FF86DD}</Project>
+      <Name>TIG.TotalLink.Client.Module.Admin</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TIG.TotalLink.Client.Module.Crm\TIG.TotalLink.Client.Module.Crm.csproj">
+      <Project>{AF8E0EAC-E1B8-435C-970D-6AA4BA59E070}</Project>
+      <Name>TIG.TotalLink.Client.Module.Crm</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TIG.TotalLink.Client.Module.Inventory\TIG.TotalLink.Client.Module.Inventory.csproj">
+      <Project>{36161B0E-7487-470B-BA16-943989E01BA3}</Project>
+      <Name>TIG.TotalLink.Client.Module.Inventory</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>:: Copy the module dll and pdb files to the Client application Module directory
+xcopy /Y "$(TargetPath)" "$(ProjectDir)..\..\Host\TIG.TotalLink.Client\bin\$(ConfigurationName)\Module\"
+xcopy /Y "$(TargetDir)$(TargetName).pdb" "$(ProjectDir)..\..\Host\TIG.TotalLink.Client\bin\$(ConfigurationName)\Module\"
+</PostBuildEvent>
+  </PropertyGroup>
+  <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(SolutionDir)\.nuget\NuGet.targets')" Text="$([System.String]::Format('$(ErrorText)', '$(SolutionDir)\.nuget\NuGet.targets'))" />
+  </Target>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

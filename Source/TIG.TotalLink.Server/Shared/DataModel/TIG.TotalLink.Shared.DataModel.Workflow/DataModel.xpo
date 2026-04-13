@@ -1,0 +1,108 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataBaseObjectModel xmlns:dm0="http://schemas.microsoft.com/VisualStudio/2008/DslTools/Core" dslVersion="1.0.0.0" Id="19b6b87f-60e3-42ed-a693-445c8a4e2f5c" namespace="TIG.TotalLink.Shared.DataModel.Workflow" dataBaseShemaInfo="H4sIAAAAAAAEAOVY32/bNhB+L9D/wfBzaPGnKBayi85Ji6LdVjTp1tcjeUyEypIhyUn634+yHSdO2m1FHRvL3sSPR/C+++5OB+Yvr2fl4BKbtqir8ZCN6PDl5Pmz/Bdo8bSrGzjHt1WoB9Gqal9ct8V4eNF18xdJcnV1NboSo7o5TzilLPn86/tTd4EzIEXVdlA5HG5O+X8+NYy3Dgb5GdgS2/7K5foGuQPcQL/BDCd/1s2XUNZXeXKLbcxOqh6bdM0C82S92GweF20PfJp76HASoGyj0Ta4sX2zKPxbP/FGZtwrRRyAI1JwTgwTjBgbtJXKMo02T9bGm8PTulzMqnaLwXfhuNFzWG1O+s88uQNsGf4dvR+luEXTMoOGRnKUBiIVVyRDY4mg3DmUWeBWP6AZjyc/wfRGx1euKy6L7uvvhd8/cUURhJSSOOdCry8loIUmqTVog9WQQnhs4vtnjcIzgJQTTaUgUlpFbCY5odR7MNQEB9muWb+HtjsrZvhhYcuivcADiG2kCC4YIFwbFcVGHfOdxSgI7mkqnGHZw2L+SdqHE5lRY43wjhito8jAGbFextQ2Ik0Vikwz8Vgif6rmh5MZTZb6yJ2EkKVEUkiJTdERG4zgwJTlAnZNfJPVx9Gr/0dm39H4MKR3qvO30PWE8cOTyW3N72NCoRD/0DJydzSWuUppjAJIEkCF1HHDBX9Y5v+9CUVlFgLzKeEmk1FsHnWO3Y2gNi61UlPF1K4z/DPMyv0zBVAghcjiSJJZIr1EYlTwBGjGvGHU0yAfq2+f+KI7RMu2nrugDCPOBxbVzXSsYheHUGdjjWuJEMwTHEhQOeNlFDgEDUQyFmuXmziMgs/AYnBa8yf5i1agM+epJsy5vmk5iP8rlERIh0YwKmNj3zXx1wWWnu2fK7cOgWtFUtSaSCMg5naIcqeCs5BisJw+sXHkEHl98HFkpzn9b8aR9frWJO9fb9B/aGq3BAfJCv5j9dQzOcbLk+t5g207iiGC0SVTI3Y0WG+P+9VIjejRYLoou0WD4woXXQPl0WCZT+4dfj2rv2A1tlnmmVbSaxoZmjhl3VyxvG9aQtti2wvwcbGJbv7KR9cwFNdrv1bQ6SJsQR9xVl/ifcMVet92Ci1G4d0FVOd9G1uuV6H5lg95jMwcm644sG/fcSN/gxU2Mb2m9WyGVdeuc/QBvGV8jG1xHj9fFzEV7p3Y3nv+LE/uvfFN/gKscCckDBQAAA==" generateStoredProcedures="false" fieldNameCase="Unchanged" fieldNamePrefix="_" xmlns="http://schemas.microsoft.com/dsltools/ORMDataModel">
+  <classes>
+    <dataBaseObjectModelHasClasses Id="45b7ccb4-38c4-4ef4-9642-0dae0a4508c1">
+      <externalPersistentType Id="702a283f-4c0a-4b82-95b1-89e702a782c0" name="TIG.TotalLink.Shared.DataModel.Core.DataObjectBase" nameSpace="TIG.TotalLink.Shared.DataModel.Core" virtualName="DataObjectBase" assemblyName="C:\TIG\Repo\TIG\TotalLink\Source\TIG.TotalLink.Shared.DataModel\TIG.TotalLink.Shared.DataModel.Core\bin\Debug\TIG.TotalLink.Shared.DataModel.Core.dll" deferredDeletion="False" optimisticLocking="False" addReferenceToAssembly="false" hasDefaultConstructor="true" hasSessionSpecifiedConstructor="false">
+        <fields>
+          <generalXpObjectHasFields Id="7ac04849-43d4-4cda-b435-abfbeab1c10a">
+            <externalPersistentTypeField Id="f57ac6c6-b2ef-425e-b6da-702838829cc3" name="Oid" virtualColumnType="Guid" key="true" />
+          </generalXpObjectHasFields>
+        </fields>
+      </externalPersistentType>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="0f2949bc-a50d-482b-9972-d8e6be65d808">
+      <xpObject Id="b9b62a1c-37c6-4905-8caa-ffb7fbfb3006" name="Workflow" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="Workflow" designerFileName="Workflow.Designer" className="Workflow" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="Workflow">
+        <fields>
+          <generalXpObjectHasFields Id="f0fdf034-1c5d-4f50-92ae-f0b66785b7f6">
+            <field Id="1eac3c7d-cf34-4c35-a535-9bf330b25ef1" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="d698bf8a-65e5-4a71-a450-3eb7041dfe22">
+            <field Id="109b93dc-9773-4a21-bd47-693665e38713" name="WorkflowActivity" virtualColumnType="WorkflowActivity" logicalType="WorkflowActivity" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="b118a676-9c42-490c-a892-44d922f6ed71">
+            <field Id="943fcf9a-2795-43e7-9012-732d063c918b" name="PublishedDate" columnType="DateTime" virtualColumnType="DateTime" delayedUpdateModifiedOnly="false" isNullable="true" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="39a33a6e-84b3-4511-9b86-7c1e7e28ea05">
+            <field Id="e986d9b9-ff86-40a6-b6ec-bf932a15b23a" name="UnpublishedDate" columnType="DateTime" virtualColumnType="DateTime" delayedUpdateModifiedOnly="false" isNullable="true" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="57763bdc-b4b1-4e9b-95f9-7c7be0e38384">
+            <externalPersistentTypeMoniker Id="ec7f09e7-5c6a-4db4-8440-474a7006ab0d" />
+          </inheritance>
+        </superClass>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="60a35b93-be99-41d0-bd7f-a2a47cb6b67f">
+      <xpObject Id="d0ace446-bc03-4560-b6a4-fa5f6c292323" name="WorkflowActivity" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="WorkflowActivity" designerFileName="WorkflowActivity.Designer" className="WorkflowActivity" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="WorkflowActivity">
+        <fields>
+          <generalXpObjectHasFields Id="b94e97bf-bb2c-4e91-9086-3e5571d16e38">
+            <field Id="58baf1d6-2984-402c-b93d-e79c6b470515" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="9c3e38a7-ab98-4f3f-b8c8-0dcb296ce27f">
+            <field Id="aa5a4338-cc8b-4d4e-95fd-a081d910d0f4" name="Xaml" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="Unlimited" isNullable="true" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="9b201a97-e862-4b45-afa3-6d67a69feefc">
+            <field Id="e5c9d44e-ff7a-4110-b294-cad8abefc772" name="PublishedDate" columnType="DateTime" virtualColumnType="DateTime" delayedUpdateModifiedOnly="false" isNullable="true" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="f6f9dbd0-5ce6-4322-90a5-2aeb8d601b7a">
+            <field Id="5a78cd07-1cc3-45ca-90e4-34ce931046d9" name="UnpublishedDate" columnType="DateTime" virtualColumnType="DateTime" delayedUpdateModifiedOnly="false" isNullable="true" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="eccaab04-ba8d-4835-9471-e18ae2787035">
+            <persistentAlias Id="3143554b-2404-4df7-beaf-093cd464b85d" name="TypeId" columnType="Int32" virtualColumnType="Int32" expression="Iif(StartsWith([Xaml], '&lt;Sequence'), 1, Iif(StartsWith([Xaml], '&lt;StateMachine'), 2, Iif(StartsWith([Xaml], '&lt;Flowchart'), 3, 0)))" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="64f9d44b-e20d-42f7-80e1-170e4c418164">
+            <persistentAlias Id="762a95d4-e3b8-4ef3-9d2d-e11ea2912309" name="TypeName" virtualColumnType="String" expression="Iif([TypeId] = 1, 'Sequence', Iif([TypeId] = 2, 'State Machine', Iif([TypeId] = 3, 'Flowchart', 'Undefined')))" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="aa2f0327-1239-498e-bc4d-d812a860d6e6">
+            <externalPersistentTypeMoniker Id="ec7f09e7-5c6a-4db4-8440-474a7006ab0d" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="b341bac3-1e75-401d-8d2b-f7794add8625" sourceCollectionName="Workflows" name="WorkflowReferencesWorkflowActivity" targetFieldName="WorkflowActivity">
+            <xpObjectMoniker Id="b9b62a1c-37c6-4905-8caa-ffb7fbfb3006" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="4bead6b2-2820-4dce-a32c-18376f80ace6">
+            <collectionField Id="744c58c0-4a5b-4bae-8d73-bfc29032c143" name="Workflows" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="fa3df385-3c93-4d45-a8e4-718824bd36c8">
+      <externalPersistentType Id="ec7f09e7-5c6a-4db4-8440-474a7006ab0d" name="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" nameSpace="TIG.TotalLink.Shared.DataModel.Admin" virtualName="StampedDataObjectBase" assemblyName="W:\TIG\TotalLink3\Source\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Admin\bin\Debug\TIG.TotalLink.Shared.DataModel.Admin.dll" deferredDeletion="False" optimisticLocking="False" addReferenceToAssembly="false" hasDefaultConstructor="true" constructorParameterType="Session" hasSessionSpecifiedConstructor="false">
+        <fields>
+          <generalXpObjectHasFields Id="ed92a9a6-522c-4b05-aeaf-c9616162cd43">
+            <externalPersistentTypeField Id="ebc50ce3-65b9-423d-bcbb-d7b20c91fe9f" name="Oid" virtualColumnType="Guid" key="true" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="566e6440-2b6b-4f17-9f84-030475fe3443">
+            <externalPersistentTypeField Id="7e642f5f-6b1a-4fe9-885b-488f06227ed8" name="P_CreatedBy" virtualColumnType="User" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="939baf94-49db-407f-a2a2-cdafd9cfb356">
+            <externalPersistentTypeField Id="b4dcd51a-0b8a-4015-bf4d-75513f64d9da" name="P_ModifiedBy" virtualColumnType="User" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="e1fed4a8-f7bb-418c-8ba2-42d8ee916079">
+            <externalPersistentTypeField Id="3150d9d4-9e0d-4945-a08a-1d2566afc3bb" name="CreatedBy" virtualColumnType="User" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="175cb7da-d8d7-4e73-a7f0-a288cd0e8274">
+            <externalPersistentTypeField Id="88a3b547-5a4d-4d48-bf2b-0d1082b82c0e" name="CreatedDate" virtualColumnType="DateTime" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="9aee6a28-1444-4d91-bfe6-683b1cf88ae9">
+            <externalPersistentTypeField Id="90f129de-9885-4b14-b756-b72f0c421cc8" name="ModifiedBy" virtualColumnType="User" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="5697e794-2a05-4f07-a96e-12aa4b4a7a9f">
+            <externalPersistentTypeField Id="609b686d-e3d4-4f5f-b098-e84aaa9b2b16" name="ModifiedDate" virtualColumnType="DateTime" />
+          </generalXpObjectHasFields>
+        </fields>
+      </externalPersistentType>
+    </dataBaseObjectModelHasClasses>
+  </classes>
+  <externalTypes>
+    <dataBaseObjectModelHasExternalTypes Id="5eb1a777-e049-41e3-9f3c-232a7aabda59">
+      <externalType Id="b2aa0ff1-5800-4ad5-833f-f5bbe786f88d" name="WorkflowActivityType" namespace="TIG.TotalLink.Shared.DataModel.Core.Enum.Workflow" />
+    </dataBaseObjectModelHasExternalTypes>
+  </externalTypes>
+</dataBaseObjectModel>

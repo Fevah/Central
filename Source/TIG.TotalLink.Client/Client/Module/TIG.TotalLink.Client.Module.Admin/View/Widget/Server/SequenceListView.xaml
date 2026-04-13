@@ -1,0 +1,22 @@
+﻿<UserControl x:Class="TIG.TotalLink.Client.Module.Admin.View.Widget.Server.SequenceListView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:control="clr-namespace:TIG.TotalLink.Client.Module.Admin.Control"
+             xmlns:core="clr-namespace:TIG.TotalLink.Client.Module.Admin.View.Core"
+             xmlns:server="clr-namespace:TIG.TotalLink.Client.Module.Admin.ViewModel.Widget.Server"
+             mc:Ignorable="d"
+             d:DesignHeight="300"
+             d:DesignWidth="300"
+             d:DataContext="{d:DesignInstance server:SequenceListViewModel, IsDesignTimeCreatable=True}">
+
+    <control:WidgetCustomizationControl>
+
+        <core:ListView ItemsSource="{Binding ItemsSource}"
+                       SelectedItems="{Binding SelectedItems}"
+                       CurrentItem="{Binding CurrentItem}" />
+
+    </control:WidgetCustomizationControl>
+
+</UserControl>

@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<StockAdjustmentReasons>
+  <StockAdjustmentReason Name="Migrated" IsTargetIncrease="True" />
+  <StockAdjustmentReason Name="New" IsTargetIncrease="True" />
+  <StockAdjustmentReason Name="Missing" IsTargetIncrease="False" />
+  <StockAdjustmentReason Name="Damaged" IsTargetIncrease="False" />
+  <StockAdjustmentReason Name="Transfer" IsTargetIncrease="True" IsSourceIncrease="False" />
+  <StockAdjustmentReason Name="Dispatched" IsTargetIncrease="False" />
+</StockAdjustmentReasons>

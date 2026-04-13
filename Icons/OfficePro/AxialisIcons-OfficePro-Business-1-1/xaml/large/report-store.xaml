@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M5.5,5.5v7.5h10.126L21,17.848v1.821c0,0.864,-0.366,1.68,-1,2.272V27.5h10.5V5.5H5.5z" Fill="#FFFFFF"/>
+      <Path Data="M30.5,1.5v4H5.5V1.5H30.5z" Fill="#C8C6C4"/>
+      <Path Data="M5,1v4v1v7.396l0.446,-0.396H6V6h24v21H20v1h11V6V5V1H5zM30,5H6V2h24V5z" Fill="#383838"/>
+      <Path Data="M20.06,17H23v8h-3v-1h2v-6h-1v-0.152L20.06,17zM28,15v10h-4V15H28zM27,16h-2v8h2V16z" Fill="#787979"/>
+      <Path Data="M12.544,13l0.223,-0.255l0.402,0.255H12.544zM27.918,7.381l-4.619,0.771l0.165,0.986l2.77,-0.463l-3.55,4.082l-3.203,-2.029l-2.8,3.222l0.743,0.67l2.248,-2.588l3.202,2.028l4.077,-4.688l0.049,2.858l1,-0.017L27.918,7.381z" Fill="#228BCB"/>
+      <Rectangle Canvas.Left="2.5" Canvas.Top="20.12" Width="16" Height="10.38" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Polygon Points="13.609,14.5 7.325,14.5 4.707,18.5 16.227,18.5" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Path Data="M8.7,18.5v1.169c0,0.919,-0.81,1.67,-1.8,1.67s-1.8,-0.752,-1.8,-1.67V18.5H8.7zM12.3,18.5v1.169c0,0.919,0.81,1.67,1.8,1.67s1.8,-0.752,1.8,-1.67V18.5H12.3z" Fill="#FFFFFF" Stroke="#787979" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Line X1="7.707" Y1="14.5" X2="13.231" Y2="14.5" Stroke="#787979" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M5.1,18.515v1.154c0,0.919,-0.81,1.67,-1.8,1.67s-1.8,-0.752,-1.8,-1.67v-1.154L6.016,14.5h1.702L5.1,18.515zM11.384,14.5H9.616L8.7,18.515v1.154c0,0.919,0.81,1.67,1.8,1.67s1.8,-0.752,1.8,-1.67v-1.154L11.384,14.5zM15.049,14.5h-1.833L15.9,18.515v1.154c0,0.919,0.81,1.67,1.8,1.67s1.8,-0.752,1.8,-1.67v-1.154L15.049,14.5z" Fill="#FFFFFF" Stroke="#EE3D3B" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Rectangle Canvas.Left="4.5" Canvas.Top="24.5" Width="3" Height="6" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Rectangle Canvas.Left="9.5" Canvas.Top="23.5" Width="7" Height="4" Fill="#FFFFFF" Stroke="#228BCB" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M1.5,18.5h3.538M8.762,18.5h3.476M15.9,18.5h3.414" Stroke="#EE3D3B" StrokeThickness="1" StrokeMiterLimit="1"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

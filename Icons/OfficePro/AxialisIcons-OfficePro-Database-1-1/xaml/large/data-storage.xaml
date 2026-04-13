@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Left="1.5" Canvas.Top="5.5" Width="29" Height="7" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Rectangle Canvas.Left="26" Canvas.Top="8" Width="2" Height="2" Fill="#238BCB"/>
+      <Rectangle Canvas.Left="1.5" Canvas.Top="12.5" Width="29" Height="7" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Rectangle Canvas.Left="26" Canvas.Top="15" Width="2" Height="2" Fill="#238BCB"/>
+      <Rectangle Canvas.Left="1.5" Canvas.Top="19.5" Width="29" Height="7" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Rectangle Canvas.Left="26" Canvas.Top="22" Width="2" Height="2" Fill="#238BCB"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

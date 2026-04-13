@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <g>
+      <polygon points="27,30 24.9,30 24.9,28.8 25.8,28.8 25.8,27.9 27,27.9" fill="#383838" stroke-linejoin="miter"/>
+      <path d="M22.675,30h-2.669v-1.2h2.669V30zM17.782,30h-2.669v-1.2h2.669V30zM12.888,30h-2.669v-1.2h2.669V30zM7.994,30H5.324v-1.2h2.669V30z" fill="#383838"/>
+      <polygon points="3.1,30 1,30 1,27.9 2.2,27.9 2.2,28.8 3.1,28.8" fill="#383838" stroke-linejoin="miter"/>
+      <path d="M2.2,25.558H1v-2.811h1.2V25.558zM2.2,20.405H1v-2.81h1.2V20.405zM2.2,15.253H1v-2.81h1.2V15.253z" fill="#383838"/>
+      <polygon points="2.2,10.1 1,10.1 1,8 3.1,8 3.1,9.2 2.2,9.2" fill="#383838" stroke-linejoin="miter"/>
+      <path d="M17.782,9.2h-2.669V8h2.669V9.2zM12.888,9.2h-2.669V8h2.669V9.2zM7.994,9.2H5.325V8h2.669V9.2z" fill="#383838"/>
+      <path d="M27,25.558h-1.2v-2.81h1.2V25.558zM27,20.405h-1.2v-2.81h1.2V20.405zM27,15.253h-1.2v-1.811l1.2,-1V15.253z" fill="#383838"/>
+    </g>
+    <polygon points="19.265,16.254 16.48,19.038 14.106,16.665 16.861,13.909" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <path d="M16.737,13.442L26.921,3.259c0.819,-0.819,2.146,-0.819,2.965,0l0,0c0.819,0.819,0.819,2.146,0,2.965L19.732,16.378L16.737,13.442z" fill="#C8C6C4"/>
+    <path d="M14.106,16.665l2.336,-2.336l0.296,-0.887L26.921,3.259c0.819,-0.819,2.146,-0.819,2.965,0l0,0c0.819,0.819,0.819,2.146,0,2.965L19.732,16.378l-0.887,0.296l-2.365,2.365" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="16.696" y1="13.474" x2="19.665" y2="16.442" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M16.307,20.933c-1.183,2.375,-2.55,2.691,-10.007,2.582c-0.111,-0.002,-0.14,-0.151,-0.038,-0.192c2.611,-1.057,2.176,-0.855,4.176,-4.907C12.564,14.111,17.993,17.548,16.307,20.933z" fill="#92CBEE" stroke="#0964B0" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+  </g>
+</svg>

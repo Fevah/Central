@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<StreetTypes>
+  <StreetType Code="ALLY" Name="Alley" />
+  <StreetType Code="ARC" Name="Arcade" />
+  <StreetType Code="AVE" Name="Avenue" />
+  <StreetType Code="BVD" Name="Boulevard" />
+  <StreetType Code="CL" Name="Close" />
+  <StreetType Code="CT" Name="Court" />
+  <StreetType Code="CRES" Name="Crescent" />
+  <StreetType Code="DR" Name="Drive" />
+  <StreetType Code="ESP" Name="Esplanade" />
+  <StreetType Code="GR" Name="Grove" />
+  <StreetType Code="HWY" Name="Highway" />
+  <StreetType Code="LANE" Name="Lane" />
+  <StreetType Code="PDE" Name="Parade" />
+  <StreetType Code="PL" Name="PLace" />
+  <StreetType Code="RD" Name="Road" />
+  <StreetType Code="SQ" Name="Square" />
+  <StreetType Code="ST" Name="Street" />
+  <StreetType Code="TCE" Name="Terrace" />
+</StreetTypes>

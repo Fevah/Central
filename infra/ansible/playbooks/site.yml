@@ -1,0 +1,36 @@
+# =============================================================================
+# Central K8s Cluster — Full provisioning playbook
+# =============================================================================
+# Run: ansible-playbook -i inventory/hosts.yml playbooks/site.yml
+# =============================================================================
+
+- name: Common setup (all nodes)
+  hosts: k8s
+  become: true
+  roles:
+    - common
+    - containerd
+
+- name: Initialize K8s master
+  hosts: k8s_master
+  become: true
+  roles:
+    - k8s-master
+
+- name: Join K8s workers
+  hosts: k8s_workers
+  become: true
+  roles:
+    - k8s-worker
+
+- name: Install MetalLB + cluster addons
+  hosts: k8s_master
+  become: true
+  roles:
+    - metallb
+
+- name: Install local container registry
+  hosts: k8s_master
+  become: true
+  roles:
+    - registry

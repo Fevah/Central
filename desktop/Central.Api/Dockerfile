@@ -1,6 +1,8 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
+ENV EnableWindowsTargeting=true
+
 COPY Central.Core/Central.Core.csproj Central.Core/
 COPY Central.Data/Central.Data.csproj Central.Data/
 COPY Central.Api.Client/Central.Api.Client.csproj Central.Api.Client/
@@ -12,9 +14,7 @@ COPY Central.Core/ Central.Core/
 COPY Central.Data/ Central.Data/
 COPY Central.Api.Client/ Central.Api.Client/
 COPY Central.Api/ Central.Api/
-RUN dotnet publish Central.Api/Central.Api.csproj -c Release -o /app --no-restore
-
-COPY db/migrations/ /app/migrations/
+RUN dotnet publish Central.Api/Central.Api.csproj -c Release -o /app --no-restore -p:EnableWindowsTargeting=true
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app

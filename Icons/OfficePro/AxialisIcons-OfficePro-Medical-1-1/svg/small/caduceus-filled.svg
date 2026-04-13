@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <path d="M8.05,7.41c3.518,0.47,6.939,-1.836,7.15,-2.248c-2.509,-0.125,-3.051,-1.021,-3.793,-1.921c-0.453,-0.571,-1.413,-0.403,-1.814,0.221c-0.357,0.557,-1.222,1.008,-1.516,0.988h-0.154c-0.294,0.019,-1.159,-0.431,-1.516,-0.988c-0.4,-0.624,-1.36,-0.792,-1.814,-0.221C3.851,4.14,3.309,5.036,0.8,5.161c0.211,0.412,3.632,2.718,7.15,2.248H8.05z" fill="#C8C6C4" stroke="#383838" stroke-width="0.9" stroke-linecap="round" stroke-miterlimit="1"/>
+    <path d="M8,8.977c-1.314,0,-3.797,0.414,-3.797,1.155c0,1.081,6.207,1.401,6.207,2.644c0,1.305,-3.87,0.891,-3.87,2.185c0,0.226,0.099,0.467,0.245,0.598" fill="none" stroke="#383838" stroke-width="0.9" stroke-miterlimit="1"/>
+    <path d="M8,8.977c1.314,0,3.797,0.414,3.797,1.155c0,1.081,-6.207,1.401,-6.207,2.644c0,1.305,3.87,0.891,3.87,2.185c0,0.226,-0.099,0.467,-0.245,0.598" fill="none" stroke="#383838" stroke-width="0.9" stroke-miterlimit="1"/>
+    <ellipse cx="8" cy="1.558" rx="1.021" ry="1.058" fill="#C8C6C4" stroke="#383838" stroke-width="0.9" stroke-linecap="round" stroke-miterlimit="1"/>
+    <line x1="8" y1="16" x2="8" y2="2.648" fill="#FFFFFF" stroke="#383838" stroke-width="0.9" stroke-miterlimit="1"/>
+    <path d="M3.75,6.813l1.072,-1.55M5.38,7.257l1.072,-1.55" fill="#FFFFFF" stroke="#383838" stroke-width="0.9" stroke-miterlimit="1"/>
+    <path d="M11.193,5.262l1.108,1.594M9.568,5.722l1.108,1.594" fill="#FFFFFF" stroke="#383838" stroke-width="0.9" stroke-miterlimit="1"/>
+  </g>
+</svg>

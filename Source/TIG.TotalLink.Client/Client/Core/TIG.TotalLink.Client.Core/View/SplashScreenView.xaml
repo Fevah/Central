@@ -1,0 +1,100 @@
+﻿<UserControl x:Class="TIG.TotalLink.Client.Core.View.SplashScreenView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:appContext="clr-namespace:TIG.TotalLink.Client.Core.AppContext"
+             mc:Ignorable="d"
+             d:DataContext="{x:Static dx:SplashScreenViewModel.DesignTimeData}"
+             MouseDown="UserControl_MouseDown">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <appContext:AppContextProvider x:Key="AppContextProvider" />
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid x:Name="LayoutRoot">
+        <Grid x:Name="Splash"
+              Width="450"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Top"
+              Margin="0">
+            <Grid x:Name="Back">
+                <Grid.Effect>
+                    <DropShadowEffect ShadowDepth="1"
+                                      Direction="-90"
+                                      BlurRadius="10"
+                                      Opacity="0.25" />
+                </Grid.Effect>
+                <Border Background="Black"
+                        CornerRadius="3"
+                        Opacity="0.15" />
+                <Border CornerRadius="2"
+                        Margin="1"
+                        Background="White" />
+            </Grid>
+
+            <Grid x:Name="ContentArea"
+                  Margin="12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Image x:Name="Image"
+                       Grid.Row="0"
+                       Source="{Binding Source={StaticResource AppContextProvider}, Path=AppContext.LogoImage}"
+                       Stretch="None" />
+                
+                <TextBlock x:Name="Title"
+                           TextWrapping="Wrap"
+                           TextAlignment="Center"
+                           FontWeight="Bold"
+                           Text="{Binding Source={StaticResource AppContextProvider}, Path=AppContext.ApplicationTitle}"
+                           Grid.Row="1"
+                           Margin="12,12,12,0"
+                           Foreground="#FF2D2D2D" />
+                
+                <TextBlock x:Name="Info"
+                           TextWrapping="Wrap"
+                           Text="{Binding State}"
+                           Grid.Row="2"
+                           Margin="12,12,12,0"
+                           Foreground="#FF2D2D2D" />
+
+                <ProgressBar x:Name="ProgressBar"
+                             Height="12"
+                             Grid.Row="3"
+                             Margin="12"
+                             IsIndeterminate="{Binding IsIndeterminate}"
+                             Value="{Binding Progress}"
+                             Maximum="{Binding MaxProgress}" />
+
+                <DockPanel x:Name="Footer"
+                           Grid.Row="4"
+                           Margin="12,20,12,4">
+                    <TextBlock x:Name="CopyrightText"
+                               TextWrapping="Wrap"
+                               Text="Copyright © Total Image Group 2015"
+                               Opacity="0.5"
+                               Foreground="#FF2D2D2D"
+                               HorizontalAlignment="Left"
+                               VerticalAlignment="Center" />
+                    <TextBlock x:Name="VersionText"
+                               TextWrapping="Wrap"
+                               Text="{Binding Source={StaticResource AppContextProvider}, Path=AppContext.VersionString}"
+                               Opacity="0.5"
+                               Foreground="#FF2D2D2D"
+                               HorizontalAlignment="Right"
+                               VerticalAlignment="Center" />
+                </DockPanel>
+
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>

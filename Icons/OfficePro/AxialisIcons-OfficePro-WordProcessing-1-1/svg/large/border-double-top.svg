@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <path d="M2,30H1v-1h1V30zM4,29H3v1h1V29zM6,29H5v1h1V29zM8,29H7v1h1V29zM10,29H9v1h1V29zM12,29h-1v1h1V29zM14,29h-1v1h1V29zM16,29h-1v1h1V29zM18,29h-1v1h1V29zM20,29h-1v1h1V29zM22,29h-1v1h1V29zM24,29h-1v1h1V29zM26,29h-1v1h1V29zM28,29h-1v1h1V29zM30,29h-1v1h1V29zM2,16H1v-1h1V16zM4,15H3v1h1V15zM6,15H5v1h1V15zM8,15H7v1h1V15zM10,15H9v1h1V15zM12,15h-1v1h1V15zM14,15h-1v1h1V15zM16,15h-1v1h1V15zM18,15h-1v1h1V15zM20,15h-1v1h1V15zM22,15h-1v1h1V15zM24,15h-1v1h1V15zM26,15h-1v1h1V15zM28,15h-1v1h1V15zM30,15h-1v1h1V15zM2,18v-1H1v1H2zM2,20v-1H1v1H2zM2,22v-1H1v1H2zM2,24v-1H1v1H2zM2,26v-1H1v1H2zM2,28v-1H1v1H2zM16,18v-1h-1v1H16zM16,20v-1h-1v1H16zM16,22v-1h-1v1H16zM16,24v-1h-1v1H16zM16,26v-1h-1v1H16zM16,28v-1h-1v1H16zM30,18v-1h-1v1H30zM30,20v-1h-1v1H30zM30,22v-1h-1v1H30zM30,24v-1h-1v1H30zM30,26v-1h-1v1H30zM30,28v-1h-1v1H30zM30,6V5h-1v1H30zM30,8V7h-1v1H30zM30,10V9h-1v1H30zM30,12v-1h-1v1H30zM30,14v-1h-1v1H30zM16,6V5h-1v1H16zM16,8V7h-1v1H16zM16,10V9h-1v1H16zM16,12v-1h-1v1H16zM16,14v-1h-1v1H16zM2,6V5H1v1H2zM2,8V7H1v1H2zM2,10V9H1v1H2zM2,12v-1H1v1H2zM2,14v-1H1v1H2z" fill="#383838" opacity="0.6"/>
+    <rect x="1" y="1" width="29" height="1" fill="#383838"/>
+    <rect x="1" y="3" width="29" height="1" fill="#383838"/>
+  </g>
+</svg>

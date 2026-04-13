@@ -9,9 +9,31 @@ public partial class DbRepository
 {
     private readonly string _connectionString;
 
+    /// <summary>
+    /// Tenant ID for RLS context. Default = single-tenant mode.
+    /// Set via SetTenantId() after auth establishes the session.
+    /// </summary>
+    public static string TenantId { get; private set; } = "00000000-0000-0000-0000-000000000001";
+
+    public static void SetTenantId(string tenantId) => TenantId = tenantId;
+
     public DbRepository(string connectionString)
     {
         _connectionString = connectionString;
+    }
+
+    /// <summary>
+    /// Opens a connection and sets the RLS tenant context.
+    /// Use this instead of raw new NpgsqlConnection + OpenAsync.
+    /// </summary>
+    protected async Task<NpgsqlConnection> OpenConnectionAsync()
+    {
+        var conn = new NpgsqlConnection(_connectionString);
+        await conn.OpenAsync();
+        await using var cmd = new NpgsqlCommand("SELECT set_config('app.tenant_id', @tid, false)", conn);
+        cmd.Parameters.AddWithValue("tid", TenantId);
+        await cmd.ExecuteNonQueryAsync();
+        return conn;
     }
 
     // ── Devices / Device Inventory ────────────────────────────────────────────
@@ -19,8 +41,7 @@ public partial class DbRepository
     public async Task<List<DeviceRecord>> GetDevicesAsync(List<string>? allowedSites = null, bool excludeReserved = false)
     {
         var list = new List<DeviceRecord>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         var conditions = new System.Collections.Generic.List<string>();
         if (allowedSites != null && allowedSites.Count > 0)
@@ -100,8 +121,7 @@ public partial class DbRepository
 
     public async Task InsertDeviceAsync(DeviceRecord d)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             INSERT INTO switch_guide
                 (switch_name, site, device_type, building, region, status,
@@ -122,8 +142,7 @@ public partial class DbRepository
 
     public async Task UpdateDeviceAsync(DeviceRecord d)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             UPDATE switch_guide SET
                 switch_name    = @name,
@@ -157,8 +176,7 @@ public partial class DbRepository
 
     public async Task DeleteDeviceAsync(string id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "DELETE FROM switch_guide WHERE id = @id::uuid", conn);
         cmd.Parameters.AddWithValue("@id", id);
@@ -197,8 +215,7 @@ public partial class DbRepository
     public async Task<Dictionary<string, List<string>>> GetLookupsAsync()
     {
         var result = new Dictionary<string, List<string>>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT category, value FROM lookup_values ORDER BY category, sort_order, value", conn);
         await using var rdr = await cmd.ExecuteReaderAsync();
@@ -215,8 +232,7 @@ public partial class DbRepository
     public async Task<List<LookupItem>> GetLookupItemsAsync()
     {
         var list = new List<LookupItem>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, category, value, sort_order, COALESCE(grid_name,''), COALESCE(module,'') FROM lookup_values ORDER BY category, sort_order, value", conn);
         await using var rdr = await cmd.ExecuteReaderAsync();
@@ -235,8 +251,7 @@ public partial class DbRepository
 
     public async Task UpsertLookupAsync(LookupItem item)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (item.Id == 0)
         {
             const string sql = """
@@ -269,8 +284,7 @@ public partial class DbRepository
 
     public async Task DeleteLookupAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM lookup_values WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("@id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -281,8 +295,7 @@ public partial class DbRepository
     public async Task<List<ConfigRange>> GetConfigRangesAsync()
     {
         var list = new List<ConfigRange>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, category, name, range_start, range_end, description, sort_order FROM config_ranges ORDER BY category, sort_order", conn);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -304,8 +317,7 @@ public partial class DbRepository
 
     public async Task UpsertConfigRangeAsync(ConfigRange item)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (item.Id == 0)
         {
             const string sql = """
@@ -339,8 +351,7 @@ public partial class DbRepository
 
     public async Task DeleteConfigRangeAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM config_ranges WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("@id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -378,8 +389,7 @@ public partial class DbRepository
     public async Task<List<Central.Core.Models.TaskItem>> GetTasksAsync(int? projectId = null)
     {
         var list = new List<Central.Core.Models.TaskItem>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var where = projectId.HasValue ? " WHERE t.project_id = @pid" : "";
         await using var cmd = new NpgsqlCommand($@"
             SELECT t.id, t.parent_id, t.title, t.description, t.status, t.priority, t.task_type,
@@ -453,8 +463,7 @@ public partial class DbRepository
 
     public async Task UpsertTaskAsync(Central.Core.Models.TaskItem t)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (t.Id == 0)
         {
             await using var cmd = new NpgsqlCommand(@"
@@ -522,8 +531,7 @@ public partial class DbRepository
 
     public async Task DeleteTaskAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM tasks WHERE id = @id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();

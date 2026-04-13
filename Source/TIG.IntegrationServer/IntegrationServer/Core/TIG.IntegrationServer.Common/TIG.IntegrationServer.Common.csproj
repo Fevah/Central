@@ -1,0 +1,168 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{433F2E3F-ED8A-4738-8C8C-F74389675E7E}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>TIG.IntegrationServer.Common</RootNamespace>
+    <AssemblyName>TIG.IntegrationServer.Common</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
+    <SccProjectName>SAK</SccProjectName>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccProvider>SAK</SccProvider>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Dev|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Dev\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;TEST</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Test|AnyCPU'">
+    <OutputPath>bin\Test\</OutputPath>
+    <DefineConstants>TRACE;TEST</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Autofac, Version=3.5.0.0, Culture=neutral, PublicKeyToken=17863af14b0044da, processorArchitecture=MSIL">
+      <HintPath>..\..\..\packages\Autofac.3.5.2\lib\net40\Autofac.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\Newtonsoft.Json.6.0.8\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AutofacLocator.cs" />
+    <Compile Include="ConcurrentCollection\BlockingQueue.cs" />
+    <Compile Include="ConcurrentCollection\ConcurrentHashSet.cs" />
+    <Compile Include="Configuration\ConfigurationHelper.cs" />
+    <Compile Include="Configuration\IntegrationServiceConfigurationSection.csd.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>IntegrationServiceConfigurationSection.csd</DependentUpon>
+    </Compile>
+    <Compile Include="Configuration\SyncAgentConfigurationSection.csd.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>SyncAgentConfigurationSection.csd</DependentUpon>
+    </Compile>
+    <Compile Include="Converter\CriteriaToODataFilterConverter.cs" />
+    <Compile Include="CommonModule.cs" />
+    <Compile Include="Extension\StringExtension.cs" />
+    <Compile Include="MappingEntity\Action.cs" />
+    <Compile Include="MappingEntity\EntityFilterDescriptor.cs" />
+    <Compile Include="MappingEntity\EntityMapping.cs" />
+    <Compile Include="MappingEntity\EntityMappings.cs" />
+    <Compile Include="MappingEntity\EntityRelationship.cs" />
+    <Compile Include="MappingEntity\Enum.cs" />
+    <Compile Include="MappingEntity\Enums.cs" />
+    <Compile Include="MappingEntity\Field.cs" />
+    <Compile Include="MappingEntity\FieldMapping.cs" />
+    <Compile Include="MappingEntity\Mapping.cs" />
+    <Compile Include="MappingEntity\Mappings.cs" />
+    <Compile Include="MappingEntity\MappingType.cs" />
+    <Compile Include="MappingEntity\QueryDescriptor.cs" />
+    <Compile Include="MappingEntity\RelativeQuery.cs" />
+    <Compile Include="MappingEntity\SourceFields.cs" />
+    <Compile Include="MappingEntity\SyncMapping.cs" />
+    <Compile Include="MappingEntity\TargetFields.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Provider\XmlSerializeProvider.cs" />
+    <Compile Include="ServiceConfiguration\TotalLinkServiceConfiguration.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Configuration\IntegrationServiceConfigurationSection.csd">
+      <Generator>CsdFileGenerator</Generator>
+      <LastGenOutput>IntegrationServiceConfigurationSection.csd.cs</LastGenOutput>
+    </None>
+    <None Include="Configuration\IntegrationServiceConfigurationSection.csd.config">
+      <DependentUpon>IntegrationServiceConfigurationSection.csd</DependentUpon>
+    </None>
+    <None Include="Configuration\IntegrationServiceConfigurationSection.csd.diagram">
+      <DependentUpon>IntegrationServiceConfigurationSection.csd</DependentUpon>
+    </None>
+    <None Include="Configuration\IntegrationServiceConfigurationSection.csd.xsd">
+      <DependentUpon>IntegrationServiceConfigurationSection.csd</DependentUpon>
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Configuration\SyncAgentConfigurationSection.csd">
+      <Generator>CsdFileGenerator</Generator>
+      <LastGenOutput>SyncAgentConfigurationSection.csd.cs</LastGenOutput>
+    </None>
+    <None Include="Configuration\SyncAgentConfigurationSection.csd.config">
+      <DependentUpon>SyncAgentConfigurationSection.csd</DependentUpon>
+    </None>
+    <None Include="Configuration\SyncAgentConfigurationSection.csd.diagram">
+      <DependentUpon>SyncAgentConfigurationSection.csd</DependentUpon>
+    </None>
+    <None Include="Configuration\SyncAgentConfigurationSection.csd.xsd">
+      <DependentUpon>SyncAgentConfigurationSection.csd</DependentUpon>
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\TIG.TotalLink.Server\Shared\Core\TIG.TotalLink.Shared.Facade.Core\TIG.TotalLink.Shared.Facade.Core.csproj">
+      <Project>{629AE438-FB3F-4E91-895D-3B3F4D3F2896}</Project>
+      <Name>TIG.TotalLink.Shared.Facade.Core</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
+  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
+    <PropertyGroup>
+      <ErrorText>This project references NuGet package(s) that are missing on this computer. Enable NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(SolutionDir)\.nuget\NuGet.targets')" Text="$([System.String]::Format('$(ErrorText)', '$(SolutionDir)\.nuget\NuGet.targets'))" />
+  </Target>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

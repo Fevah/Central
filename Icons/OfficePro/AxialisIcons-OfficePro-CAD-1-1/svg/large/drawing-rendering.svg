@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <polygon points="18.385,13.151 18.282,1.596 17.282,1.604 17.386,13.254 16.51,13.8 16.956,13.8 17.282,14.497 17.965,14.072 28.83,17.141 29.102,16.179" fill="#92CBEE" stroke-linejoin="miter"/>
+    <polygon points="17.74,1.084 7.053,4.949 8.196,13.8 9.205,13.8 8.147,5.616 17.825,2.116 29.851,4.331 28.488,16.438 23.2,22.029 23.2,23.484 29.444,16.882 30.949,3.517" fill="#228BCB" stroke-linejoin="miter"/>
+    <polygon points="21.366,15.8 22.366,15.8 22.528,9.494 30.667,4.347 30.133,3.501 21.944,8.681 7.732,4.8 7.468,5.765 21.525,9.603" fill="#228BCB" stroke-linejoin="miter"/>
+    <polygon points="16.813,17.5 15.875,15.5 7.875,15.5 6.938,17.5 1.5,17.5 1.5,30.5 21.5,30.5 21.5,17.5" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+    <circle cx="11.575" cy="23.625" r="4.375" fill="#FFFFFF" stroke="#787979" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="17.075" y1="20.5" x2="19.575" y2="20.5" fill="none" stroke="#787979" stroke-width="1" stroke-miterlimit="1"/>
+  </g>
+</svg>

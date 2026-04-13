@@ -13,14 +13,14 @@ var builder = WebApplication.CreateBuilder(args);
 // Database DSN
 var dsn = builder.Configuration.GetConnectionString("Default")
     ?? Environment.GetEnvironmentVariable("CENTRAL_DSN")
-    ?? "Host=localhost;Port=5432;Database=central;Username=central;Password=central";
+    ?? "Host=192.168.56.10;Port=30432;Database=central;Username=central;Password=central";
 builder.Services.AddSingleton(new Central.Data.DbConnectionFactory(dsn));
 
 // JWT settings — supports both Central tokens and auth-service tokens
 var jwtSecret = Environment.GetEnvironmentVariable("CENTRAL_JWT_SECRET")
     ?? "Central-InsecureDev-" + Environment.MachineName;
 var authServiceSecret = Environment.GetEnvironmentVariable("AUTH_SERVICE_JWT_SECRET")
-    ?? "central-dev-jwt-secret-change-in-production-2026";
+    ?? "Central-Auth-Shared-JWT-Key-Override-This-In-Production-32bytes!";
 var jwtSettings = new JwtSettings { Secret = jwtSecret };
 builder.Services.AddSingleton(jwtSettings);
 builder.Services.AddSingleton<TokenService>();

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Line X1="4.6" Y1="2.6" X2="26.6" Y2="2.6" Stroke="#383838" StrokeThickness="1.2" StrokeMiterLimit="1"/>
+      <Line X1="15.6" Y1="2.6" X2="15.6" Y2="30" Stroke="#383838" StrokeThickness="1.2" StrokeMiterLimit="1"/>
+      <Line X1="22.2" Y1="9.1" X2="8.9" Y2="15.1" Stroke="#383838" StrokeThickness="1.2" StrokeMiterLimit="1"/>
+      <Line X1="22.2" Y1="15.1" X2="8.9" Y2="21.1" Stroke="#383838" StrokeThickness="1.2" StrokeMiterLimit="1"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

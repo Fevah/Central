@@ -1,0 +1,211 @@
+﻿<UserControl xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dxre="http://schemas.devexpress.com/winfx/2008/xaml/richedit"
+             xmlns:dxb="http://schemas.devexpress.com/winfx/2008/xaml/bars"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             x:Class="TIG.TotalLink.Client.Editor.View.RichTextEdit"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:dxmvvm="http://schemas.devexpress.com/winfx/2008/xaml/mvvm"
+             mc:Ignorable="d"
+             d:DesignHeight="300"
+             d:DesignWidth="300"
+             x:Name="RichTextEditView">
+
+    <UserControl.Resources>
+        <dxre:RichEditUICommand x:Key="Commands" />
+        <dxre:RtfToContentConverter x:Key="RtfToContentConverter" />
+        <dx:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    </UserControl.Resources>
+
+    <dxb:BarManager x:Name="BarManager"
+                    ToolbarGlyphSize="Small"
+                    MDIMergeStyle="Never"
+                    AllowCustomization="False"
+                    AllowHotCustomization="False"
+                    AllowQuickCustomization="False"
+                    dxb:MergingProperties.HideElements="False">
+        <dxb:BarManager.Bars>
+
+            <dxb:Bar x:Name="BarComment"
+                     Caption="Comment"
+                     ShowDragWidget="False"
+                     AllowHide="False"
+                     BarItemDisplayMode="ContentAndGlyph"
+                     Visible="{Binding ElementName=RichTextEditView, Path=ToolBarsVisible}">
+                <dxb:Bar.DockInfo>
+                    <dxb:BarDockInfo ContainerType="Top"
+                                     Row="0"
+                                     Column="0" />
+                </dxb:Bar.DockInfo>
+                <dxb:Bar.ItemLinks>
+                    <dxb:BarButtonItemLink BarItemName="biSave" />
+                    <dxb:BarButtonItemLink BarItemName="biCancel" />
+                </dxb:Bar.ItemLinks>
+            </dxb:Bar>
+
+            <dxb:Bar x:Name="BarRichText"
+                     Caption="RichText"
+                     ShowDragWidget="False"
+                     IsMultiLine="True"
+                     AllowHide="False"
+                     Visible="{Binding ElementName=RichTextEditView, Path=ToolBarsVisible}">
+                <dxb:Bar.DockInfo>
+                    <dxb:BarDockInfo ContainerType="Top"
+                                     Row="1"
+                                     Column="0" />
+                </dxb:Bar.DockInfo>
+                <dxb:Bar.ItemLinks>
+                    <dxb:BarButtonItemLink BarItemName="biFileOpen" />
+                    <dxb:BarButtonItemLink BarItemName="biFileSaveAs" />
+                    <dxb:BarButtonItemLink BarItemName="biFilePrintPreview" />
+
+                    <dxb:BarItemLinkSeparator />
+
+                    <dxb:BarButtonItemLink BarItemName="biFormatClearFormatting" />
+                    <dxb:BarCheckItemLink BarItemName="biFormatFontBold" />
+                    <dxb:BarCheckItemLink BarItemName="biFormatFontItalic" />
+                    <dxb:BarCheckItemLink BarItemName="biFormatFontUnderline" />
+                    <dxb:BarCheckItemLink BarItemName="biFormatFontStrikeout" />
+                    <dxre:BarSplitButtonColorEditItemLink BarItemName="biFormatFontBackColor" />
+                    <dxre:BarSplitButtonColorEditItemLink BarItemName="biFormatFontForeColor" />
+
+                    <dxb:BarItemLinkSeparator />
+
+                    <dxb:BarButtonItemLink BarItemName="biEditUndo" />
+                    <dxb:BarButtonItemLink BarItemName="biEditRedo" />
+                    <dxb:BarButtonItemLink BarItemName="biEditCut" />
+                    <dxb:BarButtonItemLink BarItemName="biEditCopy" />
+                    <dxb:BarButtonItemLink BarItemName="biEditPaste" />
+                    <dxb:BarButtonItemLink BarItemName="biEditPasteSpecial" />
+
+                    <dxb:BarItemLinkSeparator />
+
+                    <dxb:BarCheckItemLink BarItemName="biFormatBulletedList" />
+                    <dxb:BarCheckItemLink BarItemName="biFormatNumberingList" />
+                    <dxb:BarButtonItemLink BarItemName="biInsertPicture" />
+                    <dxb:BarButtonItemLink BarItemName="biInsertHyperlink" />
+
+                    <dxb:BarItemLinkSeparator />
+
+                    <dxb:BarEditItemLink BarItemName="biFormatFontName" />
+                    <dxb:BarEditItemLink BarItemName="biFormatFontSize" />
+                    <dxb:BarButtonItemLink BarItemName="biFormatFont" />
+                </dxb:Bar.ItemLinks>
+            </dxb:Bar>
+
+        </dxb:BarManager.Bars>
+
+        <dxb:BarManager.Items>
+            <dxb:BarButtonItem x:Name="biSave"
+                               Content="Save"
+                               Glyph="{dx:DXImage Image=Save_32x32.png}"
+                               Alignment="Near"
+                               Command="{Binding ElementName=RichTextEditView, Path=SaveCommand}" />
+            <dxb:BarButtonItem x:Name="biCancel"
+                               Content="Cancel"
+                               Glyph="{dx:DXImage Image=Cancel_32x32.png}"
+                               Alignment="Near"
+                               Command="{Binding ElementName=RichTextEditView, Path=CancelCommand}" />
+            <dxb:BarButtonItem x:Name="biFileOpen"
+                               Command="{Binding FileOpen, Mode=OneTime, Source={StaticResource Commands}}" />
+            <dxb:BarButtonItem x:Name="biFileSaveAs"
+                               Command="{Binding FileSaveAs, Mode=OneTime, Source={StaticResource Commands}}" />
+            <dxb:BarButtonItem x:Name="biFilePrintPreview"
+                               Command="{Binding FilePrintPreview, Mode=OneTime, Source={StaticResource Commands}}" />
+            <dxb:BarButtonItem x:Name="biEditUndo"
+                               Command="{Binding EditUndo, Mode=OneTime, Source={StaticResource Commands}}" />
+            <dxb:BarButtonItem x:Name="biEditRedo"
+                               Command="{Binding EditRedo, Mode=OneTime, Source={StaticResource Commands}}" />
+            <dxb:BarButtonItem x:Name="biEditCut"
+                               Command="{Binding EditCut, Mode=OneTime, Source={StaticResource Commands}}" />
+            <dxb:BarButtonItem x:Name="biEditCopy"
+                               Command="{Binding EditCopy, Mode=OneTime, Source={StaticResource Commands}}" />
+            <dxb:BarButtonItem x:Name="biEditPaste"
+                               Command="{Binding EditPaste, Mode=OneTime, Source={StaticResource Commands}}" />
+            <dxb:BarButtonItem x:Name="biEditPasteSpecial"
+                               Command="{Binding EditPasteSpecial, Mode=OneTime, Source={StaticResource Commands}}" />
+            <dxb:BarEditItem x:Name="biFormatFontName"
+                             Content=""
+                             Command="{Binding FormatFontName, Mode=OneTime, Source={StaticResource Commands}}"
+                             EditWidth="150">
+                <dxb:BarEditItem.EditSettings>
+                    <dxre:FontComboBoxEditSettings />
+                </dxb:BarEditItem.EditSettings>
+            </dxb:BarEditItem>
+            <dxb:BarEditItem x:Name="biFormatFontSize"
+                             Content=""
+                             Command="{Binding FormatFontSize, Mode=OneTime, Source={StaticResource Commands}}"
+                             EditWidth="50">
+                <dxb:BarEditItem.EditSettings>
+                    <dxre:FontSizeComboBoxEditSettings OfficeFontSizeProvider="{Binding ElementName=RichEditControl}" />
+                </dxb:BarEditItem.EditSettings>
+            </dxb:BarEditItem>
+            <dxb:BarButtonItem x:Name="biFormatClearFormatting"
+                               Command="{Binding FormatClearFormatting, Mode=OneTime, Source={StaticResource Commands}}" />
+            <dxb:BarCheckItem x:Name="biFormatFontBold"
+                              Command="{Binding FormatFontBold, Mode=OneTime, Source={StaticResource Commands}}" />
+            <dxb:BarCheckItem x:Name="biFormatFontItalic"
+                              Command="{Binding FormatFontItalic, Mode=OneTime, Source={StaticResource Commands}}" />
+            <dxb:BarCheckItem x:Name="biFormatFontUnderline"
+                              Command="{Binding FormatFontUnderline, Mode=OneTime, Source={StaticResource Commands}}" />
+            <dxb:BarCheckItem x:Name="biFormatFontStrikeout"
+                              Command="{Binding FormatFontStrikeout, Mode=OneTime, Source={StaticResource Commands}}" />
+            <dxre:BarSplitButtonColorEditItem x:Name="biFormatFontBackColor"
+                                              Command="{Binding FormatFontBackColor, Mode=OneTime, Source={StaticResource Commands}}">
+                <dxre:BarSplitButtonColorEditItem.PopupControl>
+                    <dxb:PopupControlContainerInfo>
+                        <dxe:ColorEdit ChipSize="Large"
+                                       ChipMargin="5"
+                                       ColumnCount="5"
+                                       EditValue="{Binding EditValue, ElementName=biFormatFontBackColor, Mode=TwoWay}"
+                                       ShowMoreColorsButton="False"
+                                       ShowDefaultColorButton="False"
+                                       ShowNoColorButton="True"
+                                       ShowBorder="False">
+                            <dxe:ColorEdit.Palettes>
+                                <dxre:CharactersBackgroundColorPaletteCollection />
+                            </dxe:ColorEdit.Palettes>
+                        </dxe:ColorEdit>
+                    </dxb:PopupControlContainerInfo>
+                </dxre:BarSplitButtonColorEditItem.PopupControl>
+            </dxre:BarSplitButtonColorEditItem>
+            <dxre:BarSplitButtonColorEditItem x:Name="biFormatFontForeColor"
+                                              Command="{Binding FormatFontForeColor, Mode=OneTime, Source={StaticResource Commands}}">
+                <dxre:BarSplitButtonColorEditItem.PopupControl>
+                    <dxb:PopupControlContainerInfo>
+                        <dxe:ColorEdit EditValue="{Binding EditValue, ElementName=biFormatFontForeColor, Mode=TwoWay}"
+                                       ShowBorder="False" />
+                    </dxb:PopupControlContainerInfo>
+                </dxre:BarSplitButtonColorEditItem.PopupControl>
+            </dxre:BarSplitButtonColorEditItem>
+            <dxb:BarButtonItem x:Name="biFormatFont"
+                               Command="{Binding FormatFont, Mode=OneTime, Source={StaticResource Commands}}" />
+            <dxb:BarCheckItem x:Name="biFormatBulletedList"
+                              Command="{Binding FormatBulletedList, Mode=OneTime, Source={StaticResource Commands}}" />
+            <dxb:BarCheckItem x:Name="biFormatNumberingList"
+                              Command="{Binding FormatNumberingList, Mode=OneTime, Source={StaticResource Commands}}" />
+            <dxb:BarButtonItem x:Name="biInsertPicture"
+                               Command="{Binding InsertPicture, Mode=OneTime, Source={StaticResource Commands}}" />
+            <dxb:BarButtonItem x:Name="biInsertHyperlink"
+                               Command="{Binding InsertHyperlink, Mode=OneTime, Source={StaticResource Commands}}" />
+
+        </dxb:BarManager.Items>
+
+        <dxre:RichEditControl x:Name="RichEditControl"
+                              Content="{Binding ElementName=RichTextEditView, Path=EditValue, Mode=TwoWay, Converter={StaticResource RtfToContentConverter}}"
+                              BarManager="{Binding ElementName=BarManager, Mode=OneWay}"
+                              HorizontalScrollBarVisibility="{Binding ElementName=RichTextEditView, Path=ScrollBarsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                              VerticalScrollBarVisibility="{Binding ElementName=RichTextEditView, Path=ScrollBarsVisible, Converter={StaticResource BoolToVisibilityConverter}}"
+                              ShowBorder="{Binding ElementName=RichTextEditView, Path=BordersVisible}"
+                              ActiveViewType="Simple"
+                              AutoSizeMode="Vertical"
+                              UnhandledException="RichEditControl_UnhandledException"
+                              GotFocus="RichEditControl_GotFocus">
+            <dxmvvm:Interaction.Behaviors>
+                <dxmvvm:FocusBehavior />
+            </dxmvvm:Interaction.Behaviors>
+        </dxre:RichEditControl>
+    </dxb:BarManager>
+</UserControl>

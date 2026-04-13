@@ -15,7 +15,7 @@ public class AuthServiceClient
     private readonly string _baseUrl;
     private readonly string _tenantId;
 
-    public AuthServiceClient(string baseUrl = "http://localhost:8081", string tenantId = "00000000-0000-0000-0000-000000000001")
+    public AuthServiceClient(string baseUrl = "http://192.168.56.10:30081", string tenantId = "00000000-0000-0000-0000-000000000001")
     {
         _baseUrl = baseUrl.TrimEnd('/');
         _tenantId = tenantId;

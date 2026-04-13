@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="24px" height="24px" viewBox="0 0 24 24" enable-background="new 0 0 24 24" xml:space="preserve">
+  <g id="icon">
+    <polygon points="17.525,0 5,0 5,9 7,9 7,2 17,2 17,7.025 22,7 22,21 16,21 16,23 24,23 24,6.5" fill="#7B7B7B" stroke-linejoin="miter"/>
+    <polygon points="17,7.025 17,2 7,2 7,9 8.975,12 16,12 16,21 22,21 22,7" fill="#FFFFFF" stroke-linejoin="miter" opacity="0.4"/>
+    <path d="M13.5,22.5H1.5v-8.5h12V22.5z" fill="#FFFFFF" opacity="0.5"/>
+    <path d="M15,14v10H0V14h2v8h11v-8H15z" fill="#7B7B7B"/>
+    <path d="M7,16H3v-1h4V16zM12,15H8v1h4V15zM7,17H3v1h4V17zM12,17H8v1h4V17zM7,19H3v1h4V19zM12,19H8v1h4V19z" fill="#B7B7B7"/>
+    <polygon points="8,13 6,10 0,10 0,14 15,14 15,13" fill="#52B4C0" stroke-linejoin="miter"/>
+  </g>
+</svg>

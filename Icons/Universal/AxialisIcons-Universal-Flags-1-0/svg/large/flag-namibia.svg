@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="24px" height="24px" viewBox="0 0 24 24" enable-background="new 0 0 24 24" xml:space="preserve">
+  <g id="icon">
+    <polygon points="0,3 0,21 0.012,21 23.988,3" fill="#77A1D5" stroke-linejoin="miter"/>
+    <polygon points="24,21 24,3 23.988,3 0.012,21" fill="#63BF80" stroke-linejoin="miter"/>
+    <polygon points="24,6.333 24,3 19.8135,3 0,17.517 0,21 4.1865,21" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <polygon points="24,5.001 24,3 21.477,3 0,18.999 0,21 2.523,21" fill="#F37980" stroke-linejoin="miter"/>
+    <polygon points="3.9495,9.741 5.1255,9.741 4.5375,11.334" fill="#F7CE73" stroke-linejoin="miter"/>
+    <polygon points="0.75,7.545 2.343,8.133 2.343,6.957" fill="#F7CE73" stroke-linejoin="miter"/>
+    <polygon points="4.5375,3.7575 3.9495,5.3505 5.1255,5.3505" fill="#F7CE73" stroke-linejoin="miter"/>
+    <polygon points="8.325,7.545 6.732,6.957 6.732,8.133" fill="#F7CE73" stroke-linejoin="miter"/>
+    <polygon points="2.643,10.8255 3.948,9.741 2.9295,9.153" fill="#F7CE73" stroke-linejoin="miter"/>
+    <polygon points="1.257,5.652 2.3415,6.957 2.9295,5.9385" fill="#F7CE73" stroke-linejoin="miter"/>
+    <polygon points="6.432,4.266 5.127,5.3505 6.1455,5.9385" fill="#F7CE73" stroke-linejoin="miter"/>
+    <polygon points="7.818,9.4395 6.7335,8.1345 6.1455,9.153" fill="#F7CE73" stroke-linejoin="miter"/>
+    <polygon points="1.257,9.4395 2.9295,9.153 2.3415,8.1345" fill="#F7CE73" stroke-linejoin="miter"/>
+    <polygon points="2.643,4.266 2.9295,5.9385 3.948,5.3505" fill="#F7CE73" stroke-linejoin="miter"/>
+    <polygon points="7.818,5.652 6.1455,5.9385 6.7335,6.957" fill="#F7CE73" stroke-linejoin="miter"/>
+    <polygon points="6.432,10.8255 6.1455,9.153 5.127,9.741" fill="#F7CE73" stroke-linejoin="miter"/>
+    <circle cx="4.5375" cy="7.545" r="1.8645" fill="#F7CE73"/>
+    <path d="M24,21H0V3h24V21zM1.5,19.5h21V4.5H1.5V19.5z" fill="#211F20" opacity="0.20"/>
+  </g>
+</svg>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <rect y="2" width="16" height="12" fill="#F37980"/>
+    <polyline points="5.514,11.429 6.457,8.6 4,6.829 7.057,6.829 8,4 8.943,6.829 12,6.829 9.514,8.571 10.457,11.4 8,9.686 5.514,11.429" fill="#63BF80" stroke-linejoin="miter"/>
+    <polyline points="8.514,9.314 9.285,9.857 9,8.971 8.514,9.314" fill="#63BF80" stroke-linejoin="miter"/>
+    <polyline points="7,8.971 6.714,9.857 7.485,9.314 7,8.971" fill="#63BF80" stroke-linejoin="miter"/>
+    <polyline points="7.2,8.371 8,8.942 8.8,8.371 8.486,7.457 7.486,7.457 7.2,8.371" fill="#63BF80" stroke-linejoin="miter"/>
+    <polyline points="5.914,7.457 6.686,8 6.857,7.457 5.914,7.457" fill="#63BF80" stroke-linejoin="miter"/>
+    <polyline points="9.314,8 10.085,7.457 9.142,7.457 9.314,8" fill="#63BF80" stroke-linejoin="miter"/>
+    <polyline points="7.714,6.829 8.285,6.829 8,5.943 7.714,6.829" fill="#63BF80" stroke-linejoin="miter"/>
+    <polyline points="5.514,11.429 6.457,8.6 4,6.829 7.057,6.829 8,4 8.943,6.829 12,6.829 9.514,8.571 10.457,11.4 8,9.686 5.514,11.429" fill="#FFFFFF" stroke-linejoin="miter" opacity="0.1"/>
+    <polyline points="8.514,9.314 9.285,9.857 9,8.971 8.514,9.314" fill="#FFFFFF" stroke-linejoin="miter" opacity="0.1"/>
+    <polyline points="7,8.971 6.714,9.857 7.485,9.314 7,8.971" fill="#FFFFFF" stroke-linejoin="miter" opacity="0.1"/>
+    <polyline points="7.2,8.371 8,8.942 8.8,8.371 8.486,7.457 7.486,7.457 7.2,8.371" fill="#FFFFFF" stroke-linejoin="miter" opacity="0.1"/>
+    <polyline points="5.914,7.457 6.686,8 6.857,7.457 5.914,7.457" fill="#FFFFFF" stroke-linejoin="miter" opacity="0.1"/>
+    <polyline points="9.314,8 10.085,7.457 9.142,7.457 9.314,8" fill="#FFFFFF" stroke-linejoin="miter" opacity="0.1"/>
+    <polyline points="7.714,6.829 8.285,6.829 8,5.943 7.714,6.829" fill="#FFFFFF" stroke-linejoin="miter" opacity="0.1"/>
+    <path d="M16,14H0V2h16V14zM1,13h14V3H1V13z" fill="#211F20" opacity="0.20"/>
+  </g>
+</svg>

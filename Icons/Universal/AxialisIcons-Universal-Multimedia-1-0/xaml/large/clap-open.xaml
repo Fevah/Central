@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="24" Height="24" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Left="2.3" Canvas.Top="9" Width="20.5" Height="13.8" Fill="#FFFFFF" Opacity="0.5"/>
+      <Rectangle Canvas.Left="3" Canvas.Top="9" Width="19" Height="3" Fill="#C8C6C4" Opacity="0.3"/>
+      <Path Data="M12.6389,9.5l0.0104,0.003L9.561,12.7H7.93l3.0929,-3.2H12.6389zM6.1475,9.5l-3.0929,3.2h1.631L7.774,9.503L7.7635,9.5H6.1475zM15.8982,9.5l-3.0929,3.2h1.631l3.0883,-3.197L17.5142,9.5H15.8982zM20.7735,9.5l-3.0929,3.2h1.631L22.4,9.503L22.3896,9.5H20.7735z" Fill="#7B7B7B" Opacity="0.8"/>
+      <Path Data="M22,9H3H1v15h23V9H22zM22,22H3v-9h19V22zM22,12H3v-2h19V12z" Fill="#7B7B7B"/>
+      <Rectangle Canvas.Left="1.7813" Canvas.Top="3.6816" Width="20.5" Height="3.2195" RenderTransformOrigin="-0.0868927 -1.14353" Fill="#FFFFFF" Opacity="0.5">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="0.9796 -0.201 0.201 0.9796 -0.81801 2.52627"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Rectangle Canvas.Left="2.5547" Canvas.Top="4.3843" Width="19" Height="2.5396" RenderTransformOrigin="-0.134458 -1.72637" Fill="#C8C6C4" Opacity="0.3">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="0.9796 -0.201 0.201 0.9796 -0.89044 2.53837"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Path Data="M13.5655,3.3724l3.6099,2.4793l-1.5805,0.3451l-3.605,-2.4774l0.0095,-0.0051L13.5655,3.3724zM16.724,2.6827l-0.0095,0.0051l3.605,2.4774L21.9,4.8201l-3.6099,-2.4793L16.724,2.6827zM7.2749,4.746l-0.0095,0.0051l3.605,2.4774l1.5805,-0.3451L8.8409,4.4041L7.2749,4.746zM2.5503,5.7777l-0.0095,0.0051l3.605,2.4774l1.5805,-0.3451L4.1163,5.4357L2.5503,5.7777z" Fill="#7B7B7B" Opacity="0.8"/>
+      <Path Data="M3.0964,9.2585l18.6122,-3.819l1.9592,-0.402l-1.005,-4.898L0.1322,4.7625l1.005,4.898L3.0964,9.2585zM2.4934,6.3197l18.6122,-3.819l0.402,1.9592L2.8954,8.2789L2.4934,6.3197z" Fill="#7B7B7B"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

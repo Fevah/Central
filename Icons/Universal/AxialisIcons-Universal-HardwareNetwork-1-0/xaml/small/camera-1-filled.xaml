@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M11.75,4l-0.7013,-1.8702c-0.0293,-0.0781,-0.1039,-0.1298,-0.1873,-0.1298H5.1386c-0.0834,0,-0.158,0.0517,-0.1873,0.1298L4.25,4H0.2c-0.1105,0,-0.2,0.0895,-0.2,0.2v9.6c0,0.1105,0.0895,0.2,0.2,0.2h15.6c0.1105,0,0.2,-0.0895,0.2,-0.2V4.2c0,-0.1105,-0.0895,-0.2,-0.2,-0.2H11.75zM8,13c-2.2056,0,-4,-1.7944,-4,-4s1.7944,-4,4,-4s4,1.7944,4,4S10.2056,13,8,13zM15,6h-2V5h2V6z" Fill="#7B7B7B"/>
+      <Path Data="M8,6c-1.6542,0,-3,1.3458,-3,3s1.3458,3,3,3s3,-1.3458,3,-3S9.6542,6,8,6z" Fill="#6485C3" Opacity="0.5"/>
+      <Path Data="M8,13c-2.2056,0,-4,-1.7944,-4,-4s1.7944,-4,4,-4s4,1.7944,4,4S10.2056,13,8,13zM8,6c-1.6542,0,-3,1.3458,-3,3s1.3458,3,3,3s3,-1.3458,3,-3S9.6542,6,8,6z" Fill="#FFFFFF" Opacity="0.5"/>
+      <Rectangle Canvas.Left="13" Canvas.Top="5" Width="2" Height="1" Fill="#FFFFFF" Opacity="0.5"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

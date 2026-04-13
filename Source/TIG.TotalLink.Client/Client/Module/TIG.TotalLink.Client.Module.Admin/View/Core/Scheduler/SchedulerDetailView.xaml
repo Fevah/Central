@@ -1,0 +1,262 @@
+﻿<UserControl x:Class="TIG.TotalLink.Client.Module.Admin.View.Core.Scheduler.SchedulerDetailView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             xmlns:dxschi="http://schemas.devexpress.com/winfx/2008/xaml/scheduler/internal"
+             xmlns:dxsch="http://schemas.devexpress.com/winfx/2008/xaml/scheduler"
+             xmlns:dxlc="http://schemas.devexpress.com/winfx/2008/xaml/layoutcontrol"
+             xmlns:dxb="http://schemas.devexpress.com/winfx/2008/xaml/bars"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:scheduler="clr-namespace:TIG.TotalLink.Client.Module.Admin.ViewModel.Core.Scheduler"
+             x:Name="Root"
+             mc:Ignorable="d"
+             d:DesignHeight="900"
+             d:DesignWidth="856"
+             d:DataContext="{d:DesignInstance scheduler:SchedulerDetailViewModel, IsDesignTimeCreatable=True}">
+    <UserControl.Resources>
+        <dxschi:TimeSpanToDateTimeConverter x:Key="TimeSpanToDateTimeConverter" />
+        <dxschi:InvertedBoolConverter x:Key="InvertedBoolConverter" />
+        <dxsch:SchedulerControlStringIdConverter x:Key="SchedulerControlStringIdConverter" />
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"></BooleanToVisibilityConverter>
+
+        <DataTemplate x:Key="RecurreceTypeDataTemplate">
+            <RadioButton Content="{Binding Description, Mode=OneWay}"
+                         IsChecked="{Binding IsSelected, RelativeSource={RelativeSource AncestorType={x:Type ListBoxItem}}}"
+                         GroupName="RecurrenceTypeGroup"></RadioButton>
+        </DataTemplate>
+
+        <!--Resources-->
+        <DataTemplate x:Key="ResourceTemplate">
+            <dxsch:AppointmentResourceEdit SchedulerControl="{Binding ElementName=Root, Path=Scheduler}"
+                                           EditValue="{Binding ResourceId, UpdateSourceTrigger=PropertyChanged}" />
+        </DataTemplate>
+
+        <DataTemplate x:Key="ResourcesTemplate">
+            <dxsch:AppointmentResourcesEdit SchedulerControl="{Binding ElementName=Root, Path=Scheduler}"
+                                            ResourceIds="{Binding AppointmentResourceIds, UpdateSourceTrigger=PropertyChanged}" />
+        </DataTemplate>
+
+        <dxsch:ResourcesTemplateSelector x:Key="ResTemplateSelector"
+                                         ResourceTemplate="{StaticResource ResourceTemplate}"
+                                         ResourcesTemplate="{StaticResource ResourcesTemplate}">
+        </dxsch:ResourcesTemplateSelector>
+
+        <Style x:Key="ListItemStyle"
+               TargetType="ListBoxItem">
+            <Setter Property="SnapsToDevicePixels"
+                    Value="true" />
+            <Setter Property="OverridesDefaultStyle"
+                    Value="true" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border Name="Border"
+                                Padding="2"
+                                SnapsToDevicePixels="true">
+                            <ContentPresenter />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+    <dxb:BarManager x:Name="SchedulerAppointmentBarManager"
+                    ToolbarGlyphSize="Small"
+                    MDIMergeStyle="Never"
+                    AllowCustomization="False"
+                    AllowHotCustomization="False"
+                    AllowQuickCustomization="False">
+        <dxb:BarManager.Bars>
+            <dxb:Bar x:Name="SystemBar"
+                     ShowDragWidget="False"
+                     Caption="File">
+                <dxb:Bar.DockInfo>
+                    <dxb:BarDockInfo ContainerName="TopContainer" />
+                </dxb:Bar.DockInfo>
+                <dxb:BarButtonItem x:Name="SaveBarButtonItem"
+                                   Content="Save"
+                                   Alignment="Near"
+                                   BarItemDisplayMode="ContentAndGlyph"
+                                   Glyph="{dx:DXImage Image=Save_32x32.png}"
+                                   Command="{Binding SaveCommand, ElementName=Root}" />
+                <dxb:BarButtonItem x:Name="CancelBarButtonItem"
+                                   Content="Cancel"
+                                   Alignment="Near"
+                                   BarItemDisplayMode="ContentAndGlyph"
+                                   Glyph="{dx:DXImage Image=Cancel_32x32.png}"
+                                   Command="{Binding CancelCommand, ElementName=Root}" />
+                <dxb:BarItemSeparator />
+                <dxb:BarCheckItem Content="Edit Occurrence"
+                                  x:Name="EditOccurrenceBarItem"
+                                  GroupIndex="1"
+                                  BarItemDisplayMode="ContentAndGlyph"
+                                  Glyph="{Binding IconForOccurrence, ElementName=Root}"
+                                  IsChecked="{Binding IsEditOccurrence, ElementName=Root, Mode=TwoWay}" />
+                <dxb:BarCheckItem Content="Edit Series"
+                                  x:Name="EditSeriesBarItem"
+                                  BarItemDisplayMode="ContentAndGlyph"
+                                  GroupIndex="1"
+                                  CheckedChanged="IsSerise_OnCheckedChanged"
+                                  Glyph="{Binding IconForSeries, ElementName=Root}"
+                                  IsChecked="{Binding IsEditSerise, ElementName=Root, Mode=TwoWay}" />
+            </dxb:Bar>
+        </dxb:BarManager.Bars>
+        <dxlc:LayoutControl Orientation="Vertical">
+            <dxb:BarContainerControl Name="TopContainer"
+                                     Height="30" />
+            <dxlc:LayoutGroup Header="General"
+                              Height="450"
+                              Orientation="Vertical"
+                              View="GroupBox">
+                <dxlc:LayoutItem LabelPosition="Top"
+                                 Label="{Binding Source={StaticResource SchedulerControlStringIdConverter}, ConverterParameter=Form_Subject, Converter={StaticResource SchedulerControlStringIdConverter}}">
+                    <dxe:TextEdit x:Name="SubjectEdit"
+                                  Text="{Binding AppointmentVisualController.Subject, ElementName=Root, UpdateSourceTrigger=PropertyChanged}" />
+                </dxlc:LayoutItem>
+                <dxlc:LayoutItem LabelPosition="Top"
+                                 Label="{Binding Source={StaticResource SchedulerControlStringIdConverter}, ConverterParameter=Form_Location, Converter={StaticResource SchedulerControlStringIdConverter}}">
+                    <dxe:TextEdit Text="{Binding AppointmentVisualController.Location, ElementName=Root, UpdateSourceTrigger=PropertyChanged}" />
+                </dxlc:LayoutItem>
+                <dxlc:LayoutGroup>
+                    <dxlc:LayoutGroup Orientation="Vertical">
+                        <dxlc:LayoutItem LabelPosition="Top"
+                                         Label="{Binding Source={StaticResource SchedulerControlStringIdConverter}, ConverterParameter=Form_StartTime, Converter={StaticResource SchedulerControlStringIdConverter}}">
+                            <dxlc:LayoutGroup>
+                                <dxe:DateEdit Name="EdtStartDate"
+                                              EditValue="{Binding AppointmentVisualController.DisplayStartDate, ElementName=Root, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" />
+                                <dxe:ButtonEdit Name="EdtStartTime"
+                                                MaskType="DateTime"
+                                                DisplayFormatString="{Binding TimeEditMask, ElementName=Root }"
+                                                Mask="{Binding TimeEditMask, ElementName=Root}"
+                                                EditValue="{Binding AppointmentVisualController.DisplayStartTime, ElementName=Root, Converter={StaticResource TimeSpanToDateTimeConverter}, Mode=TwoWay}"
+                                                AllowDefaultButton="False"
+                                                IsEnabled="{Binding ElementName=ChkAllDay, Path=IsChecked, Converter={StaticResource InvertedBoolConverter}}">
+                                    <dxe:SpinButtonInfo SpinUpCommand="{Binding SpinUpCommand, ElementName=EdtStartTime}"
+                                                        SpinDownCommand="{Binding SpinDownCommand, ElementName=EdtStartTime}" />
+                                </dxe:ButtonEdit>
+                            </dxlc:LayoutGroup>
+                        </dxlc:LayoutItem>
+                        <dxlc:LayoutItem Label="{Binding Source={StaticResource SchedulerControlStringIdConverter}, ConverterParameter=Form_EndTime, Converter={StaticResource SchedulerControlStringIdConverter}}"
+                                         LabelPosition="Top">
+                            <dxlc:LayoutGroup>
+                                <dxe:DateEdit Name="EdtEndDate"
+                                              EditValue="{Binding AppointmentVisualController.DisplayEndDate, ElementName=Root, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                              Validate="OnEdtEndDateValidate" />
+                                <dxe:ButtonEdit Name="EdtEndTime"
+                                                MaskType="DateTime"
+                                                DisplayFormatString="{Binding TimeEditMask, ElementName=Root}"
+                                                Mask="{Binding TimeEditMask, ElementName=Root}"
+                                                EditValue="{Binding AppointmentVisualController.DisplayEndTime, ElementName=Root, Converter={StaticResource TimeSpanToDateTimeConverter}}"
+                                                AllowDefaultButton="False"
+                                                IsEnabled="{Binding ElementName=ChkAllDay, Path=IsChecked, Converter={StaticResource InvertedBoolConverter}}"
+                                                Validate="OnEditEndTimeValidate">
+                                    <dxe:SpinButtonInfo SpinUpCommand="{Binding SpinUpCommand, ElementName=EdtEndTime}"
+                                                        SpinDownCommand="{Binding SpinDownCommand, ElementName=EdtEndTime}"></dxe:SpinButtonInfo>
+                                </dxe:ButtonEdit>
+                            </dxlc:LayoutGroup>
+                        </dxlc:LayoutItem>
+                    </dxlc:LayoutGroup>
+                    <dxe:CheckEdit x:Name="ChkAllDay"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Bottom"
+                                   Content="{Binding Source={StaticResource SchedulerControlStringIdConverter}, ConverterParameter=Form_AllDayEvent, Converter={StaticResource SchedulerControlStringIdConverter}}"
+                                   EditValue="{Binding AppointmentVisualController.AllDay, ElementName=Root, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" />
+                </dxlc:LayoutGroup>
+                <dxlc:LayoutItem LabelPosition="Top"
+                                 Label="{Binding Source={StaticResource SchedulerControlStringIdConverter}, ConverterParameter=Form_Resource, Converter={StaticResource SchedulerControlStringIdConverter}}">
+                    <ContentControl Margin="0,12,0,4"
+                                    IsEnabled="{Binding AppointmentVisualController.CanEditResource, ElementName=Root}"
+                                    Content="{Binding AppointmentVisualController, ElementName=Root}"
+                                    ContentTemplateSelector="{StaticResource ResTemplateSelector}">
+                    </ContentControl>
+                </dxlc:LayoutItem>
+                <dxlc:LayoutGroup>
+                    <dxlc:LayoutItem LabelPosition="Top"
+                                     Label="{Binding Source={StaticResource SchedulerControlStringIdConverter}, ConverterParameter=Form_Label, Converter={StaticResource SchedulerControlStringIdConverter}}">
+                        <dxsch:AppointmentLabelEdit Storage="{Binding AppointmentVisualController.Storage, ElementName=Root}"
+                                                    EditValue="{Binding AppointmentVisualController.Label, ElementName=Root, UpdateSourceTrigger=PropertyChanged}">
+                        </dxsch:AppointmentLabelEdit>
+                    </dxlc:LayoutItem>
+                    <dxlc:LayoutItem LabelPosition="Top"
+                                     Label="{Binding Source={StaticResource SchedulerControlStringIdConverter}, ConverterParameter=Form_ShowTimeAs, Converter={StaticResource SchedulerControlStringIdConverter}}">
+                        <dxsch:AppointmentStatusEdit Storage="{Binding AppointmentVisualController.Storage, ElementName=Root}"
+                                                     EditValue="{Binding AppointmentVisualController.Status, ElementName=Root, UpdateSourceTrigger=PropertyChanged}">
+                        </dxsch:AppointmentStatusEdit>
+                    </dxlc:LayoutItem>
+                </dxlc:LayoutGroup>
+                <dxlc:LayoutItem LabelPosition="Top"
+                                 Label="{Binding Source={StaticResource SchedulerControlStringIdConverter}, ConverterParameter=Form_Reminder, Converter={StaticResource SchedulerControlStringIdConverter}}">
+                    <dxe:ComboBoxEdit IsTextEditable="True"
+                                      AutoComplete="True"
+                                      ItemsSource="{Binding AppointmentVisualController.ReminderSpans, ElementName=Root}"
+                                      EditValue="{Binding AppointmentVisualController.ReminderSpan, ElementName=Root, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}" />
+                </dxlc:LayoutItem>
+                <dxlc:LayoutItem LabelPosition="Top"
+                                 Label="{Binding Source={StaticResource SchedulerControlStringIdConverter}, ConverterParameter=Form_Description, Converter={StaticResource SchedulerControlStringIdConverter}}">
+                    <dxe:TextEdit VerticalAlignment="Stretch"
+                                  MinHeight="50"
+                                  Text="{Binding AppointmentVisualController.Description, ElementName=Root, UpdateSourceTrigger=PropertyChanged}"
+                                  AcceptsReturn="True"
+                                  TextWrapping="Wrap"
+                                  VerticalScrollBarVisibility="Visible"
+                                  HorizontalContentAlignment="Left"
+                                  VerticalContentAlignment="Top" />
+                </dxlc:LayoutItem>
+            </dxlc:LayoutGroup>
+
+            <dxlc:LayoutGroup Orientation="Vertical"
+                              Visibility="{Binding IsEditSerise, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <dxlc:LayoutGroup Orientation="Vertical"
+                                  View="GroupBox"
+                                  Height="70"
+                                  Header="Recurrence">
+                    <dxe:ListBoxEdit ItemsSource="{Binding RecurrenceVisualController.RecurrenceElements, ElementName=Root}"
+                                     ItemTemplate="{StaticResource RecurreceTypeDataTemplate}"
+                                     ShowBorder="False"
+                                     SelectionMode="Single"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                     ItemContainerStyle="{StaticResource ListItemStyle}"
+                                     EditValue="{Binding RecurrenceVisualController.RecurrenceElement, UpdateSourceTrigger=PropertyChanged, ElementName=Root}">
+                        <dxe:ListBoxEdit.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"
+                                           ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+                            </ItemsPanelTemplate>
+                        </dxe:ListBoxEdit.ItemsPanel>
+                    </dxe:ListBoxEdit>
+                </dxlc:LayoutGroup>
+                <dxlc:LayoutGroup Orientation="Vertical"
+                                  Visibility="{Binding RecurrenceVisualController.IsRecurrence, Converter={dxschi:BoolToVisibilityConverter}, ElementName=Root}"
+                                  View="GroupBox"
+                                  Height="150"
+                                  Header="{Binding Source={StaticResource SchedulerControlStringIdConverter}, ConverterParameter=Form_RecurrencePattern, Converter={StaticResource SchedulerControlStringIdConverter}}">
+                    <dxsch:DailyRecurrenceControl x:Name="DailyRecurrenceControl"
+                                                  Height="60"
+                                                  Visibility="{Binding RecurrenceVisualController.IsDailyRecurrence, Converter={dxschi:BoolToVisibilityConverter}, ElementName=Root}"
+                                                  RecurrenceInfo="{Binding RecurrenceVisualController.RecurrenceInfo, ElementName=Root}" />
+                    <dxsch:WeeklyRecurrenceControl Visibility="{Binding RecurrenceVisualController.IsWeeklyRecurrence, Converter={dxschi:BoolToVisibilityConverter}, ElementName=Root}"
+                                                   RecurrenceInfo="{Binding RecurrenceVisualController.RecurrenceInfo, ElementName=Root}"
+                                                   Height="120" />
+                    <dxsch:MonthlyRecurrenceControl Visibility="{Binding RecurrenceVisualController.IsMonthlyRecurrence, Converter={dxschi:BoolToVisibilityConverter}, ElementName=Root}"
+                                                    RecurrenceInfo="{Binding RecurrenceVisualController.RecurrenceInfo, ElementName=Root}"
+                                                    Height="80" />
+                    <dxsch:YearlyRecurrenceControl Visibility="{Binding RecurrenceVisualController.IsYearlyRecurrence, Converter={dxschi:BoolToVisibilityConverter}, ElementName=Root}"
+                                                   RecurrenceInfo="{Binding RecurrenceVisualController.RecurrenceInfo, ElementName=Root}"
+                                                   Height="80" />
+                </dxlc:LayoutGroup>
+                <dxlc:LayoutGroup Orientation="Vertical"
+                                  Visibility="{Binding RecurrenceVisualController.IsRecurrence, Converter={dxschi:BoolToVisibilityConverter}, ElementName=Root}"
+                                  Header="{Binding Source={StaticResource SchedulerControlStringIdConverter}, ConverterParameter=Form_RangeOfRecurrence, Converter={StaticResource SchedulerControlStringIdConverter}}"
+                                  View="GroupBox"
+                                  Height="150">
+                    <dxsch:RecurrenceRangeControl RecurrenceInfo="{Binding RecurrenceVisualController.RecurrenceInfo, ElementName=Root}"
+                                                  TimeZoneHelper="{Binding AppointmentVisualController.TimeZoneHelper, ElementName=Root,Mode=OneTime}"
+                                                  Pattern="{Binding AppointmentVisualController.PatternCopy, ElementName=Root}" />
+
+                </dxlc:LayoutGroup>
+            </dxlc:LayoutGroup>
+        </dxlc:LayoutControl>
+    </dxb:BarManager>
+</UserControl>

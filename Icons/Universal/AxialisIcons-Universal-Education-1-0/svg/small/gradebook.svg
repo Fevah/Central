@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 26.3.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 16 16" style="enable-background:new 0 0 16 16;" xml:space="preserve">
+<style type="text/css">
+	.st0{opacity:0.5;fill:#FFFFFF;enable-background:new    ;}
+	.st1{fill:#6E6F72;}
+	.st2{fill:#CC525E;}
+	.st3{fill:#6486C4;}
+</style>
+<g id="icon">
+	<polyline class="st0" points="1.5,13 1.5,15.5 14.5,15.5 14.5,0.5 14.5,0.5 1.5,0.5 1.5,2 	"/>
+	<polygon class="st1" points="15,16 1,16 1,13 2,13 2,15 14,15 14,1 2,1 2,2 1,2 1,0 15,0 	"/>
+	<path class="st1" d="M3,4H0V3h3V4z M3,5H0v1h3V5z M3,7H0v1h3V7z M3,9H0v1h3V9z M3,11H0v1h3V11z"/>
+	<path class="st2" d="M7.5,2.8L7.5,2.8c0,0,0-0.1,0-0.1L7.4,2.4l-0.7,0L6.5,2.7c0,0,0,0.1,0,0.1L4.2,8.3l0.9,0.4L5.8,7h2.3l0.7,1.7
+		l0.9-0.4L7.5,2.8z M6.2,6L7,4.2L7.7,6H6.2z"/>
+	<polygon class="st2" points="11.6,5.7 10.6,5.7 10.6,4.3 9.2,4.3 9.2,3.3 10.6,3.3 10.6,2 11.6,2 11.6,3.3 12.9,3.3 12.9,4.3 
+		11.6,4.3 	"/>
+	<polygon class="st3" points="11.7,13.1 10.8,13 11.2,10.6 9,10.6 9,9.7 12.2,9.7 	"/>
+	<polygon class="st3" points="4.7,14.2 4.1,13.6 6.6,11 8.5,12.7 11.3,9.9 12,10.6 8.6,13.9 6.7,12.2 	"/>
+</g>
+</svg>

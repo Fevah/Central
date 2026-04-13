@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Languages>
+  <Language Code="ENA" Name="English (Australian)" WindowsLanguageID="3081" WindowsLanguageName="English (Australian)" />
+  <Language Code="ENU" Name="English" WindowsLanguageID="1033" WindowsLanguageName="English" />
+  <Language Code="FRA" Name="French" WindowsLanguageID="1036" WindowsLanguageName="French (France)" />
+  <Language Code="DEU" Name="German" WindowsLanguageID="1031" WindowsLanguageName="German (Germany)" />
+  <Language Code="IND" Name="Indonesian" WindowsLanguageID="1057" WindowsLanguageName="Indonesian (Indonesia)" />
+  <Language Code="ITA" Name="Italian" WindowsLanguageID="1040" WindowsLanguageName="Italian (Italy)" />
+  <Language Code="JPN" Name="Japanese" WindowsLanguageID="1041" WindowsLanguageName="Japanese (Japan)" />
+  <Language Code="KOR" Name="Korean" WindowsLanguageID="1042" WindowsLanguageName="Korean (Korea)" />
+  <Language Code="PTG" Name="Portuguese" WindowsLanguageID="2070" WindowsLanguageName="Portuguese (Portugal)" />
+  <Language Code="RUS" Name="Russian" WindowsLanguageID="1049" WindowsLanguageName="Russian (Russia)" />
+  <Language Code="ESP" Name="Spanish" WindowsLanguageID="2034" WindowsLanguageName="Spanish (Spain)" />
+  <Language Code="THA" Name="Thai" WindowsLanguageID="1054" WindowsLanguageName="Thai (Thailand)" />
+</Languages>

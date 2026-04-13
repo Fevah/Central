@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Sequences>
+
+  <Sequence Name="Style" Code="30" NextNumber="1" />
+  <Sequence Name="Sku" Code="31" NextNumber="1" />
+
+</Sequences>

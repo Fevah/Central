@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <path d="M4.542,8.45c0,0.828,-0.672,2,-1.5,2s-1.5,-1.172,-1.5,-2s0.672,-1,1.5,-1S4.542,7.622,4.542,8.45z" fill="#FFFFFF" stroke="#A0519F" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M3,10.5l0,0.461c0,0.252,0.159,0.47,0.391,0.568c0.455,0.193,0.737,0.714,0.551,1.266c-0.094,0.279,-0.317,0.502,-0.596,0.596C2.647,13.627,2,13.114,2,12.45" fill="none" stroke="#A0519F" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="3" y1="5.5" x2="3" y2="7.5" fill="none" stroke="#A0519F" stroke-width="1" stroke-miterlimit="1"/>
+    <rect x="7.5" y="5.5" width="3" height="10" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="6" y1="15.5" x2="12" y2="15.5" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M7.542,14.95l3.025,-2.975M7.542,8.95l3.025,3.025M10.542,5.95L7.517,8.975" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M13.5,3.5H3.44c-0.285,0,-0.561,0.097,-0.784,0.275L0.6,5.42C0.567,5.446,0.586,5.5,0.628,5.5H13.5V3.5z" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <rect x="13.5" y="3.5" width="2" height="4" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="9.5" y1="3.5" x2="9.5" y2="0" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M4.042,3.45l5.5,-3M14.042,3.45l-4.5,-3" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M4.042,5.45l2.025,-2.025M8.067,5.45L6.042,3.425M8.042,5.45l2.025,-2.025M10.042,3.425l2.025,2.025" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+  </g>
+</svg>

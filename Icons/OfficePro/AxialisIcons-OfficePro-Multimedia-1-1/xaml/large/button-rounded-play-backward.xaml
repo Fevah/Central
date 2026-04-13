@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M25.1,30.5H6.9c-2.982,0,-5.4,-2.418,-5.4,-5.4V6.9c0,-2.982,2.418,-5.4,5.4,-5.4h18.2c2.982,0,5.4,2.418,5.4,5.4v18.2C30.5,28.082,28.082,30.5,25.1,30.5z" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1.1" StrokeMiterLimit="1"/>
+      <Polygon Points="15.1,16 23.5,22 23.5,10" Fill="#FFFFFF" Stroke="#228BCB" StrokeThickness="1" StrokeMiterLimit="1" StrokeLineJoin="Miter"/>
+      <Polygon Points="6.1,16 14.5,22 14.5,10" Fill="#FFFFFF" Stroke="#228BCB" StrokeThickness="1" StrokeMiterLimit="1" StrokeLineJoin="Miter"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

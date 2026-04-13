@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="24" Height="24" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M22,22H2V2h20V22z" Fill="#FFFFFF" Opacity="0.5"/>
+      <Path Data="M24,24H0V0h24V24zM2,22h20V2H2V22z" Fill="#7B7B7B"/>
+      <Canvas>
+        <Polygon Points="12,12 10.5902,3 7.2323,3" Fill="#8C8E90" StrokeLineJoin="Miter"/>
+        <Polygon Points="3,3.7526 12,12 7.2896,3 3,3" Fill="#939598" StrokeLineJoin="Miter"/>
+        <Polygon Points="3,8.366 12,12 3,3.6251" Fill="#9B9DA0" StrokeLineJoin="Miter"/>
+        <Polygon Points="3,11.9835 12,12 3,8.2524" Fill="#A5A7AA" StrokeLineJoin="Miter"/>
+        <Polygon Points="21,12 12,12 21,15.5911" Fill="#DEDFE0" StrokeLineJoin="Miter"/>
+        <Polygon Points="21,15.5779 12,12 21,20.2894" Fill="#D8D9DA" StrokeLineJoin="Miter"/>
+        <Polygon Points="21,20.2783 12,12 16.6902,21 21,21" Fill="#D1D3D4" StrokeLineJoin="Miter"/>
+        <Polygon Points="12,12 13.379,21 16.728,21" Fill="#CBCCCE" StrokeLineJoin="Miter"/>
+        <Polygon Points="12,12 10.5487,21 13.5113,21" Fill="#C4C6C8" StrokeLineJoin="Miter"/>
+        <Polygon Points="10.5902,21 12,12 7.2323,21" Fill="#BEC0C2" StrokeLineJoin="Miter"/>
+        <Polygon Points="3,21 7.2896,21 12,12 3,20.2474" Fill="#B8BABC" StrokeLineJoin="Miter"/>
+        <Polygon Points="3,20.3749 12,12 3,15.634" Fill="#B1B3B6" StrokeLineJoin="Miter"/>
+        <Polygon Points="3,15.7476 12,12 3,12.0165" Fill="#ABADB0" StrokeLineJoin="Miter"/>
+        <Polygon Points="21,12 21,8.4089 12,12" Fill="#E6E7E8" StrokeLineJoin="Miter"/>
+        <Polygon Points="21,8.4221 21,3.7106 12,12" Fill="#EFEFF0" StrokeLineJoin="Miter"/>
+        <Polygon Points="21,3 16.6902,3 12,12 21,3.7217" Fill="#F6F6F6" StrokeLineJoin="Miter"/>
+        <Polygon Points="13.379,3 12,12 16.728,3" Fill="#7E8083" StrokeLineJoin="Miter"/>
+        <Polygon Points="12,12 13.5113,3 10.5487,3" Fill="#86888A" StrokeLineJoin="Miter"/>
+      </Canvas>
+    </Canvas>
+  </Canvas>
+</Viewbox>

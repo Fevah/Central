@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <path d="M14.8,8.5h2.4M14.8,13.5h2.4" fill="#C8C6C4" stroke="#383838" stroke-width="1" stroke-linecap="round" stroke-miterlimit="5"/>
+    <rect x="19.5" y="15.5" width="11" height="14" fill="#C8C6C4" stroke="#383838" stroke-width="1" stroke-linecap="round" stroke-miterlimit="5"/>
+    <rect x="17.5" y="6.5" width="9" height="9" fill="#C8C6C4" stroke="#383838" stroke-width="1" stroke-linecap="round" stroke-miterlimit="5"/>
+    <path d="M22.5,20v7M20.5,10v3" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="5"/>
+    <rect x="17.5" y="2.5" width="5" height="4" fill="#C8C6C4" stroke="#383838" stroke-width="1" stroke-linecap="round" stroke-miterlimit="5"/>
+    <rect x="1.5" y="15.5" width="11" height="14" fill="#C8C6C4" stroke="#383838" stroke-width="1" stroke-linecap="round" stroke-miterlimit="5"/>
+    <rect x="5.5" y="6.5" width="9" height="9" fill="#C8C6C4" stroke="#383838" stroke-width="1" stroke-linecap="round" stroke-miterlimit="5"/>
+    <path d="M9.5,27v-7M11.5,13v-3" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="5"/>
+    <rect x="9.5" y="2.5" width="5" height="4" fill="#C8C6C4" stroke="#383838" stroke-width="1" stroke-linecap="round" stroke-miterlimit="5"/>
+  </g>
+</svg>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Left="0.5" Canvas.Top="0.5" Width="15" Height="14" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Canvas>
+        <Polygon Points="8,7.5 6.982,1.5 4.557,1.5" Fill="#8C8E90" StrokeLineJoin="Miter"/>
+        <Polygon Points="1.5,2.002 8,7.5 4.598,1.5 1.5,1.5" Fill="#939598" StrokeLineJoin="Miter"/>
+        <Polygon Points="1.5,5.077 8,7.5 1.5,1.917" Fill="#9B9DA0" StrokeLineJoin="Miter"/>
+        <Polygon Points="1.5,7.489 8,7.5 1.5,5.002" Fill="#A5A7AA" StrokeLineJoin="Miter"/>
+        <Polygon Points="14.5,7.5 8,7.5 14.5,9.894" Fill="#DEDFE0" StrokeLineJoin="Miter"/>
+        <Polygon Points="14.5,9.885 8,7.5 14.5,13.026" Fill="#D8D9DA" StrokeLineJoin="Miter"/>
+        <Polygon Points="14.5,13.019 8,7.5 11.387,13.5 14.5,13.5" Fill="#D1D3D4" StrokeLineJoin="Miter"/>
+        <Polygon Points="8,7.5 8.996,13.5 11.415,13.5" Fill="#CBCCCE" StrokeLineJoin="Miter"/>
+        <Polygon Points="8,7.5 6.952,13.5 9.092,13.5" Fill="#C4C6C8" StrokeLineJoin="Miter"/>
+        <Polygon Points="6.982,13.5 8,7.5 4.557,13.5" Fill="#BEC0C2" StrokeLineJoin="Miter"/>
+        <Polygon Points="1.5,13.5 4.598,13.5 8,7.5 1.5,12.998" Fill="#B8BABC" StrokeLineJoin="Miter"/>
+        <Polygon Points="1.5,13.083 8,7.5 1.5,9.923" Fill="#B1B3B6" StrokeLineJoin="Miter"/>
+        <Polygon Points="1.5,9.998 8,7.5 1.5,7.511" Fill="#ABADB0" StrokeLineJoin="Miter"/>
+        <Polygon Points="14.5,7.5 14.5,5.106 8,7.5" Fill="#E6E7E8" StrokeLineJoin="Miter"/>
+        <Polygon Points="14.5,5.115 14.5,1.974 8,7.5" Fill="#EFEFF0" StrokeLineJoin="Miter"/>
+        <Polygon Points="14.5,1.5 11.387,1.5 8,7.5 14.5,1.981" Fill="#F6F6F6" StrokeLineJoin="Miter"/>
+        <Polygon Points="8.996,1.5 8,7.5 11.415,1.5" Fill="#7E8083" StrokeLineJoin="Miter"/>
+        <Polygon Points="8,7.5 9.092,1.5 6.952,1.5" Fill="#86888A" StrokeLineJoin="Miter"/>
+      </Canvas>
+    </Canvas>
+  </Canvas>
+</Viewbox>

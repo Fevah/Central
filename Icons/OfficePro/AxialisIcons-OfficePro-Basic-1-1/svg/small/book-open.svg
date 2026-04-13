@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <rect x="0.5" y="2.5" width="15" height="12" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="5"/>
+    <path d="M8,13.95c0,-0.7,-0.55,-1.45,-1.25,-1.45S2.5,12.5,2.5,12.5V0.5h4.25C7.44,0.5,8,1.06,8,1.75C8,1.75,8,14.85,8,13.95z" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="5"/>
+    <path d="M8,13.95c0,-0.7,0.55,-1.45,1.25,-1.45s4.25,0,4.25,0V0.5H9.25C8.56,0.5,8,1.06,8,1.75C8,1.75,8,14.85,8,13.95z" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="5"/>
+    <path d="M4,2.5h2.5M4,4.5h2.5M4,6.5h2.5M4,8.5h2.5M4,10.5h2.5" fill="#FFFFFF" stroke="#228BCB" stroke-width="1" stroke-miterlimit="5"/>
+    <path d="M9.5,2.5h2.5M9.5,4.5h2.5M9.5,6.5h2.5M9.5,8.5h2.5M9.5,10.5h2.5" fill="#FFFFFF" stroke="#228BCB" stroke-width="1" stroke-miterlimit="5"/>
+  </g>
+</svg>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M27.5,25.5H0.5V9.5h27V25.5z" Fill="#FFFFFF" Stroke="#17AB4F" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M0.5,13.702V9.5h4.32l0,0.603c0,1.999,-1.658,3.619,-3.703,3.619L0.5,13.702zM27.5,13.702V9.5h-4.32l0,0.603c0,1.999,1.658,3.619,3.703,3.619L27.5,13.702zM23.2,25.5h4.3v-4.193l-0.617,0c-2.045,0,-3.703,1.609,-3.703,3.594L23.2,25.5zM0.5,21.298V25.5h4.32l0,-0.603c0,-1.999,-1.658,-3.619,-3.703,-3.619L0.5,21.298zM18.428,17.5c0,3.443,-1.958,6.234,-4.374,6.234S9.68,20.943,9.68,17.5s1.958,-6.234,4.374,-6.234S18.428,14.057,18.428,17.5zM5.792,16.562c-0.477,0,-0.864,0.395,-0.864,0.883c0,0.488,0.387,0.883,0.864,0.883s0.864,-0.395,0.864,-0.883C6.656,16.957,6.269,16.562,5.792,16.562zM22.316,16.562c-0.477,0,-0.864,0.395,-0.864,0.883c0,0.488,0.387,0.883,0.864,0.883s0.864,-0.395,0.864,-0.883C23.18,16.957,22.793,16.562,22.316,16.562z" Fill="#FFFFFF" Stroke="#17AB4F" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Polyline Points="2,7.5 29.5,7.5 29.5,24" Stroke="#17AB4F" StrokeThickness="1" StrokeMiterLimit="1" StrokeLineJoin="Miter"/>
+      <Polyline Points="4,5.5 31.5,5.5 31.5,22" Stroke="#17AB4F" StrokeThickness="1" StrokeMiterLimit="1" StrokeLineJoin="Miter"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

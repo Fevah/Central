@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Polygon Points="3.5,30.3 27.5,30.3 27.5,18.5 23.5,15.5 23.5,8.074 15.5,1.874 7.5,8.174 7.5,15.3 3.5,18.4" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Polygon Points="3.5,30.3 27.5,30.3 27.5,18.5 23.5,15.5 23.5,8.074 15.5,1.874 7.5,8.174 7.5,15.3 3.5,18.4" Fill="#C8C6C4" StrokeLineJoin="Miter" Opacity="0.4"/>
+      <Path Data="M13.5,21.5H7.5v5h6V21.5zM18.5,9.5h-6v5h6V9.5zM23.5,21.5h-6v5h6V21.5z" Fill="#DFBCD9" Stroke="#A0519F" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+      <Path Data="M3,31V18.8h1v11.2h23V18.1l1,0.9v12H3zM23,14.873V7.9l1,0.7v7.037L23,14.873zM7,8.6l1,-0.7v6.673l-1,0.764V8.6z" Fill="#383838"/>
+      <Path Data="M23,15.726v-1.508l6.947,5.319l-0.729,0.953L23,15.726zM1.049,19.531L8,14.033v1.497l-6.223,4.953L1.049,19.531zM15.5,2.614L5.685,10.33l-0.742,-0.943L15.5,1.087l10.556,8.299l-0.742,0.943L15.5,2.614z" Fill="#A0519F"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

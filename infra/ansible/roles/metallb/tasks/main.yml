@@ -1,0 +1,39 @@
+---
+# Install MetalLB for bare-metal LoadBalancer services
+
+- name: Install MetalLB
+  become_user: vagrant
+  shell: kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.9/config/manifests/metallb-native.yaml
+
+- name: Wait for MetalLB controller
+  become_user: vagrant
+  shell: |
+    kubectl wait --namespace metallb-system \
+      --for=condition=ready pod \
+      --selector=app=metallb \
+      --timeout=120s
+  retries: 3
+  delay: 10
+
+- name: Apply MetalLB IP pool configuration
+  become_user: vagrant
+  shell: |
+    cat <<'EOF' | kubectl apply -f -
+    apiVersion: metallb.io/v1beta1
+    kind: IPAddressPool
+    metadata:
+      name: central-pool
+      namespace: metallb-system
+    spec:
+      addresses:
+        - {{ metallb_range_start }}-{{ metallb_range_end }}
+    ---
+    apiVersion: metallb.io/v1beta1
+    kind: L2Advertisement
+    metadata:
+      name: central-l2
+      namespace: metallb-system
+    spec:
+      ipAddressPools:
+        - central-pool
+    EOF

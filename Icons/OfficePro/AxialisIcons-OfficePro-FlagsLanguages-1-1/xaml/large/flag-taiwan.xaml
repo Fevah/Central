@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Left="1" Canvas.Top="4" Width="30" Height="24" Fill="#F3797F"/>
+      <Rectangle Canvas.Left="1" Canvas.Top="4" Width="15" Height="12" Fill="#7BA3D6"/>
+      <Polyline Points="10.152,10.563 12.3,10.004 10.152,9.446 11.742,7.856 9.594,8.415 10.152,6.267 8.563,7.856 8.004,5.708 7.446,7.856 5.856,6.267 6.415,8.415 4.267,7.856 5.856,9.446 3.708,10.004 5.856,10.563 4.267,12.152 6.415,11.594 5.856,13.742 7.446,12.152 8.004,14.3 8.563,12.152 10.152,13.742 9.594,11.594 11.742,12.152 10.152,10.563" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Ellipse Canvas.Left="5.555" Canvas.Top="7.555" Width="4.898" Height="4.898" Fill="#7BA3D6"/>
+      <Ellipse Canvas.Left="5.856" Canvas.Top="7.856" Width="4.296" Height="4.296" Fill="#FFFFFF"/>
+      <Rectangle Canvas.Left="1.5" Canvas.Top="4.5" Width="29" Height="23" Stroke="#000000" StrokeThickness="1" StrokeMiterLimit="1" Opacity="0.35"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

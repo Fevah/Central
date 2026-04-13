@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="24px" height="24px" viewBox="0 0 24 24" enable-background="new 0 0 24 24" xml:space="preserve">
+  <g id="icon">
+    <rect x="1.5" y="11" width="15" height="11.5" fill="#FFFFFF" opacity="0.5"/>
+    <polygon points="16,11 16,22 2,22 2,11 0,11 0,24 18,24 18,11" fill="#7B7B7B" stroke-linejoin="miter"/>
+    <rect y="7" width="18" height="4" fill="#52B250"/>
+    <polygon points="7.5,4 7.5,6 19,6 19,15.5 22.5,15.5 22.5,4" fill="#FFFFFF" stroke-linejoin="miter" opacity="0.5"/>
+    <path d="M24,4v13h-5v-2h3V4H24zM8,6V4H6v2H8z" fill="#7B7B7B"/>
+    <rect x="6" width="18" height="4" fill="#52B250"/>
+    <path d="M4.3243,19.836l2.1104,-2.1103l-0.0568,-0.0958c-0.3372,-0.569,-0.5154,-1.2214,-0.5154,-1.8869c0,-2.0505,1.6683,-3.7188,3.7188,-3.7188S13.3,13.6925,13.3,15.743s-1.6683,3.7188,-3.7188,3.7188c-0.6654,0,-1.3179,-0.1782,-1.8869,-0.5154l-0.0958,-0.0568L5.4882,21L4.3243,19.836zM9.5812,13.3265c-1.3325,0,-2.4166,1.0841,-2.4166,2.4166c0,1.3325,1.0841,2.4166,2.4166,2.4166s2.4166,-1.0841,2.4166,-2.4166C11.9978,14.4105,10.9137,13.3265,9.5812,13.3265z" fill="#52B250"/>
+  </g>
+</svg>

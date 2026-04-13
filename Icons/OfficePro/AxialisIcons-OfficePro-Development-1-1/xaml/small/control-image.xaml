@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Left="1.555" Canvas.Top="1.8" Width="12.945" Height="12.8" Fill="#FFFFFF"/>
+      <Ellipse Canvas.Left="9.1" Canvas.Top="3" Width="3.894" Height="3.884" Fill="#FFFFFF" Stroke="#ED8730" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M8.174,10.002c2.476,-3.075,4.252,-0.925,6.326,1.51M11.463,13.06C7.072,11.111,5.645,2.436,1.5,10.164" Stroke="#0BA04A" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Rectangle Canvas.Left="0.5" Canvas.Top="0.5" Width="2" Height="2" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Rectangle Canvas.Left="13.5" Canvas.Top="0.5" Width="2" Height="2" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Rectangle Canvas.Left="13.5" Canvas.Top="13.5" Width="2" Height="2" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Rectangle Canvas.Left="0.5" Canvas.Top="13.5" Width="2" Height="2" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M1,13V3h1v10H1zM3,2h10V1H3V2zM14,3v10h1V3H14zM13,14H3v1h10V14z" Fill="#383838"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

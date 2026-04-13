@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <rect x="1.5" y="2.5" width="29" height="27" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <rect x="3" y="4" width="2" height="24" fill="#808285"/>
+    <rect x="5" y="4" width="2" height="24" fill="#8A8C8E"/>
+    <rect x="7" y="4" width="2" height="24" fill="#939598"/>
+    <rect x="9" y="4" width="2" height="24" fill="#9D9FA2"/>
+    <rect x="11" y="4" width="2" height="24" fill="#A7A9AC"/>
+    <rect x="13" y="4" width="2" height="24" fill="#B1B3B6"/>
+    <rect x="15" y="4" width="2" height="24" fill="#BCBEC0"/>
+    <rect x="17" y="4" width="2" height="24" fill="#C7C8CA"/>
+    <rect x="19" y="4" width="2" height="24" fill="#D1D3D4"/>
+    <rect x="21" y="4" width="2" height="24" fill="#DCDDDE"/>
+    <rect x="23" y="4" width="2" height="24" fill="#E2E3E4"/>
+    <rect x="25" y="4" width="2" height="24" fill="#EBEBEC"/>
+    <rect x="27" y="4" width="2" height="24" fill="#F1F2F2"/>
+  </g>
+</svg>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <path d="M2.73,2.783C1.408,4.13,0.568,5.967,0.5,8.005L3.7,8c0.066,-1.15,0.512,-2.18,1.264,-2.945" fill="#92CBEE" stroke="#0964B0" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <path d="M7.862,3.716c-1.13,0.067,-2.147,0.561,-2.899,1.325L2.73,2.769C4.054,1.423,5.86,0.569,7.862,0.5" fill="#ACD8B1" stroke="#0BA04A" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <path d="M13.256,2.776c-1.323,-1.346,-3.13,-2.2,-5.132,-2.269v3.216c1.13,0.067,2.147,0.561,2.899,1.325" fill="#F3B8B8" stroke="#E42D2C" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <path d="M12.339,7.997c-0.066,-1.15,-0.552,-2.185,-1.303,-2.949l2.233,-2.272c1.323,1.346,2.163,3.184,2.23,5.221" fill="#DFBCD9" stroke="#A0519F" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <path d="M13.27,13.226c1.323,-1.346,2.163,-3.184,2.23,-5.221h-3.161c-0.066,1.15,-0.552,2.185,-1.303,2.949" fill="#92CBEE" stroke="#0964B0" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <path d="M8.138,12.284c1.13,-0.067,2.147,-0.561,2.899,-1.325l2.233,2.272c-1.323,1.346,-3.13,2.2,-5.132,2.269" fill="#ACD8B1" stroke="#0BA04A" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <path d="M2.73,13.224c1.323,1.346,3.13,2.2,5.132,2.269v-3.216c-1.13,-0.067,-2.147,-0.561,-2.899,-1.325" fill="#F3B8B8" stroke="#E42D2C" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <path d="M0.535,8.4c0.177,1.877,0.982,3.562,2.196,4.824l2.233,-2.32C4.323,10.237,3.876,9.37,3.718,8.4" fill="#DFBCD9"/>
+    <path d="M2.73,13.945l-0.36,-0.374C1.047,12.196,0.182,10.329,0,8.4h1c0.144,1.529,0.779,2.932,1.743,4.089l1.542,-1.602C3.734,10.195,3.345,9.291,3.2,8.4h1c0.139,0.852,0.535,1.545,1.124,2.157l0.334,0.347L2.73,13.945z" fill="#A0519F"/>
+  </g>
+</svg>

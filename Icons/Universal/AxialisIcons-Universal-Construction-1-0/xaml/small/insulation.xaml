@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Top="11" Width="16" Height="5" Fill="#FFFFFF" Opacity="0.5"/>
+      <Rectangle Canvas.Top="10" Width="16" Height="1" Fill="#6D6E71"/>
+      <Polygon Points="4.0571,12 5.4286,12 3.1429,16 1.7714,16" Fill="#6D6E71" StrokeLineJoin="Miter"/>
+      <Polygon Points="8.2857,12 6.9143,12 4.6286,16 6,16" Fill="#6D6E71" StrokeLineJoin="Miter"/>
+      <Polygon Points="11.1429,12 9.7714,12 7.4857,16 8.8571,16" Fill="#6D6E71" StrokeLineJoin="Miter"/>
+      <Polygon Points="16,12 15.4857,12 13.2,16 14.5714,16 16,13.2857" Fill="#6D6E71" StrokeLineJoin="Miter"/>
+      <Polygon Points="14,12 12.6286,12 10.3429,16 11.7143,16" Fill="#6D6E71" StrokeLineJoin="Miter"/>
+      <Polygon Points="0,16 0.2857,16 2.5714,12 1.2,12 0,13.8" Fill="#6D6E71" StrokeLineJoin="Miter"/>
+      <Polygon Points="8.3,7.9571 2.1464,1.8036 2.8536,1.0964 8.3,6.5429 13.4464,1.3964 14.1536,2.1036" Fill="#CC525E" StrokeLineJoin="Miter"/>
+      <Polygon Points="3,6 2,6 2,1 7,1 7,2 3,2" Fill="#CC525E" StrokeLineJoin="Miter"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

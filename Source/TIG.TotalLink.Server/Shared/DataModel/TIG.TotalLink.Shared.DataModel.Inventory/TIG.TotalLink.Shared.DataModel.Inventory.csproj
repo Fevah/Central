@@ -1,0 +1,220 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{4F8AFA84-C1C2-44F2-84EE-4DE70065A63F}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>TIG.TotalLink.Shared.DataModel.Inventory</RootNamespace>
+    <AssemblyName>TIG.TotalLink.Shared.DataModel.Inventory</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <SccProjectName>SAK</SccProjectName>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccProvider>SAK</SccProvider>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Dev|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Dev\</OutputPath>
+    <DefineConstants>TRACE;DEBUG;TEST</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Test|AnyCPU'">
+    <OutputPath>bin\Test\</OutputPath>
+    <DefineConstants>TRACE;TEST</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="DevExpress.Data.v15.1, Version=15.1.5.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" />
+    <Reference Include="DevExpress.Xpo.v15.1, Version=15.1.5.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="DataModelCode\BinLocation.cs" />
+    <Compile Include="DataModelCode\BinLocation.Designer.cs">
+      <DependentUpon>BinLocation.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\PhysicalStock.cs" />
+    <Compile Include="DataModelCode\PhysicalStock.Designer.cs">
+      <DependentUpon>PhysicalStock.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\PhysicalStockType.cs" />
+    <Compile Include="DataModelCode\PhysicalStockType.Designer.cs">
+      <DependentUpon>PhysicalStockType.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\StockAdjustment.cs" />
+    <Compile Include="DataModelCode\StockAdjustment.Designer.cs">
+      <DependentUpon>StockAdjustment.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\StockAdjustmentReason.cs" />
+    <Compile Include="DataModelCode\StockAdjustmentReason.Designer.cs">
+      <DependentUpon>StockAdjustmentReason.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\WarehouseLocation.cs" />
+    <Compile Include="DataModelCode\WarehouseLocation.Designer.cs">
+      <DependentUpon>WarehouseLocation.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Populate.cs" />
+    <Compile Include="DataModelCode\Barcode.cs" />
+    <Compile Include="DataModelCode\Barcode.Designer.cs">
+      <DependentUpon>Barcode.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\BarcodeType.cs" />
+    <Compile Include="DataModelCode\BarcodeType.Designer.cs">
+      <DependentUpon>BarcodeType.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\BusinessDivision.cs" />
+    <Compile Include="DataModelCode\BusinessDivision.Designer.cs">
+      <DependentUpon>BusinessDivision.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\Colour.cs" />
+    <Compile Include="DataModelCode\Colour.Designer.cs">
+      <DependentUpon>Colour.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\ColourCategory.cs" />
+    <Compile Include="DataModelCode\ColourCategory.Designer.cs">
+      <DependentUpon>ColourCategory.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\Fabric.cs" />
+    <Compile Include="DataModelCode\Fabric.Designer.cs">
+      <DependentUpon>Fabric.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\Fit.cs" />
+    <Compile Include="DataModelCode\Fit.Designer.cs">
+      <DependentUpon>Fit.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\PriceRange.cs" />
+    <Compile Include="DataModelCode\PriceRange.Designer.cs">
+      <DependentUpon>PriceRange.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\ProductCategory.cs" />
+    <Compile Include="DataModelCode\ProductCategory.Designer.cs">
+      <DependentUpon>ProductCategory.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\ProductType.cs" />
+    <Compile Include="DataModelCode\ProductType.Designer.cs">
+      <DependentUpon>ProductType.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\Season.cs" />
+    <Compile Include="DataModelCode\Season.Designer.cs">
+      <DependentUpon>Season.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\Size.cs" />
+    <Compile Include="DataModelCode\Size.Designer.cs">
+      <DependentUpon>Size.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\SizeRange.cs" />
+    <Compile Include="DataModelCode\SizeRange.Designer.cs">
+      <DependentUpon>SizeRange.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\Sku.cs" />
+    <Compile Include="DataModelCode\Sku.Designer.cs">
+      <DependentUpon>Sku.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\Style.cs" />
+    <Compile Include="DataModelCode\Style.Designer.cs">
+      <DependentUpon>Style.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\StyleCategory.cs" />
+    <Compile Include="DataModelCode\StyleCategory.Designer.cs">
+      <DependentUpon>StyleCategory.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\StyleClass.cs" />
+    <Compile Include="DataModelCode\StyleClass.Designer.cs">
+      <DependentUpon>StyleClass.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\StyleDepartment.cs" />
+    <Compile Include="DataModelCode\StyleDepartment.Designer.cs">
+      <DependentUpon>StyleDepartment.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\StyleGender.cs" />
+    <Compile Include="DataModelCode\StyleGender.Designer.cs">
+      <DependentUpon>StyleGender.cs</DependentUpon>
+    </Compile>
+    <Compile Include="DataModelCode\UnitOfMeasure.cs" />
+    <Compile Include="DataModelCode\UnitOfMeasure.Designer.cs">
+      <DependentUpon>UnitOfMeasure.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="DataModel.xpo" />
+    <None Include="DataModel.xpo.diagram">
+      <DependentUpon>DataModel.xpo</DependentUpon>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Core\TIG.TotalLink.Shared.DataModel.Core\TIG.TotalLink.Shared.DataModel.Core.csproj">
+      <Project>{fb358652-45f1-4410-99da-19d72833dcd6}</Project>
+      <Name>TIG.TotalLink.Shared.DataModel.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TIG.TotalLink.Shared.DataModel.Admin\TIG.TotalLink.Shared.DataModel.Admin.csproj">
+      <Project>{678fb5bb-cceb-454f-b9bc-3a19892b3f68}</Project>
+      <Name>TIG.TotalLink.Shared.DataModel.Admin</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TIG.TotalLink.Shared.DataModel.Crm\TIG.TotalLink.Shared.DataModel.Crm.csproj">
+      <Project>{94c4e03b-0a4f-430b-9d77-3c686b6c7b6d}</Project>
+      <Name>TIG.TotalLink.Shared.DataModel.Crm</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Data\PhysicalStockType.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Data\UnitOfMeasure.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Data\StockAdjustmentReason.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Data\Sequence.xml">
+      <SubType>Designer</SubType>
+    </EmbeddedResource>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>:: Copy the datamodel dll and pdb files to the Global method service Module directory
+xcopy /Y "$(TargetPath)" "$(ProjectDir)..\..\..\Server\MethodService\TIG.TotalLink.Server.MethodService.Global\bin\Module\"
+xcopy /Y "$(TargetDir)$(TargetName).pdb" "$(ProjectDir)..\..\..\Server\MethodService\TIG.TotalLink.Server.MethodService.Global\bin\Module\"</PostBuildEvent>
+  </PropertyGroup>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

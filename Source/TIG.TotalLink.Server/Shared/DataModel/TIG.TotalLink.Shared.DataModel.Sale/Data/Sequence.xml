@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Sequences>
+  
+  <Sequence Name="Enquiry" Code="10" NextNumber="1" />
+  <Sequence Name="Quote" Code="11" NextNumber="1" />
+  <Sequence Name="SalesOrder" Code="12" NextNumber="1" />
+  <Sequence Name="Invoice" Code="13" NextNumber="1" />
+  <Sequence Name="Delivery" Code="14" NextNumber="1" />
+  <Sequence Name="SalesOrderRelease" Code="15" NextNumber="1" />
+  
+</Sequences>

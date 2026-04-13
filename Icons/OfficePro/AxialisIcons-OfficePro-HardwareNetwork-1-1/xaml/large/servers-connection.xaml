@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M16.5,30.5H3.5V11.5h13V30.5zM3.5,15.5h13M3.5,19.5h13" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Ellipse Canvas.Left="7.996" Canvas.Top="24.03" Width="4.004" Height="3.97" Stroke="#787979" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M12,13.5h2M12,17.5h2" Fill="#238BCB" Stroke="#228BCB" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Polygon Points="15.5,1.5 15.5,10 18,10 18,20.5 28.5,20.5 28.5,1.5" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Path Data="M15,1v9h1V6h12v3H15.5v1h12.5v10H18v1h11V1H15zM28,5H16V2h12V5z" Fill="#383838"/>
+      <Ellipse Canvas.Left="19.996" Canvas.Top="14.03" Width="4.004" Height="3.97" Stroke="#787979" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M24,3.5h2M24,7.5h2" Fill="#238BCB" Stroke="#228BCB" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M6,3H5V2h1V3zM6,4H5v1h1V4zM6,6H5v1h1V6zM6,8H5v1h1V8zM8,2H7v1h1V2zM10,2H9v1h1V2zM12,2h-1v1h1V2z" Fill="#238BCB"/>
+      <Path Data="M26,29h1v1h-1V29zM26,28h1v-1h-1V28zM26,26h1v-1h-1V26zM26,24h1v-1h-1V24zM24,30h1v-1h-1V30zM22,30h1v-1h-1V30zM20,30h1v-1h-1V30z" Fill="#238BCB"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

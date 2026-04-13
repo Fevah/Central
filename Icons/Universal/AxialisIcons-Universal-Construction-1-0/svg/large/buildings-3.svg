@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="24px" height="24px" viewBox="0 0 24 24" enable-background="new 0 0 24 24" xml:space="preserve">
+  <g id="icon">
+    <rect x="10.7" y="0.7" width="10.5" height="22.5" fill="#FFFFFF" opacity="0.5"/>
+    <polygon points="3.7,23.2 3.7,7.3308 11.2,4.1308 11.2,23.2" fill="#FFFFFF" stroke-linejoin="miter" opacity="0.5"/>
+    <path d="M1,24v-2h2V6.8729l7,-3V0h12v22h2v2H1zM20,22V2h-8v20H20zM10,22V6.027l-5,2.2V22H10z" fill="#6484C3"/>
+    <path d="M4,10V9h5v1H4zM4,12v-1h5v1H4zM4,14v-1h5v1H4zM4,16v-1h5v1H4zM4,18v-1h5v1H4zM4,20v-1h5v1H4z" fill="#6486C4"/>
+    <path d="M15.5,5.5h-1.5V4h1.5V5.5zM18.5,4h-1.5v1.5h1.5V4zM15.5,8.5h-1.5V7h1.5V8.5zM18.5,7h-1.5v1.5h1.5V7zM15.5,11.5h-1.5v-1.5h1.5V11.5zM18.5,10h-1.5v1.5h1.5V10zM15.5,14.5h-1.5v-1.5h1.5V14.5zM18.5,13h-1.5v1.5h1.5V13zM15.5,17.5h-1.5v-1.5h1.5V17.5zM18.5,16h-1.5v1.5h1.5V16zM15.5,20.5h-1.5v-1.5h1.5V20.5zM18.5,19h-1.5v1.5h1.5V19z" fill="#6486C4"/>
+  </g>
+</svg>

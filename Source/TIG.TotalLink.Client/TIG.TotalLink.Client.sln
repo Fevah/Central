@@ -1,0 +1,502 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.40629.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Host", "Host", "{B91C2CBF-2B2D-426F-AB56-AB00E70B7E8E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Client", "Client", "{89847A2C-FAFB-4945-AB7E-043A5B7DF664}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Client", "Client\Host\TIG.TotalLink.Client\TIG.TotalLink.Client.csproj", "{8EC480B6-A561-4FB7-A2E4-819528D29462}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Shared", "Shared", "{E92DEFDB-53BB-4D73-BE46-5E894F6FD61E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{5FAB8584-E005-4AFE-8058-431910EE9162}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Shared.Facade.Core", "..\TIG.TotalLink.Server\Shared\Core\TIG.TotalLink.Shared.Facade.Core\TIG.TotalLink.Shared.Facade.Core.csproj", "{629AE438-FB3F-4E91-895D-3B3F4D3F2896}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Shared.DataModel.Core", "..\TIG.TotalLink.Server\Shared\Core\TIG.TotalLink.Shared.DataModel.Core\TIG.TotalLink.Shared.DataModel.Core.csproj", "{FB358652-45F1-4410-99DA-19D72833DCD6}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Contract", "Contract", "{858C6E60-5007-4987-B732-0462BBC7EF0B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Shared.Contract.Global", "..\TIG.TotalLink.Server\Shared\Contract\TIG.TotalLink.Shared.Contract.Global\TIG.TotalLink.Shared.Contract.Global.csproj", "{1A27194B-A32C-4FE6-AC2E-FB405799258E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Shared.Contract.Core", "..\TIG.TotalLink.Server\Shared\Core\TIG.TotalLink.Shared.Contract.Core\TIG.TotalLink.Shared.Contract.Core.csproj", "{66FF44D2-D1AB-4B4A-B59F-367F7AE204CC}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Module", "Module", "{DDA76905-E26E-43CD-8383-7417AFCBED81}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Client.Module.Global", "Client\Module\TIG.TotalLink.Client.Module.Global\TIG.TotalLink.Client.Module.Global.csproj", "{AFB6F3BD-B8EB-4B3E-9605-B712A5C80694}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{21F7029E-98DC-4044-B0E8-81E727601BC7}"
+	ProjectSection(SolutionItems) = preProject
+		.nuget\NuGet.Config = .nuget\NuGet.Config
+		.nuget\NuGet.exe = .nuget\NuGet.exe
+		.nuget\NuGet.targets = .nuget\NuGet.targets
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.ServerManager", "Client\Host\TIG.TotalLink.ServerManager\TIG.TotalLink.ServerManager.csproj", "{C1EA6736-4A96-4C74-9DFC-3550F771F27E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Core", "Core", "{61907112-0413-490D-919E-FF832A2BAAD0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Client.Core", "Client\Core\TIG.TotalLink.Client.Core\TIG.TotalLink.Client.Core.csproj", "{87A632E6-6784-41A3-95AE-8B534B1DDED4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Client.Module.Admin", "Client\Module\TIG.TotalLink.Client.Module.Admin\TIG.TotalLink.Client.Module.Admin.csproj", "{233F0B6B-17BF-4389-9B8D-B5BDB1FF86DD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Client.Editor", "Client\Core\TIG.TotalLink.Client.Editor\TIG.TotalLink.Client.Editor.csproj", "{6F2C492B-8DDF-40B0-82F6-48AFEC451241}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Client.IisAdmin", "Client\Core\TIG.TotalLink.Client.IisAdmin\TIG.TotalLink.Client.IisAdmin.csproj", "{25203691-F23B-4B7F-B6E2-742BAC3E5935}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.IisAdmin", "Client\Host\TIG.TotalLink.IisAdmin\TIG.TotalLink.IisAdmin.csproj", "{E1FD0075-B20E-47F3-A1AF-100E11DFFD02}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Client.Module.Test", "Client\Module\TIG.TotalLink.Client.Module.Test\TIG.TotalLink.Client.Module.Test.csproj", "{B7B04ADF-E5B0-4B88-9A46-D2ABB3BE9DF8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Client.Undo", "Client\Core\TIG.TotalLink.Client.Undo\TIG.TotalLink.Client.Undo.csproj", "{D90F4A85-EAAB-44D1-A40D-19F1E18DB27A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Client.Module.ActiveDirectory", "Client\Module\TIG.TotalLink.Client.Module.ActiveDirectory\TIG.TotalLink.Client.Module.ActiveDirectory.csproj", "{E7B0BE7C-CD3B-4087-A159-D7C428E9F304}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Client.Module.Task", "Client\Module\TIG.TotalLink.Client.Module.Task\TIG.TotalLink.Client.Module.Task.csproj", "{A3951FB6-D057-46B8-96D5-AA4299C47E69}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Shared.Contract.Authentication", "..\TIG.TotalLink.Server\Shared\Contract\TIG.TotalLink.Shared.Contract.Authentication\TIG.TotalLink.Shared.Contract.Authentication.csproj", "{424DC105-2F88-41C3-829F-9D9B8AEA7834}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Client.Module.Crm", "Client\Module\TIG.TotalLink.Client.Module.Crm\TIG.TotalLink.Client.Module.Crm.csproj", "{AF8E0EAC-E1B8-435C-970D-6AA4BA59E070}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Client.Module.Sale", "Client\Module\TIG.TotalLink.Client.Module.Sale\TIG.TotalLink.Client.Module.Sale.csproj", "{6B90D266-718C-4EAD-B372-36883B328223}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Client.Module.Inventory", "Client\Module\TIG.TotalLink.Client.Module.Inventory\TIG.TotalLink.Client.Module.Inventory.csproj", "{36161B0E-7487-470B-BA16-943989E01BA3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Client.Module.Workflow", "Client\Module\TIG.TotalLink.Client.Module.Workflow\TIG.TotalLink.Client.Module.Workflow.csproj", "{CA103F8E-C000-40BF-B223-4DA36364D12F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Client.Module.Authentication", "Client\Module\TIG.TotalLink.Client.Module.Authentication\TIG.TotalLink.Client.Module.Authentication.csproj", "{EC9531B3-C114-4D44-A93A-41377F21BC8B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Client.Module.Repository", "Client\Module\TIG.TotalLink.Client.Module.Repository\TIG.TotalLink.Client.Module.Repository.csproj", "{814547E8-C6BB-4686-83C3-F0252340415E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Shared.Contract.Repository", "..\TIG.TotalLink.Server\Shared\Contract\TIG.TotalLink.Shared.Contract.Repository\TIG.TotalLink.Shared.Contract.Repository.csproj", "{41AE9A5D-A2F4-4C64-8636-88EA4F70E36D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Client.Module.Integration", "Client\Module\TIG.TotalLink.Client.Module.Integration\TIG.TotalLink.Client.Module.Integration.csproj", "{8A3837AB-572B-4E0A-84FF-FE14D08DEC4E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Client.Module.Purchasing", "Client\Module\TIG.TotalLink.Client.Module.Purchasing\TIG.TotalLink.Client.Module.Purchasing.csproj", "{ADFC1559-AD9C-4198-BF99-B7C2C71406E7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Shared.Contract.Inventory", "..\TIG.TotalLink.Server\Shared\Contract\TIG.TotalLink.Shared.Contract.Inventory\TIG.TotalLink.Shared.Contract.Inventory.csproj", "{25294B0F-3CCC-49DF-A06F-9642BCAC6D5C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Shared.Xpo.Core", "..\TIG.TotalLink.Server\Shared\Core\TIG.TotalLink.Shared.Xpo.Core\TIG.TotalLink.Shared.Xpo.Core.csproj", "{ACF21CF4-AB60-4A12-B41E-31DF6470FFE4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Shared.Contract.Admin", "..\TIG.TotalLink.Server\Shared\Contract\TIG.TotalLink.Shared.Contract.Admin\TIG.TotalLink.Shared.Contract.Admin.csproj", "{77A44C6C-15E7-48B1-9954-0B158E407F0E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TIG.TotalLink.Shared.Contract.Sale", "..\TIG.TotalLink.Server\Shared\Contract\TIG.TotalLink.Shared.Contract.Sale\TIG.TotalLink.Shared.Contract.Sale.csproj", "{82E617DD-6323-4F32-B372-758FB9FA14F1}"
+EndProject
+Global
+	GlobalSection(TeamFoundationVersionControl) = preSolution
+		SccNumberOfProjects = 31
+		SccEnterpriseProvider = {4CA58AB2-18FA-4F8D-95D4-32DDF27D184C}
+		SccTeamFoundationServer = http://tfs:8080/tfs/tig
+		SccLocalPath0 = .
+		SccProjectUniqueName1 = ..\\TIG.TotalLink.Server\\Shared\\Core\\TIG.TotalLink.Shared.Contract.Core\\TIG.TotalLink.Shared.Contract.Core.csproj
+		SccProjectTopLevelParentUniqueName1 = TIG.TotalLink.Client.sln
+		SccProjectName1 = ../TIG.TotalLink.Server/Shared/Core/TIG.TotalLink.Shared.Contract.Core
+		SccLocalPath1 = ..\\TIG.TotalLink.Server\\Shared\\Core\\TIG.TotalLink.Shared.Contract.Core
+		SccProjectUniqueName2 = ..\\TIG.TotalLink.Server\\Shared\\Core\\TIG.TotalLink.Shared.DataModel.Core\\TIG.TotalLink.Shared.DataModel.Core.csproj
+		SccProjectTopLevelParentUniqueName2 = TIG.TotalLink.Client.sln
+		SccProjectName2 = ../TIG.TotalLink.Server/Shared/Core/TIG.TotalLink.Shared.DataModel.Core
+		SccLocalPath2 = ..\\TIG.TotalLink.Server\\Shared\\Core\\TIG.TotalLink.Shared.DataModel.Core
+		SccProjectUniqueName3 = ..\\TIG.TotalLink.Server\\Shared\\Core\\TIG.TotalLink.Shared.Facade.Core\\TIG.TotalLink.Shared.Facade.Core.csproj
+		SccProjectTopLevelParentUniqueName3 = TIG.TotalLink.Client.sln
+		SccProjectName3 = ../TIG.TotalLink.Server/Shared/Core/TIG.TotalLink.Shared.Facade.Core
+		SccLocalPath3 = ..\\TIG.TotalLink.Server\\Shared\\Core\\TIG.TotalLink.Shared.Facade.Core
+		SccProjectUniqueName4 = ..\\TIG.TotalLink.Server\\Shared\\Contract\\TIG.TotalLink.Shared.Contract.Global\\TIG.TotalLink.Shared.Contract.Global.csproj
+		SccProjectTopLevelParentUniqueName4 = TIG.TotalLink.Client.sln
+		SccProjectName4 = ../TIG.TotalLink.Server/Shared/Contract/TIG.TotalLink.Shared.Contract.Global
+		SccLocalPath4 = ..\\TIG.TotalLink.Server\\Shared\\Contract\\TIG.TotalLink.Shared.Contract.Global
+		SccProjectUniqueName5 = Client\\Core\\TIG.TotalLink.Client.Core\\TIG.TotalLink.Client.Core.csproj
+		SccProjectTopLevelParentUniqueName5 = TIG.TotalLink.Client.sln
+		SccProjectName5 = Client/Core/TIG.TotalLink.Client.Core
+		SccLocalPath5 = Client\\Core\\TIG.TotalLink.Client.Core
+		SccProjectUniqueName6 = Client\\Core\\TIG.TotalLink.Client.Editor\\TIG.TotalLink.Client.Editor.csproj
+		SccProjectTopLevelParentUniqueName6 = TIG.TotalLink.Client.sln
+		SccProjectName6 = Client/Core/TIG.TotalLink.Client.Editor
+		SccLocalPath6 = Client\\Core\\TIG.TotalLink.Client.Editor
+		SccProjectUniqueName7 = Client\\Core\\TIG.TotalLink.Client.IisAdmin\\TIG.TotalLink.Client.IisAdmin.csproj
+		SccProjectTopLevelParentUniqueName7 = TIG.TotalLink.Client.sln
+		SccProjectName7 = Client/Core/TIG.TotalLink.Client.IisAdmin
+		SccLocalPath7 = Client\\Core\\TIG.TotalLink.Client.IisAdmin
+		SccProjectUniqueName8 = Client\\Host\\TIG.TotalLink.Client\\TIG.TotalLink.Client.csproj
+		SccProjectTopLevelParentUniqueName8 = TIG.TotalLink.Client.sln
+		SccProjectName8 = Client/Host/TIG.TotalLink.Client
+		SccLocalPath8 = Client\\Host\\TIG.TotalLink.Client
+		SccProjectUniqueName9 = Client\\Host\\TIG.TotalLink.IisAdmin\\TIG.TotalLink.IisAdmin.csproj
+		SccProjectTopLevelParentUniqueName9 = TIG.TotalLink.Client.sln
+		SccProjectName9 = Client/Host/TIG.TotalLink.IisAdmin
+		SccLocalPath9 = Client\\Host\\TIG.TotalLink.IisAdmin
+		SccProjectUniqueName10 = Client\\Host\\TIG.TotalLink.ServerManager\\TIG.TotalLink.ServerManager.csproj
+		SccProjectTopLevelParentUniqueName10 = TIG.TotalLink.Client.sln
+		SccProjectName10 = Client/Host/TIG.TotalLink.ServerManager
+		SccLocalPath10 = Client\\Host\\TIG.TotalLink.ServerManager
+		SccProjectUniqueName11 = Client\\Module\\TIG.TotalLink.Client.Module.Admin\\TIG.TotalLink.Client.Module.Admin.csproj
+		SccProjectTopLevelParentUniqueName11 = TIG.TotalLink.Client.sln
+		SccProjectName11 = Client/Module/TIG.TotalLink.Client.Module.Admin
+		SccLocalPath11 = Client\\Module\\TIG.TotalLink.Client.Module.Admin
+		SccProjectUniqueName12 = Client\\Module\\TIG.TotalLink.Client.Module.Global\\TIG.TotalLink.Client.Module.Global.csproj
+		SccProjectTopLevelParentUniqueName12 = TIG.TotalLink.Client.sln
+		SccProjectName12 = Client/Module/TIG.TotalLink.Client.Module.Global
+		SccLocalPath12 = Client\\Module\\TIG.TotalLink.Client.Module.Global
+		SccProjectUniqueName13 = Client\\Module\\TIG.TotalLink.Client.Module.Test\\TIG.TotalLink.Client.Module.Test.csproj
+		SccProjectTopLevelParentUniqueName13 = TIG.TotalLink.Client.sln
+		SccProjectName13 = Client/Module/TIG.TotalLink.Client.Module.Test
+		SccLocalPath13 = Client\\Module\\TIG.TotalLink.Client.Module.Test
+		SccProjectUniqueName14 = Client\\Core\\TIG.TotalLink.Client.Undo\\TIG.TotalLink.Client.Undo.csproj
+		SccProjectTopLevelParentUniqueName14 = TIG.TotalLink.Client.sln
+		SccProjectName14 = Client/Core/TIG.TotalLink.Client.Undo
+		SccLocalPath14 = Client\\Core\\TIG.TotalLink.Client.Undo
+		SccProjectUniqueName15 = Client\\Module\\TIG.TotalLink.Client.Module.ActiveDirectory\\TIG.TotalLink.Client.Module.ActiveDirectory.csproj
+		SccProjectTopLevelParentUniqueName15 = TIG.TotalLink.Client.sln
+		SccProjectName15 = Client/Module/TIG.TotalLink.Client.Module.ActiveDirectory
+		SccLocalPath15 = Client\\Module\\TIG.TotalLink.Client.Module.ActiveDirectory
+		SccProjectUniqueName16 = ..\\TIG.TotalLink.Server\\Shared\\Contract\\TIG.TotalLink.Shared.Contract.Authentication\\TIG.TotalLink.Shared.Contract.Authentication.csproj
+		SccProjectTopLevelParentUniqueName16 = TIG.TotalLink.Client.sln
+		SccProjectName16 = ../TIG.TotalLink.Server/Shared/Contract/TIG.TotalLink.Shared.Contract.Authentication
+		SccLocalPath16 = ..\\TIG.TotalLink.Server\\Shared\\Contract\\TIG.TotalLink.Shared.Contract.Authentication
+		SccProjectUniqueName17 = Client\\Module\\TIG.TotalLink.Client.Module.Task\\TIG.TotalLink.Client.Module.Task.csproj
+		SccProjectTopLevelParentUniqueName17 = TIG.TotalLink.Client.sln
+		SccProjectName17 = Client/Module/TIG.TotalLink.Client.Module.Task
+		SccLocalPath17 = Client\\Module\\TIG.TotalLink.Client.Module.Task
+		SccProjectUniqueName18 = Client\\Module\\TIG.TotalLink.Client.Module.Crm\\TIG.TotalLink.Client.Module.Crm.csproj
+		SccProjectTopLevelParentUniqueName18 = TIG.TotalLink.Client.sln
+		SccProjectName18 = Client/Module/TIG.TotalLink.Client.Module.Crm
+		SccLocalPath18 = Client\\Module\\TIG.TotalLink.Client.Module.Crm
+		SccProjectUniqueName19 = Client\\Module\\TIG.TotalLink.Client.Module.Sale\\TIG.TotalLink.Client.Module.Sale.csproj
+		SccProjectTopLevelParentUniqueName19 = TIG.TotalLink.Client.sln
+		SccProjectName19 = Client/Module/TIG.TotalLink.Client.Module.Sale
+		SccLocalPath19 = Client\\Module\\TIG.TotalLink.Client.Module.Sale
+		SccProjectUniqueName20 = Client\\Module\\TIG.TotalLink.Client.Module.Inventory\\TIG.TotalLink.Client.Module.Inventory.csproj
+		SccProjectTopLevelParentUniqueName20 = TIG.TotalLink.Client.sln
+		SccProjectName20 = Client/Module/TIG.TotalLink.Client.Module.Inventory
+		SccLocalPath20 = Client\\Module\\TIG.TotalLink.Client.Module.Inventory
+		SccProjectUniqueName21 = Client\\Module\\TIG.TotalLink.Client.Module.Workflow\\TIG.TotalLink.Client.Module.Workflow.csproj
+		SccProjectTopLevelParentUniqueName21 = TIG.TotalLink.Client.sln
+		SccProjectName21 = Client/Module/TIG.TotalLink.Client.Module.Workflow
+		SccLocalPath21 = Client\\Module\\TIG.TotalLink.Client.Module.Workflow
+		SccProjectUniqueName22 = Client\\Module\\TIG.TotalLink.Client.Module.Authentication\\TIG.TotalLink.Client.Module.Authentication.csproj
+		SccProjectTopLevelParentUniqueName22 = TIG.TotalLink.Client.sln
+		SccProjectName22 = Client/Module/TIG.TotalLink.Client.Module.Authentication
+		SccLocalPath22 = Client\\Module\\TIG.TotalLink.Client.Module.Authentication
+		SccProjectUniqueName23 = Client\\Module\\TIG.TotalLink.Client.Module.Repository\\TIG.TotalLink.Client.Module.Repository.csproj
+		SccProjectTopLevelParentUniqueName23 = TIG.TotalLink.Client.sln
+		SccProjectName23 = Client/Module/TIG.TotalLink.Client.Module.Repository
+		SccLocalPath23 = Client\\Module\\TIG.TotalLink.Client.Module.Repository
+		SccProjectUniqueName24 = ..\\TIG.TotalLink.Server\\Shared\\Contract\\TIG.TotalLink.Shared.Contract.Repository\\TIG.TotalLink.Shared.Contract.Repository.csproj
+		SccProjectTopLevelParentUniqueName24 = TIG.TotalLink.Client.sln
+		SccProjectName24 = ../TIG.TotalLink.Server/Shared/Contract/TIG.TotalLink.Shared.Contract.Repository
+		SccLocalPath24 = ..\\TIG.TotalLink.Server\\Shared\\Contract\\TIG.TotalLink.Shared.Contract.Repository
+		SccProjectUniqueName25 = Client\\Module\\TIG.TotalLink.Client.Module.Integration\\TIG.TotalLink.Client.Module.Integration.csproj
+		SccProjectTopLevelParentUniqueName25 = TIG.TotalLink.Client.sln
+		SccProjectName25 = Client/Module/TIG.TotalLink.Client.Module.Integration
+		SccLocalPath25 = Client\\Module\\TIG.TotalLink.Client.Module.Integration
+		SccProjectUniqueName26 = Client\\Module\\TIG.TotalLink.Client.Module.Purchasing\\TIG.TotalLink.Client.Module.Purchasing.csproj
+		SccProjectTopLevelParentUniqueName26 = TIG.TotalLink.Client.sln
+		SccProjectName26 = Client/Module/TIG.TotalLink.Client.Module.Purchasing
+		SccLocalPath26 = Client\\Module\\TIG.TotalLink.Client.Module.Purchasing
+		SccProjectUniqueName27 = ..\\TIG.TotalLink.Server\\Shared\\Contract\\TIG.TotalLink.Shared.Contract.Inventory\\TIG.TotalLink.Shared.Contract.Inventory.csproj
+		SccProjectTopLevelParentUniqueName27 = TIG.TotalLink.Client.sln
+		SccProjectName27 = ../TIG.TotalLink.Server/Shared/Contract/TIG.TotalLink.Shared.Contract.Inventory
+		SccLocalPath27 = ..\\TIG.TotalLink.Server\\Shared\\Contract\\TIG.TotalLink.Shared.Contract.Inventory
+		SccProjectUniqueName28 = ..\\TIG.TotalLink.Server\\Shared\\Core\\TIG.TotalLink.Shared.Xpo.Core\\TIG.TotalLink.Shared.Xpo.Core.csproj
+		SccProjectTopLevelParentUniqueName28 = TIG.TotalLink.Client.sln
+		SccProjectName28 = ../TIG.TotalLink.Server/Shared/Core/TIG.TotalLink.Shared.Xpo.Core
+		SccLocalPath28 = ..\\TIG.TotalLink.Server\\Shared\\Core\\TIG.TotalLink.Shared.Xpo.Core
+		SccProjectUniqueName29 = ..\\TIG.TotalLink.Server\\Shared\\Contract\\TIG.TotalLink.Shared.Contract.Admin\\TIG.TotalLink.Shared.Contract.Admin.csproj
+		SccProjectTopLevelParentUniqueName29 = TIG.TotalLink.Client.sln
+		SccProjectName29 = ../TIG.TotalLink.Server/Shared/Contract/TIG.TotalLink.Shared.Contract.Admin
+		SccLocalPath29 = ..\\TIG.TotalLink.Server\\Shared\\Contract\\TIG.TotalLink.Shared.Contract.Admin
+		SccProjectUniqueName30 = ..\\TIG.TotalLink.Server\\Shared\\Contract\\TIG.TotalLink.Shared.Contract.Sale\\TIG.TotalLink.Shared.Contract.Sale.csproj
+		SccProjectTopLevelParentUniqueName30 = TIG.TotalLink.Client.sln
+		SccProjectName30 = ../TIG.TotalLink.Server/Shared/Contract/TIG.TotalLink.Shared.Contract.Sale
+		SccLocalPath30 = ..\\TIG.TotalLink.Server\\Shared\\Contract\\TIG.TotalLink.Shared.Contract.Sale
+	EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Dev|Any CPU = Dev|Any CPU
+		Release|Any CPU = Release|Any CPU
+		Test|Any CPU = Test|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8EC480B6-A561-4FB7-A2E4-819528D29462}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8EC480B6-A561-4FB7-A2E4-819528D29462}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8EC480B6-A561-4FB7-A2E4-819528D29462}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{8EC480B6-A561-4FB7-A2E4-819528D29462}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{8EC480B6-A561-4FB7-A2E4-819528D29462}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8EC480B6-A561-4FB7-A2E4-819528D29462}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8EC480B6-A561-4FB7-A2E4-819528D29462}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{8EC480B6-A561-4FB7-A2E4-819528D29462}.Test|Any CPU.Build.0 = Test|Any CPU
+		{629AE438-FB3F-4E91-895D-3B3F4D3F2896}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{629AE438-FB3F-4E91-895D-3B3F4D3F2896}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{629AE438-FB3F-4E91-895D-3B3F4D3F2896}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{629AE438-FB3F-4E91-895D-3B3F4D3F2896}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{629AE438-FB3F-4E91-895D-3B3F4D3F2896}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{629AE438-FB3F-4E91-895D-3B3F4D3F2896}.Release|Any CPU.Build.0 = Release|Any CPU
+		{629AE438-FB3F-4E91-895D-3B3F4D3F2896}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{629AE438-FB3F-4E91-895D-3B3F4D3F2896}.Test|Any CPU.Build.0 = Test|Any CPU
+		{FB358652-45F1-4410-99DA-19D72833DCD6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FB358652-45F1-4410-99DA-19D72833DCD6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FB358652-45F1-4410-99DA-19D72833DCD6}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{FB358652-45F1-4410-99DA-19D72833DCD6}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{FB358652-45F1-4410-99DA-19D72833DCD6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FB358652-45F1-4410-99DA-19D72833DCD6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FB358652-45F1-4410-99DA-19D72833DCD6}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{FB358652-45F1-4410-99DA-19D72833DCD6}.Test|Any CPU.Build.0 = Test|Any CPU
+		{1A27194B-A32C-4FE6-AC2E-FB405799258E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1A27194B-A32C-4FE6-AC2E-FB405799258E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1A27194B-A32C-4FE6-AC2E-FB405799258E}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{1A27194B-A32C-4FE6-AC2E-FB405799258E}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{1A27194B-A32C-4FE6-AC2E-FB405799258E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1A27194B-A32C-4FE6-AC2E-FB405799258E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1A27194B-A32C-4FE6-AC2E-FB405799258E}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{1A27194B-A32C-4FE6-AC2E-FB405799258E}.Test|Any CPU.Build.0 = Test|Any CPU
+		{66FF44D2-D1AB-4B4A-B59F-367F7AE204CC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{66FF44D2-D1AB-4B4A-B59F-367F7AE204CC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{66FF44D2-D1AB-4B4A-B59F-367F7AE204CC}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{66FF44D2-D1AB-4B4A-B59F-367F7AE204CC}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{66FF44D2-D1AB-4B4A-B59F-367F7AE204CC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{66FF44D2-D1AB-4B4A-B59F-367F7AE204CC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{66FF44D2-D1AB-4B4A-B59F-367F7AE204CC}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{66FF44D2-D1AB-4B4A-B59F-367F7AE204CC}.Test|Any CPU.Build.0 = Test|Any CPU
+		{AFB6F3BD-B8EB-4B3E-9605-B712A5C80694}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AFB6F3BD-B8EB-4B3E-9605-B712A5C80694}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AFB6F3BD-B8EB-4B3E-9605-B712A5C80694}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{AFB6F3BD-B8EB-4B3E-9605-B712A5C80694}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{AFB6F3BD-B8EB-4B3E-9605-B712A5C80694}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AFB6F3BD-B8EB-4B3E-9605-B712A5C80694}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AFB6F3BD-B8EB-4B3E-9605-B712A5C80694}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{AFB6F3BD-B8EB-4B3E-9605-B712A5C80694}.Test|Any CPU.Build.0 = Test|Any CPU
+		{C1EA6736-4A96-4C74-9DFC-3550F771F27E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C1EA6736-4A96-4C74-9DFC-3550F771F27E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C1EA6736-4A96-4C74-9DFC-3550F771F27E}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{C1EA6736-4A96-4C74-9DFC-3550F771F27E}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{C1EA6736-4A96-4C74-9DFC-3550F771F27E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C1EA6736-4A96-4C74-9DFC-3550F771F27E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C1EA6736-4A96-4C74-9DFC-3550F771F27E}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{C1EA6736-4A96-4C74-9DFC-3550F771F27E}.Test|Any CPU.Build.0 = Test|Any CPU
+		{87A632E6-6784-41A3-95AE-8B534B1DDED4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{87A632E6-6784-41A3-95AE-8B534B1DDED4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{87A632E6-6784-41A3-95AE-8B534B1DDED4}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{87A632E6-6784-41A3-95AE-8B534B1DDED4}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{87A632E6-6784-41A3-95AE-8B534B1DDED4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{87A632E6-6784-41A3-95AE-8B534B1DDED4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{87A632E6-6784-41A3-95AE-8B534B1DDED4}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{87A632E6-6784-41A3-95AE-8B534B1DDED4}.Test|Any CPU.Build.0 = Test|Any CPU
+		{233F0B6B-17BF-4389-9B8D-B5BDB1FF86DD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{233F0B6B-17BF-4389-9B8D-B5BDB1FF86DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{233F0B6B-17BF-4389-9B8D-B5BDB1FF86DD}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{233F0B6B-17BF-4389-9B8D-B5BDB1FF86DD}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{233F0B6B-17BF-4389-9B8D-B5BDB1FF86DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{233F0B6B-17BF-4389-9B8D-B5BDB1FF86DD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{233F0B6B-17BF-4389-9B8D-B5BDB1FF86DD}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{233F0B6B-17BF-4389-9B8D-B5BDB1FF86DD}.Test|Any CPU.Build.0 = Test|Any CPU
+		{6F2C492B-8DDF-40B0-82F6-48AFEC451241}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6F2C492B-8DDF-40B0-82F6-48AFEC451241}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6F2C492B-8DDF-40B0-82F6-48AFEC451241}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{6F2C492B-8DDF-40B0-82F6-48AFEC451241}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{6F2C492B-8DDF-40B0-82F6-48AFEC451241}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6F2C492B-8DDF-40B0-82F6-48AFEC451241}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6F2C492B-8DDF-40B0-82F6-48AFEC451241}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{6F2C492B-8DDF-40B0-82F6-48AFEC451241}.Test|Any CPU.Build.0 = Test|Any CPU
+		{25203691-F23B-4B7F-B6E2-742BAC3E5935}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{25203691-F23B-4B7F-B6E2-742BAC3E5935}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{25203691-F23B-4B7F-B6E2-742BAC3E5935}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{25203691-F23B-4B7F-B6E2-742BAC3E5935}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{25203691-F23B-4B7F-B6E2-742BAC3E5935}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{25203691-F23B-4B7F-B6E2-742BAC3E5935}.Release|Any CPU.Build.0 = Release|Any CPU
+		{25203691-F23B-4B7F-B6E2-742BAC3E5935}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{25203691-F23B-4B7F-B6E2-742BAC3E5935}.Test|Any CPU.Build.0 = Test|Any CPU
+		{E1FD0075-B20E-47F3-A1AF-100E11DFFD02}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E1FD0075-B20E-47F3-A1AF-100E11DFFD02}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E1FD0075-B20E-47F3-A1AF-100E11DFFD02}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{E1FD0075-B20E-47F3-A1AF-100E11DFFD02}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{E1FD0075-B20E-47F3-A1AF-100E11DFFD02}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E1FD0075-B20E-47F3-A1AF-100E11DFFD02}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E1FD0075-B20E-47F3-A1AF-100E11DFFD02}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{E1FD0075-B20E-47F3-A1AF-100E11DFFD02}.Test|Any CPU.Build.0 = Test|Any CPU
+		{B7B04ADF-E5B0-4B88-9A46-D2ABB3BE9DF8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B7B04ADF-E5B0-4B88-9A46-D2ABB3BE9DF8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B7B04ADF-E5B0-4B88-9A46-D2ABB3BE9DF8}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{B7B04ADF-E5B0-4B88-9A46-D2ABB3BE9DF8}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{B7B04ADF-E5B0-4B88-9A46-D2ABB3BE9DF8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B7B04ADF-E5B0-4B88-9A46-D2ABB3BE9DF8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B7B04ADF-E5B0-4B88-9A46-D2ABB3BE9DF8}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{B7B04ADF-E5B0-4B88-9A46-D2ABB3BE9DF8}.Test|Any CPU.Build.0 = Test|Any CPU
+		{D90F4A85-EAAB-44D1-A40D-19F1E18DB27A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D90F4A85-EAAB-44D1-A40D-19F1E18DB27A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D90F4A85-EAAB-44D1-A40D-19F1E18DB27A}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{D90F4A85-EAAB-44D1-A40D-19F1E18DB27A}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{D90F4A85-EAAB-44D1-A40D-19F1E18DB27A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D90F4A85-EAAB-44D1-A40D-19F1E18DB27A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D90F4A85-EAAB-44D1-A40D-19F1E18DB27A}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{D90F4A85-EAAB-44D1-A40D-19F1E18DB27A}.Test|Any CPU.Build.0 = Test|Any CPU
+		{E7B0BE7C-CD3B-4087-A159-D7C428E9F304}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E7B0BE7C-CD3B-4087-A159-D7C428E9F304}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E7B0BE7C-CD3B-4087-A159-D7C428E9F304}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{E7B0BE7C-CD3B-4087-A159-D7C428E9F304}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{E7B0BE7C-CD3B-4087-A159-D7C428E9F304}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E7B0BE7C-CD3B-4087-A159-D7C428E9F304}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E7B0BE7C-CD3B-4087-A159-D7C428E9F304}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{E7B0BE7C-CD3B-4087-A159-D7C428E9F304}.Test|Any CPU.Build.0 = Test|Any CPU
+		{A3951FB6-D057-46B8-96D5-AA4299C47E69}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A3951FB6-D057-46B8-96D5-AA4299C47E69}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A3951FB6-D057-46B8-96D5-AA4299C47E69}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{A3951FB6-D057-46B8-96D5-AA4299C47E69}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{A3951FB6-D057-46B8-96D5-AA4299C47E69}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A3951FB6-D057-46B8-96D5-AA4299C47E69}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A3951FB6-D057-46B8-96D5-AA4299C47E69}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{A3951FB6-D057-46B8-96D5-AA4299C47E69}.Test|Any CPU.Build.0 = Test|Any CPU
+		{424DC105-2F88-41C3-829F-9D9B8AEA7834}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{424DC105-2F88-41C3-829F-9D9B8AEA7834}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{424DC105-2F88-41C3-829F-9D9B8AEA7834}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{424DC105-2F88-41C3-829F-9D9B8AEA7834}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{424DC105-2F88-41C3-829F-9D9B8AEA7834}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{424DC105-2F88-41C3-829F-9D9B8AEA7834}.Release|Any CPU.Build.0 = Release|Any CPU
+		{424DC105-2F88-41C3-829F-9D9B8AEA7834}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{424DC105-2F88-41C3-829F-9D9B8AEA7834}.Test|Any CPU.Build.0 = Test|Any CPU
+		{AF8E0EAC-E1B8-435C-970D-6AA4BA59E070}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AF8E0EAC-E1B8-435C-970D-6AA4BA59E070}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AF8E0EAC-E1B8-435C-970D-6AA4BA59E070}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{AF8E0EAC-E1B8-435C-970D-6AA4BA59E070}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{AF8E0EAC-E1B8-435C-970D-6AA4BA59E070}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AF8E0EAC-E1B8-435C-970D-6AA4BA59E070}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AF8E0EAC-E1B8-435C-970D-6AA4BA59E070}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{AF8E0EAC-E1B8-435C-970D-6AA4BA59E070}.Test|Any CPU.Build.0 = Test|Any CPU
+		{6B90D266-718C-4EAD-B372-36883B328223}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6B90D266-718C-4EAD-B372-36883B328223}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6B90D266-718C-4EAD-B372-36883B328223}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{6B90D266-718C-4EAD-B372-36883B328223}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{6B90D266-718C-4EAD-B372-36883B328223}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6B90D266-718C-4EAD-B372-36883B328223}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6B90D266-718C-4EAD-B372-36883B328223}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{6B90D266-718C-4EAD-B372-36883B328223}.Test|Any CPU.Build.0 = Test|Any CPU
+		{36161B0E-7487-470B-BA16-943989E01BA3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{36161B0E-7487-470B-BA16-943989E01BA3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{36161B0E-7487-470B-BA16-943989E01BA3}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{36161B0E-7487-470B-BA16-943989E01BA3}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{36161B0E-7487-470B-BA16-943989E01BA3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{36161B0E-7487-470B-BA16-943989E01BA3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{36161B0E-7487-470B-BA16-943989E01BA3}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{36161B0E-7487-470B-BA16-943989E01BA3}.Test|Any CPU.Build.0 = Test|Any CPU
+		{CA103F8E-C000-40BF-B223-4DA36364D12F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CA103F8E-C000-40BF-B223-4DA36364D12F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CA103F8E-C000-40BF-B223-4DA36364D12F}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{CA103F8E-C000-40BF-B223-4DA36364D12F}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{CA103F8E-C000-40BF-B223-4DA36364D12F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CA103F8E-C000-40BF-B223-4DA36364D12F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CA103F8E-C000-40BF-B223-4DA36364D12F}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{CA103F8E-C000-40BF-B223-4DA36364D12F}.Test|Any CPU.Build.0 = Test|Any CPU
+		{EC9531B3-C114-4D44-A93A-41377F21BC8B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EC9531B3-C114-4D44-A93A-41377F21BC8B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EC9531B3-C114-4D44-A93A-41377F21BC8B}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{EC9531B3-C114-4D44-A93A-41377F21BC8B}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{EC9531B3-C114-4D44-A93A-41377F21BC8B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EC9531B3-C114-4D44-A93A-41377F21BC8B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EC9531B3-C114-4D44-A93A-41377F21BC8B}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{EC9531B3-C114-4D44-A93A-41377F21BC8B}.Test|Any CPU.Build.0 = Test|Any CPU
+		{814547E8-C6BB-4686-83C3-F0252340415E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{814547E8-C6BB-4686-83C3-F0252340415E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{814547E8-C6BB-4686-83C3-F0252340415E}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{814547E8-C6BB-4686-83C3-F0252340415E}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{814547E8-C6BB-4686-83C3-F0252340415E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{814547E8-C6BB-4686-83C3-F0252340415E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{814547E8-C6BB-4686-83C3-F0252340415E}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{814547E8-C6BB-4686-83C3-F0252340415E}.Test|Any CPU.Build.0 = Test|Any CPU
+		{41AE9A5D-A2F4-4C64-8636-88EA4F70E36D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{41AE9A5D-A2F4-4C64-8636-88EA4F70E36D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{41AE9A5D-A2F4-4C64-8636-88EA4F70E36D}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{41AE9A5D-A2F4-4C64-8636-88EA4F70E36D}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{41AE9A5D-A2F4-4C64-8636-88EA4F70E36D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{41AE9A5D-A2F4-4C64-8636-88EA4F70E36D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{41AE9A5D-A2F4-4C64-8636-88EA4F70E36D}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{41AE9A5D-A2F4-4C64-8636-88EA4F70E36D}.Test|Any CPU.Build.0 = Test|Any CPU
+		{8A3837AB-572B-4E0A-84FF-FE14D08DEC4E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8A3837AB-572B-4E0A-84FF-FE14D08DEC4E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8A3837AB-572B-4E0A-84FF-FE14D08DEC4E}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{8A3837AB-572B-4E0A-84FF-FE14D08DEC4E}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{8A3837AB-572B-4E0A-84FF-FE14D08DEC4E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8A3837AB-572B-4E0A-84FF-FE14D08DEC4E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8A3837AB-572B-4E0A-84FF-FE14D08DEC4E}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{8A3837AB-572B-4E0A-84FF-FE14D08DEC4E}.Test|Any CPU.Build.0 = Test|Any CPU
+		{ADFC1559-AD9C-4198-BF99-B7C2C71406E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ADFC1559-AD9C-4198-BF99-B7C2C71406E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ADFC1559-AD9C-4198-BF99-B7C2C71406E7}.Dev|Any CPU.ActiveCfg = Debug|Any CPU
+		{ADFC1559-AD9C-4198-BF99-B7C2C71406E7}.Dev|Any CPU.Build.0 = Debug|Any CPU
+		{ADFC1559-AD9C-4198-BF99-B7C2C71406E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ADFC1559-AD9C-4198-BF99-B7C2C71406E7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ADFC1559-AD9C-4198-BF99-B7C2C71406E7}.Test|Any CPU.ActiveCfg = Release|Any CPU
+		{ADFC1559-AD9C-4198-BF99-B7C2C71406E7}.Test|Any CPU.Build.0 = Release|Any CPU
+		{25294B0F-3CCC-49DF-A06F-9642BCAC6D5C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{25294B0F-3CCC-49DF-A06F-9642BCAC6D5C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{25294B0F-3CCC-49DF-A06F-9642BCAC6D5C}.Dev|Any CPU.ActiveCfg = Debug|Any CPU
+		{25294B0F-3CCC-49DF-A06F-9642BCAC6D5C}.Dev|Any CPU.Build.0 = Debug|Any CPU
+		{25294B0F-3CCC-49DF-A06F-9642BCAC6D5C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{25294B0F-3CCC-49DF-A06F-9642BCAC6D5C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{25294B0F-3CCC-49DF-A06F-9642BCAC6D5C}.Test|Any CPU.ActiveCfg = Release|Any CPU
+		{25294B0F-3CCC-49DF-A06F-9642BCAC6D5C}.Test|Any CPU.Build.0 = Release|Any CPU
+		{ACF21CF4-AB60-4A12-B41E-31DF6470FFE4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ACF21CF4-AB60-4A12-B41E-31DF6470FFE4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ACF21CF4-AB60-4A12-B41E-31DF6470FFE4}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{ACF21CF4-AB60-4A12-B41E-31DF6470FFE4}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{ACF21CF4-AB60-4A12-B41E-31DF6470FFE4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ACF21CF4-AB60-4A12-B41E-31DF6470FFE4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ACF21CF4-AB60-4A12-B41E-31DF6470FFE4}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{ACF21CF4-AB60-4A12-B41E-31DF6470FFE4}.Test|Any CPU.Build.0 = Test|Any CPU
+		{77A44C6C-15E7-48B1-9954-0B158E407F0E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{77A44C6C-15E7-48B1-9954-0B158E407F0E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{77A44C6C-15E7-48B1-9954-0B158E407F0E}.Dev|Any CPU.ActiveCfg = Dev|Any CPU
+		{77A44C6C-15E7-48B1-9954-0B158E407F0E}.Dev|Any CPU.Build.0 = Dev|Any CPU
+		{77A44C6C-15E7-48B1-9954-0B158E407F0E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{77A44C6C-15E7-48B1-9954-0B158E407F0E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{77A44C6C-15E7-48B1-9954-0B158E407F0E}.Test|Any CPU.ActiveCfg = Test|Any CPU
+		{77A44C6C-15E7-48B1-9954-0B158E407F0E}.Test|Any CPU.Build.0 = Test|Any CPU
+		{82E617DD-6323-4F32-B372-758FB9FA14F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{82E617DD-6323-4F32-B372-758FB9FA14F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{82E617DD-6323-4F32-B372-758FB9FA14F1}.Dev|Any CPU.ActiveCfg = Debug|Any CPU
+		{82E617DD-6323-4F32-B372-758FB9FA14F1}.Dev|Any CPU.Build.0 = Debug|Any CPU
+		{82E617DD-6323-4F32-B372-758FB9FA14F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{82E617DD-6323-4F32-B372-758FB9FA14F1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{82E617DD-6323-4F32-B372-758FB9FA14F1}.Test|Any CPU.ActiveCfg = Release|Any CPU
+		{82E617DD-6323-4F32-B372-758FB9FA14F1}.Test|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{B91C2CBF-2B2D-426F-AB56-AB00E70B7E8E} = {89847A2C-FAFB-4945-AB7E-043A5B7DF664}
+		{8EC480B6-A561-4FB7-A2E4-819528D29462} = {B91C2CBF-2B2D-426F-AB56-AB00E70B7E8E}
+		{5FAB8584-E005-4AFE-8058-431910EE9162} = {E92DEFDB-53BB-4D73-BE46-5E894F6FD61E}
+		{629AE438-FB3F-4E91-895D-3B3F4D3F2896} = {5FAB8584-E005-4AFE-8058-431910EE9162}
+		{FB358652-45F1-4410-99DA-19D72833DCD6} = {5FAB8584-E005-4AFE-8058-431910EE9162}
+		{858C6E60-5007-4987-B732-0462BBC7EF0B} = {E92DEFDB-53BB-4D73-BE46-5E894F6FD61E}
+		{1A27194B-A32C-4FE6-AC2E-FB405799258E} = {858C6E60-5007-4987-B732-0462BBC7EF0B}
+		{66FF44D2-D1AB-4B4A-B59F-367F7AE204CC} = {5FAB8584-E005-4AFE-8058-431910EE9162}
+		{DDA76905-E26E-43CD-8383-7417AFCBED81} = {89847A2C-FAFB-4945-AB7E-043A5B7DF664}
+		{AFB6F3BD-B8EB-4B3E-9605-B712A5C80694} = {DDA76905-E26E-43CD-8383-7417AFCBED81}
+		{C1EA6736-4A96-4C74-9DFC-3550F771F27E} = {B91C2CBF-2B2D-426F-AB56-AB00E70B7E8E}
+		{61907112-0413-490D-919E-FF832A2BAAD0} = {89847A2C-FAFB-4945-AB7E-043A5B7DF664}
+		{87A632E6-6784-41A3-95AE-8B534B1DDED4} = {61907112-0413-490D-919E-FF832A2BAAD0}
+		{233F0B6B-17BF-4389-9B8D-B5BDB1FF86DD} = {DDA76905-E26E-43CD-8383-7417AFCBED81}
+		{6F2C492B-8DDF-40B0-82F6-48AFEC451241} = {61907112-0413-490D-919E-FF832A2BAAD0}
+		{25203691-F23B-4B7F-B6E2-742BAC3E5935} = {61907112-0413-490D-919E-FF832A2BAAD0}
+		{E1FD0075-B20E-47F3-A1AF-100E11DFFD02} = {B91C2CBF-2B2D-426F-AB56-AB00E70B7E8E}
+		{B7B04ADF-E5B0-4B88-9A46-D2ABB3BE9DF8} = {DDA76905-E26E-43CD-8383-7417AFCBED81}
+		{D90F4A85-EAAB-44D1-A40D-19F1E18DB27A} = {61907112-0413-490D-919E-FF832A2BAAD0}
+		{E7B0BE7C-CD3B-4087-A159-D7C428E9F304} = {DDA76905-E26E-43CD-8383-7417AFCBED81}
+		{A3951FB6-D057-46B8-96D5-AA4299C47E69} = {DDA76905-E26E-43CD-8383-7417AFCBED81}
+		{424DC105-2F88-41C3-829F-9D9B8AEA7834} = {858C6E60-5007-4987-B732-0462BBC7EF0B}
+		{AF8E0EAC-E1B8-435C-970D-6AA4BA59E070} = {DDA76905-E26E-43CD-8383-7417AFCBED81}
+		{6B90D266-718C-4EAD-B372-36883B328223} = {DDA76905-E26E-43CD-8383-7417AFCBED81}
+		{36161B0E-7487-470B-BA16-943989E01BA3} = {DDA76905-E26E-43CD-8383-7417AFCBED81}
+		{CA103F8E-C000-40BF-B223-4DA36364D12F} = {DDA76905-E26E-43CD-8383-7417AFCBED81}
+		{EC9531B3-C114-4D44-A93A-41377F21BC8B} = {DDA76905-E26E-43CD-8383-7417AFCBED81}
+		{814547E8-C6BB-4686-83C3-F0252340415E} = {DDA76905-E26E-43CD-8383-7417AFCBED81}
+		{41AE9A5D-A2F4-4C64-8636-88EA4F70E36D} = {858C6E60-5007-4987-B732-0462BBC7EF0B}
+		{8A3837AB-572B-4E0A-84FF-FE14D08DEC4E} = {DDA76905-E26E-43CD-8383-7417AFCBED81}
+		{ADFC1559-AD9C-4198-BF99-B7C2C71406E7} = {DDA76905-E26E-43CD-8383-7417AFCBED81}
+		{25294B0F-3CCC-49DF-A06F-9642BCAC6D5C} = {858C6E60-5007-4987-B732-0462BBC7EF0B}
+		{ACF21CF4-AB60-4A12-B41E-31DF6470FFE4} = {5FAB8584-E005-4AFE-8058-431910EE9162}
+		{77A44C6C-15E7-48B1-9954-0B158E407F0E} = {858C6E60-5007-4987-B732-0462BBC7EF0B}
+		{82E617DD-6323-4F32-B372-758FB9FA14F1} = {858C6E60-5007-4987-B732-0462BBC7EF0B}
+	EndGlobalSection
+EndGlobal

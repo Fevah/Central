@@ -8,8 +8,7 @@ public partial class DbRepository
     public async Task<List<ApiKeyRecord>> GetApiKeysAsync()
     {
         var list = new List<ApiKeyRecord>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, name, role, is_active, created_at, last_used_at, use_count, expires_at FROM api_keys ORDER BY name", conn);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -32,8 +31,7 @@ public partial class DbRepository
         var rawKey = $"ck_{Guid.NewGuid():N}"; // ck_ prefix for easy identification
         var hash = HashApiKey(rawKey);
 
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             @"INSERT INTO api_keys (name, key_hash, role, created_by, expires_at)
               VALUES (@n, @h, @r, @cb, @exp)", conn);
@@ -49,8 +47,7 @@ public partial class DbRepository
 
     public async Task RevokeApiKeyAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("UPDATE api_keys SET is_active = false WHERE id = @id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -58,8 +55,7 @@ public partial class DbRepository
 
     public async Task DeleteApiKeyAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM api_keys WHERE id = @id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();

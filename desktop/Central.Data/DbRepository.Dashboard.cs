@@ -8,8 +8,7 @@ public partial class DbRepository
     public async Task<DashboardData> GetDashboardDataAsync()
     {
         var data = new DashboardData();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         data.DeviceCount = await CountAsync(conn, "switch_guide", "WHERE is_deleted IS NOT TRUE");
         data.SwitchCount = await CountAsync(conn, "switches");

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="24px" height="24px" viewBox="0 0 24 24" enable-background="new 0 0 24 24" xml:space="preserve">
+  <g id="icon">
+    <rect x="0.5" y="0.5" width="22" height="19" fill="#FFFFFF" opacity="0.5"/>
+    <path d="M24,20H0V0h24V20zM2,19h20V2H2V19z" fill="#7B7B7B"/>
+    <polygon points="11.4142,21.6 9.0392,24 16.7333,24 19.1083,21.6" fill="#78797A" stroke-linejoin="miter" opacity="0.2"/>
+    <polygon points="17.7083,21.6 16.325,23 10.0309,23 9.0392,24 16.7417,24 19.1167,21.6" fill="#78797A" stroke-linejoin="miter" opacity="0.3"/>
+    <polygon points="12.6976,19 10.5,19 0,19 0,24 7.7421,24 10.7087,21 24,21 24,19" fill="#6485C3" stroke-linejoin="miter"/>
+    <g>
+      <polygon points="5.8053,15 2,15 2,16 5.2334,16" fill="#B7B7B7" stroke-linejoin="miter"/>
+      <path d="M11.921,2.8c0.0265,0,0.0526,0.0016,0.079,0.002V2h-1v0.8775C11.2998,2.8274,11.6072,2.8,11.921,2.8z" fill="#B7B7B7"/>
+      <polygon points="11,18.6248 11,19 11.3658,19" fill="#B7B7B7" stroke-linejoin="miter"/>
+      <path d="M6,14.6596l1,-1.7485V11h0.0072c-0.4279,-0.7988,-0.6599,-1.6984,-0.6599,-2.6266c0,-1.2671,0.4258,-2.4362,1.1409,-3.3734H7V2H6v3H2v1h4v4H2v1h4V14.6596z" fill="#B7B7B7"/>
+      <polygon points="6,16.4299 6,19 7,19 7,16.4415" fill="#B7B7B7" stroke-linejoin="miter"/>
+      <path d="M17,5V2h-1v2.5807c0.4098,0.4404,0.7487,0.9469,1,1.5017V6h5V5H17z" fill="#B7B7B7"/>
+      <path d="M16.2503,11.881L17,13.1917V11h5v-1h-4.7482C17.043,10.6836,16.7039,11.3226,16.2503,11.881z" fill="#B7B7B7"/>
+      <polygon points="16,16.4512 16,19 17,19 17,16.4396" fill="#B7B7B7" stroke-linejoin="miter"/>
+      <polygon points="11.9198,18.4908 11.7769,19 12,19 12,18.7766" fill="#B7B7B7" stroke-linejoin="miter"/>
+      <polygon points="18.6063,16 22,16 22,15 18.0343,15" fill="#B7B7B7" stroke-linejoin="miter"/>
+    </g>
+    <path d="M22,19H2V2h20V19zM3,18h18V3H3V18z" fill="#FFFFFF" opacity="0.5"/>
+    <path d="M11.9198,14.0495L11.0918,17l-1.6875,-1.7308l-2.355,-0.0272l2.0293,-3.5481c-0.9753,-0.8338,-1.5314,-2.035,-1.5314,-3.3205C7.5473,5.9619,9.5093,4,11.921,4s4.3737,1.9619,4.3737,4.3734c0,1.2864,-0.5566,2.488,-1.5329,3.3219l2.0285,3.5466l-2.355,0.0272L12.7478,17L11.9198,14.0495z" fill="#CB525D"/>
+  </g>
+</svg>

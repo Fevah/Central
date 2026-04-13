@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SyncMapping>
+  <EntityMappings>
+    <EntityMapping Name="SalesOrderItem">
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Oid" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Oid" Type="System.Guid" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Sku" Type="Sku" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="SkuId" Type="System.Guid" Convert="Property([Sku], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Quantity" Type="System.Int32" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Quantity" Type="System.Int32" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="QuantityReleased" Type="System.Int32" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="QuantityReleased" Type="System.Int32" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="QuantityCancelled" Type="System.Int32" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="QuantityCancelled" Type="System.Int32" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="CostPrice" Type="System.Decimal" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="CostPrice" Type="System.Decimal" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="SellPrice" Type="System.Decimal" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="SellPrice" Type="System.Decimal" />
+        </TargetFields>
+      </FieldMapping>
+    </EntityMapping>
+  </EntityMappings>
+</SyncMapping>

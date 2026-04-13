@@ -458,7 +458,7 @@ public partial class App : System.Windows.Application
         settings.Register("link.default_subnet", "Default P2P Subnet", "/30", Core.Services.SettingType.String, "Links");
 
         // Server/API settings
-        settings.Register("api.url", "API Server URL", "http://localhost:5000", Core.Services.SettingType.String, "Server");
+        settings.Register("api.url", "API Server URL", "http://192.168.56.203:8000", Core.Services.SettingType.String, "Server");
         settings.Register("api.auto_connect", "Auto-connect to API on startup", false, Core.Services.SettingType.Boolean, "Server");
         settings.Register("api.use_server_ssh", "Use server-side SSH (credentials stay on server)", false, Core.Services.SettingType.Boolean, "Server");
 

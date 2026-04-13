@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!-- Generator: Adobe Illustrator 26.3.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 16 16" style="enable-background:new 0 0 16 16;" xml:space="preserve">
+<g id="icon">
+	<path style="fill:#6E6F72;" d="M8.008,10.017C5.247,10.017,3,7.77,3,5.008S5.247,0,8.008,0s5.008,2.247,5.008,5.008
+		C13.017,7.77,10.77,10.017,8.008,10.017z M8.008,1C5.798,1,4,2.798,4,5.008s1.798,4.008,4.008,4.008s4.008-1.798,4.008-4.008
+		S10.219,1,8.008,1z"/>
+	<polygon style="fill:#6486C4;" points="9.392,4.115 7.635,5.872 6.928,5.165 8.685,3.408 7.995,2.718 10.518,2.282 10.082,4.805 	
+		"/>
+	<rect x="0.5" y="11.5" style="opacity:0.5;fill:#FFFFFF;enable-background:new    ;" width="15" height="4"/>
+	<path style="fill:#EEAD56;" d="M16,16H0v-5h16V16z M1,15h14v-3H1V15z"/>
+	<path style="fill:#7C7B7A;" d="M3,14H2v-2h1V14z M5,12H4v1h1V12z M7,12H6v1h1V12z M9,12H8v2h1V12z M11,12h-1v1h1V12z M13,12h-1v1h1
+		V12z"/>
+</g>
+</svg>

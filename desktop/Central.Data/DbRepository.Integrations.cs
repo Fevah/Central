@@ -9,8 +9,7 @@ public partial class DbRepository
     public async Task<List<Integration>> GetIntegrationsAsync()
     {
         var list = new List<Integration>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, name, display_name, integration_type, base_url, is_enabled, config_json FROM integrations ORDER BY display_name", conn);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -26,8 +25,7 @@ public partial class DbRepository
 
     public async Task UpsertIntegrationAsync(Integration i)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(i.Id > 0
             ? "UPDATE integrations SET display_name=@dn, base_url=@url, is_enabled=@en, config_json=@cfg::jsonb, updated_at=NOW() WHERE id=@id"
             : "INSERT INTO integrations (name, display_name, integration_type, base_url, is_enabled, config_json) VALUES (@n, @dn, @t, @url, @en, @cfg::jsonb) RETURNING id", conn);
@@ -45,8 +43,7 @@ public partial class DbRepository
     public async Task SaveIntegrationCredentialAsync(int integrationId, string key, string plainValue)
     {
         var encrypted = CredentialEncryptor.Encrypt(plainValue);
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             @"INSERT INTO integration_credentials (integration_id, key, value)
               VALUES (@iid, @k, @v)
@@ -59,8 +56,7 @@ public partial class DbRepository
 
     public async Task<string?> GetIntegrationCredentialAsync(int integrationId, string key)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT value FROM integration_credentials WHERE integration_id=@iid AND key=@k", conn);
         cmd.Parameters.AddWithValue("iid", integrationId);
@@ -74,8 +70,7 @@ public partial class DbRepository
     public async Task<List<IntegrationLogEntry>> GetIntegrationLogAsync(int integrationId, int limit = 50)
     {
         var list = new List<IntegrationLogEntry>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, integration_id, action, status, message, duration_ms, created_at FROM integration_log WHERE integration_id=@iid ORDER BY created_at DESC LIMIT @lim", conn);
         cmd.Parameters.AddWithValue("iid", integrationId);
@@ -93,8 +88,7 @@ public partial class DbRepository
 
     public async Task LogIntegrationAsync(int integrationId, string action, string status, string? message, int? durationMs = null)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "INSERT INTO integration_log (integration_id, action, status, message, duration_ms) VALUES (@iid, @a, @s, @m, @d)", conn);
         cmd.Parameters.AddWithValue("iid", integrationId);
@@ -108,8 +102,7 @@ public partial class DbRepository
     /// <summary>Get an integration by name (e.g. "manageengine").</summary>
     public async Task<Integration?> GetIntegrationByNameAsync(string name)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, name, display_name, integration_type, base_url, is_enabled, config_json FROM integrations WHERE name=@n", conn);
         cmd.Parameters.AddWithValue("n", name);

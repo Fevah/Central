@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <rect y="11.5" width="16" height="2.5" fill="#77A2D6"/>
+    <rect y="4.5" width="16" height="7" fill="#F37980"/>
+    <rect y="2" width="16" height="2.5" fill="#77A2D6"/>
+    <rect y="4" width="16" height="1" fill="#F7CE73"/>
+    <rect y="11" width="16" height="1" fill="#F7CE73"/>
+    <path d="M14.87,7.913c0.078,0,0.13,0.056,0.13,0.113s-0.052,0.113,-0.13,0.113H1.123c-0.078,0,-0.13,-0.056,-0.13,-0.113s0.052,-0.113,0.13,-0.113H14.87" fill="#F7CE73"/>
+    <path d="M2.894,7.039h10.102l0.469,0.169l0.703,-0.254L13.465,6.7l-0.469,0.169h-0.156h-0.078h-0.078h-9.79c-0.052,0,-0.078,0.028,-0.078,0.085C2.815,7.011,2.867,7.039,2.894,7.039" fill="#F7CE73"/>
+    <path d="M2.243,7.518h9.789h0.078h0.078h0.156l0.469,0.169l0.703,-0.254l-0.703,-0.254l-0.469,0.169H2.243c-0.052,0,-0.078,0.028,-0.078,0.085S2.191,7.518,2.243,7.518" fill="#F7CE73"/>
+    <path d="M12.032,8.025c-0.833,0.817,-1.927,2.479,-4.114,2.479c-1.927,0,-1.276,-2.479,-1.276,-2.479s-0.651,-2.479,1.276,-2.479C10.105,5.546,11.225,7.208,12.032,8.025" fill="#FFFFFF"/>
+    <path d="M7.632,6.419c0.208,0.254,0.026,0.338,0.26,0.366c0.234,0.028,0.104,0.254,0.312,0.282c0.156,0,-0.026,0.592,0.13,0.761c0.13,0.197,0.26,0.056,0.26,0.197s-0.391,0.141,-0.391,0.592c0,0.254,-0.338,0.282,-0.338,0.451c-0.026,0.169,0.625,0.254,0.599,0.394c-0.026,0.141,-0.677,0.113,-0.729,0.282c0,0.113,0.963,0.254,1.041,0.648c-0.13,0.056,-0.547,0.085,-0.859,0.085c-1.927,0,-3.28,-1.634,-4.114,-2.479c0.833,-0.817,2.187,-2.479,4.114,-2.479C7.918,5.546,7.346,6.081,7.632,6.419" fill="#7C7B7A"/>
+    <rect x="5.341" y="7.152" width="0.208" height="0.648" fill="#FFFFFF"/>
+    <rect x="5.341" y="8.251" width="0.208" height="0.648" fill="#FFFFFF"/>
+    <rect x="5.731" y="7.152" width="0.208" height="0.648" fill="#FFFFFF"/>
+    <rect x="5.731" y="8.251" width="0.208" height="0.648" fill="#FFFFFF"/>
+    <rect x="6.148" y="7.152" width="0.208" height="0.648" fill="#FFFFFF"/>
+    <rect x="6.148" y="8.251" width="0.208" height="0.648" fill="#FFFFFF"/>
+    <rect x="6.538" y="7.152" width="0.208" height="0.648" fill="#FFFFFF"/>
+    <rect x="6.538" y="8.251" width="0.208" height="0.648" fill="#FFFFFF"/>
+    <rect x="6.929" y="7.152" width="0.208" height="0.648" fill="#FFFFFF"/>
+    <rect x="6.929" y="8.251" width="0.208" height="0.648" fill="#FFFFFF"/>
+    <rect x="7.346" y="7.152" width="0.208" height="0.648" fill="#FFFFFF"/>
+    <rect x="7.346" y="8.251" width="0.208" height="0.648" fill="#FFFFFF"/>
+    <rect x="8.361" y="7.152" width="0.208" height="0.648" fill="#7C7B7A"/>
+    <rect x="8.361" y="8.251" width="0.208" height="0.648" fill="#7C7B7A"/>
+    <rect x="8.751" y="7.152" width="0.208" height="0.648" fill="#7C7B7A"/>
+    <rect x="8.751" y="8.251" width="0.208" height="0.648" fill="#7C7B7A"/>
+    <rect x="9.168" y="7.152" width="0.208" height="0.648" fill="#7C7B7A"/>
+    <rect x="9.168" y="8.251" width="0.208" height="0.648" fill="#7C7B7A"/>
+    <rect x="9.559" y="7.152" width="0.208" height="0.648" fill="#7C7B7A"/>
+    <rect x="9.559" y="8.251" width="0.208" height="0.648" fill="#7C7B7A"/>
+    <rect x="9.949" y="7.152" width="0.208" height="0.648" fill="#7C7B7A"/>
+    <rect x="9.949" y="8.251" width="0.208" height="0.648" fill="#7C7B7A"/>
+    <rect x="10.366" y="7.152" width="0.208" height="0.648" fill="#7C7B7A"/>
+    <rect x="10.366" y="8.251" width="0.208" height="0.648" fill="#7C7B7A"/>
+    <circle cx="2.05" cy="8.7" r="0.65" fill="#77A2D6"/>
+    <circle cx="6.7" cy="6.7" r="0.65" fill="#77A2D6"/>
+    <circle cx="13.85" cy="8.7" r="0.65" fill="#77A2D6"/>
+    <path d="M16,14H0V2h16V14zM1,13h14V3H1V13z" fill="#211F20" opacity="0.20"/>
+  </g>
+</svg>

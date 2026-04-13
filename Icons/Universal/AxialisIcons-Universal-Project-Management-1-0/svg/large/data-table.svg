@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="24px" height="24px" viewBox="0 0 24 24" enable-background="new 0 0 24 24" xml:space="preserve">
+  <g id="icon">
+    <rect x="0.75" y="0.75" width="22.5" height="22.5" fill="#FFFFFF" opacity="0.5" transform="matrix(-1.83697e-16 1 -1 -1.83697e-16 24 2.84217e-15)"/>
+    <path d="M0,24V0h24v24H0zM2,22h20V2H2V22z" fill="#7D7C7B"/>
+    <polygon points="6.75,6.75 0.75,0.75 23.25,0.75 23.25,6.75" fill="#6486C4" stroke-linejoin="miter" opacity="0.3"/>
+    <polygon points="7,7 6,6 22,6 22,2 2,2 0,0 24,0 24,7" fill="#6486C4" stroke-linejoin="miter"/>
+    <polygon points="0.75,23.25 0.75,0.75 6.75,6.75 6.75,23.25" fill="#CC525E" stroke-linejoin="miter" opacity="0.3"/>
+    <polygon points="0,24 0,0 2,2 2,22 6,22 6,6 7,7 7,24" fill="#CC525E" stroke-linejoin="miter"/>
+    <rect x="3.725" y="2.725" width="5.55" height="1" fill="#6486C4" transform="matrix(-1.83697e-16 1 -1 -1.83697e-16 9.725 -3.275)"/>
+    <rect x="12.725" y="2.725" width="5.55" height="1" fill="#6486C4" transform="matrix(-1.83697e-16 1 -1 -1.83697e-16 18.725 -12.275)"/>
+    <rect x="2.875" y="3.875" width="1" height="5.25" fill="#CC525E" transform="matrix(-1.83697e-16 1 -1 -1.83697e-16 9.875 3.125)"/>
+    <rect x="2.875" y="12.875" width="1" height="5.25" fill="#CC525E" transform="matrix(-1.83697e-16 1 -1 -1.83697e-16 18.875 12.125)"/>
+  </g>
+</svg>

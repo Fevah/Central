@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <rect x="1.5" y="6.5" width="29" height="23" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <rect x="1.5" y="2.5" width="29" height="4" fill="#B2DBB4" stroke="#009949" stroke-width="1" stroke-miterlimit="1"/>
+    <polygon points="10.5,16.5 4.5,16.5 4.5,9.5 9,9.5 10.5,11" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <polygon points="4.4,14.4 5.4,13.6 6.267,13.517 7.1,14.1 7.5,14.6 8.4,13.9 9.3,14 10.4,15 10.4,16.5 4.5,16.433" fill="#B2DBB4" stroke-linejoin="miter"/>
+    <path d="M7.543,14.428c1.108,-0.955,1.904,-0.287,2.832,0.469M9.015,15.377c-1.966,-0.605,-2.605,-3.298,-4.461,-0.899" fill="#B2DBB4" stroke="#009949" stroke-width="0.8" stroke-miterlimit="1"/>
+    <polygon points="10.5,16.5 4.5,16.5 4.5,9.5 9,9.5 10.5,11" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+    <circle cx="8.2" cy="11.7" r="0.7" fill="#E57428"/>
+    <polygon points="18.5,16.5 12.5,16.5 12.5,9.5 17,9.5 18.5,11" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <polygon points="12.4,14.9 13.683,13.733 15.25,15.2 16.417,14.283 18.4,16.267 12.533,16.35" fill="#92CBEE" stroke-linejoin="miter"/>
+    <path d="M12.5,14.858l1.208,-1.205l2.75,2.74M18.5,16.345l-2.131,-2.125l-1.005,1.002" fill="#92CBEE" stroke="#0964B0" stroke-width="0.8" stroke-miterlimit="1"/>
+    <polygon points="18.5,16.5 12.5,16.5 12.5,9.5 17,9.5 18.5,11" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+    <circle cx="16.2" cy="11.7" r="0.7" fill="#E57428"/>
+    <polygon points="10.5,26.5 4.5,26.5 4.5,19.5 9,19.5 10.5,21" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <polygon points="4.4,25.033 5.683,23.867 7.25,25.333 8.417,24.417 10.4,26.4 4.533,26.483" fill="#92CBEE" stroke-linejoin="miter"/>
+    <path d="M4.5,24.858l1.208,-1.205l2.75,2.74M10.5,26.345l-2.131,-2.125l-1.005,1.002" fill="#92CBEE" stroke="#0964B0" stroke-width="0.8" stroke-miterlimit="1"/>
+    <polygon points="10.5,26.5 4.5,26.5 4.5,19.5 9,19.5 10.5,21" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+    <circle cx="8.2" cy="21.7" r="0.7" fill="#E57428"/>
+    <polygon points="18.5,26.5 12.5,26.5 12.5,19.5 17,19.5 18.5,21" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <polygon points="12.5,24.4 13.5,23.6 14.367,23.517 15.2,24.1 15.6,24.6 16.5,23.9 17.4,24 18.5,25 18.5,26.5 12.6,26.433" fill="#B2DBB4" stroke-linejoin="miter"/>
+    <path d="M15.543,24.428c1.108,-0.955,1.904,-0.287,2.832,0.469M17.015,25.377c-1.966,-0.605,-2.605,-3.298,-4.461,-0.899" fill="#B2DBB4" stroke="#009949" stroke-width="0.8" stroke-miterlimit="1"/>
+    <polygon points="18.5,26.5 12.5,26.5 12.5,19.5 17,19.5 18.5,21" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+    <circle cx="16.2" cy="21.7" r="0.7" fill="#E57428"/>
+    <polygon points="26.5,16.5 20.5,16.5 20.5,9.5 25,9.5 26.5,11" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <polygon points="20.5,14.4 21.5,13.6 22.367,13.517 23.2,14.1 23.6,14.6 24.5,13.9 25.4,14 26.5,15 26.5,16.5 20.6,16.433" fill="#B2DBB4" stroke-linejoin="miter"/>
+    <path d="M23.543,14.428c1.108,-0.955,1.904,-0.287,2.832,0.469M25.015,15.377c-1.966,-0.605,-2.605,-3.298,-4.461,-0.899" fill="#B2DBB4" stroke="#009949" stroke-width="0.8" stroke-miterlimit="1"/>
+    <polygon points="26.5,16.5 20.5,16.5 20.5,9.5 25,9.5 26.5,11" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+    <circle cx="24.2" cy="11.7" r="0.7" fill="#E57428"/>
+  </g>
+</svg>

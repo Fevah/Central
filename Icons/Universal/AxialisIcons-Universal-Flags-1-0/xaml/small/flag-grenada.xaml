@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Top="2" Width="16" Height="12" Fill="#F37980"/>
+      <Rectangle Canvas.Left="1.611" Canvas.Top="4.01" Width="12.779" Height="7.98" Fill="#63BF80"/>
+      <Polygon Points="1.611,4.01 14.389,4.01 1.611,11.99 14.389,11.99" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Ellipse Canvas.Left="5.973" Canvas.Top="5.966" Width="4.054" Height="4.054" Fill="#F37980"/>
+      <Polygon Points="9.44,7.502 8.55,8.108 8.89,9.089 8,8.483 7.11,9.089 7.45,8.108 6.56,7.502 7.66,7.502 8,6.521 8.34,7.502" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="4.166,2.297 3.974,2.852 3.351,2.852 3.855,3.195 3.663,3.75 4.167,3.407 4.671,3.75 4.479,3.195 4.983,2.852 4.36,2.852" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="7.715,3.195 7.523,3.75 8.027,3.407 8.531,3.75 8.339,3.195 8.843,2.852 8.22,2.852 8.028,2.297 7.836,2.852 7.213,2.852" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="11.576,3.195 11.384,3.75 11.888,3.407 12.392,3.75 12.2,3.195 12.704,2.852 12.081,2.852 11.889,2.297 11.697,2.852 11.074,2.852" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="4.166,12.247 3.974,12.802 3.351,12.802 3.855,13.145 3.662,13.7 4.166,13.357 4.67,13.7 4.478,13.145 4.982,12.802 4.359,12.802" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="7.715,13.145 7.523,13.7 8.027,13.357 8.53,13.7 8.338,13.145 8.842,12.802 8.219,12.802 8.027,12.247 7.835,12.802 7.212,12.802" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="11.576,13.145 11.384,13.7 11.888,13.357 12.392,13.7 12.2,13.145 12.704,12.802 12.081,12.802 11.889,12.247 11.697,12.802 11.074,12.802" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Path Data="M2.768,7.832c0.206,0.36,0.606,0.751,0.956,0.888c0.006,-0.365,-0.133,-0.833,-0.322,-1.206L2.768,7.832z" Fill="#F37980"/>
+      <Path Data="M2.419,6.599c0.298,0.583,-0.774,1.975,1.013,2.301c-0.22,-0.282,-0.363,-0.747,-0.309,-1.121c0.375,0.134,0.769,0.525,0.929,0.824C4.52,7.011,2.852,7.108,2.419,6.599z" Fill="#F7CE73"/>
+      <Path Data="M16,14H0V2h16V14zM1,13h14V3H1V13z" Fill="#211F20" Opacity="0.20"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

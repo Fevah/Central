@@ -10,8 +10,7 @@ public partial class DbRepository
     public async Task<List<RibbonPageConfig>> GetRibbonPagesAsync()
     {
         var list = new List<RibbonPageConfig>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, header, sort_order, required_permission, icon_name, is_visible, is_system FROM ribbon_pages ORDER BY sort_order, header", conn);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -33,8 +32,7 @@ public partial class DbRepository
 
     public async Task UpsertRibbonPageAsync(RibbonPageConfig page)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(page.Id > 0
             ? @"UPDATE ribbon_pages SET header=@h, sort_order=@s, required_permission=@rp, icon_name=@icon, is_visible=@v, updated_at=NOW() WHERE id=@id"
             : @"INSERT INTO ribbon_pages (header, sort_order, required_permission, icon_name, is_visible) VALUES (@h, @s, @rp, @icon, @v) RETURNING id", conn);
@@ -52,8 +50,7 @@ public partial class DbRepository
 
     public async Task DeleteRibbonPageAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM ribbon_pages WHERE id=@id AND is_system=FALSE", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -64,8 +61,7 @@ public partial class DbRepository
     public async Task<List<RibbonGroupConfig>> GetRibbonGroupsAsync(int? pageId = null)
     {
         var list = new List<RibbonGroupConfig>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var sql = @"SELECT g.id, g.page_id, g.header, g.sort_order, g.is_visible, p.header
                     FROM ribbon_groups g JOIN ribbon_pages p ON g.page_id = p.id";
         if (pageId.HasValue) sql += " WHERE g.page_id = @pid";
@@ -90,8 +86,7 @@ public partial class DbRepository
 
     public async Task UpsertRibbonGroupAsync(RibbonGroupConfig group)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(group.Id > 0
             ? @"UPDATE ribbon_groups SET page_id=@pid, header=@h, sort_order=@s, is_visible=@v, updated_at=NOW() WHERE id=@id"
             : @"INSERT INTO ribbon_groups (page_id, header, sort_order, is_visible) VALUES (@pid, @h, @s, @v) RETURNING id", conn);
@@ -108,8 +103,7 @@ public partial class DbRepository
 
     public async Task DeleteRibbonGroupAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM ribbon_groups WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -120,8 +114,7 @@ public partial class DbRepository
     public async Task<List<RibbonItemConfig>> GetRibbonItemsAsync(int? groupId = null)
     {
         var list = new List<RibbonItemConfig>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var sql = @"SELECT i.id, i.group_id, i.content, i.item_type, i.sort_order, i.permission,
                            i.glyph, i.large_glyph, i.icon_id, i.command_type, i.command_param,
                            i.tooltip, i.is_visible, i.is_system, g.header, p.header
@@ -160,8 +153,7 @@ public partial class DbRepository
 
     public async Task UpsertRibbonItemAsync(RibbonItemConfig item)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(item.Id > 0
             ? @"UPDATE ribbon_items SET group_id=@gid, content=@c, item_type=@t, sort_order=@s,
                 permission=@perm, glyph=@g, large_glyph=@lg, icon_id=@iid, command_type=@ct,
@@ -190,8 +182,7 @@ public partial class DbRepository
 
     public async Task DeleteRibbonItemAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM ribbon_items WHERE id=@id AND is_system=FALSE", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -202,8 +193,7 @@ public partial class DbRepository
     public async Task<List<Central.Core.Models.SavedFilter>> GetSavedFiltersAsync(string panelName, int? userId)
     {
         var list = new List<Central.Core.Models.SavedFilter>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             @"SELECT id, user_id, panel_name, filter_name, filter_expr, is_default, sort_order
               FROM saved_filters
@@ -230,8 +220,7 @@ public partial class DbRepository
 
     public async Task UpsertSavedFilterAsync(Central.Core.Models.SavedFilter filter)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(filter.Id > 0
             ? @"UPDATE saved_filters SET filter_name=@n, filter_expr=@e, is_default=@d, sort_order=@s, updated_at=NOW() WHERE id=@id"
             : @"INSERT INTO saved_filters (user_id, panel_name, filter_name, filter_expr, is_default, sort_order)
@@ -251,8 +240,7 @@ public partial class DbRepository
 
     public async Task DeleteSavedFilterAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM saved_filters WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -263,8 +251,7 @@ public partial class DbRepository
     public async Task<List<Central.Core.Models.UserRibbonOverride>> GetUserRibbonOverridesAsync(int userId)
     {
         var list = new List<Central.Core.Models.UserRibbonOverride>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, user_id, item_key, custom_icon, custom_text, is_hidden, sort_order FROM user_ribbon_overrides WHERE user_id=@u ORDER BY item_key", conn);
         cmd.Parameters.AddWithValue("u", userId);
@@ -285,8 +272,7 @@ public partial class DbRepository
 
     public async Task UpsertUserRibbonOverrideAsync(Central.Core.Models.UserRibbonOverride ov)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             @"INSERT INTO user_ribbon_overrides (user_id, item_key, custom_icon, custom_text, is_hidden, sort_order)
               VALUES (@u, @k, @icon, @text, @hide, @sort)
@@ -303,8 +289,7 @@ public partial class DbRepository
 
     public async Task DeleteUserRibbonOverrideAsync(int userId, string itemKey)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM user_ribbon_overrides WHERE user_id=@u AND item_key=@k", conn);
         cmd.Parameters.AddWithValue("u", userId);
         cmd.Parameters.AddWithValue("k", itemKey);
@@ -316,8 +301,7 @@ public partial class DbRepository
     public async Task<List<(string ItemKey, string? Icon, string? Text, bool IsHidden)>> GetAdminRibbonDefaultsAsync()
     {
         var list = new List<(string, string?, string?, bool)>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT item_key, default_icon, default_text, is_hidden FROM admin_ribbon_defaults", conn);
         await using var r = await cmd.ExecuteReaderAsync();
         while (await r.ReadAsync())
@@ -328,8 +312,7 @@ public partial class DbRepository
     public async Task UpsertAdminRibbonDefaultAsync(string itemKey, string? icon, string? text, bool isHidden, int adminUserId,
         string? displayStyle = null, string? linkTarget = null)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             @"INSERT INTO admin_ribbon_defaults (item_key, default_icon, default_text, is_hidden, updated_by, display_style, link_target)
               VALUES (@k, @icon, @text, @hide, @uid, @style, @link)

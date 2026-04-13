@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SyncMapping>
+  <EntityMappings>
+    <EntityMapping Name="StockAdjustment">
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Oid" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Oid" Type="System.Guid" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Sku" Type="Sku" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="SkuId" Type="System.Guid" Convert="Property([Sku], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Quantity" Type="System.Int32" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Quantity" Type="System.Int32" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Notes" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Notes" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="TargetBinLocation" Type="BinLocation" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="TargetBinLocationId" Type="System.Guid" Convert="Property([TargetBinLocation], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="SourceBinLocation" Type="BinLocation" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="SourceBinLocationId" Type="System.Guid" Convert="Property([SourceBinLocation], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Reason" Type="StockAdjustmentReason" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="ReasonId" Type="System.Guid" Convert="Property([Reason], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="TargetPhysicalStockType" Type="PhysicalStockType" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="TargetPhysicalStockTypeId" Type="System.Guid" Convert="Property([TargetPhysicalStockType], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="SourcePhysicalStockType" Type="PhysicalStockType" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="SourcePhysicalStockTypeId" Type="System.Guid" Convert="Property([SourcePhysicalStockType], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Vendor" Type="Contact" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="VendorId" Type="System.Guid" Convert="Property([Vendor], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="VendorReference" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="VendorReference" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+    </EntityMapping>
+  </EntityMappings>
+</SyncMapping>

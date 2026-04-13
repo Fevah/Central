@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M0,2h16v12H0V2z" Fill="#77A2D6"/>
+      <Rectangle Canvas.Top="8.5" Width="16" Height="3" Fill="#FFFFFF"/>
+      <Rectangle Canvas.Top="9.5" Width="16" Height="1" Fill="#F37980"/>
+      <Polygon Points="5.675,7.281 5.997,7.047 5.599,7.047 5.476,6.669 5.353,7.047 4.955,7.047 5.277,7.281 5.154,7.659 5.476,7.425 5.798,7.659" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="8.278,9.173 8.6,8.939 8.202,8.939 8.079,8.561 7.956,8.939 7.558,8.939 7.88,9.173 7.757,9.551 8.079,9.317 8.401,9.551" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="3.072,9.173 3.394,8.939 2.996,8.939 2.873,8.561 2.75,8.939 2.352,8.939 2.674,9.173 2.551,9.551 2.873,9.317 3.195,9.551" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="3.072,10.864 3.394,10.63 2.996,10.63 2.873,10.252 2.75,10.63 2.352,10.63 2.674,10.864 2.551,11.242 2.873,11.008 3.195,11.242" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="8.278,10.864 8.6,10.63 8.202,10.63 8.079,10.252 7.956,10.63 7.558,10.63 7.88,10.864 7.757,11.242 8.079,11.008 8.401,11.242" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="5.599,12.522 5.476,12.144 5.353,12.522 4.955,12.522 5.277,12.756 5.154,13.134 5.476,12.9 5.798,13.134 5.675,12.756 5.997,12.522" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="7.284,12.233 7.606,11.999 7.208,11.999 7.085,11.621 6.962,11.999 6.564,11.999 6.886,12.233 6.763,12.611 7.085,12.377 7.407,12.611" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="7.284,7.81 7.606,7.576 7.208,7.576 7.085,7.198 6.962,7.576 6.564,7.576 6.886,7.81 6.763,8.188 7.085,7.954 7.407,8.188" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="3.669,12.233 3.347,11.999 3.745,11.999 3.868,11.621 3.991,11.999 4.389,11.999 4.067,12.233 4.19,12.611 3.868,12.377 3.546,12.611" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Polygon Points="3.669,7.81 3.347,7.576 3.745,7.576 3.868,7.198 3.991,7.576 4.389,7.576 4.067,7.81 4.19,8.188 3.868,7.954 3.546,8.188" Fill="#F7CE73" StrokeLineJoin="Miter"/>
+      <Path Data="M16,14H0V2h16V14zM1,13h14V3H1V13z" Fill="#211F20" Opacity="0.20"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

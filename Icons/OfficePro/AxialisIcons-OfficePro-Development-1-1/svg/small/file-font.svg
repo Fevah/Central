@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <polygon points="11.6,0.5 3.5,0.5 3.5,15.5 15.5,15.5 15.5,4.4" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <path d="M11.803,0H3v6h1V1h7v4h4v10h-2.8v1h3.8V4.189L11.803,0zM12,1.588L14.373,4H12V1.588z" fill="#383838"/>
+    <path d="M6.134,11.456h2.421L6.597,6.905L5.403,9.757l-0.55,-1.277l1.276,-3.048l0.92,-0.005l4.325,10.05l-0.919,0.395l-1.47,-3.416H6.565L6.134,11.456z" fill="#383838"/>
+    <path d="M3.774,8.5h-0.781L0.079,15.46l0.922,0.386l0.918,-2.193h2.983l0.955,2.219l0.919,-0.395L3.774,8.5zM2.338,12.653l1.052,-2.514l1.082,2.514H2.338z" fill="#238BCB"/>
+  </g>
+</svg>

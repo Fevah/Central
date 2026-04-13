@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Top="2" Width="16" Height="12" Fill="#63BF80"/>
+      <Path Data="M14.5,8.0003L8,13L1.5,8.0003L8,3L14.5,8.0003z" Fill="#F7CE73"/>
+      <Path Data="M10.8394,7.9658c0,1.6026,-1.2762,2.9026,-2.8502,2.9026s-2.8502,-1.3,-2.8502,-2.9026c0,-1.6032,1.2762,-2.9026,2.8502,-2.9026C9.5632,5.0632,10.8394,6.3626,10.8394,7.9658z" Fill="#77A2D6"/>
+      <Path Data="M10.8394,7.9658c0,1.6026,-1.2762,2.9026,-2.8502,2.9026s-2.8502,-1.3,-2.8502,-2.9026c0,-1.6032,1.2762,-2.9026,2.8502,-2.9026C9.5632,5.0632,10.8394,6.3626,10.8394,7.9658z" Fill="#221F20" Opacity="0.1"/>
+      <Path Data="M10.75,8.6756c-0.0802,0.3249,-0.2118,0.6291,-0.3895,0.9006C9.3336,8.3607,6.94,7.38,5.1774,7.5102c0.0504,-0.3237,0.15,-0.6303,0.2968,-0.9095C7.2563,6.594,9.4831,7.4129,10.75,8.6756z" Fill="#FFFFFF"/>
+      <Ellipse Canvas.Left="6.7541" Canvas.Top="8.1004" Width="0.4334" Height="0.445" Fill="#8FC6EC"/>
+      <Ellipse Canvas.Left="6.2125" Canvas.Top="8.9904" Width="0.4334" Height="0.445" Fill="#8FC6EC"/>
+      <Ellipse Canvas.Left="5.6166" Canvas.Top="8.1004" Width="0.4334" Height="0.445" Fill="#8FC6EC"/>
+      <Ellipse Canvas.Left="7.35" Canvas.Top="9.7136" Width="0.4334" Height="0.445" Fill="#8FC6EC"/>
+      <Ellipse Canvas.Left="7.5666" Canvas.Top="8.6011" Width="0.4334" Height="0.445" Fill="#8FC6EC"/>
+      <Ellipse Canvas.Left="9.0291" Canvas.Top="9.7136" Width="0.4334" Height="0.445" Fill="#8FC6EC"/>
+      <Ellipse Canvas.Left="9.5166" Canvas.Top="6.8766" Width="0.4334" Height="0.445" Fill="#8FC6EC"/>
+      <Ellipse Canvas.Left="8.3791" Canvas.Top="9.1573" Width="0.4334" Height="0.445" Fill="#8FC6EC"/>
+      <Path Data="M16,14H0V2h16V14zM1,13h14V3H1V13z" Fill="#211F20" Opacity="0.20"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

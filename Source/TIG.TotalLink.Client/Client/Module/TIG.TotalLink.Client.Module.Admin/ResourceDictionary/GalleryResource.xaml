@@ -1,0 +1,28 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:dxb="http://schemas.devexpress.com/winfx/2008/xaml/bars"
+                    xmlns:gallery="clr-namespace:TIG.TotalLink.Client.Module.Admin.ViewModel.Gallery">
+
+    <!-- Gallery Item template -->
+    <DataTemplate x:Key="GalleryItemTemplate"
+                  DataType="{x:Type gallery:GalleryItemViewModel}">
+        <ContentControl>
+            <dxb:GalleryItem Caption="{Binding Name}"
+                             Glyph="{Binding Glyph}"
+                             IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                             />
+        </ContentControl>
+    </DataTemplate>
+
+
+    <!-- Gallery Group template -->
+    <DataTemplate x:Key="GalleryGroupTemplate"
+                  DataType="{x:Type gallery:GalleryGroupViewModel}">
+        <ContentControl>
+            <dxb:GalleryItemGroup Caption="{Binding Name}"
+                                  ItemsSource="{Binding GalleryItems}" 
+                                  ItemTemplate="{StaticResource GalleryItemTemplate}"
+                                  />
+        </ContentControl>
+    </DataTemplate>
+</ResourceDictionary>

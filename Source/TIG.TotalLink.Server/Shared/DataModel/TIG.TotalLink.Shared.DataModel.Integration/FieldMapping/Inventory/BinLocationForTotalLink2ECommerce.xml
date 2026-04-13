@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SyncMapping>
+  <EntityMappings>
+    <EntityMapping Name="BinLocation">
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Oid" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Oid" Type="System.Guid" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Name" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Name" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="IsleCode" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="IsleCode" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="BinCode" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="BinCode" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="WarehouseLocation" Type="WarehouseLocation" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="WarehouseLocationId" Type="System.Guid" Convert="Property([WarehouseLocation], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+    </EntityMapping>
+  </EntityMappings>
+</SyncMapping>

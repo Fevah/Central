@@ -1,44 +1,49 @@
-# =============================================================================
-# Central.Api — ASP.NET Core 10 Minimal API Container
-# =============================================================================
-
-# Stage 1: Build
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-# Copy project files for restore
+ENV EnableWindowsTargeting=true
+
+# Copy all project files for restore
 COPY Central.Core/Central.Core.csproj Central.Core/
 COPY Central.Data/Central.Data.csproj Central.Data/
-COPY Central.Api/Central.Api.csproj Central.Api/
 COPY Central.Api.Client/Central.Api.Client.csproj Central.Api.Client/
-COPY Central.Workflows/Central.Workflows.csproj Central.Workflows/
+COPY Central.Api/Central.Api.csproj Central.Api/
 COPY Central.Tenancy/Central.Tenancy.csproj Central.Tenancy/
 COPY Central.Licensing/Central.Licensing.csproj Central.Licensing/
 COPY Central.Security/Central.Security.csproj Central.Security/
 COPY Central.Collaboration/Central.Collaboration.csproj Central.Collaboration/
 COPY Central.Observability/Central.Observability.csproj Central.Observability/
+COPY Central.Workflows/Central.Workflows.csproj Central.Workflows/
+COPY NuGet.config .
+RUN mkdir -p packages-offline && \
+    dotnet restore Central.Api/Central.Api.csproj --force --packages /src/.nuget
 
-# Restore
-RUN dotnet restore Central.Api/Central.Api.csproj
+# Copy all source
+COPY Central.Core/ Central.Core/
+COPY Central.Data/ Central.Data/
+COPY Central.Api.Client/ Central.Api.Client/
+COPY Central.Api/ Central.Api/
+COPY Central.Tenancy/ Central.Tenancy/
+COPY Central.Licensing/ Central.Licensing/
+COPY Central.Security/ Central.Security/
+COPY Central.Collaboration/ Central.Collaboration/
+COPY Central.Observability/ Central.Observability/
+COPY Central.Workflows/ Central.Workflows/
+RUN dotnet publish Central.Api/Central.Api.csproj -c Release -o /app \
+    -p:EnableWindowsTargeting=true \
+    -p:RestorePackagesPath=/src/.nuget
 
-# Copy source + build
-COPY . .
-RUN dotnet publish Central.Api/Central.Api.csproj -c Release -o /app --no-restore
-
-# Stage 2: Runtime
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine
+FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 COPY --from=build /app .
 
-# Non-root user
-RUN adduser -D -u 1000 appuser
-USER appuser
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
 ENV ASPNETCORE_URLS=http://+:5000
-ENV ASPNETCORE_ENVIRONMENT=Production
+ENV CENTRAL_DSN="Host=postgres;Port=5432;Database=central;Username=central;Password=central"
 EXPOSE 5000
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget -q --spider http://localhost:5000/health || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+    CMD curl -sf http://localhost:5000/api/health || exit 1
 
 ENTRYPOINT ["dotnet", "Central.Api.dll"]

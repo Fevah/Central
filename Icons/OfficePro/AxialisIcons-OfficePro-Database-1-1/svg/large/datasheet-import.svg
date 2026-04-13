@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <polyline points="8.5,15.9 8.5,7.5 31.5,7.5 31.5,28.5 8.5,28.5 8.5,19.1" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+    <polygon points="20.5,7.5 8.5,7.5 8.5,3.5 16.533,3.5" fill="#92CBEE" stroke="#0964B0" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+    <line x1="19.5" y1="7.5" x2="32" y2="7.5" fill="#92CBEE" stroke="#0964B0" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M15.163,11.4l6.036,6.1l-6.036,6.1M20.9,17.5H0" fill="none" stroke="#17AB4F" stroke-width="1.2" stroke-miterlimit="1"/>
+    <rect x="23" y="25" width="6" height="1" fill="#787979"/>
+    <rect x="23" y="22" width="6" height="1" fill="#787979"/>
+    <rect x="23" y="19" width="6" height="1" fill="#787979"/>
+    <rect x="23" y="16" width="6" height="1" fill="#787979"/>
+    <rect x="23" y="13" width="6" height="1" fill="#787979"/>
+    <rect x="23" y="10" width="6" height="1" fill="#787979"/>
+  </g>
+</svg>

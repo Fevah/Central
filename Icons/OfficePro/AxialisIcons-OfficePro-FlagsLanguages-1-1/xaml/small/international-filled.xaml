@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Ellipse Canvas.Left="0" Canvas.Top="0" Width="15" Height="14.984" Fill="#E4C3DD" Stroke="#A0519F" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+      <Path Data="M2.273,2.877c1.381,0.725,3.203,1.352,5.201,1.352c1.974,0,3.824,-0.617,5.199,-1.326M12.627,12.128c-1.375,-0.709,-3.178,-1.373,-5.152,-1.373c-1.998,0,-3.821,0.674,-5.201,1.398M7.475,0.522c-2.092,0.957,-3.928,4.384,-3.928,7.003c0,2.587,1.727,6.012,3.846,6.938M7.532,14.463c2.119,-0.926,3.846,-4.351,3.846,-6.938c0,-2.618,-1.789,-6.046,-3.881,-7.003M0.684,7.492h13.66M7.475,0.5v14" Fill="#E4C3DD" Stroke="#A0519F" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

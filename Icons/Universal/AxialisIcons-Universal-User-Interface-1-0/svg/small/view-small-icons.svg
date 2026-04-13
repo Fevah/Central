@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <polygon points="3.5,4.5 0.5,4.5 0.5,1.5 2.48,1.5 3.5,2.525" fill="#FFFFFF" stroke-linejoin="miter" opacity="0.5"/>
+    <path d="M4,5H0V1h2.6878L4,2.3186V5zM1,4h2V2.7314L2.2722,2H1V4z" fill="#6E6F72"/>
+    <polygon points="3.5,7.525 2.48,6.5 0.5,6.5 0.5,9.5 3.5,9.5" fill="#FFFFFF" stroke-linejoin="miter" opacity="0.5"/>
+    <path d="M4,10H0V6h2.6878L4,7.3186V10zM1,9h2V7.7314L2.2722,7H1V9z" fill="#6E6F72"/>
+    <polygon points="3.5,12.525 2.48,11.5 0.5,11.5 0.5,14.5 3.5,14.5" fill="#FFFFFF" stroke-linejoin="miter" opacity="0.5"/>
+    <path d="M4,15H0v-4h2.6878L4,12.3186V15zM1,14h2v-1.2686L2.2722,12H1V14z" fill="#6E6F72"/>
+    <rect x="1" y="3" width="2" height="1" fill="#6486C4"/>
+    <rect x="1" y="13" width="2" height="1" fill="#6486C4"/>
+    <rect x="1" y="8" width="2" height="1" fill="#54B14E"/>
+    <polygon points="12.5,2.525 11.48,1.5 9.5,1.5 9.5,4.5 12.5,4.5" fill="#FFFFFF" stroke-linejoin="miter" opacity="0.5"/>
+    <path d="M13,5H9V1h2.6878L13,2.3186V5zM10,4h2V2.7314L11.2722,2H10V4z" fill="#6E6F72"/>
+    <polygon points="12.5,7.525 11.48,6.5 9.5,6.5 9.5,9.5 12.5,9.5" fill="#FFFFFF" stroke-linejoin="miter" opacity="0.5"/>
+    <path d="M13,10H9V6h2.6878L13,7.3186V10zM10,9h2V7.7314L11.2722,7H10V9z" fill="#6E6F72"/>
+    <rect x="10" y="8" width="2" height="1" fill="#6486C4"/>
+    <rect x="10" y="3" width="2" height="1" fill="#54B14E"/>
+    <polygon points="12.5,12.525 11.48,11.5 9.5,11.5 9.5,14.5 12.5,14.5" fill="#FFFFFF" stroke-linejoin="miter" opacity="0.5"/>
+    <path d="M13,15H9v-4h2.6878L13,12.3186V15zM10,14h2v-1.2686L11.2722,12H10V14z" fill="#6E6F72"/>
+    <rect x="10" y="13" width="2" height="1" fill="#54B14E"/>
+    <path d="M7,4H5V3h2V4zM7,8H5v1h2V8zM7,13H5v1h2V13zM16,13h-2v1h2V13zM16,8h-2v1h2V8zM16,3h-2v1h2V3z" fill="#6E6F72"/>
+  </g>
+</svg>

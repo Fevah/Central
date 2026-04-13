@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <path d="M7.5,9.5H0.5V6.5h7V9.5zM7.5,9.5H0.5v6h7V9.5z" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M6,8.5H4V7.5h2V8.5z" fill="#238BCB"/>
+    <circle cx="4" cy="13" r="1" fill="#78797A"/>
+    <polygon points="8.5,0.5 8.5,3.5 8.5,5 9,5 9,9.5 15.5,9.5 15.5,3.5 15.5,0.5" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <path d="M8,0v5h1V4h6v5H9v1h7V0H8zM15,3H9V1h6V3z" fill="#383838"/>
+    <path d="M14,2.5h-2V1.5h2V2.5z" fill="#238BCB"/>
+    <circle cx="12" cy="7" r="1" fill="#78797A"/>
+    <rect x="2" y="2" width="1" height="1" fill="#238BCB"/>
+    <rect x="4" y="2" width="1" height="1" fill="#238BCB"/>
+    <rect x="6" y="2" width="1" height="1" fill="#238BCB"/>
+    <rect x="2" y="4" width="1" height="1" fill="#238BCB"/>
+    <rect x="13" y="13" width="1" height="1" fill="#238BCB"/>
+    <rect x="11" y="13" width="1" height="1" fill="#238BCB"/>
+    <rect x="9" y="13" width="1" height="1" fill="#238BCB"/>
+    <rect x="13" y="11" width="1" height="1" fill="#238BCB"/>
+  </g>
+</svg>

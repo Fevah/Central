@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <path d="M10.42,30.5H7.58c-0.596,0,-1.08,-0.483,-1.08,-1.08V27.5h5v1.92C11.5,30.017,11.017,30.5,10.42,30.5z" fill="#FFFFFF" stroke="#787979" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M23.42,30.5h-2.84c-0.596,0,-1.08,-0.483,-1.08,-1.08V27.5h5v1.92C24.5,30.017,24.017,30.5,23.42,30.5z" fill="#FFFFFF" stroke="#787979" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M25.485,27.5H5.515c-0.56,0,-1.015,-0.454,-1.015,-1.215V2.315c0,-0.36,0.454,-0.815,1.015,-0.815h19.97c0.56,0,1.015,0.454,1.015,0.815v23.97C26.5,27.046,26.046,27.5,25.485,27.5z" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="4.7" y1="19.5" x2="26.5" y2="19.5" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M4.5,12.5H2.55c-0.58,0,-1.05,-0.47,-1.05,-1.05v-3.9C1.5,6.97,1.97,6.5,2.55,6.5H4.5V12.5z" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M28.55,12.5H26.5V6.5h2.05c0.525,0,0.95,0.425,0.95,0.95v4.1C29.5,12.075,29.075,12.5,28.55,12.5z" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M11.05,24.5h-3.1c-0.249,0,-0.45,-0.201,-0.45,-0.45v-1.1c0,-0.249,0.201,-0.45,0.45,-0.45h3.1c0.249,0,0.45,0.201,0.45,0.45v1.1C11.5,24.299,11.299,24.5,11.05,24.5z" fill="#FFFFFF" stroke="#ED8730" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M23.05,24.5h-3.1c-0.249,0,-0.45,-0.201,-0.45,-0.45v-1.1c0,-0.249,0.201,-0.45,0.45,-0.45h3.1c0.249,0,0.45,0.201,0.45,0.45v1.1C23.5,24.299,23.299,24.5,23.05,24.5z" fill="#FFFFFF" stroke="#ED8730" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="5" y1="4.5" x2="26" y2="4.5" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+  </g>
+</svg>

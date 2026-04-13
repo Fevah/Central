@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="24" Height="24" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Left="5" Canvas.Top="4" Width="14" Height="20" RenderTransformOrigin="-0.357143 -0.2" Fill="#FFFFFF" Opacity="0.5">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="6.12323e-17 -1 1 6.12323e-17 -2 26"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Path Data="M24,6v17H0V6H24zM2,7v14h20V7H2z" Fill="#7D7C7B"/>
+      <Path Data="M24,0v7H0V0H24zM2,2v4h20V2H2z" Fill="#7D7C7B"/>
+      <Rectangle Canvas.Left="10" Canvas.Top="-6" Width="4" Height="20" RenderTransformOrigin="-2.5 0.3" Fill="#BAD2ED">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="6.12323e-17 -1 1 6.12323e-17 8 16"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Rectangle Canvas.Left="11" Canvas.Top="9.8" Width="2" Height="8.2" Fill="#7D7C7B"/>
+      <Polygon Points="7.4911,12.7947 8.9053,14.2089 11.975,11.1393 15.0446,14.2089 16.4589,12.7947 11.975,8.3107" Fill="#7D7C7B" StrokeLineJoin="Miter"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

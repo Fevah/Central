@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <rect x="1.5" y="3.5" width="29" height="25" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M8.5,4v24M16.5,4v24M23.5,4v24" fill="none" stroke="#787979" stroke-width="1" stroke-miterlimit="1" opacity="0.6"/>
+    <rect x="1.5" y="7.5" width="29" height="16" fill="none" stroke="#FFFFFF" stroke-width="1" stroke-miterlimit="1" opacity="0.5"/>
+    <rect x="1.5" y="8.5" width="29" height="14" fill="#92CBEE" stroke="#0964B0" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <path d="M22.104,18.567l1.68,-1.667h-5.868c-0.175,0,-0.317,-0.142,-0.317,-0.317v-2.166c0,-0.175,0.142,-0.317,0.317,-0.317h5.971l-1.684,-1.671c-0.124,-0.123,-0.125,-0.324,-0.002,-0.448l1.526,-1.537c0.123,-0.124,0.324,-0.125,0.448,-0.002l4.817,4.781c0.125,0.124,0.125,0.326,0,0.45l-4.917,4.881c-0.124,0.123,-0.325,0.123,-0.448,-0.002l-1.526,-1.537C21.98,18.891,21.98,18.691,22.104,18.567z" fill="#FFFFFF" opacity="0.5"/>
+    <path d="M18.5,15.5h8.7M23.505,19.15l3.729,-3.702l-3.629,-3.602" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M9.983,18.567L8.303,16.9h5.668c0.175,0,0.317,-0.142,0.317,-0.317v-2.166c0,-0.175,-0.142,-0.317,-0.317,-0.317H8.199l1.784,-1.771c0.124,-0.123,0.125,-0.324,0.002,-0.448l-1.526,-1.537c-0.123,-0.124,-0.324,-0.125,-0.448,-0.002l-4.917,4.881c-0.125,0.124,-0.125,0.326,0,0.45l4.917,4.881c0.124,0.123,0.325,0.123,0.448,-0.002l1.526,-1.537C10.108,18.891,10.107,18.691,9.983,18.567z" fill="#FFFFFF" opacity="0.5"/>
+    <path d="M4.887,15.5h8.5M8.583,11.747l-3.729,3.702l3.729,3.702" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+  </g>
+</svg>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="24px" height="24px" viewBox="0 0 24 24" enable-background="new 0 0 24 24" xml:space="preserve">
+  <g id="icon">
+    <path d="M20.9771,20.5L21.2,22.3H3.1v-1.7h1.3V8.4258L0.7,8.3v-0.7l11.3,-5.7l11.4,5.7l0.2,0.9l-4.1,0.0703V20.6L20.9771,20.5z" fill="#FFFFFF" opacity="0.5"/>
+    <path d="M24,10V7.3417L12,0.1692L0,7.3417V10h3v10H2v1H0v3h2.3h19.3345H24v-3h-1.9773L22,20h-1V10H24zM11.9944,2.6369L21.0922,8H2.8966L11.9944,2.6369zM7,20V10h10v10H7zM5,10h1v10H5V10zM4,22v-1h15.9886L20,22H4zM19,20h-1V10h1V20z" fill="#6485C3"/>
+    <path d="M13.4,5.7c0,0.7732,-0.6268,1.4,-1.4,1.4s-1.4,-0.6268,-1.4,-1.4s0.6268,-1.4,1.4,-1.4S13.4,4.9268,13.4,5.7z" fill="#6485C3"/>
+    <rect x="8" y="10" width="1" height="10" fill="#6485C3"/>
+    <rect x="15" y="10" width="1" height="10" fill="#6485C3"/>
+    <rect x="13" y="10" width="1" height="10" fill="#6485C3"/>
+    <rect x="10" y="10" width="1" height="10" fill="#6485C3"/>
+  </g>
+</svg>

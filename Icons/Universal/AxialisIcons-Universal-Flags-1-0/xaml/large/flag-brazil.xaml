@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="24" Height="24" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Left="0" Canvas.Top="3" Width="24" Height="18" Fill="#63BF80"/>
+      <Path Data="M21.75,12.0004L12,19.5l-9.75,-7.4996L12,4.5L21.75,12.0004z" Fill="#F7CE73"/>
+      <Path Data="M16.2591,11.9487c0,2.4039,-1.9143,4.3539,-4.2754,4.3539s-4.2754,-1.95,-4.2754,-4.3539c0,-2.4047,1.9143,-4.3539,4.2754,-4.3539C14.3449,7.5948,16.2591,9.5439,16.2591,11.9487z" Fill="#77A1D5"/>
+      <Path Data="M16.2591,11.9487c0,2.4039,-1.9143,4.3539,-4.2754,4.3539s-4.2754,-1.95,-4.2754,-4.3539c0,-2.4047,1.9143,-4.3539,4.2754,-4.3539C14.3449,7.5948,16.2591,9.5439,16.2591,11.9487z" Fill="#211F20" Opacity="0.1"/>
+      <Path Data="M16.1251,13.0134c-0.1202,0.4873,-0.3177,0.9437,-0.5842,1.3509c-1.5405,-1.8232,-5.1309,-3.2942,-7.7748,-3.099c0.0756,-0.4856,0.2251,-0.9454,0.4453,-1.3642C10.8844,9.8911,14.2246,11.1193,16.1251,13.0134z" Fill="#FFFFFF"/>
+      <Ellipse Canvas.Left="10.1312" Canvas.Top="12.1506" Width="0.65" Height="0.6676" Fill="#8FC6EC"/>
+      <Ellipse Canvas.Left="9.3187" Canvas.Top="13.4856" Width="0.65" Height="0.6676" Fill="#8FC6EC"/>
+      <Ellipse Canvas.Left="8.425" Canvas.Top="12.1506" Width="0.65" Height="0.6676" Fill="#8FC6EC"/>
+      <Ellipse Canvas.Left="11.025" Canvas.Top="14.5703" Width="0.65" Height="0.6676" Fill="#8FC6EC"/>
+      <Ellipse Canvas.Left="11.35" Canvas.Top="12.9015" Width="0.65" Height="0.6676" Fill="#8FC6EC"/>
+      <Ellipse Canvas.Left="13.5437" Canvas.Top="14.5703" Width="0.65" Height="0.6676" Fill="#8FC6EC"/>
+      <Ellipse Canvas.Left="14.275" Canvas.Top="10.3149" Width="0.65" Height="0.6676" Fill="#8FC6EC"/>
+      <Ellipse Canvas.Left="12.5687" Canvas.Top="13.7359" Width="0.65" Height="0.6676" Fill="#8FC6EC"/>
+      <Path Data="M24,21H0V3h24V21zM1.5,19.5h21V4.5H1.5V19.5z" Fill="#211F20" Opacity="0.20"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

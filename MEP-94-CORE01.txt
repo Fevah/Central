@@ -1,0 +1,464 @@
+    set class-of-service forwarding-class Call-Sig-NetCtrl local-priority 4
+    set class-of-service forwarding-class Low-priority local-priority 1
+    set class-of-service forwarding-class O365-FileShare-AV
+    set class-of-service forwarding-class Teams-Screen-Share local-priority 6
+    set class-of-service forwarding-class Teams-Video local-priority 6
+    set class-of-service forwarding-class Teams-Voice local-priority 6
+    set class-of-service forwarding-class Telepresence local-priority 5
+    set class-of-service forwarding-class fc-best-effort
+    set class-of-service forwarding-class fc-bulk local-priority 1
+    set class-of-service forwarding-class fc-network-control local-priority 7
+    set class-of-service forwarding-class fc-realtime local-priority 4
+    set class-of-service forwarding-class fc-signaling local-priority 3
+    set class-of-service forwarding-class fc-transactional local-priority 2
+    set class-of-service forwarding-class fc-video local-priority 5
+    set class-of-service forwarding-class fc-voice-ef local-priority 6
+    set firewall filter dscp-mapping sequence 0 then forwarding-class "Call-Sig-NetCtrl"
+    set firewall filter dscp-mapping sequence 0 then dscp 24
+    set firewall filter dscp-mapping sequence 0 from source-port 5060..5060
+    set firewall filter dscp-mapping sequence 0 from protocol udp
+    set firewall filter dscp-mapping sequence 5 then forwarding-class "Call-Sig-NetCtrl"
+    set firewall filter dscp-mapping sequence 5 then dscp 24
+    set firewall filter dscp-mapping sequence 5 from source-port 5060..5060
+    set firewall filter dscp-mapping sequence 5 from protocol tcp
+    set firewall filter dscp-mapping sequence 10 then forwarding-class "Call-Sig-NetCtrl"
+    set firewall filter dscp-mapping sequence 10 then dscp 24
+    set firewall filter dscp-mapping sequence 10 from source-port 5061..5061
+    set firewall filter dscp-mapping sequence 10 from protocol tcp
+    set firewall filter dscp-mapping sequence 15 then forwarding-class "Call-Sig-NetCtrl"
+    set firewall filter dscp-mapping sequence 15 then dscp 24
+    set firewall filter dscp-mapping sequence 15 from source-port 1720..1720
+    set firewall filter dscp-mapping sequence 15 from protocol tcp
+    set firewall filter dscp-mapping sequence 20 then forwarding-class "Call-Sig-NetCtrl"
+    set firewall filter dscp-mapping sequence 20 then dscp 24
+    set firewall filter dscp-mapping sequence 20 from source-port 161..161
+    set firewall filter dscp-mapping sequence 20 from protocol udp
+    set firewall filter dscp-mapping sequence 25 then forwarding-class "Call-Sig-NetCtrl"
+    set firewall filter dscp-mapping sequence 25 then dscp 24
+    set firewall filter dscp-mapping sequence 25 from source-port 514..514
+    set firewall filter dscp-mapping sequence 25 from protocol udp
+    set firewall filter dscp-mapping sequence 30 then forwarding-class "Teams-Screen-Share"
+    set firewall filter dscp-mapping sequence 30 then dscp 18
+    set firewall filter dscp-mapping sequence 30 from source-port 50040..50059
+    set firewall filter dscp-mapping sequence 30 from protocol udp
+    set firewall filter dscp-mapping sequence 35 then forwarding-class "Teams-Screen-Share"
+    set firewall filter dscp-mapping sequence 35 then dscp 18
+    set firewall filter dscp-mapping sequence 35 from source-port 50040..50059
+    set firewall filter dscp-mapping sequence 35 from protocol tcp
+    set firewall filter dscp-mapping sequence 40 then forwarding-class "O365-FileShare-AV"
+    set firewall filter dscp-mapping sequence 40 then dscp 16
+    set firewall filter dscp-mapping sequence 40 from source-port 135..139
+    set firewall filter dscp-mapping sequence 40 from protocol udp
+    set firewall filter dscp-mapping sequence 45 then forwarding-class "O365-FileShare-AV"
+    set firewall filter dscp-mapping sequence 45 then dscp 16
+    set firewall filter dscp-mapping sequence 45 from source-port 135..139
+    set firewall filter dscp-mapping sequence 45 from protocol tcp
+    set firewall filter dscp-mapping sequence 50 then forwarding-class "O365-FileShare-AV"
+    set firewall filter dscp-mapping sequence 50 then dscp 16
+    set firewall filter dscp-mapping sequence 50 from source-port 445..445
+    set firewall filter dscp-mapping sequence 50 from protocol tcp
+    set firewall filter dscp-mapping sequence 55 then forwarding-class "O365-FileShare-AV"
+    set firewall filter dscp-mapping sequence 55 then dscp 16
+    set firewall filter dscp-mapping sequence 55 from source-port 587..587
+    set firewall filter dscp-mapping sequence 55 from protocol tcp
+    set firewall filter dscp-mapping sequence 60 then forwarding-class "O365-FileShare-AV"
+    set firewall filter dscp-mapping sequence 60 then dscp 16
+    set firewall filter dscp-mapping sequence 60 from source-port 995..995
+    set firewall filter dscp-mapping sequence 60 from protocol tcp
+    set firewall filter dscp-mapping sequence 65 then forwarding-class "O365-FileShare-AV"
+    set firewall filter dscp-mapping sequence 65 then dscp 16
+    set firewall filter dscp-mapping sequence 65 from source-port 25..25
+    set firewall filter dscp-mapping sequence 65 from protocol tcp
+    set firewall filter dscp-mapping sequence 70 then forwarding-class "Teams-Video"
+    set firewall filter dscp-mapping sequence 70 then dscp 34
+    set firewall filter dscp-mapping sequence 70 from source-port 3478..3481
+    set firewall filter dscp-mapping sequence 70 from protocol udp
+    set firewall filter dscp-mapping sequence 75 then forwarding-class "Teams-Video"
+    set firewall filter dscp-mapping sequence 75 then dscp 34
+    set firewall filter dscp-mapping sequence 75 from source-port 24704..24704
+    set firewall filter dscp-mapping sequence 75 from protocol udp
+    set firewall filter dscp-mapping sequence 80 then forwarding-class "Teams-Video"
+    set firewall filter dscp-mapping sequence 80 then dscp 34
+    set firewall filter dscp-mapping sequence 80 from source-port 8801..8802
+    set firewall filter dscp-mapping sequence 80 from protocol tcp
+    set firewall filter dscp-mapping sequence 85 then forwarding-class "Teams-Video"
+    set firewall filter dscp-mapping sequence 85 then dscp 34
+    set firewall filter dscp-mapping sequence 85 from source-port 8801..8810
+    set firewall filter dscp-mapping sequence 85 from protocol udp
+    set firewall filter dscp-mapping sequence 90 then forwarding-class "Teams-Video"
+    set firewall filter dscp-mapping sequence 90 then dscp 34
+    set firewall filter dscp-mapping sequence 90 from source-port 50020..50039
+    set firewall filter dscp-mapping sequence 90 from protocol udp
+    set firewall filter dscp-mapping sequence 95 then forwarding-class "Teams-Video"
+    set firewall filter dscp-mapping sequence 95 then dscp 34
+    set firewall filter dscp-mapping sequence 95 from source-port 50020..50039
+    set firewall filter dscp-mapping sequence 95 from protocol tcp
+    set firewall filter dscp-mapping sequence 100 then forwarding-class "Teams-Voice"
+    set firewall filter dscp-mapping sequence 100 then dscp 46
+    set firewall filter dscp-mapping sequence 100 from source-port 50000..50019
+    set firewall filter dscp-mapping sequence 100 from protocol udp
+    set firewall filter dscp-mapping sequence 105 then forwarding-class "Teams-Voice"
+    set firewall filter dscp-mapping sequence 105 then dscp 46
+    set firewall filter dscp-mapping sequence 105 from source-port 50000..50019
+    set firewall filter dscp-mapping sequence 105 from protocol tcp
+    set firewall filter dscp-mapping sequence 110 then forwarding-class "Low-priority"
+    set firewall filter dscp-mapping sequence 110 from ip trust-mode "dscp"
+    set firewall filter dscp-mapping sequence 110 from ip value 0
+    set firewall filter dscp-mapping sequence 1000 then
+    set firewall filter vlan105 sequence 0 then forwarding-class "Teams-Video"
+    set firewall filter vlan105 sequence 0 then dscp 46
+    set firewall filter vlan105 sequence 0 from vlan 105
+    set firewall filter vlan105 input vlan-interface vlan-105
+    set interface ecmp max-path 4
+    set interface gigabit-ethernet ge-1/1/1 family ethernet-switching native-vlan-id 152
+    set interface gigabit-ethernet ge-1/1/1 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/1 family ethernet-switching vlan members 1-350
+    set interface gigabit-ethernet ge-1/1/2 family ethernet-switching native-vlan-id 152
+    set interface gigabit-ethernet ge-1/1/2 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/2 family ethernet-switching vlan members 1-350
+    set interface gigabit-ethernet ge-1/1/3 family ethernet-switching native-vlan-id 152
+    set interface gigabit-ethernet ge-1/1/3 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/3 family ethernet-switching vlan members 1-350
+    set interface gigabit-ethernet ge-1/1/4 family ethernet-switching native-vlan-id 152
+    set interface gigabit-ethernet ge-1/1/4 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/4 family ethernet-switching vlan members 1-350
+    set interface gigabit-ethernet ge-1/1/5 family ethernet-switching native-vlan-id 152
+    set interface gigabit-ethernet ge-1/1/5 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/5 family ethernet-switching vlan members 1-350
+    set interface gigabit-ethernet ge-1/1/6 family ethernet-switching native-vlan-id 152
+    set interface gigabit-ethernet ge-1/1/6 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/6 family ethernet-switching vlan members 1-350
+    set interface gigabit-ethernet ge-1/1/7 family ethernet-switching native-vlan-id 152
+    set interface gigabit-ethernet ge-1/1/7 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/7 family ethernet-switching vlan members 1-350
+    set interface gigabit-ethernet ge-1/1/8 family ethernet-switching native-vlan-id 152
+    set interface gigabit-ethernet ge-1/1/8 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/8 family ethernet-switching vlan members 1-350
+    set interface gigabit-ethernet ge-1/1/9 family ethernet-switching native-vlan-id 152
+    set interface gigabit-ethernet ge-1/1/9 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/9 family ethernet-switching vlan members 1-350
+    set interface gigabit-ethernet ge-1/1/10 family ethernet-switching native-vlan-id 152
+    set interface gigabit-ethernet ge-1/1/10 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/10 family ethernet-switching vlan members 1-350
+    set interface gigabit-ethernet ge-1/1/11 family ethernet-switching native-vlan-id 152
+    set interface gigabit-ethernet ge-1/1/11 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/11 family ethernet-switching vlan members 1-350
+    set interface gigabit-ethernet ge-1/1/12 family ethernet-switching native-vlan-id 152
+    set interface gigabit-ethernet ge-1/1/13 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/13 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/13 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/13 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/13 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/14 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/14 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/14 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/14 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/14 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/15 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/15 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/15 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/15 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/15 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/16 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/16 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/16 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/16 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/16 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/17 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/17 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/17 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/17 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/17 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/18 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/18 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/18 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/18 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/18 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/19 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/19 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/19 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/19 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/19 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/20 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/20 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/20 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/20 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/20 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/21 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/21 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/21 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/21 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/21 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/22 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/22 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/22 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/22 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/22 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/23 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/23 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/23 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/23 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/23 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/24 family ethernet-switching native-vlan-id 105
+    set interface gigabit-ethernet ge-1/1/25 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/25 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/25 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/25 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/25 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/26 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/26 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/26 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/26 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/26 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/27 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/27 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/27 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/27 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/27 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/28 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/28 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/28 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/28 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/28 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/29 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/29 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/29 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/29 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/29 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/30 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/30 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/30 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/30 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/30 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/31 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/31 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/31 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/31 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/31 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/32 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/32 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/32 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/32 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/32 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/33 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/33 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/33 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/33 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/33 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/34 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/34 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/34 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/34 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/34 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/35 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/35 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/35 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/35 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/35 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/36 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/36 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet ge-1/1/36 voice-vlan mode "manual"
+    set interface gigabit-ethernet ge-1/1/36 voice-vlan vlan-id 136
+    set interface gigabit-ethernet ge-1/1/36 voice-vlan tagged mode "tag"
+    set interface gigabit-ethernet ge-1/1/37 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/38 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/39 family ethernet-switching native-vlan-id 112
+    set interface gigabit-ethernet ge-1/1/42 family ethernet-switching native-vlan-id 82
+    set interface gigabit-ethernet ge-1/1/43 family ethernet-switching native-vlan-id 105
+    set interface gigabit-ethernet ge-1/1/44 family ethernet-switching native-vlan-id 105
+    set interface gigabit-ethernet ge-1/1/45 family ethernet-switching native-vlan-id 105
+    set interface gigabit-ethernet ge-1/1/46 family ethernet-switching native-vlan-id 105
+    set interface gigabit-ethernet ge-1/1/47 family ethernet-switching native-vlan-id 105
+    set interface gigabit-ethernet ge-1/1/48 family ethernet-switching native-vlan-id 105
+    set interface gigabit-ethernet te-1/1/3 family ethernet-switching native-vlan-id 152
+    set interface gigabit-ethernet te-1/1/3 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet te-1/1/3 family ethernet-switching vlan members 1-4000
+    set interface gigabit-ethernet xe-1/1/1 family ethernet-switching native-vlan-id 3539
+    set interface gigabit-ethernet xe-1/1/1 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet xe-1/1/1 family ethernet-switching vlan members 1057,3539
+    set interface gigabit-ethernet xe-1/1/2 family ethernet-switching native-vlan-id 1057
+    set interface gigabit-ethernet xe-1/1/2 family ethernet-switching port-mode "trunk"
+    set interface gigabit-ethernet xe-1/1/2 family ethernet-switching vlan members 1057
+    set ip routing enable true
+    set l3-interface loopback lo0 address 10.255.94.2 prefix-length 32
+    set l3-interface vlan-interface vlan-152 address 10.14.152.1 prefix-length 21
+    set l3-interface vlan-interface vlan-10
+    set l3-interface vlan-interface vlan-90
+    set l3-interface vlan-interface vlan-92
+    set l3-interface vlan-interface vlan-1
+    set l3-interface vlan-interface vlan-100 address 10.14.100.1 prefix-length 24
+    set l3-interface vlan-interface vlan-101 address 10.14.101.1 prefix-length 24
+    set l3-interface vlan-interface vlan-102 address 10.14.102.1 prefix-length 24
+    set l3-interface vlan-interface vlan-105 address 10.14.105.1 prefix-length 24
+    set l3-interface vlan-interface vlan-106 address 10.14.106.1 prefix-length 24
+    set l3-interface vlan-interface vlan-108 address 10.14.108.1 prefix-length 24
+    set l3-interface vlan-interface vlan-112 address 10.14.112.1 prefix-length 21
+    set l3-interface vlan-interface vlan-128 address 10.14.128.1 prefix-length 21
+    set l3-interface vlan-interface vlan-136 address 10.14.136.1 prefix-length 21
+    set l3-interface vlan-interface vlan-235 address 10.14.235.1 prefix-length 24
+    set l3-interface vlan-interface vlan-236 address 10.14.236.1 prefix-length 24
+    set l3-interface vlan-interface vlan-237 address 10.14.237.1 prefix-length 24
+    set l3-interface vlan-interface vlan-238 address 10.14.238.1 prefix-length 24
+    set l3-interface vlan-interface vlan-239 address 10.14.239.1 prefix-length 24
+    set l3-interface vlan-interface vlan-248 address 10.14.248.1 prefix-length 24
+    set l3-interface vlan-interface vlan-254 address 10.14.254.1 prefix-length 24
+    set l3-interface vlan-interface vlan-120 address 10.14.120.1 prefix-length 21
+    set l3-interface vlan-interface vlan-268 address 10.204.1.2 prefix-length 24
+    set l3-interface vlan-interface vlan-1057 description "eBGP to MEP-93-CORE01"
+    set l3-interface vlan-interface vlan-1057 address 10.5.57.2 prefix-length 30
+    set l3-interface vlan-interface vlan-82 address 10.14.82.103 prefix-length 24
+    set protocols bgp local-as "65141"
+    set protocols bgp ebgp-requires-policy false
+    set protocols bgp router-id 10.255.94.2
+    set protocols bgp neighbor 10.5.57.1 remote-as "65132"
+    set protocols bgp ipv4-unicast network 10.14.152.0/21
+    set protocols bgp ipv4-unicast network 10.14.1.0/24
+    set protocols bgp ipv4-unicast network 10.14.100.0/24
+    set protocols bgp ipv4-unicast network 10.14.101.0/24
+    set protocols bgp ipv4-unicast network 10.14.102.0/24
+    set protocols bgp ipv4-unicast network 10.14.105.0/24
+    set protocols bgp ipv4-unicast network 10.14.106.0/24
+    set protocols bgp ipv4-unicast network 10.14.108.0/24
+    set protocols bgp ipv4-unicast network 10.14.112.0/21
+    set protocols bgp ipv4-unicast network 10.14.120.0/21
+    set protocols bgp ipv4-unicast network 10.14.128.0/21
+    set protocols bgp ipv4-unicast network 10.14.136.0/21
+    set protocols bgp ipv4-unicast network 10.14.235.0/24
+    set protocols bgp ipv4-unicast network 10.14.236.0/24
+    set protocols bgp ipv4-unicast network 10.14.237.0/24
+    set protocols bgp ipv4-unicast network 10.14.238.0/24
+    set protocols bgp ipv4-unicast network 10.14.239.0/24
+    set protocols bgp ipv4-unicast network 10.14.248.0/24
+    set protocols bgp ipv4-unicast network 10.14.254.0/24
+    set protocols bgp ipv4-unicast network 10.14.82.0/24
+    set protocols bgp ipv4-unicast redistribute connected
+    set protocols bgp ipv4-unicast multipath ebgp maximum-paths 4
+    set protocols dhcp relay interface vlan-112 disable false
+    set protocols dhcp relay interface vlan-112 dhcp-server-address 10.11.120.10
+    set protocols dhcp relay interface vlan-112 dhcp-server-address 10.11.120.11
+    set protocols dhcp relay interface vlan-112 relay-agent-address 10.14.119.254
+    set protocols dhcp relay interface vlan-136 disable false
+    set protocols dhcp relay interface vlan-136 dhcp-server-address 10.11.120.10
+    set protocols dhcp relay interface vlan-136 dhcp-server-address 10.11.120.11
+    set protocols dhcp relay interface vlan-136 relay-agent-address 10.14.143.254
+    set protocols dhcp relay interface vlan-101 disable false
+    set protocols dhcp relay interface vlan-101 dhcp-server-address 10.11.140.10
+    set protocols dhcp relay interface vlan-101 dhcp-server-address 10.11.140.11
+    set protocols dhcp relay interface vlan-101 relay-agent-address 10.14.101.254
+    set protocols dhcp relay interface vlan-105 disable false
+    set protocols dhcp relay interface vlan-105 dhcp-server-address 10.11.120.10
+    set protocols dhcp relay interface vlan-105 dhcp-server-address 10.11.120.11
+    set protocols dhcp relay interface vlan-105 relay-agent-address 10.14.105.254
+    set protocols dhcp relay interface vlan-152 disable false
+    set protocols dhcp relay interface vlan-152 dhcp-server-address 10.11.120.10
+    set protocols dhcp relay interface vlan-152 dhcp-server-address 10.11.120.11
+    set protocols dhcp relay interface vlan-152 relay-agent-address 10.14.159.254
+    set protocols dhcp relay interface vlan-128 disable false
+    set protocols dhcp relay interface vlan-128 dhcp-server-address 10.11.120.10
+    set protocols dhcp relay interface vlan-128 dhcp-server-address 10.11.120.11
+    set protocols dhcp relay interface vlan-128 relay-agent-address 10.14.135.254
+    set protocols lldp enable true
+    set protocols spanning-tree mstp bridge-priority 21480
+    set protocols static route 0.0.0.0/0 next-hop 10.13.159.254
+    set protocols vrrp interface vlan-152 vrid 14 ip 10.14.159.254
+    set protocols vrrp interface vlan-152 vrid 14 load-balance disable false
+    set protocols vrrp interface vlan-100 vrid 14 ip 10.14.100.254
+    set protocols vrrp interface vlan-100 vrid 14 load-balance disable false
+    set protocols vrrp interface vlan-101 vrid 14 ip 10.14.101.254
+    set protocols vrrp interface vlan-101 vrid 14 load-balance disable false
+    set protocols vrrp interface vlan-102 vrid 14 ip 10.14.102.254
+    set protocols vrrp interface vlan-102 vrid 14 load-balance disable false
+    set protocols vrrp interface vlan-105 vrid 14 ip 10.14.105.254
+    set protocols vrrp interface vlan-105 vrid 14 load-balance disable false
+    set protocols vrrp interface vlan-106 vrid 14 ip 10.14.106.254
+    set protocols vrrp interface vlan-106 vrid 14 load-balance disable false
+    set protocols vrrp interface vlan-108 vrid 14 ip 10.14.108.254
+    set protocols vrrp interface vlan-108 vrid 14 load-balance disable false
+    set protocols vrrp interface vlan-112 vrid 14 ip 10.14.119.254
+    set protocols vrrp interface vlan-120 vrid 14 load-balance disable false
+    set protocols vrrp interface vlan-128 vrid 14 ip 10.14.135.254
+    set protocols vrrp interface vlan-128 vrid 14 load-balance disable false
+    set protocols vrrp interface vlan-136 vrid 14 ip 10.14.143.254
+    set protocols vrrp interface vlan-136 vrid 14 load-balance disable false
+    set protocols vrrp interface vlan-235 vrid 14 ip 10.14.235.254
+    set protocols vrrp interface vlan-235 vrid 14 load-balance disable false
+    set protocols vrrp interface vlan-236 vrid 14 ip 10.14.236.254
+    set protocols vrrp interface vlan-236 vrid 14 load-balance disable false
+    set protocols vrrp interface vlan-237 vrid 14 ip 10.14.237.254
+    set protocols vrrp interface vlan-237 vrid 14 load-balance disable false
+    set protocols vrrp interface vlan-238 vrid 14 ip 10.14.238.254
+    set protocols vrrp interface vlan-238 vrid 14 load-balance disable false
+    set protocols vrrp interface vlan-239 vrid 14 ip 10.14.239.254
+    set protocols vrrp interface vlan-239 vrid 14 load-balance disable false
+    set protocols vrrp interface vlan-248 vrid 14 ip 10.14.248.254
+    set protocols vrrp interface vlan-248 vrid 14 load-balance disable false
+    set protocols vrrp interface vlan-254 vrid 14 ip 10.14.254.254
+    set protocols vrrp interface vlan-254 vrid 14 load-balance disable false
+    set protocols vrrp interface vlan-82 vrid 1 ip 10.14.82.254
+    set protocols vrrp interface vlan-82 vrid 1 load-balance disable false
+    set system hostname "MEP-94-CORE01"
+    set system management-vrf enable true
+    set system services ssh root-login "allow"
+    set system inband enable true
+    set vlans vlan-id 1 description "Legacy_default"
+    set vlans vlan-id 1 l3-interface "vlan-1"
+    set vlans vlan-id 10 description "Legacy_Servers"
+    set vlans vlan-id 10 l3-interface "vlan-10"
+    set vlans vlan-id 20 description "PBS Backup Network"
+    set vlans vlan-id 20 l3-interface "vlan-20"
+    set vlans vlan-id 40 description "Servers"
+    set vlans vlan-id 40 l3-interface "vlan-40"
+    set vlans vlan-id 56 description "Management"
+    set vlans vlan-id 56 l3-interface "vlan-56"
+    set vlans vlan-id 82 description "Switch Management"
+    set vlans vlan-id 82 l3-interface "vlan-82"
+    set vlans vlan-id 90 description "Legacy_workstation"
+    set vlans vlan-id 90 l3-interface "vlan-90"
+    set vlans vlan-id 92 description "Legacy_voip"
+    set vlans vlan-id 92 l3-interface "vlan-92"
+    set vlans vlan-id 100 description "IT_PXE"
+    set vlans vlan-id 100 l3-interface "vlan-100"
+    set vlans vlan-id 101 description "IT"
+    set vlans vlan-id 101 l3-interface "vlan-101"
+    set vlans vlan-id 102 description "IT_DirectOutLan"
+    set vlans vlan-id 102 l3-interface "vlan-102"
+    set vlans vlan-id 105 description "Conference_Rooms"
+    set vlans vlan-id 105 l3-interface "vlan-105"
+    set vlans vlan-id 106 description "Printers_MFD"
+    set vlans vlan-id 106 l3-interface "vlan-106"
+    set vlans vlan-id 108 description "Legacy_drax_alarm"
+    set vlans vlan-id 108 l3-interface "vlan-108"
+    set vlans vlan-id 112 description "Data_Staff"
+    set vlans vlan-id 112 l3-interface "vlan-112"
+    set vlans vlan-id 120 description "Servers"
+    set vlans vlan-id 120 l3-interface "vlan-120"
+    set vlans vlan-id 128 description "Data_Staff_Wifi"
+    set vlans vlan-id 128 l3-interface "vlan-128"
+    set vlans vlan-id 136 description "VoIP_Staff"
+    set vlans vlan-id 136 l3-interface "vlan-136"
+    set vlans vlan-id 152 description "Devices"
+    set vlans vlan-id 152 l3-interface "vlan-152"
+    set vlans vlan-id 235 description "DMZ_Security_Camera"
+    set vlans vlan-id 235 l3-interface "vlan-235"
+    set vlans vlan-id 236 description "DMZ_Building_Management"
+    set vlans vlan-id 236 l3-interface "vlan-236"
+    set vlans vlan-id 237 description "DMZ_Building_Security_Alarm"
+    set vlans vlan-id 237 l3-interface "vlan-237"
+    set vlans vlan-id 238 description "DMZ_Building_Building_Fire"
+    set vlans vlan-id 238 l3-interface "vlan-238"
+    set vlans vlan-id 239 description "DMZ_TVs"
+    set vlans vlan-id 239 l3-interface "vlan-239"
+    set vlans vlan-id 248 description "DMZ_Staff_Patching"
+    set vlans vlan-id 248 l3-interface "vlan-248"
+    set vlans vlan-id 254 description "DMZ_CyberIsolation"
+    set vlans vlan-id 254 l3-interface "vlan-254"
+    set vlans vlan-id 268 description "eBGP_Interconnect_93_to_94_Link1"
+    set vlans vlan-id 268 l3-interface "vlan-268"
+    set vlans vlan-id 1022 description "eBGP_MEP-92-to-MEP-94-Link-040"
+    set vlans vlan-id 1022 l3-interface "vlan-3539"
+    set vlans vlan-id 1057 description "B93-CORE2(xe-1/1/1) to B94-CORE01(xe-1/1/2)"
+    set vlans vlan-id 1057 l3-interface "vlan-1057"
+    set vlans voice-vlan mac-address c8:1f:ea:66:72:b6 mask ff:ff:ff:00:00:00
+    set vlans voice-vlan mac-address c8:1f:ea:66:72:b6 description "Avaya"
+    set vlans voice-vlan local-priority 6
+    set vlans voice-vlan dscp 46

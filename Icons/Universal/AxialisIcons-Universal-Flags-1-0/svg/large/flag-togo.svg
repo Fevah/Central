@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="24px" height="24px" viewBox="0 0 24 24" enable-background="new 0 0 24 24" xml:space="preserve">
+  <g id="icon">
+    <rect x="9.75" y="3" width="14.25" height="3.75" fill="#63BF80"/>
+    <rect x="9.75" y="6.75" width="14.25" height="3" fill="#F7CE73"/>
+    <rect x="9.75" y="9.75" width="14.25" height="3.75" fill="#63BF80"/>
+    <rect x="0" y="13.5" width="24" height="3.75" fill="#F7CE73"/>
+    <rect x="0" y="17.25" width="24" height="3.75" fill="#63BF80"/>
+    <rect x="0" y="3" width="10.5" height="10.5" fill="#F37980"/>
+    <polyline points="7.509,11.826 5.2005,10.0995 2.892,11.826 3.78,9.057 1.4715,7.368 4.3485,7.368 5.2365,4.599 6.123,7.368 9,7.368 6.6915,9.057 7.509,11.826" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <path d="M24,21H0V3h24V21zM1.5,19.5h21V4.5H1.5V19.5z" fill="#211F20" opacity="0.20"/>
+  </g>
+</svg>

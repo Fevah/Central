@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <path d="M6.5,6.5v6.3h9.203L21.2,17.759v1.91c0,0.891,-0.365,1.734,-1,2.358V26.5h10.3V6.5H6.5z" fill="#FFFFFF"/>
+    <polygon points="6,6 6,12.8 7,12.8 7,7 30,7 30,26 20.2,26 20.2,27 31,27 31,6" fill="#383838" stroke-linejoin="miter"/>
+    <rect x="6.5" y="1.5" width="24" height="5" fill="#92CBEE"/>
+    <path d="M6,1v6h25V1H6zM30,6H7V2h23V6z" fill="#0964B0"/>
+    <path d="M30,12v-1h-5V7h-1v4h-5V7h-1v4h-5V7h-1v4H7v1h5v0.8h1v-0.8h5v2.872l1,0.902V12h5v4h-4.75l1.109,1H24v4h-3.085c-0.165,0.369,-0.397,0.708,-0.689,1H24v4h1v-4h5v-1h-5v-4h5v-1h-5v-4H30z" fill="#787979" opacity="0.6"/>
+    <rect x="2.5" y="20.12" width="16" height="10.38" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <polygon points="13.609,14.5 7.325,14.5 4.707,18.5 16.227,18.5" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <path d="M8.7,18.5v1.169c0,0.919,-0.81,1.67,-1.8,1.67s-1.8,-0.752,-1.8,-1.67V18.5H8.7zM12.3,18.5v1.169c0,0.919,0.81,1.67,1.8,1.67s1.8,-0.752,1.8,-1.67V18.5H12.3z" fill="#FFFFFF" stroke="#787979" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="7.707" y1="14.5" x2="13.231" y2="14.5" fill="none" stroke="#787979" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M5.1,18.515v1.154c0,0.919,-0.81,1.67,-1.8,1.67s-1.8,-0.752,-1.8,-1.67v-1.154L6.016,14.5h1.702L5.1,18.515zM11.384,14.5H9.616L8.7,18.515v1.154c0,0.919,0.81,1.67,1.8,1.67s1.8,-0.752,1.8,-1.67v-1.154L11.384,14.5zM15.049,14.5h-1.833L15.9,18.515v1.154c0,0.919,0.81,1.67,1.8,1.67s1.8,-0.752,1.8,-1.67v-1.154L15.049,14.5z" fill="#FFFFFF" stroke="#EE3D3B" stroke-width="1" stroke-miterlimit="1"/>
+    <rect x="4.5" y="24.5" width="3" height="6" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <rect x="9.5" y="23.5" width="7" height="4" fill="#FFFFFF" stroke="#228BCB" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M1.5,18.5h3.538M8.762,18.5h3.476M15.9,18.5h3.414" fill="none" stroke="#EE3D3B" stroke-width="1" stroke-miterlimit="1"/>
+  </g>
+</svg>

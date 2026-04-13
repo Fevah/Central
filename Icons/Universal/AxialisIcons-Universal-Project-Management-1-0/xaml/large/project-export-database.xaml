@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="24" Height="24" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Left="9.75" Canvas.Top="9.75" Width="13.5" Height="13.5" RenderTransformOrigin="-0.722222 -0.722222" Fill="#FFFFFF" Opacity="0.5">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="6.12323e-17 -1 1 6.12323e-17 0 33"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Path Data="M9,24V9h15v15H9zM11,22h11V11H11V22z" Fill="#EEAD56"/>
+      <Path Data="M16.5187,21c-1.9172,0,-4.2363,-0.4454,-4.4621,-1.7006l-0.037,-0.2057H12v-5.2268C12.0137,12.0901,15.7354,12,16.4813,12c1.5239,0,4.1837,0.3543,4.4869,1.6823l0.0308,0.1348l0.0011,0.0638c0,0.0008,-0.0025,0.0304,-0.0025,0.0304S21,13.944,21,13.95v5.2262l-0.0128,0.0874C20.7985,20.5453,18.4621,21,16.5187,21zM13.5,18.9336l0.1307,0.0709c0.3389,0.184,1.3284,0.4955,2.888,0.4955c1.4121,0,2.4148,-0.2542,2.8444,-0.472l0.137,-0.0694v-3.594l-0.3136,0.0826c-1.0796,0.2842,-2.3148,0.3063,-2.6677,0.3063c-0.3594,0,-1.6167,-0.0228,-2.7036,-0.3158L13.5,15.3527V18.9336zM16.4813,13.5c-0.5866,0,-1.1419,0.0428,-1.6504,0.1271l-0.0013,0.4931c0.5165,0.0883,1.0847,0.1332,1.689,0.1332c0.5722,0,1.1131,-0.0401,1.6076,-0.1192l0.0057,-0.4928C17.6218,13.5476,17.0664,13.5,16.4813,13.5z" Fill="#EEAD56"/>
+      <Path Data="M3.4249,21.4055L5.3423,19.5H2.925C1.3122,19.5,0,18.1878,0,16.575V13.5h1.5v3.075c0,0.7857,0.6393,1.425,1.425,1.425H5.42l-1.845,-1.8331l1.0572,-1.0641l3.6319,3.6083l-3.7819,3.7583L3.4249,21.4055z" Fill="#CC525E"/>
+      <Polygon Points="0.75,12 0.75,3.75 15.75,3.75 15.75,8 8,8 8,12" Fill="#FFFFFF" StrokeLineJoin="Miter" Opacity="0.5"/>
+      <Polygon Points="0,12 0,3 17,3 17,8 15,8 15,5 2,5 2,12" Fill="#7D7C7B" StrokeLineJoin="Miter"/>
+      <Rectangle Width="17" Height="5" Fill="#6484C3"/>
+      <Polygon Points="5,12 5,9 2,9 2,8 5,8 5,5 6,5 6,12" Fill="#CC525E" StrokeLineJoin="Miter"/>
+      <Rectangle Canvas.Left="2" Canvas.Top="5" Width="3" Height="7" Fill="#CC525E" Opacity="0.3"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

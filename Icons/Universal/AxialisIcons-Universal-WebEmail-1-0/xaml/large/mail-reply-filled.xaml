@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="24" Height="24" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Polygon Points="18.612,21.9604 15.6938,19 23.9978,19 23.9978,16 15.6938,16 18.612,13.0396 16.6768,11.1325 10.3,17.5 16.6768,23.8676" Fill="#9070B1" StrokeLineJoin="Miter"/>
+      <Polygon Points="19.9332,3 10,11.1066 0.0668,3 0,3 0,4.3973 10,12.5822 20,4.3973 20,3" Fill="#FFFFFF" StrokeLineJoin="Miter" Opacity="0.5"/>
+      <Canvas>
+        <Polygon Points="19.9332,3 0.0668,3 10,11.1066" Fill="#7B7B7B" StrokeLineJoin="Miter"/>
+        <Polygon Points="8.1771,17.5 16.6698,9.0196 20,12.3016 20,4.3973 10,12.5822 0,4.3973 0,19 9.6793,19" Fill="#7B7B7B" StrokeLineJoin="Miter"/>
+      </Canvas>
+    </Canvas>
+  </Canvas>
+</Viewbox>

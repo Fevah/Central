@@ -1,0 +1,36 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd" >
+<!--
+2022-8-25: Created with FontForge (http://fontforge.org)
+-->
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1">
+<metadata>
+Created by FontForge 20220308 at Thu Aug 25 14:51:27 2022
+ By emile
+Copyright (c) 2022, emile
+</metadata>
+<defs>
+<font id="Icons-Regular" horiz-adv-x="240" >
+  <font-face 
+    font-family="Icons"
+    font-weight="400"
+    font-stretch="normal"
+    units-per-em="240"
+    panose-1="2 0 5 9 0 0 0 0 0 0"
+    ascent="180"
+    descent="-60"
+    bbox="0 -60 240 180"
+    underline-thickness="50"
+    underline-position="-100"
+    unicode-range="U+E000-E001"
+  />
+    <missing-glyph />
+    <glyph glyph-name="uniE000" unicode="&#xe000;" 
+d="M172.5 93c10.3564 0 18.75 8.39355 18.75 18.75s-8.39355 18.75 -18.75 18.75s-18.75 -8.39355 -18.75 -18.75s8.39355 -18.75 18.75 -18.75zM240 105h-15v-15h15v-15h-15v-15h15v-15h-15v-15h15v-15h-15v-15h15v-15h-15v-30h-45v-15h-15v15h-15v-15h-15v15h-15v-15h-15
+v15h-15v-15h-15v15h-15v-15h-15v15h-30v30h-15v15h15v15h-15v15h15v15h-15v15h15v15h-15v15h15v15h-15v15h15v45h30v15h15v-15h15v15h15v-15h15v15h15v-15h15v15h15v-15h15v15h15v-15h10.875l34.125 -34.4111v-10.5889h15v-15z" />
+    <glyph glyph-name="uniE001" unicode="&#xe001;" 
+d="M155.25 111.75c0 9.52734 7.72266 17.25 17.25 17.25s17.25 -7.72266 17.25 -17.25s-7.72266 -17.25 -17.25 -17.25s-17.25 7.72266 -17.25 17.25zM210 -30v154.411l-25.376 25.5889h-154.624v-180h180zM225 120h15v-15h-15v-15h15v-15h-15v-15h15v-15h-15v-15h15v-15
+h-15v-15h15v-15h-15v-30h-45v-15h-15v15h-15v-15h-15v15h-15v-15h-15v15h-15v-15h-15v15h-15v-15h-15v15h-30v30h-15v15h15v15h-15v15h15v15h-15v15h15v15h-15v15h15v15h-15v15h15v45h30v15h15v-15h15v15h15v-15h15v15h15v-15h15v15h15v-15h15v15h15v-15h10.875
+l34.125 -34.4111v-10.5889z" />
+  </font>
+</defs></svg>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <rect x="0.5" y="4.5" width="15" height="11" fill="#FFFFFF"/>
+    <ellipse cx="12.547" cy="7.542" rx="1.347" ry="1.342" fill="#F7DA8E" stroke="#E57428" stroke-width="1" stroke-linecap="round" stroke-miterlimit="5"/>
+    <g>
+      <polygon points="15.4,15.5 15.4,15.006 10.302,10.078 7.779,12.593 10.622,15.5" fill="#92CBEE" stroke-linejoin="miter"/>
+      <path d="M10.509,15.5L3.575,8.587L0.511,11.641C0.494,11.658,0.5,13.977,0.506,15.5H10.509z" fill="#92CBEE"/>
+    </g>
+    <polygon points="3.575,9.26 9.834,15.5 11.251,15.5 8.377,12.635 10.32,10.697 15.116,15.478 15.822,14.77 10.32,9.285 7.668,11.929 3.575,7.848 0.158,11.254 0.864,11.962" fill="#0964B0" stroke-linejoin="miter"/>
+    <path d="M16,16H0V4h16V16zM1,15h14V5H1V15z" fill="#383838"/>
+    <rect x="0.5" y="1.5" width="15" height="3" fill="#92CBEE" stroke="#0964B0" stroke-width="1" stroke-linecap="round" stroke-miterlimit="5"/>
+  </g>
+</svg>

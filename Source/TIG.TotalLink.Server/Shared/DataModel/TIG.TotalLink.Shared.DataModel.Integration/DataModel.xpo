@@ -1,0 +1,253 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataBaseObjectModel xmlns:dm0="http://schemas.microsoft.com/VisualStudio/2008/DslTools/Core" dslVersion="1.0.0.0" Id="731d6474-5778-4fbc-a865-e20cf204c64b" namespace="TIG.TotalLink.Shared.DataModel.Integration" dataBaseShemaInfo="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" generateStoredProcedures="false" fieldNameCase="Unchanged" fieldNamePrefix="_" xmlns="http://schemas.microsoft.com/dsltools/ORMDataModel">
+  <classes>
+    <dataBaseObjectModelHasClasses Id="eaf248db-a871-49e1-aae1-a3290294d942">
+      <externalPersistentType Id="3bb87f15-1d20-4427-ad75-b516d75dc1c2" name="TIG.TotalLink.Shared.DataModel.Core.DataObjectBase" nameSpace="TIG.TotalLink.Shared.DataModel.Core" virtualName="DataObjectBase" assemblyName="C:\TIG\Repo\TIG\TotalLink\Source\TIG.TotalLink.Shared.DataModel\TIG.TotalLink.Shared.DataModel.Core\bin\Debug\TIG.TotalLink.Shared.DataModel.Core.dll" deferredDeletion="False" optimisticLocking="False" hasDefaultConstructor="true" hasSessionSpecifiedConstructor="false">
+        <fields>
+          <generalXpObjectHasFields Id="c98f9f64-b82d-40c4-9429-ea82de9e0b93">
+            <externalPersistentTypeField Id="1eaf3530-17b5-41f5-8f8f-4575c6ddf754" name="Oid" virtualColumnType="Guid" key="true" />
+          </generalXpObjectHasFields>
+        </fields>
+      </externalPersistentType>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="f7708ded-ae27-4074-b451-1494a2702fdf">
+      <xpObject Id="0b7be424-dd0f-4b38-a046-2eac43d819b7" name="SyncEntityBundle" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="SyncEntityBundle" designerFileName="SyncEntityBundle.Designer" className="SyncEntityBundle" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="SyncEntityBundle">
+        <fields>
+          <generalXpObjectHasFields Id="ce19749e-17f3-4f23-a545-8ad97767c1bb">
+            <field Id="6e037f2c-6a95-4bd7-9d29-23aec56e9223" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" isNullable="true" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="525b9117-19df-4320-b83f-018c6cf888d5">
+            <field Id="fc19a22e-7cd2-42b5-875c-3d0a688bb532" name="IsActive" columnType="Boolean" virtualColumnType="Boolean" delayedUpdateModifiedOnly="false" isNullable="true" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="38eb9314-d222-4959-90a4-0d59a6d436de">
+            <field Id="ca9ab988-87d1-45e7-b065-f75102ddedab" name="Timeout" columnType="Int32" virtualColumnType="Int32" delayedUpdateModifiedOnly="false" isNullable="true" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="722ff589-fac3-4cb4-8323-d43cf4fc80b3">
+            <externalPersistentTypeMoniker Id="08bab3cc-6edf-4163-a0a5-caebe44b031d" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="ece7b2c5-73a8-467f-b337-f4063dfbac4b" sourceCollectionName="InstanceBundles" name="ItemToSyncReferencesTypeToSync" targetFieldName="EntityBundle">
+            <xpObjectMoniker Id="4e0718b8-5669-4903-95e1-27a5855561ed" />
+          </simpleAssociation>
+          <simpleAssociation Id="5ed68c72-f905-43c0-9936-e47d0b2c3ef8" sourceCollectionName="Entities" name="SyncEntityReferencesSyncEntityBundle" targetFieldName="Bundle">
+            <xpObjectMoniker Id="8de918e7-a702-44e4-b6ba-717b75b0f925" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="ba1c1e22-fe17-49e6-bc26-7cda1f754010">
+            <collectionField Id="85ac349f-1d1a-4b0b-ab62-fb46d3617738" name="InstanceBundles" />
+          </xpObjectHasCollectionFields>
+          <xpObjectHasCollectionFields Id="248ce420-e64b-4771-8a2d-ddd6bbd134ed">
+            <collectionField Id="9d19b3d0-5b6b-4d34-9443-453e43747c46" explicitLoading="1" name="Entities" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="6b0ee560-75e0-4741-b53e-4ca92def7ab3">
+      <xpObject Id="4e0718b8-5669-4903-95e1-27a5855561ed" name="SyncInstanceBundle" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="SyncInstanceBundle" designerFileName="SyncInstanceBundle.Designer" className="SyncInstanceBundle" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="SyncInstanceBundle">
+        <fields>
+          <generalXpObjectHasFields Id="85a07b63-eafa-473b-96f2-e98658c6897a">
+            <field Id="62b3ef5a-c6d3-476d-ab34-0684600f5e4e" name="EntityBundle" virtualColumnType="SyncEntityBundle" logicalType="SyncEntityBundle" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="f4e46355-af4a-46c3-b460-d8b1fbfe4b7a">
+            <field Id="580adf58-7c3d-4985-881b-7b4ea8e56d8a" name="State" virtualColumnType="TIG.TotalLink.Shared.DataModel.Core.Enum.Integration.SyncInstanceBundleState" logicalType="TIG.TotalLink.Shared.DataModel.Core.Enum.Integration.SyncInstanceBundleState" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="eeef0ce0-d0cc-49bb-af6c-67fd660b26c4">
+            <externalPersistentTypeMoniker Id="08bab3cc-6edf-4163-a0a5-caebe44b031d" />
+          </inheritance>
+        </superClass>
+        <indexes>
+          <xpObjectHasIndexes Id="fc2d957e-ed40-4abe-837d-77daaa3e4cc5">
+            <index Id="4e72f7e5-f026-4238-a63b-470ad61e5147" name="IX_SyncInstanceBundle_State">
+              <fieldsInIndex>
+                <indexReferencesFields Id="06757164-67d7-418a-b104-7156cbf33cf6">
+                  <fieldMoniker Id="580adf58-7c3d-4985-881b-7b4ea8e56d8a" />
+                </indexReferencesFields>
+              </fieldsInIndex>
+            </index>
+          </xpObjectHasIndexes>
+        </indexes>
+        <saTargets>
+          <simpleAssociation Id="3b8bf2d9-a504-487d-b4c2-352aca8a470c" sourceCollectionName="Instances" name="ItemToSyncDetailReferencesItemToSync" targetFieldName="Bundle">
+            <xpObjectMoniker Id="223c1727-2329-4f52-abdc-ac38abc68a9f" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="1cdc6f05-e88e-498c-be14-42d86cf469e3">
+            <collectionField Id="a7c042f2-1b66-4fbe-9a6e-e9a534e2b012" explicitLoading="1" name="Instances" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="1dce551b-2913-4add-b6b3-4b85bc68df5f">
+      <xpObject Id="5646feaf-ce5d-4a08-b813-d7af8ece93a4" name="SyncEntityMap" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="SyncEntityMap" designerFileName="SyncEntityMap.Designer" className="SyncEntityMap" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="SyncEntityMap">
+        <fields>
+          <generalXpObjectHasFields Id="a6c617ee-2476-4504-923b-8e77e5283013">
+            <field Id="30fd1206-ae4d-4bb0-9d06-fb40841e9acf" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="86ea5c80-ff04-4a70-8b93-8bed20fe0de8">
+            <field Id="1e6bb9e1-be09-452c-bacb-aa811b3e72d0" name="SourceEntity" virtualColumnType="SyncEntity" logicalType="SyncEntity" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="955d550b-e887-4c96-9770-18dbef7845c8">
+            <field Id="6f4c4e89-2f61-47a8-9992-b96946b3acdd" name="SourceFilter" virtualColumnType="String" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="a8682a29-2b75-4621-bb09-0ad76124b3f5">
+            <field Id="0ecdcd4c-064c-4200-b8b7-c6ab178d8673" name="TargetEntity" columnType="Guid" virtualColumnType="SyncEntity" logicalType="SyncEntity" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="69145a1d-c94e-4a73-874b-b626d2478390">
+            <field Id="d7feebf1-89a1-47e6-a49f-e502d5f625d2" name="SyncKeyInfo" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="Unlimited" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="f197d393-d591-4c09-ab67-4d208d4ea15e">
+            <field Id="873a3a3b-0d23-4b96-994b-236f586b53ed" name="MapperPluginId" columnType="Guid" virtualColumnType="Guid" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="15b53621-c7ed-4467-9eaf-515fd6b8e67e">
+            <field Id="ca1a9422-f82b-44f6-91c1-eba5aee9be31" name="IsActive" columnType="Boolean" virtualColumnType="Boolean" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="4b4923be-033e-4828-8360-6ca864f2a3eb">
+            <field Id="53a7d553-5bef-4490-977e-248fa345eb1b" name="FieldMappings" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="Unlimited" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="f0510a61-10c1-43f4-a544-427a82512ed1">
+            <field Id="aa16ef67-31ef-46fc-af36-ed0cc719cd7c" name="Order" columnType="Int32" virtualColumnType="Int32" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="45f5cd22-f154-4496-96bc-e5988d2735b9">
+            <externalPersistentTypeMoniker Id="08bab3cc-6edf-4163-a0a5-caebe44b031d" />
+          </inheritance>
+        </superClass>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="dae41458-238a-4c35-a17b-1a7b0b1a7018">
+      <xpObject Id="223c1727-2329-4f52-abdc-ac38abc68a9f" name="SyncInstance" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="SyncInstance" designerFileName="SyncInstance.Designer" className="SyncInstance" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="SyncInstance">
+        <fields>
+          <generalXpObjectHasFields Id="9675dda1-fee9-452f-b2cf-20d56ac3da22">
+            <field Id="05d5e00e-0178-4e0f-8ad9-b6e71d59d24b" name="Bundle" explicitLoading="1" virtualColumnType="SyncInstanceBundle" logicalType="SyncInstanceBundle" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="292f79d1-8096-423d-af84-434e82bab3b1">
+            <field Id="5dfe672e-8dac-4210-b0ac-82588bb31e2e" name="Entity" virtualColumnType="SyncEntity" logicalType="SyncEntity" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="ae4fe644-71d1-4cc9-9400-7926b929ed0f">
+            <field Id="6ee779d0-da4b-44fa-b032-fd265048d95b" name="EntityRawId" virtualColumnType="String" delayedUpdateModifiedOnly="false" isNullable="true" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="41d6a999-e4eb-4fe4-9fbb-2f1bbcd1ef34">
+            <field Id="54451841-8747-46e2-bf01-70a85a9a2851" name="State" virtualColumnType="TIG.TotalLink.Shared.DataModel.Core.Enum.Integration.SyncInstanceState" logicalType="TIG.TotalLink.Shared.DataModel.Core.Enum.Integration.SyncInstanceState" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="9d22976c-1b58-473b-97db-8b2cf2dd184b">
+            <field Id="064707e5-66bc-4cee-83b4-f01a348d60bd" name="LastChangeCapturedTime" columnType="DateTime" virtualColumnType="DateTime" delayedUpdateModifiedOnly="false" isNullable="true" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="d8aafb88-ad88-4b50-9018-e590247148cf">
+            <field Id="b7a6c01c-cca9-4de2-a47d-433acbd09c87" name="LastUpdateTime" columnType="DateTime" virtualColumnType="DateTime" delayedUpdateModifiedOnly="false" isNullable="true" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="3738baad-aac4-4644-a771-40d7283260e1">
+            <field Id="959b7633-e180-4506-9175-00c4ba8b5435" name="Hash" virtualColumnType="String" delayedUpdateModifiedOnly="false" isNullable="true" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="da1b88f2-e493-40d6-8bc2-af4995ae346b">
+            <externalPersistentTypeMoniker Id="08bab3cc-6edf-4163-a0a5-caebe44b031d" />
+          </inheritance>
+        </superClass>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="abb78682-5544-4155-9c1f-d5209b96f876">
+      <xpObject Id="8de918e7-a702-44e4-b6ba-717b75b0f925" name="SyncEntity" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="SyncEntity" designerFileName="SyncEntity.Designer" className="SyncEntity" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="SyncEntity">
+        <fields>
+          <generalXpObjectHasFields Id="d5a61db9-1a7f-4525-aebf-9df867eed26b">
+            <field Id="1f44b504-a0e5-4895-8df5-305eeb8e32b8" name="EntityName" virtualColumnType="String" delayedUpdateModifiedOnly="false" isNullable="true" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="997d9a0d-1efc-489c-b14a-c639a5ba2bc8">
+            <field Id="234e065e-e582-4be7-bd9f-51119dab3162" name="TableName" virtualColumnType="String" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="cfc68afb-98dd-42ee-9c11-87426dc879fb">
+            <field Id="2c007216-1b0b-417c-9dc0-9bcf854c4fef" name="PrimaryKey" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="Unlimited" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="0c735ed7-bc25-470f-9860-8d7c87e98079">
+            <field Id="2cbb2035-d19c-4004-9726-490213f53b4e" name="IsActive" columnType="Boolean" virtualColumnType="Boolean" delayedUpdateModifiedOnly="false" isNullable="true" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="1ab5df73-dee2-40d1-9e67-2a2f8b66ee2a">
+            <field Id="421b5180-7fd6-4619-9e7e-7421347ea330" name="AgentPluginId" columnType="Guid" virtualColumnType="Guid" delayedUpdateModifiedOnly="false" isNullable="true" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="bf65df50-266f-4efd-a7df-11d560ee9d3d">
+            <field Id="2c89215c-ffc1-4870-8a97-3bcb59ea7b8a" name="ChangeTrackerPluginId" columnType="Guid" virtualColumnType="Guid" delayedUpdateModifiedOnly="false" isNullable="true" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="8d1dad65-94c9-41a7-99f4-df4c6e1b660a">
+            <field Id="8d076ff8-4f68-4f60-be6e-981b7458c88e" name="LastChangeTrackerVersionId" columnType="Int64" virtualColumnType="Int64" delayedUpdateModifiedOnly="false" isNullable="true" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="3cbb6b02-20c4-42f3-a096-51fb0691ab43">
+            <field Id="79453fea-c5a6-4147-b2e5-3f091c5a732a" name="Bundle" virtualColumnType="SyncEntityBundle" logicalType="SyncEntityBundle" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="a724b127-3d9c-480d-8c74-eaba7e276fe6">
+            <field Id="06bbf425-c7b1-4d8d-a394-8ed3ac790b65" name="PriorityInBundle" columnType="Double" virtualColumnType="Double" delayedUpdateModifiedOnly="false" isNullable="true" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="5bd9ce66-d5ef-4b08-8d41-40a3320ce970">
+            <externalPersistentTypeMoniker Id="08bab3cc-6edf-4163-a0a5-caebe44b031d" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="a84a8411-ba9d-407d-b307-ec8fddfbc78e" sourceCollectionName="SourceEntityMaps" name="SyncEntityMapReferencesSyncEntity" targetFieldName="SourceEntity">
+            <xpObjectMoniker Id="5646feaf-ce5d-4a08-b813-d7af8ece93a4" />
+          </simpleAssociation>
+          <simpleAssociation Id="79f84d0e-3a23-462c-acce-033d67cbca77" sourceCollectionName="TargetEntityMaps" name="SyncEntityMapReferencesSyncEntity1" targetFieldName="TargetEntity">
+            <xpObjectMoniker Id="5646feaf-ce5d-4a08-b813-d7af8ece93a4" />
+          </simpleAssociation>
+          <simpleAssociation Id="4c99bfe2-b829-4687-8c30-49ca7f6466a5" sourceCollectionName="Instances" name="SyncInstanceReferencesSyncEntity" targetFieldName="Entity">
+            <xpObjectMoniker Id="223c1727-2329-4f52-abdc-ac38abc68a9f" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="7313a584-1069-461a-bebb-9949bfe266c7">
+            <collectionField Id="ca3ae359-0a26-4649-8bb2-6d85271810fe" name="SourceEntityMaps" />
+          </xpObjectHasCollectionFields>
+          <xpObjectHasCollectionFields Id="d6de99f1-e85e-4829-aecb-0da4986abd67">
+            <collectionField Id="6254699d-7788-4700-8441-3424f786060e" name="TargetEntityMaps" />
+          </xpObjectHasCollectionFields>
+          <xpObjectHasCollectionFields Id="e4088cdd-0b28-4ebe-acd0-f1c9da013fa1">
+            <collectionField Id="279243f5-9a06-4221-9b50-c39de475eb79" name="Instances" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="0f0e8c6f-3c84-45ec-887f-ffd777a9284d">
+      <externalPersistentType Id="08bab3cc-6edf-4163-a0a5-caebe44b031d" name="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" nameSpace="TIG.TotalLink.Shared.DataModel.Admin" virtualName="StampedDataObjectBase" assemblyName="W:\TIG\TotalLink3\Source\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Admin\bin\Debug\TIG.TotalLink.Shared.DataModel.Admin.dll" deferredDeletion="False" optimisticLocking="False" addReferenceToAssembly="false" hasDefaultConstructor="true" constructorParameterType="Session" hasSessionSpecifiedConstructor="false">
+        <fields>
+          <generalXpObjectHasFields Id="2936e181-1a98-41f3-b03d-39d61e82386d">
+            <externalPersistentTypeField Id="fa887c45-10b2-4fb6-b0d9-7b3f0773b9b7" name="Oid" virtualColumnType="Guid" key="true" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="89a3ce28-8421-478b-8bf3-239534c4255b">
+            <externalPersistentTypeField Id="19b6e0cc-b32d-40d8-af0e-51abac690a96" name="P_CreatedBy" virtualColumnType="User" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="b14ea5b5-9450-41af-90ea-3f2f03698fff">
+            <externalPersistentTypeField Id="dd6e7835-af6f-4f72-bffd-c0bfae283b5a" name="P_ModifiedBy" virtualColumnType="User" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="3a497928-747c-43b5-8b28-5e57a5e5b822">
+            <externalPersistentTypeField Id="af531d6e-ee27-4d45-b047-b7a6905c9b8c" name="CreatedBy" virtualColumnType="User" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="99eb1777-4ebe-4c31-aea3-5d32a61434c5">
+            <externalPersistentTypeField Id="43aff2df-bccb-4fce-9b31-a72430c6f394" name="CreatedDate" virtualColumnType="DateTime" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="63863701-9387-4afe-bd50-b4801d23a5b1">
+            <externalPersistentTypeField Id="6b7696b3-8a63-469d-8258-4bbff54ed659" name="ModifiedBy" virtualColumnType="User" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="7e4312a7-3e30-44c9-ab7a-80e1932bdcde">
+            <externalPersistentTypeField Id="0aab5840-b879-4832-af98-c3ec1ef75a5c" name="ModifiedDate" virtualColumnType="DateTime" />
+          </generalXpObjectHasFields>
+        </fields>
+      </externalPersistentType>
+    </dataBaseObjectModelHasClasses>
+  </classes>
+  <externalTypes>
+    <dataBaseObjectModelHasExternalTypes Id="ec076cb9-1a37-4402-8fb2-b6885bf9dd4f">
+      <externalType Id="6c07185e-73f4-490c-96b5-f404150d552a" name="SyncInstanceBundleState" namespace="TIG.TotalLink.Shared.DataModel.Core.Enum.Integration" />
+    </dataBaseObjectModelHasExternalTypes>
+    <dataBaseObjectModelHasExternalTypes Id="1dd9da40-b1da-4eb8-ae1c-3f75c75c0c3a">
+      <externalType Id="3d57ca74-9f96-46d7-aa79-0e6c9842fdb5" name="SyncInstanceState" namespace="TIG.TotalLink.Shared.DataModel.Core.Enum.Integration" />
+    </dataBaseObjectModelHasExternalTypes>
+  </externalTypes>
+</dataBaseObjectModel>

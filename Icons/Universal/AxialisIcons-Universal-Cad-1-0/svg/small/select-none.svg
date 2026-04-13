@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!-- Generator: Adobe Illustrator 26.3.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 16 16" style="enable-background:new 0 0 16 16;" xml:space="preserve">
+<g id="icon">
+	<path style="fill:#6E6F72;" d="M1,1h2v1H2v1H1V2V1z M0,16h3v-3H0V16z M4,2h2V1H4V2z M4,15h2v-1H4V15z M2,10H1v2h1V10z M2,4H1v2h1V4
+		z M2,7H1v2h1V7z M7,15h2v-1H7V15z M7,2h2V1H7V2z M14,9h1V7h-1V9z M14,12h1v-2h-1V12z M13,1v1h1v1h1V2V1H13z M14,6h1V4h-1V6z M14,14
+		h-1v1h2v-2h-1V14z M10,15h2v-1h-2V15z M10,2h2V1h-2V2z"/>
+	<circle style="opacity:0.5;fill:#FFFFFF;enable-background:new    ;" cx="8" cy="8" r="4.5"/>
+	<path style="fill:#CC525E;" d="M8,13c-2.757,0-5-2.243-5-5s2.243-5,5-5s5,2.243,5,5S10.757,13,8,13z M8,4C5.794,4,4,5.794,4,8
+		s1.794,4,4,4s4-1.794,4-4S10.206,4,8,4z"/>
+	
+		<rect x="3.485" y="7.515" transform="matrix(0.7071 -0.7071 0.7071 0.7071 -3.3287 7.9937)" style="fill:#CC525E;" width="9" height="1"/>
+</g>
+</svg>

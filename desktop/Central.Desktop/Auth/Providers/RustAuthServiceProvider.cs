@@ -17,7 +17,7 @@ public class RustAuthServiceProvider : IAuthenticationProvider
     public bool SupportsRefresh => true;
     public bool RequiresMfa => false; // MFA is per-user, not per-provider
 
-    public RustAuthServiceProvider(string authServiceUrl = "http://localhost:8081")
+    public RustAuthServiceProvider(string authServiceUrl = "http://192.168.56.10:30081")
     {
         _client = new AuthServiceClient(authServiceUrl);
     }

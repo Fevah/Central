@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Top="11.5" Width="16" Height="2.5" Fill="#77A2D6"/>
+      <Rectangle Canvas.Top="4.5" Width="16" Height="7" Fill="#F37980"/>
+      <Rectangle Canvas.Top="2" Width="16" Height="2.5" Fill="#77A2D6"/>
+      <Rectangle Canvas.Top="4" Width="16" Height="1" Fill="#F7CE73"/>
+      <Rectangle Canvas.Top="11" Width="16" Height="1" Fill="#F7CE73"/>
+      <Path Data="M14.87,7.913c0.078,0,0.13,0.056,0.13,0.113s-0.052,0.113,-0.13,0.113H1.123c-0.078,0,-0.13,-0.056,-0.13,-0.113s0.052,-0.113,0.13,-0.113H14.87" Fill="#F7CE73"/>
+      <Path Data="M2.894,7.039h10.102l0.469,0.169l0.703,-0.254L13.465,6.7l-0.469,0.169h-0.156h-0.078h-0.078h-9.79c-0.052,0,-0.078,0.028,-0.078,0.085C2.815,7.011,2.867,7.039,2.894,7.039" Fill="#F7CE73"/>
+      <Path Data="M2.243,7.518h9.789h0.078h0.078h0.156l0.469,0.169l0.703,-0.254l-0.703,-0.254l-0.469,0.169H2.243c-0.052,0,-0.078,0.028,-0.078,0.085S2.191,7.518,2.243,7.518" Fill="#F7CE73"/>
+      <Path Data="M12.032,8.025c-0.833,0.817,-1.927,2.479,-4.114,2.479c-1.927,0,-1.276,-2.479,-1.276,-2.479s-0.651,-2.479,1.276,-2.479C10.105,5.546,11.225,7.208,12.032,8.025" Fill="#FFFFFF"/>
+      <Path Data="M7.632,6.419c0.208,0.254,0.026,0.338,0.26,0.366c0.234,0.028,0.104,0.254,0.312,0.282c0.156,0,-0.026,0.592,0.13,0.761c0.13,0.197,0.26,0.056,0.26,0.197s-0.391,0.141,-0.391,0.592c0,0.254,-0.338,0.282,-0.338,0.451c-0.026,0.169,0.625,0.254,0.599,0.394c-0.026,0.141,-0.677,0.113,-0.729,0.282c0,0.113,0.963,0.254,1.041,0.648c-0.13,0.056,-0.547,0.085,-0.859,0.085c-1.927,0,-3.28,-1.634,-4.114,-2.479c0.833,-0.817,2.187,-2.479,4.114,-2.479C7.918,5.546,7.346,6.081,7.632,6.419" Fill="#7C7B7A"/>
+      <Rectangle Canvas.Left="5.341" Canvas.Top="7.152" Width="0.208" Height="0.648" Fill="#FFFFFF"/>
+      <Rectangle Canvas.Left="5.341" Canvas.Top="8.251" Width="0.208" Height="0.648" Fill="#FFFFFF"/>
+      <Rectangle Canvas.Left="5.731" Canvas.Top="7.152" Width="0.208" Height="0.648" Fill="#FFFFFF"/>
+      <Rectangle Canvas.Left="5.731" Canvas.Top="8.251" Width="0.208" Height="0.648" Fill="#FFFFFF"/>
+      <Rectangle Canvas.Left="6.148" Canvas.Top="7.152" Width="0.208" Height="0.648" Fill="#FFFFFF"/>
+      <Rectangle Canvas.Left="6.148" Canvas.Top="8.251" Width="0.208" Height="0.648" Fill="#FFFFFF"/>
+      <Rectangle Canvas.Left="6.538" Canvas.Top="7.152" Width="0.208" Height="0.648" Fill="#FFFFFF"/>
+      <Rectangle Canvas.Left="6.538" Canvas.Top="8.251" Width="0.208" Height="0.648" Fill="#FFFFFF"/>
+      <Rectangle Canvas.Left="6.929" Canvas.Top="7.152" Width="0.208" Height="0.648" Fill="#FFFFFF"/>
+      <Rectangle Canvas.Left="6.929" Canvas.Top="8.251" Width="0.208" Height="0.648" Fill="#FFFFFF"/>
+      <Rectangle Canvas.Left="7.346" Canvas.Top="7.152" Width="0.208" Height="0.648" Fill="#FFFFFF"/>
+      <Rectangle Canvas.Left="7.346" Canvas.Top="8.251" Width="0.208" Height="0.648" Fill="#FFFFFF"/>
+      <Rectangle Canvas.Left="8.361" Canvas.Top="7.152" Width="0.208" Height="0.648" Fill="#7C7B7A"/>
+      <Rectangle Canvas.Left="8.361" Canvas.Top="8.251" Width="0.208" Height="0.648" Fill="#7C7B7A"/>
+      <Rectangle Canvas.Left="8.751" Canvas.Top="7.152" Width="0.208" Height="0.648" Fill="#7C7B7A"/>
+      <Rectangle Canvas.Left="8.751" Canvas.Top="8.251" Width="0.208" Height="0.648" Fill="#7C7B7A"/>
+      <Rectangle Canvas.Left="9.168" Canvas.Top="7.152" Width="0.208" Height="0.648" Fill="#7C7B7A"/>
+      <Rectangle Canvas.Left="9.168" Canvas.Top="8.251" Width="0.208" Height="0.648" Fill="#7C7B7A"/>
+      <Rectangle Canvas.Left="9.559" Canvas.Top="7.152" Width="0.208" Height="0.648" Fill="#7C7B7A"/>
+      <Rectangle Canvas.Left="9.559" Canvas.Top="8.251" Width="0.208" Height="0.648" Fill="#7C7B7A"/>
+      <Rectangle Canvas.Left="9.949" Canvas.Top="7.152" Width="0.208" Height="0.648" Fill="#7C7B7A"/>
+      <Rectangle Canvas.Left="9.949" Canvas.Top="8.251" Width="0.208" Height="0.648" Fill="#7C7B7A"/>
+      <Rectangle Canvas.Left="10.366" Canvas.Top="7.152" Width="0.208" Height="0.648" Fill="#7C7B7A"/>
+      <Rectangle Canvas.Left="10.366" Canvas.Top="8.251" Width="0.208" Height="0.648" Fill="#7C7B7A"/>
+      <Ellipse Canvas.Left="1.4" Canvas.Top="8.05" Width="1.3" Height="1.3" Fill="#77A2D6"/>
+      <Ellipse Canvas.Left="6.05" Canvas.Top="6.05" Width="1.3" Height="1.3" Fill="#77A2D6"/>
+      <Ellipse Canvas.Left="13.2" Canvas.Top="8.05" Width="1.3" Height="1.3" Fill="#77A2D6"/>
+      <Path Data="M16,14H0V2h16V14zM1,13h14V3H1V13z" Fill="#211F20" Opacity="0.20"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

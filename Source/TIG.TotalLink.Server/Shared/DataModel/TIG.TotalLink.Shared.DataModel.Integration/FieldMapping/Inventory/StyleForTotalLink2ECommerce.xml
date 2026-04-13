@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SyncMapping>
+  <EntityMappings>
+    <EntityMapping Name="Style">
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Oid" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Oid" Type="System.Guid" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Name" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Name" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Code" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Code" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Gender" Type="StyleGender" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="GenderId" Type="System.Guid" Convert="Property([StyleGender], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Category" Type="StyleCategory" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="CategoryId" Type="System.Guid" Convert="Property([StyleCategory], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="ProductCategory" Type="ProductCategory" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="ProductCategoryId" Type="System.Guid" Convert="Property([ProductCategory], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="ProductType" Type="ProductType" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="ProductTypeId" Type="System.Guid" Convert="Property([ProductType], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="StyleClass" Type="StyleClass" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="StyleClassId" Type="System.Guid" Convert="Property([StyleClass], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Fabric" Type="Fabric" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="FabricId" Type="System.Guid" Convert="Property([Fabric], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Content" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Content" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="LongDescription" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="LongDescription" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Department" Type="StyleDepartment" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="DepartmentId" Type="System.Guid" Convert="Property([Department], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Fit" Type="Fit" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="FitId" Type="System.Guid" Convert="Property([Fit], Oid, System.Guid)"  />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="SizeRange" Type="SizeRange" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="SizeRangeId" Type="System.Guid" Convert="Property([SizeRange], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Web_Number" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Web_Number" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Web_Name" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Web_Name" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Web_Description" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Web_Description" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Web_LongDescription" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Web_LongDescription" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Web_Details" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Web_Details" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Web_Category" Type="StyleCategory" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Web_CategoryId" Type="System.Guid" Convert="Property([Web_Category], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Web_ProductCategory" Type="ProductCategory" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Web_ProductCategoryId" Type="System.Guid" Convert="Property([Web_ProductCategory], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Web_ProductType" Type="ProductType" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Web_ProductTypeId" Type="System.Guid" Convert="Property([Web_ProductType], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Web_StyleClass" Type="StyleClass" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Web_StyleClassId" Type="System.Guid" Convert="Property([Web_StyleClass], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Web_Industry" Type="Industry" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Web_IndustryId" Type="System.Guid" Convert="Property([Web_Industry], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Web_Fabric" Type="Fabric" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Web_FabricId" Type="System.Guid" Convert="Property([Web_Fabric], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Web_Fit" Type="Fit" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Web_FitId" Type="System.Guid" Convert="Property([Web_Fit], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Web_SizingTable" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Web_SizingTable" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Web_SizeRange" Type="SizeRange" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Web_SizeRangeId" Type="System.Guid" Convert="Property([Web_SizeRange], Oid, System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Web_ImageCode1" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Web_ImageCode1" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Web_ImageCode2" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Web_ImageCode2" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Web_ImageCode3" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Web_ImageCode3" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Reference" Type="System.Int64" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Reference" Type="System.Int64" />
+        </TargetFields>
+      </FieldMapping>
+    </EntityMapping>
+  </EntityMappings>
+</SyncMapping>

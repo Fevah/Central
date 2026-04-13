@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Left="1" Canvas.Top="20" Width="30" Height="8" Fill="#F3797F"/>
+      <Rectangle Canvas.Left="1" Canvas.Top="12" Width="30" Height="8" Fill="#7BA3D6"/>
+      <Rectangle Canvas.Left="1" Canvas.Top="4" Width="30" Height="8" Fill="#FFFFFF"/>
+      <Path Data="M16.95,9H7.075h-0.05c0,0,0,1.559,0,6.941c0,4.627,4.788,6.036,4.987,6.136c0.2,-0.101,4.987,-1.509,4.987,-6.136c0,-5.382,0,-6.941,0,-6.941H16.95" Fill="#F8FAFB"/>
+      <Path Data="M8.023,10.006v5.986c0,2.817,2.144,4.326,3.99,5.08c1.845,-0.754,3.99,-2.263,3.99,-5.08v-5.986H8.023z" Fill="#F3797F"/>
+      <Polygon Points="14.506,14.03 12.512,14.03 12.512,13.024 13.509,13.024 13.509,12.018 12.512,12.018 12.512,11.012 11.514,11.012 11.514,12.018 10.517,12.018 10.517,13.024 11.514,13.024 11.514,14.03 9.519,14.03 9.519,15.036 11.514,15.036 11.514,18.054 12.512,18.054 12.512,15.036 14.506,15.036" Fill="#F8FAFB" StrokeLineJoin="Miter"/>
+      <Path Data="M12.013,17.048c-0.648,0,-1.247,0.302,-1.596,0.805c-0.249,-0.201,-0.549,-0.302,-0.898,-0.302c-0.399,0,-0.798,0.151,-1.047,0.453c0.698,1.559,2.194,2.515,3.541,3.068c1.347,-0.553,2.843,-1.509,3.541,-3.068c-0.249,-0.302,-0.648,-0.453,-1.047,-0.453c-0.349,0,-0.648,0.101,-0.898,0.302C13.26,17.35,12.661,17.048,12.013,17.048" Fill="#7BA3D6"/>
+      <Rectangle Canvas.Left="1.5" Canvas.Top="4.5" Width="29" Height="23" Stroke="#000000" StrokeThickness="1" StrokeMiterLimit="1" Opacity="0.35"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

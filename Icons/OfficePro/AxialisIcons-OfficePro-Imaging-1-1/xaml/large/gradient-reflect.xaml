@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Left="1.5" Canvas.Top="2.5" Width="29" Height="27" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M3,4.923V4h26v0.923H3z" Fill="#808285"/>
+      <Path Data="M3,5.846v-0.923h26v0.923H3z" Fill="#8A8C8E"/>
+      <Path Data="M3,6.769v-0.923h26v0.923H3z" Fill="#939598"/>
+      <Path Data="M3,7.692v-0.923h26v0.923H3z" Fill="#9D9FA2"/>
+      <Path Data="M3,8.615v-0.923h26v0.923H3z" Fill="#A7A9AC"/>
+      <Path Data="M3,9.538v-0.923h26v0.923H3z" Fill="#B1B3B6"/>
+      <Path Data="M3,10.462v-0.923h26v0.923H3z" Fill="#BCBEC0"/>
+      <Path Data="M3,11.385v-0.923h26v0.923H3z" Fill="#C7C8CA"/>
+      <Path Data="M3,12.308v-0.923h26v0.923H3z" Fill="#D1D3D4"/>
+      <Path Data="M3,13.231v-0.923h26v0.923H3z" Fill="#DCDDDE"/>
+      <Path Data="M3,14.154v-0.923h26v0.923H3z" Fill="#E2E3E4"/>
+      <Path Data="M3,15.077v-0.923h26v0.923H3z" Fill="#EBEBEC"/>
+      <Path Data="M3,16v-0.923h26V16H3z" Fill="#F1F2F2"/>
+      <Path Data="M29,27.077V28H3v-0.923H29z" Fill="#808285"/>
+      <Path Data="M29,26.154v0.923H3v-0.923H29z" Fill="#8A8C8E"/>
+      <Path Data="M29,25.231v0.923H3v-0.923H29z" Fill="#939598"/>
+      <Path Data="M29,24.308v0.923H3v-0.923H29z" Fill="#9D9FA2"/>
+      <Path Data="M29,23.385v0.923H3v-0.923H29z" Fill="#A7A9AC"/>
+      <Path Data="M29,22.462v0.923H3v-0.923H29z" Fill="#B1B3B6"/>
+      <Path Data="M29,21.538v0.923H3v-0.923H29z" Fill="#BCBEC0"/>
+      <Path Data="M29,20.615v0.923H3v-0.923H29z" Fill="#C7C8CA"/>
+      <Path Data="M29,19.692v0.923H3v-0.923H29z" Fill="#D1D3D4"/>
+      <Path Data="M29,18.769v0.923H3v-0.923H29z" Fill="#DCDDDE"/>
+      <Path Data="M29,17.846v0.923H3v-0.923H29z" Fill="#E2E3E4"/>
+      <Path Data="M29,16.923v0.923H3v-0.923H29z" Fill="#EBEBEC"/>
+      <Path Data="M29,16v0.923H3V16H29z" Fill="#F1F2F2"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

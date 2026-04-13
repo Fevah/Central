@@ -41,8 +41,7 @@ public partial class DbRepository
     private async Task<List<SdRequest>> QuerySdRequestsAsync(string whereClause, Action<NpgsqlCommand>? addParams = null, bool acceptChanges = false)
     {
         var list = new List<SdRequest>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand($"SELECT {SdRequestColumns} FROM sd_requests {whereClause}", conn);
         addParams?.Invoke(cmd);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -75,16 +74,14 @@ public partial class DbRepository
 
     public async Task<int> GetSdRequestCountAsync()
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT count(*) FROM sd_requests", conn);
         return Convert.ToInt32(await cmd.ExecuteScalarAsync());
     }
 
     public async Task<long?> GetLastMeSyncTimeAsync()
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT MAX(me_updated_time) FROM sd_requests", conn);
         var result = await cmd.ExecuteScalarAsync();
         return result is long val ? val : null;
@@ -92,8 +89,7 @@ public partial class DbRepository
 
     public async Task UpdateIntegrationLastSyncAsync(int integrationId)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "UPDATE integrations SET last_sync_at = NOW() WHERE id = @id", conn);
         cmd.Parameters.AddWithValue("id", integrationId);
@@ -105,8 +101,7 @@ public partial class DbRepository
     public async Task<List<SdGroup>> GetSdGroupsAsync()
     {
         var list = new List<SdGroup>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT id, name, is_active, sort_order FROM sd_groups ORDER BY sort_order, name", conn);
         await using var r = await cmd.ExecuteReaderAsync();
         while (await r.ReadAsync())
@@ -116,8 +111,7 @@ public partial class DbRepository
 
     public async Task UpsertSdGroupAsync(SdGroup g)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(g.Id > 0
             ? "UPDATE sd_groups SET name=@n, is_active=@a, sort_order=@s WHERE id=@id"
             : "INSERT INTO sd_groups (name, is_active, sort_order) VALUES (@n, @a, @s) RETURNING id", conn);
@@ -131,8 +125,7 @@ public partial class DbRepository
 
     public async Task DeleteSdGroupAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM sd_groups WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -141,8 +134,7 @@ public partial class DbRepository
     public async Task<List<SdTechnician>> GetSdTechniciansAsync()
     {
         var list = new List<SdTechnician>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, name, COALESCE(email,''), COALESCE(department,''), is_active FROM sd_technicians ORDER BY name", conn);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -153,8 +145,7 @@ public partial class DbRepository
 
     public async Task UpdateSdTechnicianActiveAsync(long id, bool isActive)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("UPDATE sd_technicians SET is_active=@a WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("id", id);
         cmd.Parameters.AddWithValue("a", isActive);
@@ -164,8 +155,7 @@ public partial class DbRepository
     public async Task<List<SdRequester>> GetSdRequestersAsync()
     {
         var list = new List<SdRequester>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, name, COALESCE(email,''), COALESCE(phone,''), COALESCE(department,''), COALESCE(site,''), COALESCE(job_title,''), is_vip FROM sd_requesters ORDER BY name", conn);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -178,8 +168,7 @@ public partial class DbRepository
     /// <summary>Update local DB fields for a request (after ME write-back succeeds).</summary>
     public async Task UpdateSdRequestLocalAsync(long id, string status, string priority, string groupName, string technicianName, string category)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             @"UPDATE sd_requests SET status=@st, priority=@pri, group_name=@grp, technician_name=@tn, category=@cat
               WHERE id=@id", conn);
@@ -238,8 +227,7 @@ public partial class DbRepository
     public async Task<List<string>> GetSdTechnicianNamesAsync()
     {
         var list = new List<string>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             @"SELECT DISTINCT technician_name FROM sd_requests
               WHERE technician_name <> ''
@@ -255,8 +243,7 @@ public partial class DbRepository
     public async Task<List<SdTeam>> GetSdTeamsAsync()
     {
         var teams = new List<SdTeam>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             @"SELECT t.id, t.name, t.sort_order, COALESCE(array_agg(m.technician_name ORDER BY m.technician_name) FILTER (WHERE m.technician_name IS NOT NULL), '{}')
               FROM sd_teams t LEFT JOIN sd_team_members m ON m.team_id = t.id
@@ -275,8 +262,7 @@ public partial class DbRepository
 
     public async Task<int> UpsertSdTeamAsync(SdTeam team)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var tx = await conn.BeginTransactionAsync();
 
         // Upsert team
@@ -308,8 +294,7 @@ public partial class DbRepository
 
     public async Task DeleteSdTeamAsync(int teamId)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM sd_teams WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("id", teamId);
         await cmd.ExecuteNonQueryAsync();
@@ -320,8 +305,7 @@ public partial class DbRepository
     public async Task<List<SdGroupCategory>> GetSdGroupCategoriesAsync()
     {
         var list = new List<SdGroupCategory>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             @"SELECT c.id, c.name, c.sort_order, c.is_active,
                      COALESCE(array_agg(m.group_name ORDER BY m.group_name) FILTER (WHERE m.group_name IS NOT NULL), '{}')
@@ -340,8 +324,7 @@ public partial class DbRepository
 
     public async Task<int> UpsertSdGroupCategoryAsync(SdGroupCategory cat)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var tx = await conn.BeginTransactionAsync();
 
         await using var cmd = new NpgsqlCommand(cat.Id > 0
@@ -372,8 +355,7 @@ public partial class DbRepository
 
     public async Task DeleteSdGroupCategoryAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM sd_group_categories WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -383,8 +365,7 @@ public partial class DbRepository
     public async Task<List<string>> GetSdGroupNamesAsync()
     {
         var list = new List<string>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT DISTINCT group_name FROM sd_requests WHERE group_name <> '' ORDER BY group_name", conn);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -396,8 +377,7 @@ public partial class DbRepository
     public async Task<List<string>> GetSdCategoryNamesAsync()
     {
         var list = new List<string>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT DISTINCT category FROM sd_requests WHERE category <> '' ORDER BY category", conn);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -409,8 +389,7 @@ public partial class DbRepository
     public async Task<Dictionary<string, int>> GetSdGroupTicketCountsAsync()
     {
         var dict = new Dictionary<string, int>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT group_name, count(*)::int FROM sd_requests WHERE group_name <> '' GROUP BY group_name", conn);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -429,8 +408,7 @@ public partial class DbRepository
         var prevEnd = rangeStart;
         var gf = groupFilter is { Count: > 0 } ? " AND group_name = ANY(@grps)" : "";
 
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand($@"
             SELECT
                 -- Current period
@@ -485,8 +463,7 @@ public partial class DbRepository
     public async Task<List<SdWeeklyTotal>> GetSdOverviewTotalsAsync(DateTime rangeStart, DateTime rangeEnd, string bucket = "day", List<string>? groupFilter = null)
     {
         var list = new List<SdWeeklyTotal>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         var interval = bucket switch { "month" => "interval '1 month'", "week" => "interval '1 week'", _ => "interval '1 day'" };
         var seriesExpr = $"generate_series(@start::date, (@end::date - interval '1 day')::date, {interval})";
@@ -565,8 +542,7 @@ public partial class DbRepository
     public async Task<List<SdTechDaily>> GetSdTechDailyClosuresAsync(DateTime rangeStart, DateTime rangeEnd, List<string>? techFilter = null)
     {
         var list = new List<SdTechDaily>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         var filterClause = techFilter is { Count: > 0 }
             ? " AND technician_name = ANY(@techs)" : "";
@@ -605,8 +581,7 @@ public partial class DbRepository
     public async Task<List<SdAgingBucket>> GetSdAgingBucketsAsync(List<string>? techFilter = null)
     {
         var list = new List<SdAgingBucket>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         var filterClause = techFilter is { Count: > 0 }
             ? " AND technician_name = ANY(@techs)" : "";

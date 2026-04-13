@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="24" Height="24" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Left="0" Canvas.Top="3" Width="24" Height="18" Fill="#F37980"/>
+      <Polyline Points="8.271,17.1435 9.6855,12.9 6,10.2435 10.5855,10.2435 12,6 13.4145,10.2435 18,10.2435 14.271,12.8565 15.6855,17.1 12,14.529 8.271,17.1435" Fill="#63BF80" StrokeLineJoin="Miter"/>
+      <Polyline Points="12.771,13.971 13.9275,14.7855 13.5,13.4565 12.771,13.971" Fill="#63BF80" StrokeLineJoin="Miter"/>
+      <Polyline Points="10.5,13.4565 10.071,14.7855 11.2275,13.971 10.5,13.4565" Fill="#63BF80" StrokeLineJoin="Miter"/>
+      <Polyline Points="10.8,12.5565 12,13.413 13.2,12.5565 12.729,11.1855 11.229,11.1855 10.8,12.5565" Fill="#63BF80" StrokeLineJoin="Miter"/>
+      <Polyline Points="8.871,11.1855 10.029,12 10.2855,11.1855 8.871,11.1855" Fill="#63BF80" StrokeLineJoin="Miter"/>
+      <Polyline Points="13.971,12 15.1275,11.1855 13.713,11.1855 13.971,12" Fill="#63BF80" StrokeLineJoin="Miter"/>
+      <Polyline Points="11.571,10.2435 12.4275,10.2435 12,8.9145 11.571,10.2435" Fill="#63BF80" StrokeLineJoin="Miter"/>
+      <Polyline Points="8.271,17.1435 9.6855,12.9 6,10.2435 10.5855,10.2435 12,6 13.4145,10.2435 18,10.2435 14.271,12.8565 15.6855,17.1 12,14.529 8.271,17.1435" Fill="#FFFFFF" StrokeLineJoin="Miter" Opacity="0.1"/>
+      <Polyline Points="12.771,13.971 13.9275,14.7855 13.5,13.4565 12.771,13.971" Fill="#FFFFFF" StrokeLineJoin="Miter" Opacity="0.1"/>
+      <Polyline Points="10.5,13.4565 10.071,14.7855 11.2275,13.971 10.5,13.4565" Fill="#FFFFFF" StrokeLineJoin="Miter" Opacity="0.1"/>
+      <Polyline Points="10.8,12.5565 12,13.413 13.2,12.5565 12.729,11.1855 11.229,11.1855 10.8,12.5565" Fill="#FFFFFF" StrokeLineJoin="Miter" Opacity="0.1"/>
+      <Polyline Points="8.871,11.1855 10.029,12 10.2855,11.1855 8.871,11.1855" Fill="#FFFFFF" StrokeLineJoin="Miter" Opacity="0.1"/>
+      <Polyline Points="13.971,12 15.1275,11.1855 13.713,11.1855 13.971,12" Fill="#FFFFFF" StrokeLineJoin="Miter" Opacity="0.1"/>
+      <Polyline Points="11.571,10.2435 12.4275,10.2435 12,8.9145 11.571,10.2435" Fill="#FFFFFF" StrokeLineJoin="Miter" Opacity="0.1"/>
+      <Path Data="M24,21H0V3h24V21zM1.5,19.5h21V4.5H1.5V19.5z" Fill="#211F20" Opacity="0.20"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

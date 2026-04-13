@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <rect x="1.5" y="6.5" width="29" height="23" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <rect x="1.5" y="2.5" width="29" height="4" fill="#B2DBB4" stroke="#009949" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="11" y1="10.5" x2="27" y2="10.5" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="11" y1="12.5" x2="26" y2="12.5" fill="none" stroke="#787979" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="11" y1="16.5" x2="27" y2="16.5" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="11" y1="18.5" x2="26" y2="18.5" fill="none" stroke="#787979" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="11" y1="22.5" x2="27" y2="22.5" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="11" y1="24.5" x2="26" y2="24.5" fill="none" stroke="#787979" stroke-width="1" stroke-miterlimit="1"/>
+    <polygon points="8.5,13.5 5.5,13.5 5.5,9.5 7.48,9.5 8.5,10.525" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+    <polygon points="8.5,16.525 7.48,15.5 5.5,15.5 5.5,19.5 8.5,19.5" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+    <polygon points="8.5,22.525 7.48,21.5 5.5,21.5 5.5,25.5 8.5,25.5" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+    <rect x="6" y="12" width="2" height="1" fill="#92CBEE"/>
+    <rect x="6" y="24" width="2" height="1" fill="#92CBEE"/>
+    <rect x="6" y="18" width="2" height="1" fill="#B2DBB4"/>
+  </g>
+</svg>

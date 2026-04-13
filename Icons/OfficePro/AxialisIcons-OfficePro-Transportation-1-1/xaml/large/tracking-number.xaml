@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M22.628,19.245c0,1.408,-0.436,2.713,-1.179,3.788C20.254,24.76,16.014,30.3,16.014,30.3s-4.212,-5.524,-5.409,-7.231C9.846,21.988,9.4,20.669,9.4,19.245c0,-3.67,2.961,-6.645,6.614,-6.645S22.628,15.575,22.628,19.245z" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Ellipse Canvas.Left="12.679" Canvas.Top="15.879" Width="6.67" Height="6.67" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Rectangle Canvas.Left="1.5" Canvas.Top="1.5" Width="29" Height="9" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M3.977,4.96L5.461,3.5H5.5v5.5" Stroke="#228BCB" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M11.3,8.4H8.079l0.011,-0.504c0.006,-0.268,0.133,-0.524,0.353,-0.709l2.192,-1.843c0.11,-0.135,0.27,-0.355,0.27,-0.691c0,-0.649,-0.629,-1.176,-1.405,-1.176c-0.756,0,-1.372,0.5,-1.403,1.126" Stroke="#228BCB" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M12.879,4.653c0.024,-0.47,0.266,-1.207,1.359,-1.207c1.159,0,1.362,0.829,1.362,1.289c0,0.655,-0.487,1.12,-1.351,1.264H14M12.879,7.344c0.024,0.47,0.266,1.207,1.359,1.207c1.159,0,1.362,-0.829,1.362,-1.289c0,-0.596,-0.484,-1.119,-1.351,-1.262H14" Stroke="#228BCB" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Polyline Points="23.664,7.552 19.9,7.552 19.9,7.479 22.149,3.498 22.216,3.498 22.216,9" Stroke="#228BCB" StrokeThickness="1" StrokeMiterLimit="1" StrokeLineJoin="Miter"/>
+      <Path Data="M24.725,8.4h1.939c1.177,0,1.382,-0.788,1.382,-1.225c0,-0.437,-0.205,-1.225,-1.382,-1.225h-1.469l0.356,-2.45h2.794" Stroke="#228BCB" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Line X1="17" Y1="6.5" X2="18.5" Y2="6.5" Stroke="#228BCB" StrokeThickness="1" StrokeMiterLimit="1"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

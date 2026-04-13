@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="24px" height="24px" viewBox="0 0 24 24" enable-background="new 0 0 24 24" xml:space="preserve">
+  <g id="icon">
+    <rect x="1" y="8" width="12" height="15" fill="#FFFFFF" opacity="0.5"/>
+    <path d="M14,24H0V7h14V24zM2,22h10V9H2V22z" fill="#7B7B7B"/>
+    <path d="M11,12H3v-1h8V12zM11,13H3v1h8V13zM11,15H3v1h8V15zM11,17H3v1h8V17zM11,19H3v1h8V19z" fill="#B7B7B7"/>
+    <rect x="4" y="13" width="4" height="3" fill="#CB525D"/>
+    <polygon points="11,1 11,6 15,6 15,16 23,16 23,1" fill="#FFFFFF" stroke-linejoin="miter" opacity="0.5"/>
+    <path d="M24,0v17h-9v-2h7V2H12v4h-2V0H24z" fill="#7B7B7B"/>
+    <path d="M15,10h6v1h-6V10zM15,13h6v-1h-6V13zM15,9h6V8h-6V9zM13,4v1h8V4H13zM15,7h6V6h-6V7z" fill="#B7B7B7"/>
+    <rect x="16" y="6" width="4" height="3" fill="#CB525D"/>
+  </g>
+</svg>

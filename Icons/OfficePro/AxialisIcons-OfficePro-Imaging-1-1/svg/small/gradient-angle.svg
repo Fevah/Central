@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <rect x="0.5" y="0.5" width="15" height="14" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <g>
+      <polygon points="8,7.5 6.982,1.5 4.557,1.5" fill="#8C8E90" stroke-linejoin="miter"/>
+      <polygon points="1.5,2.002 8,7.5 4.598,1.5 1.5,1.5" fill="#939598" stroke-linejoin="miter"/>
+      <polygon points="1.5,5.077 8,7.5 1.5,1.917" fill="#9B9DA0" stroke-linejoin="miter"/>
+      <polygon points="1.5,7.489 8,7.5 1.5,5.002" fill="#A5A7AA" stroke-linejoin="miter"/>
+      <polygon points="14.5,7.5 8,7.5 14.5,9.894" fill="#DEDFE0" stroke-linejoin="miter"/>
+      <polygon points="14.5,9.885 8,7.5 14.5,13.026" fill="#D8D9DA" stroke-linejoin="miter"/>
+      <polygon points="14.5,13.019 8,7.5 11.387,13.5 14.5,13.5" fill="#D1D3D4" stroke-linejoin="miter"/>
+      <polygon points="8,7.5 8.996,13.5 11.415,13.5" fill="#CBCCCE" stroke-linejoin="miter"/>
+      <polygon points="8,7.5 6.952,13.5 9.092,13.5" fill="#C4C6C8" stroke-linejoin="miter"/>
+      <polygon points="6.982,13.5 8,7.5 4.557,13.5" fill="#BEC0C2" stroke-linejoin="miter"/>
+      <polygon points="1.5,13.5 4.598,13.5 8,7.5 1.5,12.998" fill="#B8BABC" stroke-linejoin="miter"/>
+      <polygon points="1.5,13.083 8,7.5 1.5,9.923" fill="#B1B3B6" stroke-linejoin="miter"/>
+      <polygon points="1.5,9.998 8,7.5 1.5,7.511" fill="#ABADB0" stroke-linejoin="miter"/>
+      <polygon points="14.5,7.5 14.5,5.106 8,7.5" fill="#E6E7E8" stroke-linejoin="miter"/>
+      <polygon points="14.5,5.115 14.5,1.974 8,7.5" fill="#EFEFF0" stroke-linejoin="miter"/>
+      <polygon points="14.5,1.5 11.387,1.5 8,7.5 14.5,1.981" fill="#F6F6F6" stroke-linejoin="miter"/>
+      <polygon points="8.996,1.5 8,7.5 11.415,1.5" fill="#7E8083" stroke-linejoin="miter"/>
+      <polygon points="8,7.5 9.092,1.5 6.952,1.5" fill="#86888A" stroke-linejoin="miter"/>
+    </g>
+  </g>
+</svg>

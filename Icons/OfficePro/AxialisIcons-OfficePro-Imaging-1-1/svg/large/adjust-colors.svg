@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <path d="M16.097,11.151c-3.019,1.557,-4.809,4.822,-4.833,8.603c3.155,2.052,6.697,2.003,9.666,-0.193C20.948,16.307,19.081,13.108,16.097,11.151z" fill="#FFFFFF"/>
+    <path d="M6.348,11.27C3.46,12.96,1.517,16.12,1.517,19.74c0,5.4,4.325,9.778,9.661,9.778c1.76,0,3.409,-0.476,4.831,-1.308M16.008,28.209M16.008,28.209" fill="#FFFFFF" stroke="#E32F2C" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <path d="M6.348,11.27c0.032,-5.372,4.345,-9.717,9.66,-9.717s9.628,4.345,9.66,9.717" fill="#FFFFFF" stroke="#1165B0" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <path d="M16.008,28.209c1.421,0.832,3.071,1.308,4.831,1.308c5.336,0,9.661,-4.378,9.661,-9.778c0,-3.62,-1.943,-6.779,-4.831,-8.47" fill="#FFFFFF" stroke="#11A04A" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <path d="M11.178,19.74c0,-3.619,1.943,-6.779,4.831,-8.47c-1.421,-0.832,-3.071,-1.308,-4.831,-1.308c-1.759,0,-3.409,0.476,-4.83,1.308l-0.001,0.061c0,3.62,1.943,6.779,4.831,8.47L11.178,19.74z" fill="#FFFFFF" stroke="#A1519F" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <path d="M16.008,28.209c2.871,-1.681,4.808,-4.815,4.83,-8.409c-1.421,0.832,-3.07,1.308,-4.83,1.308s-3.409,-0.476,-4.83,-1.308C11.2,23.394,13.137,26.528,16.008,28.209z" fill="#FFFFFF" stroke="#E57428" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <path d="M25.667,11.248c-1.421,-0.832,-3.068,-1.286,-4.828,-1.286c-1.76,0,-3.409,0.476,-4.831,1.308c2.888,1.691,4.831,4.85,4.831,8.47l-0.001,0.061C23.726,18.11,25.667,14.867,25.667,11.248z" fill="#FFFFFF" stroke="#21B4C8" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+  </g>
+</svg>

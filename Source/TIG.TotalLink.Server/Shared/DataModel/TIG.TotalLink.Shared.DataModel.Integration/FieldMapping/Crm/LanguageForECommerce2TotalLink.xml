@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SyncMapping>
+  <EntityMappings>
+    <EntityMapping Name="Languages">
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Oid" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Oid" Type="System.Guid" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Code" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Code" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Name" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Name" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="WindowsLanguageID" Type="System.Int32" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="WindowsLanguageID" Type="System.Int32" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="WindowsLanguageName" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="WindowsLanguageName" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+    </EntityMapping>
+  </EntityMappings>
+</SyncMapping>

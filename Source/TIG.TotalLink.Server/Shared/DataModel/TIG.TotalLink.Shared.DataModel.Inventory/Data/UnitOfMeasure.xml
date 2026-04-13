@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<UnitOfMeasures>
+  <UnitOfMeasure Code="M" Name="Metre" />
+  <UnitOfMeasure Code="BOX" Name="Box" />
+  <UnitOfMeasure Code="CAN" Name="Can" />
+  <UnitOfMeasure Code="DAY" Name="Day" />
+  <UnitOfMeasure Code="GR" Name="Gram" />
+  <UnitOfMeasure Code="HOUR" Name="Hour" />
+  <UnitOfMeasure Code="KG" Name="Kilogram" />
+  <UnitOfMeasure Code="KM" Name="Kilometer" />
+  <UnitOfMeasure Code="L" Name="Liter" />
+  <UnitOfMeasure Code="MILES" Name="Mile" />
+  <UnitOfMeasure Code="PACK" Name="Pack" />
+  <UnitOfMeasure Code="PALLET" Name="Pallet" />
+  <UnitOfMeasure Code="PCS" Name="Piece" />
+</UnitOfMeasures>

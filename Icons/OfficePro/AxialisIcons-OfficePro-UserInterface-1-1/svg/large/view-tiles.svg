@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <rect x="1.5" y="6.5" width="29" height="23" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <rect x="1.5" y="2.5" width="29" height="4" fill="#FFFFFF" stroke="#17AB4F" stroke-width="1" stroke-miterlimit="1"/>
+    <polygon points="11.5,16.5 5.5,16.5 5.5,9.5 10,9.5 11.5,11" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <path d="M8.543,14.328c1.108,-0.955,1.904,-0.287,2.832,0.469M10.015,15.277c-1.966,-0.605,-2.605,-3.298,-4.461,-0.899" fill="#FFFFFF" stroke="#17AB4F" stroke-width="0.9" stroke-miterlimit="1"/>
+    <polygon points="11.5,16.5 5.5,16.5 5.5,9.5 10,9.5 11.5,11" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+    <circle cx="9.2" cy="11.7" r="0.7" fill="#ED8730"/>
+    <polygon points="11.5,26.5 5.5,26.5 5.5,19.5 10,19.5 11.5,21" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <path d="M5.5,24.858l1.208,-1.205l2.75,2.74M11.5,26.345l-2.131,-2.125l-1.005,1.002" fill="#FFFFFF" stroke="#228BCB" stroke-width="0.8" stroke-miterlimit="1"/>
+    <polygon points="11.5,26.5 5.5,26.5 5.5,19.5 10,19.5 11.5,21" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+    <circle cx="9.2" cy="21.7" r="0.7" fill="#ED8730"/>
+    <line x1="14" y1="12.5" x2="27" y2="12.5" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="14" y1="14.5" x2="25" y2="14.5" fill="none" stroke="#787979" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="14" y1="22.5" x2="27" y2="22.5" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="14" y1="24.5" x2="25" y2="24.5" fill="none" stroke="#787979" stroke-width="1" stroke-miterlimit="1"/>
+  </g>
+</svg>

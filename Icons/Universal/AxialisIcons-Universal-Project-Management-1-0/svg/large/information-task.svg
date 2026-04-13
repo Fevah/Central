@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="24px" height="24px" viewBox="0 0 24 24" enable-background="new 0 0 24 24" xml:space="preserve">
+  <g id="icon">
+    <rect x="3.25" y="2.75" width="17.5" height="22.5" fill="#FFFFFF" opacity="0.5" transform="matrix(-1.83697e-16 1 -1 -1.83697e-16 26 2)"/>
+    <path d="M0,24V4.5h24v19.5H0zM2,22h20V6H2V22z" fill="#7D7C7B"/>
+    <rect width="24" height="6" fill="#6486C4"/>
+    <path d="M15,10V9h6v1H15zM15,12v-1h6v1H15zM15,14v-1h6v1H15zM15,16v-1h6v1H15zM15,18v-1h6v1H15zM15,20v-1h6v1H15z" fill="#7D7C7B"/>
+    <rect x="13" y="6" width="1" height="17.25" fill="#7D7C7B"/>
+    <path d="M3,15.475V12.525C3,11.1305,4.1305,10,5.525,10h3.95c1.3945,0,2.525,1.1305,2.525,2.525v2.95c0,1.3945,-1.1305,2.525,-2.525,2.525h-3.95C4.1305,18,3,16.8695,3,15.475zM5,12.525v2.95c0,0.2899,0.2351,0.525,0.525,0.525h3.95c0.2899,0,0.525,-0.2351,0.525,-0.525v-2.95c0,-0.2899,-0.235,-0.525,-0.525,-0.525H5.525C5.235,12,5,12.235,5,12.525z" fill="#6486C4"/>
+  </g>
+</svg>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <rect x="0.5" y="0.5" width="9" height="9" fill="#FFFFFF" stroke="#228BCB" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M5,2.009c-0.557,0.419,-1.054,1.881,-1.054,3.005c0,1.11,0.454,2.558,1.02,2.977M5.024,7.991c0.533,-0.419,1.04,-1.867,1.04,-2.977c0,-1.123,-0.55,-2.585,-1.054,-3.005M2.171,4.005h5.657M2.214,5.995h5.614" fill="none" stroke="#228BCB" stroke-width="0.8" stroke-miterlimit="1"/>
+    <circle cx="5" cy="5" r="3" fill="none" stroke="#228BCB" stroke-width="0.8" stroke-miterlimit="1"/>
+    <path d="M4.8,13.5H1.95C1.149,13.5,0.5,12.851,0.5,12.05V10.5M2.736,11.423M4.8,13.474M2.636,15.625M4.8,13.474M2.636,15.625L4.8,13.474l-2.064,-2.051" fill="none" stroke="#009949" stroke-width="1" stroke-miterlimit="1"/>
+    <polygon points="11,8.5 11,11 9,11 9,15 15.5,15 15.5,8.5" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <rect x="7" y="11" width="2" height="4" fill="#FFFFFF"/>
+    <polygon points="11,8 11,9 15,9 15,9.4 15,10 15,15 7,15 7,14 7,13.9 7,11 6,11 6,13.9 6,14 6,15 6,16 7,16 15,16 16,16 16,15 16,10 16,9.4 16,8" fill="#383838" stroke-linejoin="miter"/>
+    <rect x="11" y="6.5" width="4.5" height="2" fill="#92CBEE"/>
+    <polygon points="11,6 11,7 15,7 15,8 11,8 11,9 16,9 16,6" fill="#0964B0" stroke-linejoin="miter"/>
+    <rect x="7" y="11" width="2" height="4" fill="#FFFFFF"/>
+    <rect x="7" y="11" width="2" height="4" fill="#F7BFBF" opacity="0.7"/>
+    <path d="M9.5,11v4M7,12.5h2.5" fill="none" stroke="#DB2E2A" stroke-width="1" stroke-miterlimit="1" opacity="0.8"/>
+    <path d="M14,10h-1v4h1V10zM12,10h-1v4h1V10z" fill="#C8C6C4" opacity="0.4"/>
+    <rect x="11" y="12" width="3" height="1" fill="#0964B0" opacity="0.8"/>
+  </g>
+</svg>

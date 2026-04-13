@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Ellipse Canvas.Left="4" Canvas.Top="2" Width="7" Height="7" Fill="#F7DA8E" Stroke="#E57428" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+      <Ellipse Canvas.Left="21" Canvas.Top="2" Width="7" Height="7" Fill="#F7DA8E" Stroke="#E57428" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+      <Path Data="M6.122,30.5H2.796c-0.165,0,-0.288,-0.152,-0.254,-0.314l2.782,-12.481c0.026,-0.12,0.131,-0.205,0.254,-0.205h3.327c0.165,0,0.288,0.152,0.254,0.314L6.376,30.295C6.35,30.415,6.245,30.5,6.122,30.5z" Fill="#C8C6C4" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M26.422,17.5h-3.327c-0.165,0,-0.288,0.152,-0.254,0.314l2.782,12.481c0.026,0.12,0.131,0.205,0.254,0.205h3.327c0.165,0,0.288,-0.152,0.254,-0.314l-2.782,-12.481C26.65,17.585,26.545,17.5,26.422,17.5z" Fill="#C8C6C4" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Line X1="8.1" Y1="23.5" X2="23.9" Y2="23.5" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M29.652,17.5H2.348c-0.469,0,-0.848,-0.38,-0.848,-0.848v-6.303C1.5,9.88,1.88,9.5,2.348,9.5h27.303c0.469,0,0.848,0.38,0.848,0.848v6.303C30.5,17.12,30.12,17.5,29.652,17.5z" Fill="#F7DA8E"/>
+      <Path Data="M3.5,17.4l4.5,-7.8M1.6,15.5l3.4,-5.9M6.5,17.4l4.5,-7.8M9.5,17.4l4.5,-7.8M12.5,17.4l4.5,-7.8M15.5,17.4l4.5,-7.8M18.5,17.4l4.5,-7.8M21.5,17.4l4.5,-7.8M24.5,17.4l4.5,-7.8M27.5,17.4l3,-5.2" Stroke="#E57428" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M29.652,17.5H2.348c-0.469,0,-0.848,-0.38,-0.848,-0.848v-6.303C1.5,9.88,1.88,9.5,2.348,9.5h27.303c0.469,0,0.848,0.38,0.848,0.848v6.303C30.5,17.12,30.12,17.5,29.652,17.5z" Stroke="#383838" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

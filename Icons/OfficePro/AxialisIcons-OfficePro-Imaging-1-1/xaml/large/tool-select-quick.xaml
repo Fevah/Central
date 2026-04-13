@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Canvas>
+        <Polygon Points="27,30 24.9,30 24.9,28.8 25.8,28.8 25.8,27.9 27,27.9" Fill="#383838" StrokeLineJoin="Miter"/>
+        <Path Data="M22.675,30h-2.669v-1.2h2.669V30zM17.782,30h-2.669v-1.2h2.669V30zM12.888,30h-2.669v-1.2h2.669V30zM7.994,30H5.324v-1.2h2.669V30z" Fill="#383838"/>
+        <Polygon Points="3.1,30 1,30 1,27.9 2.2,27.9 2.2,28.8 3.1,28.8" Fill="#383838" StrokeLineJoin="Miter"/>
+        <Path Data="M2.2,25.558H1v-2.811h1.2V25.558zM2.2,20.405H1v-2.81h1.2V20.405zM2.2,15.253H1v-2.81h1.2V15.253z" Fill="#383838"/>
+        <Polygon Points="2.2,10.1 1,10.1 1,8 3.1,8 3.1,9.2 2.2,9.2" Fill="#383838" StrokeLineJoin="Miter"/>
+        <Path Data="M17.782,9.2h-2.669V8h2.669V9.2zM12.888,9.2h-2.669V8h2.669V9.2zM7.994,9.2H5.325V8h2.669V9.2z" Fill="#383838"/>
+        <Path Data="M27,25.558h-1.2v-2.81h1.2V25.558zM27,20.405h-1.2v-2.81h1.2V20.405zM27,15.253h-1.2v-1.811l1.2,-1V15.253z" Fill="#383838"/>
+      </Canvas>
+      <Polygon Points="19.265,16.254 16.48,19.038 14.106,16.665 16.861,13.909" Fill="#FFFFFF" StrokeLineJoin="Miter"/>
+      <Path Data="M16.737,13.442L26.921,3.259c0.819,-0.819,2.146,-0.819,2.965,0l0,0c0.819,0.819,0.819,2.146,0,2.965L19.732,16.378L16.737,13.442z" Fill="#C8C6C4"/>
+      <Path Data="M14.106,16.665l2.336,-2.336l0.296,-0.887L26.921,3.259c0.819,-0.819,2.146,-0.819,2.965,0l0,0c0.819,0.819,0.819,2.146,0,2.965L19.732,16.378l-0.887,0.296l-2.365,2.365" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Line X1="16.696" Y1="13.474" X2="19.665" Y2="16.442" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M16.307,20.933c-1.183,2.375,-2.55,2.691,-10.007,2.582c-0.111,-0.002,-0.14,-0.151,-0.038,-0.192c2.611,-1.057,2.176,-0.855,4.176,-4.907C12.564,14.111,17.993,17.548,16.307,20.933z" Fill="#92CBEE" Stroke="#0964B0" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

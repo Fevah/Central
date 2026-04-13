@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <path d="M10.247,5.5c0.689,0,1.253,0.579,1.253,1.286v5.427c0,0.708,-0.564,1.286,-1.253,1.286H1.753C1.064,13.5,0.5,12.921,0.5,12.214V6.849C0.5,6.11,1.111,5.501,1.85,5.5C4.573,5.497,10.247,5.5,10.247,5.5z" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M3.5,4.5V3.338c0,-0.461,0.377,-0.838,0.838,-0.838h4.375c0.435,0,0.788,0.353,0.788,0.788V4.5" fill="#C8C6C4" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M1.3,0.5h4.263C6.356,0.5,7,1.144,7,1.938V2.2" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="9" y1="11.5" x2="6" y2="11.5" fill="none" stroke="#787979" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M15.168,5.743L12.5,7.477v4.124l2.668,1.734c0.137,0.105,0.332,0.005,0.332,-0.17V5.913C15.5,5.738,15.305,5.638,15.168,5.743z" fill="#C8C6C4"/>
+    <path d="M15.603,5.273c-0.235,-0.116,-0.508,-0.093,-0.72,0.058L12.5,6.88v1.193l2.5,-1.625v6.181l-2.5,-1.625v1.193l2.383,1.549c0.122,0.087,0.264,0.132,0.408,0.132c0.106,0,0.212,-0.024,0.312,-0.073c0.245,-0.121,0.397,-0.366,0.397,-0.64V5.913C16,5.639,15.848,5.393,15.603,5.273z" fill="#383838"/>
+  </g>
+</svg>

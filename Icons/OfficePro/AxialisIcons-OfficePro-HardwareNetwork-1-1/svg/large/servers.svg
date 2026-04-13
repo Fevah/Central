@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <path d="M16.5,30.5H3.5V8.5h13V30.5zM3.5,13.5h13M3.5,18.5h13" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <ellipse cx="9.998" cy="26.015" rx="1.502" ry="1.485" fill="none" stroke="#787979" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M12,11.5h2M12,16.5h2" fill="#238BCB" stroke="#228BCB" stroke-width="1" stroke-miterlimit="1"/>
+    <polygon points="14.5,1.5 14.5,7 18,7 18,23.5 27.5,23.5 27.5,1.5" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <path d="M14,1v6h1h3h9v4h-9v1h9v11h-9v1h10V1H14zM27,6H15V2h12V6z" fill="#383838"/>
+    <ellipse cx="20.998" cy="19.015" rx="1.502" ry="1.485" fill="none" stroke="#787979" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M23,4.5h2M23,9.5h2" fill="#238BCB" stroke="#228BCB" stroke-width="1" stroke-miterlimit="1"/>
+  </g>
+</svg>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <circle cx="26.26" cy="25.568" r="5.132" fill="#92CBEE" stroke="#0964B0" stroke-width="1" stroke-miterlimit="1"/>
+    <circle cx="5.732" cy="25.462" r="5.132" fill="#92CBEE" stroke="#0964B0" stroke-width="1" stroke-miterlimit="1"/>
+    <polygon points="15.996,25.568 26.26,25.568 21.128,14.552 9.131,14.552" fill="none" stroke="#383838" stroke-width="1.1" stroke-linecap="round" stroke-miterlimit="1" stroke-linejoin="round"/>
+    <line x1="5.732" y1="25.462" x2="9.131" y2="14.655" fill="none" stroke="#383838" stroke-width="1.1" stroke-linecap="round" stroke-miterlimit="1" stroke-linejoin="round"/>
+    <path d="M12.21,8.394h-0.907c-1.2,0,-2.173,0.973,-2.173,2.173v3.986" fill="none" stroke="#383838" stroke-width="1.1" stroke-linecap="round" stroke-miterlimit="1" stroke-linejoin="round"/>
+    <line x1="25.233" y1="10.446" x2="20.101" y2="10.446" fill="none" stroke="#383838" stroke-width="1.1" stroke-linecap="round" stroke-miterlimit="1" stroke-linejoin="round"/>
+    <line x1="21.128" y1="14.552" x2="22.667" y2="10.549" fill="none" stroke="#383838" stroke-width="1.1" stroke-linecap="round" stroke-miterlimit="1" stroke-linejoin="round"/>
+  </g>
+</svg>

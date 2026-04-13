@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Left="1.5" Canvas.Top="2.5" Width="29" Height="27" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Rectangle Canvas.Left="3" Canvas.Top="4" Width="2" Height="24" Fill="#808285"/>
+      <Rectangle Canvas.Left="5" Canvas.Top="4" Width="2" Height="24" Fill="#8A8C8E"/>
+      <Rectangle Canvas.Left="7" Canvas.Top="4" Width="2" Height="24" Fill="#939598"/>
+      <Rectangle Canvas.Left="9" Canvas.Top="4" Width="2" Height="24" Fill="#9D9FA2"/>
+      <Rectangle Canvas.Left="11" Canvas.Top="4" Width="2" Height="24" Fill="#A7A9AC"/>
+      <Rectangle Canvas.Left="13" Canvas.Top="4" Width="2" Height="24" Fill="#B1B3B6"/>
+      <Rectangle Canvas.Left="15" Canvas.Top="4" Width="2" Height="24" Fill="#BCBEC0"/>
+      <Rectangle Canvas.Left="17" Canvas.Top="4" Width="2" Height="24" Fill="#C7C8CA"/>
+      <Rectangle Canvas.Left="19" Canvas.Top="4" Width="2" Height="24" Fill="#D1D3D4"/>
+      <Rectangle Canvas.Left="21" Canvas.Top="4" Width="2" Height="24" Fill="#DCDDDE"/>
+      <Rectangle Canvas.Left="23" Canvas.Top="4" Width="2" Height="24" Fill="#E2E3E4"/>
+      <Rectangle Canvas.Left="25" Canvas.Top="4" Width="2" Height="24" Fill="#EBEBEC"/>
+      <Rectangle Canvas.Left="27" Canvas.Top="4" Width="2" Height="24" Fill="#F1F2F2"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

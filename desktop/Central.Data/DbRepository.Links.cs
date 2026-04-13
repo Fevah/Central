@@ -14,8 +14,7 @@ public partial class DbRepository
     public async Task<List<P2PLink>> GetP2PLinksAsync(List<string>? sites = null, bool excludeReserved = false)
     {
         var list = new List<P2PLink>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var sql = "SELECT id,region,building,link_id,vlan,device_a,port_a,device_a_ip,device_b,port_b,device_b_ip,subnet,status,desc_a,desc_b FROM p2p_links";
         var conds = new System.Collections.Generic.List<string>();
         if (sites?.Count > 0) conds.Add("building = ANY(@sites)");
@@ -32,8 +31,7 @@ public partial class DbRepository
 
     public async Task UpsertP2PLinkAsync(P2PLink l)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (l.Id > 0)
         {
             const string sql = """
@@ -90,8 +88,7 @@ public partial class DbRepository
 
     public async Task DeleteP2PLinkAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM p2p_links WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("@id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -99,8 +96,7 @@ public partial class DbRepository
 
     public async Task UpsertB2BLinkAsync(B2BLink l)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var sql = l.Id > 0
             ? @"UPDATE b2b_links SET link_id=@lid, vlan=@v, building_a=@ba, device_a=@da, port_a=@pa,
                 module_a=@ma, device_a_ip=@aip, building_b=@bb, device_b=@db, port_b=@pb,
@@ -136,8 +132,7 @@ public partial class DbRepository
 
     public async Task DeleteB2BLinkAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM b2b_links WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("@id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -145,8 +140,7 @@ public partial class DbRepository
 
     public async Task UpsertFWLinkAsync(FWLink l)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var sql = l.Id > 0
             ? @"UPDATE fw_links SET building=@bld, link_id=@lid, vlan=@v, switch=@sw, switch_port=@sp,
                 switch_ip=@sip, firewall=@fw, firewall_port=@fp, firewall_ip=@fip, subnet=@sub, status=@st
@@ -173,8 +167,7 @@ public partial class DbRepository
 
     public async Task DeleteFWLinkAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM fw_links WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("@id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -182,8 +175,7 @@ public partial class DbRepository
 
     public async Task DeleteMlagConfigAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM mlag_config WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("@id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -191,8 +183,7 @@ public partial class DbRepository
 
     public async Task DeleteMstpConfigAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM mstp_config WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("@id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -200,8 +191,7 @@ public partial class DbRepository
 
     public async Task DeleteServerAsAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM server_as WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("@id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -209,8 +199,7 @@ public partial class DbRepository
 
     public async Task DeleteIpRangeAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM ip_ranges WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("@id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -218,8 +207,7 @@ public partial class DbRepository
 
     public async Task DeleteAsnDefinitionAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM asn_definitions WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("@id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -227,8 +215,7 @@ public partial class DbRepository
 
     public async Task DeleteServerAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM servers WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("@id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -236,8 +223,7 @@ public partial class DbRepository
 
     public async Task DeleteMasterDeviceAsync(string id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM switch_guide WHERE id=@id::uuid", conn);
         cmd.Parameters.AddWithValue("@id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -246,8 +232,7 @@ public partial class DbRepository
     public async Task<List<B2BLink>> GetB2BLinksAsync(List<string>? sites = null, bool excludeReserved = false)
     {
         var list = new List<B2BLink>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var sql = "SELECT id,link_id,vlan,building_a,device_a,port_a,module_a,device_a_ip,building_b,device_b,port_b,module_b,device_b_ip,tx,rx,media,speed,subnet,status FROM b2b_links";
         var conds = new System.Collections.Generic.List<string>();
         if (sites?.Count > 0) conds.Add("(building_a = ANY(@sites) OR building_b = ANY(@sites))");
@@ -265,8 +250,7 @@ public partial class DbRepository
     public async Task<List<FWLink>> GetFWLinksAsync(List<string>? sites = null, bool excludeReserved = false)
     {
         var list = new List<FWLink>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var sql = "SELECT id,building,link_id,vlan,switch,switch_port,switch_ip,firewall,firewall_port,firewall_ip,subnet,status FROM fw_links";
         var conds = new System.Collections.Generic.List<string>();
         if (sites?.Count > 0) conds.Add("building = ANY(@sites)");
@@ -284,8 +268,7 @@ public partial class DbRepository
     public async Task<List<ServerAS>> GetServerASAsync(List<string>? sites = null, bool excludeReserved = false)
     {
         var list = new List<ServerAS>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var sql = "SELECT id,building,server_as,status FROM server_as";
         var conds = new System.Collections.Generic.List<string>();
         if (sites?.Count > 0) conds.Add("building = ANY(@sites)");
@@ -304,8 +287,7 @@ public partial class DbRepository
     public async Task<List<AsnDefinition>> GetAsnDefinitionsAsync()
     {
         var list = new List<AsnDefinition>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             SELECT a.id, a.asn, a.description, a.asn_type, a.sort_order,
                    COUNT(sg.id)::int AS device_count,
@@ -333,8 +315,7 @@ public partial class DbRepository
 
     public async Task UpsertAsnDefinitionAsync(AsnDefinition a)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             INSERT INTO asn_definitions (asn, description, asn_type, sort_order)
             VALUES (@asn, @desc, @type, @sort)
@@ -352,8 +333,7 @@ public partial class DbRepository
     public async Task<List<IpRange>> GetIpRangesAsync(bool excludeReserved = false)
     {
         var list = new List<IpRange>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var sql = "SELECT id,region,pool_name,block,purpose,notes,status FROM ip_ranges";
         if (excludeReserved) sql += " WHERE status <> 'RESERVED'";
         sql += " ORDER BY region,pool_name";
@@ -367,8 +347,7 @@ public partial class DbRepository
     public async Task<List<MlagConfig>> GetMlagConfigAsync(List<string>? sites = null, bool excludeReserved = false)
     {
         var list = new List<MlagConfig>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var sql = "SELECT id,building,domain_type,mlag_domain,switch_a,switch_b,b2b_partner,status,peer_link_ae,physical_members,peer_vlan,trunk_vlans,shared_domain_mac,peer_link_subnet,node0_ip,node1_ip,node0_ip_link2,node1_ip_link2,notes FROM mlag_config";
         var conds = new System.Collections.Generic.List<string>();
         if (sites?.Count > 0) conds.Add("building = ANY(@sites)");
@@ -386,8 +365,7 @@ public partial class DbRepository
     public async Task<List<MstpConfig>> GetMstpConfigAsync(List<string>? sites = null, bool excludeReserved = false)
     {
         var list = new List<MstpConfig>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var sql = "SELECT id,building,device_name,device_role,mstp_priority,notes,status FROM mstp_config";
         var conds = new System.Collections.Generic.List<string>();
         if (sites?.Count > 0) conds.Add("building = ANY(@sites)");
@@ -405,8 +383,7 @@ public partial class DbRepository
     public async Task<List<VlanEntry>> GetVlanInventoryAsync(bool excludeReserved = false, List<string>? sites = null, bool includeDefault = true)
     {
         var list = new List<VlanEntry>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var sql = "SELECT id,block,vlan_id,name,network_address,subnet,gateway,usable_range,status,sort_order,block_locked,is_default,site FROM vlan_inventory";
         var clauses = new List<string>();
         if (excludeReserved) clauses.Add("status <> 'RESERVED'");
@@ -446,8 +423,7 @@ public partial class DbRepository
         var octet = VlanEntry.BuildingNumberMap.GetValueOrDefault(siteName, "");
         if (string.IsNullOrEmpty(octet)) return 0;
 
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         // Check if site rows already exist
         await using (var chk = new NpgsqlCommand("SELECT COUNT(*) FROM vlan_inventory WHERE site = @site", conn))
@@ -479,8 +455,7 @@ public partial class DbRepository
 
     public async Task UpsertVlanEntryAsync(VlanEntry v)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             UPDATE vlan_inventory
             SET block = @block, vlan_id = @vid, name = @name, network_address = @net, subnet = @sub,
@@ -508,8 +483,7 @@ public partial class DbRepository
     /// <summary>Sync shared fields (name, is_default) across all sites for the same vlan_id.</summary>
     public async Task SyncVlanAcrossSitesAsync(string vlanId, string name, bool isDefault)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = "UPDATE vlan_inventory SET name = @name, is_default = @def WHERE vlan_id = @vid";
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("@vid", vlanId);
@@ -520,8 +494,7 @@ public partial class DbRepository
 
     public async Task DeleteVlanEntryAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM vlan_inventory WHERE id = @id", conn);
         cmd.Parameters.AddWithValue("@id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -530,8 +503,7 @@ public partial class DbRepository
     public async Task<List<MasterDevice>> GetMasterDevicesAsync(List<string>? sites = null, bool excludeReserved = false)
     {
         var list = new List<MasterDevice>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var sql = """
             SELECT id, device_name, device_type, region, building, status,
                    primary_ip, management_ip, loopback_ip, loopback_subnet, mgmt_l3_ip,
@@ -572,8 +544,7 @@ public partial class DbRepository
     public async Task<List<Server>> GetServersAsync(List<string>? sites = null, bool excludeReserved = false)
     {
         var list = new List<Server>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var sql = "SELECT id,building,server_name,server_as,loopback_ip,nic1_ip,nic1_router,nic1_subnet,nic1_status,nic2_ip,nic2_router,nic2_subnet,nic2_status,nic3_ip,nic3_router,nic3_subnet,nic3_status,nic4_ip,nic4_router,nic4_subnet,nic4_status,status FROM servers";
         var conds = new System.Collections.Generic.List<string>();
         if (sites?.Count > 0) conds.Add("building = ANY(@sites)");
@@ -595,8 +566,7 @@ public partial class DbRepository
 
     public async Task<string?> GetLatestRunningConfigAsync(Guid switchId)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT config_text FROM running_configs WHERE switch_id=@id ORDER BY downloaded_at DESC LIMIT 1", conn);
         cmd.Parameters.AddWithValue("@id", switchId);
@@ -606,8 +576,7 @@ public partial class DbRepository
 
     public async Task SaveRunningConfigAsync(Guid switchId, string configText, string sourceIp, string operatorName = "")
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var lineCount = configText.Split('\n').Length;
         // Get previous config for diff
         string? prevConfig = null;

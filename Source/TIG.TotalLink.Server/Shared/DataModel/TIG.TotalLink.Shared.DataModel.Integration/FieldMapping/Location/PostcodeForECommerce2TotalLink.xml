@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SyncMapping>
+  <EntityMappings>
+    <EntityMapping Name="Postcodes">
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Oid" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Oid" Type="System.Guid" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Name" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Name" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Code" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Code" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Longitude" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Longitude" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Latitude" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Latitude" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Region" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Region" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Area" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Area" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Timezone" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Timezone" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Utc" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Utc" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="External" Type="System.Boolean" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="External" Type="System.Boolean" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="StateId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="State" Type="State" Convert="Entity(Oid, [StateId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+    </EntityMapping>
+  </EntityMappings>
+</SyncMapping>

@@ -1,0 +1,386 @@
+﻿<ResourceDictionary x:Class="TIG.TotalLink.Client.Module.Admin.ResourceDictionary.WidgetResource"
+                    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:control="clr-namespace:TIG.TotalLink.Client.Module.Admin.Control"
+                    xmlns:dxlc="http://schemas.devexpress.com/winfx/2008/xaml/layoutcontrol"
+                    xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+                    xmlns:dxdo="http://schemas.devexpress.com/winfx/2008/xaml/docking"
+                    xmlns:templateSelector="clr-namespace:TIG.TotalLink.Client.Module.Admin.TemplateSelector"
+                    xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+                    xmlns:dxgt="http://schemas.devexpress.com/winfx/2008/xaml/grid/themekeys"
+                    xmlns:dxmvvm="http://schemas.devexpress.com/winfx/2008/xaml/mvvm">
+
+    <templateSelector:WidgetCustomizerTemplateSelector x:Key="WidgetCustomizerTemplateSelector" />
+
+    <dxmvvm:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    
+    <dxlc:Resources x:Key="Resources" />
+
+    <SolidColorBrush x:Key="ToolBackground"
+                     Color="Gray"
+                     Opacity="0.9" />
+    <SolidColorBrush x:Key="ToolBorderBrush"
+                     Color="Black"
+                     Opacity="0.5" />
+    <SolidColorBrush x:Key="ToolTextForeground"
+                     Color="White" />
+    <SolidColorBrush x:Key="ToolTextBackground"
+                     Color="Gray" />
+    <LinearGradientBrush x:Key="ToolItemBackground">
+        <GradientStop Offset="0.3"
+                      Color="White" />
+        <GradientStop Offset="1"
+                      Color="LightGray" />
+    </LinearGradientBrush>
+    <SolidColorBrush x:Key="ToolItemMouseOverBackground"
+                     Color="LightGray" />
+    <SolidColorBrush x:Key="ToolItemPressedBackground"
+                     Color="DarkGray" />
+    <SolidColorBrush x:Key="ToolItemBorderBrush"
+                     Color="DimGray" />
+    <SolidColorBrush x:Key="ToolItemTextForeground"
+                     Color="Black" />
+    <SolidColorBrush x:Key="{dxgt:TableViewThemeKey ResourceKey=ColumnChooserBackgroundBrush, IsThemeIndependent=True}"
+                     Color="Transparent" />
+
+
+    <!-- Style for all widget customization elements -->
+    <Style x:Key="ElementStyle"
+           TargetType="Rectangle">
+        <Setter Property="Fill"
+                Value="White" />
+        <Setter Property="Stroke"
+                Value="Gray" />
+        <Setter Property="RadiusX"
+                Value="1" />
+        <Setter Property="RadiusY"
+                Value="1" />
+    </Style>
+
+
+    <!-- Control template for the LayoutControlAvailableItemsControl -->
+    <Style TargetType="dxlc:LayoutControlAvailableItemsControl">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="dxlc:LayoutControlAvailableItemsControl">
+
+                    <ControlTemplate.Resources>
+
+                        <Style x:Key="ListItemStyle"
+                               TargetType="dxlc:LayoutControlAvailableListBoxItem">
+                            <Setter Property="Background"
+                                    Value="{StaticResource ToolItemBackground}" />
+                            <Setter Property="BorderBrush"
+                                    Value="{StaticResource ToolItemBorderBrush}" />
+                            <Setter Property="BorderThickness"
+                                    Value="1" />
+                            <Setter Property="Foreground"
+                                    Value="{StaticResource ToolItemTextForeground}" />
+                            <Setter Property="HorizontalContentAlignment"
+                                    Value="Left" />
+                            <Setter Property="Padding"
+                                    Value="8,3" />
+                            <Setter Property="VerticalContentAlignment"
+                                    Value="Center" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="dxlc:LayoutControlAvailableListBoxItem">
+                                        <Border x:Name="RootElement"
+                                                Margin="0,0,0,1"
+                                                CornerRadius="2"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                Background="{TemplateBinding Background}"
+                                                BorderBrush="{TemplateBinding BorderBrush}">
+                                            <VisualStateManager.VisualStateGroups>
+                                                <VisualStateGroup x:Name="CommonStates">
+                                                    <VisualState x:Name="Normal" />
+                                                    <VisualState x:Name="MouseOver">
+                                                        <Storyboard>
+                                                            <ObjectAnimationUsingKeyFrames Storyboard.TargetName="RootElement"
+                                                                                           Storyboard.TargetProperty="Background">
+                                                                <DiscreteObjectKeyFrame KeyTime="0"
+                                                                                        Value="{StaticResource ToolItemMouseOverBackground}" />
+                                                            </ObjectAnimationUsingKeyFrames>
+                                                        </Storyboard>
+                                                    </VisualState>
+                                                </VisualStateGroup>
+                                            </VisualStateManager.VisualStateGroups>
+
+                                            <dxlc:DockLayoutControl ItemSpace="0">
+                                                <ContentPresenter Content="{TemplateBinding Content}"
+                                                                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                                  dxlc:DockLayoutControl.Dock="Client"
+                                                                  Margin="{TemplateBinding Padding}"
+                                                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                                <dxlc:LayoutItemCustomizationToolbarButton x:Name="DeleteElement"
+                                                                                           dxlc:DockLayoutControl.Dock="Right"
+                                                                                           Margin="0,0,4,0"
+                                                                                           VerticalAlignment="Center"
+                                                                                           CornerRadius="7"
+                                                                                           Visibility="{TemplateBinding DeleteElementVisibility}">
+                                                    <Grid Width="6"
+                                                          Height="6">
+                                                        <Line X1="0"
+                                                              Y1="0"
+                                                              X2="6"
+                                                              Y2="6"
+                                                              StrokeThickness="1.5"
+                                                              Stroke="Black" />
+                                                        <Line X1="0"
+                                                              Y1="6"
+                                                              X2="6"
+                                                              Y2="0"
+                                                              StrokeThickness="1.5"
+                                                              Stroke="Black" />
+                                                    </Grid>
+                                                </dxlc:LayoutItemCustomizationToolbarButton>
+                                            </dxlc:DockLayoutControl>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+
+                        <Style x:Key="ListStyle"
+                               TargetType="ListBox">
+                            <Setter Property="Background"
+                                    Value="Transparent" />
+                            <Setter Property="ItemContainerStyle"
+                                    Value="{StaticResource ListItemStyle}" />
+                            <Setter Property="ItemsPanel">
+                                <Setter.Value>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel />
+                                    </ItemsPanelTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Setter Property="Padding"
+                                    Value="2" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="ListBox">
+                                        <ScrollViewer x:Name="ScrollViewer"
+                                                      Padding="{TemplateBinding Padding}"
+                                                      Background="{TemplateBinding Background}"
+                                                      BorderThickness="0"
+                                                      BorderBrush="Transparent">
+                                            <ItemsPresenter />
+                                        </ScrollViewer>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+
+                    </ControlTemplate.Resources>
+
+                    <Border CornerRadius="3"
+                            BorderThickness="1"
+                            BorderBrush="{StaticResource ToolBorderBrush}">
+
+                        <dxlc:LayoutControl Orientation="Vertical"
+                                            Padding="0"
+                                            ItemSpace="0">
+                            <StackPanel VerticalAlignment="Top"
+                                        Orientation="Vertical"
+                                        Visibility="{TemplateBinding NewItemsUIVisibility}">
+                                <Border CornerRadius="2,2,0,0"
+                                        Background="{StaticResource ToolTextBackground}">
+                                    <TextBlock Text="{Binding Strings.LayoutControl_Customization_NewItems, Source={StaticResource Resources}}"
+                                               Margin="5,1"
+                                               Foreground="{StaticResource ToolTextForeground}" />
+                                </Border>
+                                <ListBox x:Name="NewItemsListElement"
+                                         Style="{StaticResource ListStyle}" />
+                            </StackPanel>
+
+                            <Border VerticalAlignment="Top"
+                                    CornerRadius="2,2,0,0"
+                                    Background="{StaticResource ToolTextBackground}">
+                                <TextBlock Text="{Binding Strings.LayoutControl_Customization_AvailableItems, Source={StaticResource Resources}}"
+                                           Margin="5,1"
+                                           Foreground="{StaticResource ToolTextForeground}" />
+                            </Border>
+                            <ListBox x:Name="AvailableItemsListElement"
+                                     MinHeight="60"
+                                     Style="{StaticResource ListStyle}" />
+                        </dxlc:LayoutControl>
+
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
+    <!--Template for the TabItemHeader-->
+    <DataTemplate x:Key="TabItemHeader">
+        <TextBlock Text="{Binding Name}" />
+    </DataTemplate>
+
+
+    <!-- Control template for the WidgetCustomizationControl -->
+    <Style TargetType="control:WidgetCustomizationControl">
+        <Setter Property="IsCustomization"
+                Value="{Binding PanelViewModel.IsCustomization}" />
+        <Setter Property="IsWidgetHighlighted"
+                Value="{Binding IsHighlighted}" />
+
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="control:WidgetCustomizationControl">
+                    <ControlTemplate.Resources>
+                        <Storyboard x:Key="WidgetHighlight"
+                                    AutoReverse="True"
+                                    RepeatBehavior="Forever">
+                            <ColorAnimationUsingKeyFrames Storyboard.TargetName="WidgetHighlightBorderElement"
+                                                          Storyboard.TargetProperty="BorderBrush.(SolidColorBrush.Color)">
+                                <EasingColorKeyFrame KeyTime="0"
+                                                     Value="White" />
+                                <EasingColorKeyFrame KeyTime="0:0:0.5"
+                                                     Value="Black" />
+                            </ColorAnimationUsingKeyFrames>
+                        </Storyboard>
+                    </ControlTemplate.Resources>
+
+                    <dxlc:DockLayoutControl>
+
+                        <Grid x:Name="ContentGrid"
+                              dxlc:DockLayoutControl.Dock="Client">
+                            <ContentPresenter Content="{TemplateBinding Content}" />
+                            <Border x:Name="WidgetHighlightBorderElement"
+                                    BorderBrush="White"
+                                    BorderThickness="5"
+                                    Visibility="Collapsed" />
+                            <Border x:Name="WidgetCustomizeBorderElement"
+                                    BorderBrush="Red"
+                                    BorderThickness="1"
+                                    Visibility="{TemplateBinding IsCustomization, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        </Grid>
+
+                        <Grid x:Name="CustomizerGrid"
+                              dxlc:DockLayoutControl.Dock="Right"
+                              dxlc:DockLayoutControl.AllowHorizontalSizing="True"
+                              Width="0"
+                              Visibility="Collapsed"
+                              Background="{StaticResource ToolBackground}">
+
+                            <dx:DXTabControl x:Name="CustomizerTabControl"
+                                             Margin="2"
+                                             TabContentCacheMode="CacheAllTabs"
+                                             ItemsSource="{Binding WidgetCustomizers, RelativeSource={RelativeSource TemplatedParent}}"
+                                             ItemHeaderTemplate="{StaticResource TabItemHeader}"
+                                             ItemTemplateSelector="{StaticResource WidgetCustomizerTemplateSelector}" />
+
+                        </Grid>
+                    </dxlc:DockLayoutControl>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsWidgetHighlighted"
+                                 Value="True">
+                            <Trigger.EnterActions>
+                                <BeginStoryboard x:Name="WidgetHighlight_BeginStoryboard"
+                                                 Storyboard="{StaticResource WidgetHighlight}" />
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <StopStoryboard BeginStoryboardName="WidgetHighlight_BeginStoryboard" />
+                            </Trigger.ExitActions>
+                            <Setter TargetName="WidgetHighlightBorderElement"
+                                    Property="Visibility">
+                                <Setter.Value>
+                                    <Visibility>Visible</Visibility>
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+
+                        <Trigger Property="IsWidgetHighlighted"
+                                 Value="False">
+                            <Setter TargetName="WidgetHighlightBorderElement"
+                                    Property="Visibility">
+                                <Setter.Value>
+                                    <Visibility>Collapsed</Visibility>
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
+    <!-- Control template for StandaloneColumnChooserControl -->
+    <Style TargetType="{x:Type control:StandaloneColumnChooserControl}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type control:StandaloneColumnChooserControl}">
+                    <Border HorizontalAlignment="Stretch"
+                            CornerRadius="3"
+                            BorderThickness="1"
+                            BorderBrush="{StaticResource ToolBorderBrush}">
+                        <dxlc:LayoutControl Orientation="Vertical"
+                                            Padding="0"
+                                            ItemSpace="0">
+                            <StackPanel VerticalAlignment="Top"
+                                        Orientation="Vertical">
+                                <Border CornerRadius="2,2,0,0"
+                                        Background="{StaticResource ToolTextBackground}">
+                                    <TextBlock Text="{Binding Strings.LayoutControl_Customization_AvailableItems, Source={StaticResource Resources}}"
+                                               Margin="5,1"
+                                               Foreground="{StaticResource ToolTextForeground}" />
+                                </Border>
+
+                                <dx:NonLogicalDecorator>
+                                    <dxg:ColumnChooserControl x:Name="PART_ColumnChooserControl"
+                                                              Owner="{TemplateBinding View}"
+                                                              Columns="{Binding Path=Owner.ColumnChooserColumns, RelativeSource={RelativeSource Self}}" />
+                                </dx:NonLogicalDecorator>
+
+                            </StackPanel>
+                        </dxlc:LayoutControl>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
+    <!-- Style for ColumnChooserControl -->
+    <Style TargetType="dxg:ColumnChooserControl">
+        <Style.Resources>
+            <Style TargetType="TextBlock">
+                <Setter Property="Foreground"
+                        Value="{StaticResource ToolItemTextForeground}" />
+                <Setter Property="Margin"
+                        Value="6,0,6,-2" />
+            </Style>
+
+            <ControlTemplate x:Key="{dxgt:GridColumnHeaderThemeKey ResourceKey=ControlTemplate, IsThemeIndependent=True}"
+                             TargetType="{x:Type dxg:GridColumnHeaderBase}">
+                <dxg:ColumnHeaderDockPanel x:Name="PART_LayoutPanel"
+                                           ContentMargin="{StaticResource {dxgt:GridColumnHeaderThemeKey ResourceKey=ContentMargin}}">
+                    <Border x:Name="PART_Border"
+                            BorderBrush="{StaticResource ToolItemBorderBrush}"
+                            Background="{StaticResource ToolItemBackground}"
+                            CornerRadius="2"
+                            BorderThickness="1" />
+                </dxg:ColumnHeaderDockPanel>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver"
+                             Value="True">
+                        <Setter Property="Background"
+                                TargetName="PART_Border"
+                                Value="{StaticResource ToolItemMouseOverBackground}" />
+                    </Trigger>
+                    <Trigger Property="IsPressed"
+                             Value="True">
+                        <Setter Property="Background"
+                                TargetName="PART_Border"
+                                Value="{StaticResource ToolItemPressedBackground}" />
+                    </Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate>
+        </Style.Resources>
+    </Style>
+
+</ResourceDictionary>

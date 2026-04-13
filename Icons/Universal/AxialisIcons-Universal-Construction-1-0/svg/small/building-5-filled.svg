@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <rect x="2.5" y="5.5" width="11" height="8" fill="#FFFFFF" opacity="0.5"/>
+    <path d="M15.0208,16H1v-3h13.9958L15.0208,16z" fill="#6485C3"/>
+    <path d="M8,0.0224L0,4.6504V6h16V4.6504L8,0.0224zM8,4.6c-0.6627,0,-1.2,-0.5373,-1.2,-1.2c0,-0.6627,0.5373,-1.2,1.2,-1.2s1.2,0.5373,1.2,1.2C9.2,4.0627,8.6627,4.6,8,4.6z" fill="#6485C3"/>
+    <path d="M3,13.5H2V5.5h1V13.5zM5,5.5H4v8h1V5.5zM7,5.5H6v8h1V5.5zM10,5.5H9v8h1V5.5zM12,5.5h-1v8h1V5.5zM14,5.5h-1v8h1V5.5z" fill="#6485C3"/>
+    <rect y="14.5" width="16" height="1.5" fill="#6485C3"/>
+    <circle cx="8" cy="3.4" r="1.2" fill="#FFFFFF" opacity="0.5"/>
+  </g>
+</svg>

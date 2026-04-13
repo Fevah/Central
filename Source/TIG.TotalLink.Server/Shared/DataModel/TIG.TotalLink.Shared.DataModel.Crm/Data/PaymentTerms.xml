@@ -1,0 +1,41 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<PaymentTerms>
+  <PaymentTerms Code="15 INV" Name="15 Invoice" />
+  <PaymentTerms Code="1M(8D)" Name="1 Month/2% 8 Days" />
+  <PaymentTerms Code="30 EOM" Name="30 Days End of Month" />
+  <PaymentTerms Code="14 EOM" Name="14 Days End of Month" />
+  <PaymentTerms Code="36 EOM" Name="36 Days End of Month" />
+  <PaymentTerms Code="7 EOM" Name="7 Days End of Month" />
+  <PaymentTerms Code="30D" Name="30 Days" />
+  <PaymentTerms Code="60 EOM" Name="60 Days End of Month" />
+  <PaymentTerms Code="BOL" Name="Bill of Lading Date" />
+  <PaymentTerms Code="BOL(15)" Name="15 Days after Bill of Lading Date" />
+  <PaymentTerms Code="CM" Name="Current Month" />
+  <PaymentTerms Code="CM(1D)" Name="Pay on the First of The Month" />
+  <PaymentTerms Code="COD" Name="Cash on delivery" />
+  <PaymentTerms Code="DEPOSIT" Name="Prepaid 30% Deposit &amp; Balance on Receipt" />
+  <PaymentTerms Code="ILOC" Name="Irrevocable Letter of Credit on Receipt" />
+  <PaymentTerms Code="IMMEDIATE" Name="Immediate Payment Terms" />
+  <PaymentTerms Code="NET 13" Name="Net 13 days after invoice date" />
+  <PaymentTerms Code="NET 14" Name="Net 14 days after invoice date" />
+  <PaymentTerms Code="NET 20" Name="Net 20 days after invoice date" />
+  <PaymentTerms Code="NET 21" Name="Net 21 days after invoice date" />
+  <PaymentTerms Code="NET 27" Name="Net 27 days after invoice date" />
+  <PaymentTerms Code="NET 30" Name="Net 30 days after invoice date" />
+  <PaymentTerms Code="NET 45" Name="Net 45 days after invoice date" />
+  <PaymentTerms Code="NET 60" Name="Net 60 days after invoice date" />
+  <PaymentTerms Code="NET 7" Name="Net 7 days after invoice date" />
+  <PaymentTerms Code="NET 90" Name="Net 90 days after invoice date" />
+  <PaymentTerms Code="NET14(10%)" Name="15 days with 10% discount" />
+  <PaymentTerms Code="NET14(2.5%)" Name="15 days with 2.5% discount" />
+  <PaymentTerms Code="NET14(5%)" Name="15 days with 5% discount" />
+  <PaymentTerms Code="NET28(5%)" Name="28 days with 5% discount" />
+  <PaymentTerms Code="NET28(2.5%)" Name="28 days with 2.5% discount" />
+  <PaymentTerms Code="NET30(10%)" Name="30 days with 10% discount" />
+  <PaymentTerms Code="NET30(2.5%)" Name="30 days with 2.5% discount" />
+  <PaymentTerms Code="NET30(5%)" Name="30 days with 5% discount" />
+  <PaymentTerms Code="PIA" Name="(Payment in Advance) Prepaid before delivery" />
+  <PaymentTerms Code="PIA(10%)" Name="(Payment in Advance) Prepaid with 10% discount before delivery" />
+  <PaymentTerms Code="PIA(2.5%)" Name="(Payment in Advance) Prepaid with 2.5% discount before delivery" />
+  <PaymentTerms Code="PIA(5%)" Name="(Payment in Advance) Prepaid with 5% discount before delivery" />
+</PaymentTerms>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 26.3.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 16 16" style="enable-background:new 0 0 16 16;" xml:space="preserve">
+<style type="text/css">
+	.st0{opacity:0.5;fill:#FFFFFF;enable-background:new    ;}
+	.st1{fill:#6E6F72;}
+	.st2{fill:#6486C4;}
+	.st3{fill:#CC525E;}
+</style>
+<g id="icon">
+	<rect x="1.5" y="0.5" class="st0" width="13" height="15"/>
+	<path class="st1" d="M1,0v16h14V0H1z M14,15H2V1h12V15z"/>
+	<path class="st1" d="M3,10v4h4v-4H3z M6,13H4v-2h2V13z"/>
+	<rect x="8" y="12" class="st2" width="5" height="1"/>
+	<path class="st3" d="M7.5,2.8L7.5,2.8c0,0,0-0.1,0-0.1L7.4,2.4l-0.7,0L6.5,2.7c0,0,0,0.1,0,0.1L4.2,8.3l0.9,0.4L5.8,7h2.3l0.7,1.7
+		l0.9-0.4L7.5,2.8z M6.2,6L7,4.2L7.7,6H6.2z"/>
+	<polygon class="st3" points="12,5.3 11,5.3 11,4 9.7,4 9.7,3 11,3 11,1.7 12,1.7 12,3 13.3,3 13.3,4 12,4 	"/>
+</g>
+</svg>

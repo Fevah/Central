@@ -28,7 +28,7 @@ public class AuthenticationService : IAuthenticationService
         _logger = new AuthEventLogger(_repo);
 
         // Register all providers — auth-service (Rust) is primary, local DB is fallback
-        var authServiceUrl = Environment.GetEnvironmentVariable("AUTH_SERVICE_URL") ?? "http://localhost:8081";
+        var authServiceUrl = Environment.GetEnvironmentVariable("AUTH_SERVICE_URL") ?? "http://192.168.56.10:30081";
         RegisterProvider(new Providers.RustAuthServiceProvider(authServiceUrl));
         RegisterProvider(new Providers.WindowsAuthProvider(dsn));
         RegisterProvider(new Providers.LocalPasswordAuthProvider(dsn));
@@ -96,6 +96,37 @@ public class AuthenticationService : IAuthenticationService
             errorMessage: result.ErrorMessage);
 
         return result;
+    }
+
+    /// <summary>Verify MFA code after login returned RequiresMfa=true.</summary>
+    public async Task<AuthenticationResult> VerifyMfaAsync(string sessionId, string code, string method = "totp")
+    {
+        if (!_providers.TryGetValue("auth-service", out var rustAuth))
+            return AuthenticationResult.Fail("Auth service not available");
+
+        try
+        {
+            var provider = (Providers.RustAuthServiceProvider)rustAuth;
+            var client = new Api.Client.AuthServiceClient(
+                Environment.GetEnvironmentVariable("AUTH_SERVICE_URL") ?? "http://192.168.56.10:30081");
+            var result = await client.VerifyMfaAsync(sessionId, code, method);
+
+            if (!result.Success)
+                return AuthenticationResult.Fail(result.Error ?? "MFA verification failed");
+
+            return new AuthenticationResult
+            {
+                Success = true,
+                AccessToken = result.AccessToken,
+                RefreshToken = result.RefreshToken,
+                TokenExpiry = DateTime.UtcNow.AddSeconds(result.ExpiresIn),
+                ProviderType = "auth-service"
+            };
+        }
+        catch (Exception ex)
+        {
+            return AuthenticationResult.Fail($"MFA error: {ex.Message}");
+        }
     }
 
     public async Task<AuthenticationResult> AuthenticateLocalAsync(string username, string password)
@@ -169,6 +200,9 @@ public class AuthenticationService : IAuthenticationService
         };
 
         AuthContext.Instance.SetSession(authUser, permCodes, allowedSites, authState);
+
+        // Set tenant context for all subsequent DB queries (Phase 1.6)
+        Central.Data.DbRepository.SetTenantId("00000000-0000-0000-0000-000000000001");
 
         await _logger.LogAsync("session", authUser.Username, true, result.ProviderType, authUser.Id);
 

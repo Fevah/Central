@@ -10,8 +10,7 @@ public partial class DbRepository
     public async Task<List<SyncConfig>> GetSyncConfigsAsync()
     {
         var list = new List<SyncConfig>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, name, agent_type, is_enabled, direction, schedule_cron, interval_minutes, max_concurrent, config_json::text, last_sync_at, last_sync_status, last_error FROM sync_configs ORDER BY name", conn);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -32,8 +31,7 @@ public partial class DbRepository
 
     public async Task UpsertSyncConfigAsync(SyncConfig sc)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (sc.Id == 0)
         {
             await using var cmd = new NpgsqlCommand(
@@ -62,8 +60,7 @@ public partial class DbRepository
 
     public async Task UpdateSyncStatusAsync(int configId, string status, string? error = null)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "UPDATE sync_configs SET last_sync_at=NOW(), last_sync_status=@s, last_error=@e, updated_at=NOW() WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("id", configId); cmd.Parameters.AddWithValue("s", status);
@@ -76,8 +73,7 @@ public partial class DbRepository
     public async Task<List<SyncEntityMap>> GetSyncEntityMapsAsync(int configId)
     {
         var list = new List<SyncEntityMap>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, sync_config_id, source_entity, target_table, mapping_type, is_enabled, sync_direction, filter_expr, upsert_key, sort_order FROM sync_entity_maps WHERE sync_config_id=@cid ORDER BY sort_order", conn);
         cmd.Parameters.AddWithValue("cid", configId);
@@ -95,8 +91,7 @@ public partial class DbRepository
 
     public async Task UpsertSyncEntityMapAsync(SyncEntityMap em)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (em.Id == 0)
         {
             await using var cmd = new NpgsqlCommand(
@@ -128,8 +123,7 @@ public partial class DbRepository
     public async Task<List<SyncFieldMap>> GetSyncFieldMapsAsync(int entityMapId)
     {
         var list = new List<SyncFieldMap>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, entity_map_id, source_field, target_column, converter_type, converter_expr, is_key, is_required, default_value, sort_order FROM sync_field_maps WHERE entity_map_id=@eid ORDER BY sort_order", conn);
         cmd.Parameters.AddWithValue("eid", entityMapId);
@@ -148,8 +142,7 @@ public partial class DbRepository
 
     public async Task UpsertSyncFieldMapAsync(SyncFieldMap fm)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (fm.Id == 0)
         {
             await using var cmd = new NpgsqlCommand(
@@ -181,8 +174,7 @@ public partial class DbRepository
     public async Task<List<SyncLogEntry>> GetSyncLogAsync(int configId, int limit = 50)
     {
         var list = new List<SyncLogEntry>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             $"SELECT id, sync_config_id, started_at, completed_at, status, entity_name, records_read, records_created, records_updated, records_failed, error_message, duration_ms FROM sync_log WHERE sync_config_id=@cid ORDER BY started_at DESC LIMIT {limit}", conn);
         cmd.Parameters.AddWithValue("cid", configId);
@@ -203,8 +195,7 @@ public partial class DbRepository
 
     public async Task InsertSyncLogAsync(int configId, string status, string? entityName, int read, int created, int updated, int failed, string? error)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             @"INSERT INTO sync_log (sync_config_id, status, entity_name, records_read, records_created, records_updated, records_failed, error_message, completed_at, duration_ms)
               VALUES (@cid, @s, @en, @r, @c, @u, @f, @e, NOW(), 0)", conn);
@@ -224,8 +215,7 @@ public partial class DbRepository
         var validTables = await GetTableListForSyncAsync();
         if (!validTables.Contains(tableName)) throw new ArgumentException($"Invalid sync target table: {tableName}");
 
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         var columns = fields.Keys.ToList();
         var paramNames = columns.Select((c, i) => $"@p{i}").ToList();
@@ -254,8 +244,7 @@ public partial class DbRepository
     private async Task<HashSet<string>> GetTableListForSyncAsync()
     {
         var tables = new HashSet<string>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT tablename FROM pg_tables WHERE schemaname='public'", conn);
         await using var r = await cmd.ExecuteReaderAsync();
         while (await r.ReadAsync()) tables.Add(r.GetString(0));

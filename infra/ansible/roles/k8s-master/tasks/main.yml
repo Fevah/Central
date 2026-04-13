@@ -1,0 +1,63 @@
+---
+# Initialize K8s control plane
+
+- name: Check if cluster already initialized
+  stat:
+    path: /etc/kubernetes/admin.conf
+  register: kubeadm_init
+
+- name: Initialize control plane
+  shell: |
+    kubeadm init \
+      --apiserver-advertise-address={{ k8s_master_ip }} \
+      --pod-network-cidr={{ k8s_pod_cidr }} \
+      --service-cidr={{ k8s_service_cidr }} \
+      --node-name={{ inventory_hostname }}
+  when: not kubeadm_init.stat.exists
+
+- name: Create .kube directory for vagrant user
+  file:
+    path: /home/vagrant/.kube
+    state: directory
+    owner: vagrant
+    group: vagrant
+
+- name: Copy admin.conf to vagrant user
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/vagrant/.kube/config
+    remote_src: true
+    owner: vagrant
+    group: vagrant
+    mode: '0644'
+
+- name: Install Calico CNI
+  become_user: vagrant
+  shell: kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.0/manifests/calico.yaml
+  changed_when: true
+
+- name: Wait for master to be Ready
+  become_user: vagrant
+  shell: kubectl wait --for=condition=Ready node/{{ inventory_hostname }} --timeout=120s
+
+- name: Generate join command
+  shell: kubeadm token create --print-join-command
+  register: join_command
+
+- name: Store join command
+  set_fact:
+    k8s_join_command: "{{ join_command.stdout }}"
+
+- name: Save join command to file
+  copy:
+    content: "{{ join_command.stdout }}"
+    dest: /tmp/k8s_join_command.sh
+    mode: '0755'
+
+- name: Create central namespace
+  become_user: vagrant
+  shell: kubectl create namespace {{ central_namespace }} --dry-run=client -o yaml | kubectl apply -f -
+
+- name: Label master node
+  become_user: vagrant
+  shell: kubectl label node {{ inventory_hostname }} node-role.kubernetes.io/control-plane="" --overwrite

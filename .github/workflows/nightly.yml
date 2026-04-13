@@ -1,0 +1,56 @@
+name: Nightly Full Build
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 2am UTC daily
+  workflow_dispatch:       # Manual trigger
+
+env:
+  DOTNET_VERSION: '10.0.x'
+
+jobs:
+  full-build:
+    name: Full Platform Build + Test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore desktop/Central.sln
+
+      - name: Build Release
+        run: dotnet build desktop/Central.sln -c Release -p:Platform=x64 --no-restore
+
+      - name: Run 1900+ Tests
+        run: dotnet test desktop/Central.Tests/ -c Release -p:Platform=x64 --no-build --logger "trx;LogFileName=results.trx"
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-test-results
+          path: desktop/Central.Tests/TestResults/results.trx
+
+  angular:
+    name: Angular Full Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: cd web-client && npm ci && npx ng build --configuration production
+
+  terraform:
+    name: Terraform Plan (dry-run)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - run: |
+          for mod in infra/modules/*/; do
+            cd "$mod" && terraform init -backend=false && terraform validate && cd "$GITHUB_WORKSPACE"
+          done

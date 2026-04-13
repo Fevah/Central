@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SyncMapping>
+  <EntityMappings>
+    <EntityMapping Name="Enquiries">
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Oid" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Oid" Type="System.Guid" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Reference" Type="System.Int64" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Reference" Type="System.Int64" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="EnquiryTypeId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="EnquiryType" Type="EnquiryType" Convert="Entity(Oid, [EnquiryTypeId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="NumberOfEmployeesId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="NumberOfEmployees" Type="EmployeeRange" Convert="Entity(Oid, [NumberOfEmployeesId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="CompanyName" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="CompanyName" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Name" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Name" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="CountryId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Country" Type="Country" Convert="Entity(Oid, [CountryId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="StateId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="State" Type="State"  Convert="Entity(Oid, [StateId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="AllowPhoneContact" Type="System.Boolean" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="AllowPhoneContact" Type="System.Boolean" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="AllowEmailContact" Type="System.Boolean" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="AllowEmailContact" Type="System.Boolean" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="EmailAddress" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="EmailAddress" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="PhoneNumber" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="PhoneNumber" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Details" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Details" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="BrandingRequired" Type="System.Boolean" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="BrandingRequired" Type="System.Boolean" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="BrandingLogoCount" Type="System.Int32" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="BrandingLogoCount" Type="System.Int32" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="BrandingType" Type="System.String" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="BrandingType" Type="System.String" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="FindMethodId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="FindMethod" Type="FindMethod" Convert="Entity(Oid, [FindMethodId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="AllowMarketing" Type="System.Boolean" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="AllowMarketing" Type="System.Boolean" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="StatusId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Status" Type="EnquiryStatus" Convert="Entity(Oid, [StatusId], System.Guid)"  />
+        </TargetFields>
+      </FieldMapping>
+    </EntityMapping>
+  </EntityMappings>
+</SyncMapping>

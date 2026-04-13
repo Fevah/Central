@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="24" Height="24" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M6.7,11.325V6.484c0,-0.3744,0.0765,-0.7448,0.2247,-1.0886L8.8358,0.8h7.0288l2.1113,4.6195c0.1487,0.3466,0.2241,0.7137,0.2241,1.091v4.8145c0,2.1953,-1.7797,3.975,-3.975,3.975h-3.55C8.4797,15.3,6.7,13.5203,6.7,11.325z" Fill="#FFFFFF" Opacity="0.5"/>
+      <Path Data="M10.725,16C8.1155,16,6,13.8845,6,11.275V6.4381c0,-0.4824,0.0968,-0.9513,0.2877,-1.3938L8.3931,0h8.015l2.3066,5.0728C18.904,5.5139,19,5.981,19,6.461v4.8139c0,2.6096,-2.1155,4.725,-4.725,4.725H10.725zM8,6.4343v4.8406C8,12.78,9.22,14,10.725,14h3.5499c1.505,0,2.725,-1.22,2.725,-2.725V6.4596c0,-0.2059,-0.0411,-0.4062,-0.1223,-0.5955L15.0918,2h-5.385L8.1224,5.8409C8.0417,6.0283,8,6.2302,8,6.4343z" Fill="#7D7C7B"/>
+      <Path Data="M0.8,14.2V9.2775C0.8,7.854,1.454,6.7,2.8775,6.7H4.3v7.5H0.8z" Fill="#FFFFFF" Opacity="0.5"/>
+      <Path Data="M0,15V9.3125C0,7.483,0.983,6,2.8125,6H5v9H0zM3,13V8h-0.1875C2.0876,8,2,8.5876,2,9.3125V13H3z" Fill="#7D7C7B"/>
+      <Path Data="M4.5,23.2c-1.1717,0,-2.125,-0.9533,-2.125,-2.125S3.3283,18.95,4.5,18.95s2.125,0.9533,2.125,2.125S5.6717,23.2,4.5,23.2z" Fill="#FFFFFF" Opacity="0.5"/>
+      <Path Data="M4.5,23.95c-1.5853,0,-2.875,-1.2897,-2.875,-2.875S2.9147,18.2,4.5,18.2s2.875,1.2897,2.875,2.875S6.0853,23.95,4.5,23.95zM4.5,20.2c-0.4825,0,-0.875,0.3925,-0.875,0.875s0.3925,0.875,0.875,0.875s0.875,-0.3925,0.875,-0.875S4.9825,20.2,4.5,20.2z" Fill="#7D7C7B"/>
+      <Rectangle Canvas.Left="3" Canvas.Top="14.7" Width="2" Height="4.8" Fill="#7D7C7B"/>
+      <Rectangle Canvas.Left="17.7" Canvas.Top="7" Width="5.8" Height="2" Fill="#7D7C7B"/>
+      <Rectangle Canvas.Left="6.8" Canvas.Top="6" Width="11.4" Height="1" Fill="#7D7C7B"/>
+      <Rectangle Canvas.Left="23" Canvas.Top="5" Width="1" Height="6.5" Fill="#7D7C7B"/>
+      <Rectangle Canvas.Left="3.7" Canvas.Top="7" Width="3.5" Height="2" Fill="#7D7C7B"/>
+      <Rectangle Canvas.Left="4.2" Canvas.Top="17" Width="17.1" Height="2" Fill="#7D7C7B"/>
+      <Rectangle Canvas.Left="20" Canvas.Top="8" Width="2" Height="15.2" Fill="#7D7C7B"/>
+      <Rectangle Canvas.Left="18.5" Canvas.Top="22" Width="5" Height="2" Fill="#7D7C7B"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

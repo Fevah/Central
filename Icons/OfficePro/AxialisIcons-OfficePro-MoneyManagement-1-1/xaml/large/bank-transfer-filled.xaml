@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M9.272,9.242l-2.781,2.749L3.709,9.242M6.491,11.84l0,-6.366c0,-1.095,0.888,-1.983,1.983,-1.983h4.517" Stroke="#EE3D3B" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M29.5,16.6H16.6v-2.028h12.9V16.6zM23.05,1.7L15.8,5.711v0.85h2v7.96h10.55v-7.96H30.3v-0.85L23.05,1.7z" Fill="#FFFFFF"/>
+      <Path Data="M29.5,16.6H16.6v-2.028h12.9V16.6zM23.05,1.7L15.8,5.711v0.85h2v7.96h10.55v-7.96H30.3v-0.85L23.05,1.7z" Fill="#C8C6C4" Opacity="0.4"/>
+      <Rectangle Canvas.Left="21.5" Canvas.Top="9.5" Width="3" Height="5" Fill="#F7DA8E" Stroke="#E57428" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+      <Polygon Points="29.5,14.5 16.5,14.5 16.5,16.5 29.517,16.5" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1" StrokeLineJoin="Miter"/>
+      <Path Data="M23,1.6l7.5,4.339V6.5H15.5v-0.561L23,1.6z" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M19.5,14.5V6.5h-2v8H19.5zM28.5,14.5V6.5h-2v8H28.5z" Fill="#C8C6C4" Stroke="#383838" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+      <Line X1="15" Y1="16.5" X2="31" Y2="16.5" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Ellipse Canvas.Left="22" Canvas.Top="3.4" Width="2" Height="2" Fill="#78797A"/>
+      <Path Data="M15.5,30.6H2.6v-2.028h12.9V30.6zM9.05,15.7L1.8,19.711v0.85h2v7.96h10.55v-7.96H16.3v-0.85L9.05,15.7z" Fill="#FFFFFF"/>
+      <Path Data="M15.5,30.6H2.6v-2.028h12.9V30.6zM9.05,15.7L1.8,19.711v0.85h2v7.96h10.55v-7.96H16.3v-0.85L9.05,15.7z" Fill="#C8C6C4" Opacity="0.4"/>
+      <Rectangle Canvas.Left="7.5" Canvas.Top="23.5" Width="3" Height="5" Fill="#F7DA8E" Stroke="#E57428" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+      <Polygon Points="15.5,28.5 2.5,28.5 2.5,30.5 15.517,30.5" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1" StrokeLineJoin="Miter"/>
+      <Path Data="M9,15.6l7.5,4.339V20.5H1.5v-0.561L9,15.6z" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Path Data="M5.5,28.5v-8H3.5v8H5.5zM14.5,28.5v-8h-2v8H14.5z" Fill="#C8C6C4" Stroke="#383838" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+      <Line X1="1" Y1="30.5" X2="17" Y2="30.5" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Ellipse Canvas.Left="8" Canvas.Top="17.4" Width="2" Height="2" Fill="#78797A"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

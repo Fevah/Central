@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <path d="M22,24.5H10c-4.694,0,-8.5,-3.806,-8.5,-8.5v0c0,-4.694,3.806,-8.5,8.5,-8.5h12c4.694,0,8.5,3.806,8.5,8.5v0C30.5,20.694,26.694,24.5,22,24.5z" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="5"/>
+    <path d="M8.5,18.34c0,1.164,0.477,3.26,3.215,3.26c2.738,0,3.215,-2.096,3.215,-3.26c0,-1.164,-0.477,-3.26,-3.215,-3.26C8.977,15.08,8.5,17.176,8.5,18.34zM8.522,18.316v-2.512c0,-2.431,-0.144,-5.838,5.51,-5.359l0.467,0.11" fill="none" stroke="#228BCB" stroke-width="1" stroke-miterlimit="5"/>
+    <polyline points="25,18.5 17.1,18.5 17.1,18.346 22.346,10.5 22.5,10.5 22.5,22" fill="none" stroke="#228BCB" stroke-width="1" stroke-miterlimit="5" stroke-linejoin="miter"/>
+  </g>
+</svg>

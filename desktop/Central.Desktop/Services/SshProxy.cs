@@ -136,7 +136,7 @@ public static class SshProxy
 
     private static Central.Api.Client.CentralApiClient CreateApiClient()
     {
-        var apiUrl = App.Settings?.Get<string>("api.url") ?? "http://localhost:5000";
+        var apiUrl = App.Settings?.Get<string>("api.url") ?? "http://192.168.56.203:8000";
         var client = new Central.Api.Client.CentralApiClient(apiUrl);
         // Auto-login
         var username = Central.Core.Auth.AuthContext.Instance.CurrentUser?.Username ?? Environment.UserName;

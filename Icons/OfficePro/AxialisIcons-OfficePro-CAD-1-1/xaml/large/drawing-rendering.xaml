@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Polygon Points="18.385,13.151 18.282,1.596 17.282,1.604 17.386,13.254 16.51,13.8 16.956,13.8 17.282,14.497 17.965,14.072 28.83,17.141 29.102,16.179" Fill="#92CBEE" StrokeLineJoin="Miter"/>
+      <Polygon Points="17.74,1.084 7.053,4.949 8.196,13.8 9.205,13.8 8.147,5.616 17.825,2.116 29.851,4.331 28.488,16.438 23.2,22.029 23.2,23.484 29.444,16.882 30.949,3.517" Fill="#228BCB" StrokeLineJoin="Miter"/>
+      <Polygon Points="21.366,15.8 22.366,15.8 22.528,9.494 30.667,4.347 30.133,3.501 21.944,8.681 7.732,4.8 7.468,5.765 21.525,9.603" Fill="#228BCB" StrokeLineJoin="Miter"/>
+      <Polygon Points="16.813,17.5 15.875,15.5 7.875,15.5 6.938,17.5 1.5,17.5 1.5,30.5 21.5,30.5 21.5,17.5" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1" StrokeLineJoin="Miter"/>
+      <Ellipse Canvas.Left="6.7" Canvas.Top="18.75" Width="9.75" Height="9.75" Fill="#FFFFFF" Stroke="#787979" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Line X1="17.075" Y1="20.5" X2="19.575" Y2="20.5" Stroke="#787979" StrokeThickness="1" StrokeMiterLimit="1"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

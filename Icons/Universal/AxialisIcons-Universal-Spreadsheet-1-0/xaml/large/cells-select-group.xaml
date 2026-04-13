@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="24" Height="24" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Left="1.5" Canvas.Top="2" Width="21" Height="20.5" Fill="#FFFFFF" Opacity="0.5"/>
+      <Path Data="M0,1v1v1v21h24V3V2V1H0zM22,22H2V3h20V22z" Fill="#7B7B7B"/>
+      <Path Data="M22,8V7h-3V3h-1v4h-5V3h-1v4H7V3H6v4H2v1h4v4H2v1h4v4H2v1h4v4h1v-4h5v4h1v-4h5v4h1v-4h3v-1h-3v-4h3v-1h-3V8H22zM12,17H7v-4h5V17zM7,12V8h5v4H7zM18,17h-5v-4h5V17zM18,12h-5V8h5V12z" Fill="#B7B7B7"/>
+      <Path Data="M13,7h-1H6v5v1v5h6h1h6v-5v-1V7H13zM7,8h5v4H7V8zM12,17H7v-4h5V17zM18,17h-5v-4h5V17zM13,12V8h5v4H13z" Fill="#6485C3"/>
+      <Path Data="M12,12H7V8h5V12zM18,12h-5V8h5V12zM18,17h-5v-4h5V17zM12,17H7v-4h5V17z" Fill="#BAD2EE"/>
+      <Path Data="M20,19H5V6h15V19zM6,18h13V7H6V18z" Fill="#FFFFFF" Opacity="0.5"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<DeliveryStatuses>
+  <DeliveryStatus Name="Generating" InTransit="False" IsStockAdjusted="False" CanBePicked="False" CanBeDispatched="False" />
+  <DeliveryStatus Name="Awaiting Picking" InTransit="False" IsStockAdjusted="False" CanBePicked="True" CanBeDispatched="False" />
+  <DeliveryStatus Name="Awaiting Picking and Dispatch" InTransit="False" IsStockAdjusted="False" CanBePicked="True" CanBeDispatched="True" />
+  <DeliveryStatus Name="Awaiting Payment" InTransit="False" IsStockAdjusted="False" CanBePicked="False" CanBeDispatched="False" />
+  <DeliveryStatus Name="Awaiting Dispatch" InTransit="False" IsStockAdjusted="False" CanBePicked="False" CanBeDispatched="True" />
+  <DeliveryStatus Name="Dispatched" InTransit="True" IsStockAdjusted="True" CanBePicked="False" CanBeDispatched="False" />
+  <DeliveryStatus Name="Completed" InTransit="False" IsStockAdjusted="True" CanBePicked="False" CanBeDispatched="False" />
+  <DeliveryStatus Name="Cancelled" InTransit="False" IsStockAdjusted="True" CanBePicked="False" CanBeDispatched="False" />
+</DeliveryStatuses>

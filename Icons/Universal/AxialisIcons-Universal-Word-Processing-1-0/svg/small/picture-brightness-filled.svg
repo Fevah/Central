@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <g>
+      <rect x="2.6455" y="1.7277" width="1.0927" height="2.9282" fill="#EEAC55" transform="matrix(0.7071 -0.7071 0.7071 0.7071 -1.32211 3.19185)"/>
+      <rect x="6.9536" width="1.0927" height="2.8715" fill="#EEAC55"/>
+      <rect x="10.344" y="2.6455" width="2.9282" height="1.0927" fill="#EEAC55" transform="matrix(0.7071 -0.7071 0.7071 0.7071 1.20154 9.28449)"/>
+      <rect y="6.9536" width="2.8715" height="1.0927" fill="#EEAC55"/>
+      <rect x="12.1285" y="6.9536" width="2.8715" height="1.0927" fill="#EEAC55"/>
+      <path d="M7.5,3.4613C5.273,3.4613,3.4613,5.273,3.4613,7.5c0,2.2269,1.8117,4.0387,4.0387,4.0387S11.5387,9.7269,11.5387,7.5C11.5387,5.273,9.727,3.4613,7.5,3.4613z" fill="#EEAC55"/>
+      <rect x="11.2618" y="10.344" width="1.0927" height="2.9282" fill="#EEAC55" transform="matrix(0.7071 -0.7071 0.7071 0.7071 -4.89109 11.8082)"/>
+      <rect x="6.9536" y="12.1285" width="1.0927" height="2.8715" fill="#EEAC55"/>
+      <rect x="1.7277" y="11.2618" width="2.9282" height="1.0927" fill="#EEAC55" transform="matrix(0.7071 -0.7071 0.7071 0.7071 -7.41474 5.71551)"/>
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Left="1.5" Canvas.Top="2.5" Width="29" Height="27" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Canvas>
+        <Polygon Points="16,16 13.964,4 9.113,4" Fill="#8C8E90" StrokeLineJoin="Miter"/>
+        <Polygon Points="3,5.003 16,16 9.196,4 3,4" Fill="#939598" StrokeLineJoin="Miter"/>
+        <Polygon Points="3,11.155 16,16 3,4.834" Fill="#9B9DA0" StrokeLineJoin="Miter"/>
+        <Polygon Points="3,15.978 16,16 3,11.003" Fill="#A5A7AA" StrokeLineJoin="Miter"/>
+        <Polygon Points="29,16 16,16 29,20.788" Fill="#DEDFE0" StrokeLineJoin="Miter"/>
+        <Polygon Points="29,20.77 16,16 29,27.053" Fill="#D8D9DA" StrokeLineJoin="Miter"/>
+        <Polygon Points="29,27.038 16,16 22.775,28 29,28" Fill="#D1D3D4" StrokeLineJoin="Miter"/>
+        <Polygon Points="16,16 17.992,28 22.829,28" Fill="#CBCCCE" StrokeLineJoin="Miter"/>
+        <Polygon Points="16,16 13.904,28 18.183,28" Fill="#C4C6C8" StrokeLineJoin="Miter"/>
+        <Polygon Points="13.964,28 16,16 9.113,28" Fill="#BEC0C2" StrokeLineJoin="Miter"/>
+        <Polygon Points="3,28 9.196,28 16,16 3,26.997" Fill="#B8BABC" StrokeLineJoin="Miter"/>
+        <Polygon Points="3,27.166 16,16 3,20.845" Fill="#B1B3B6" StrokeLineJoin="Miter"/>
+        <Polygon Points="3,20.997 16,16 3,16.022" Fill="#ABADB0" StrokeLineJoin="Miter"/>
+        <Polygon Points="29,16 29,11.212 16,16" Fill="#E6E7E8" StrokeLineJoin="Miter"/>
+        <Polygon Points="29,11.23 29,4.947 16,16" Fill="#EFEFF0" StrokeLineJoin="Miter"/>
+        <Polygon Points="29,4 22.775,4 16,16 29,4.962" Fill="#F6F6F6" StrokeLineJoin="Miter"/>
+        <Polygon Points="17.992,4 16,16 22.829,4" Fill="#7E8083" StrokeLineJoin="Miter"/>
+        <Polygon Points="16,16 18.183,4 13.904,4" Fill="#86888A" StrokeLineJoin="Miter"/>
+      </Canvas>
+    </Canvas>
+  </Canvas>
+</Viewbox>

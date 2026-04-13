@@ -1,0 +1,68 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataBaseObjectModel xmlns:dm0="http://schemas.microsoft.com/VisualStudio/2008/DslTools/Core" dslVersion="1.0.0.0" Id="af3dad64-ad05-4dcf-928b-581d6526143b" namespace="TIG.TotalLink.Shared.DataModel.Task" dataBaseShemaInfo="H4sIAAAAAAAEAMWU226bQBCG7yv1HZCvzWE5mgiIWjuNoh5kxU7V24Ed2yiwWLuL7b59F4OJcZIeVKm9Y775h51/d3aj60NZaDvkIq9YPCKGNbpO3r6J3oPAhaw4rPGOrSpNqZi4Oog8Hm2k3F6Z5n6/N/aOUfG1aVsWMb99/rTINliCnjMhgWU46qvor6tGalVNi5aQFiiaJY/xiZyBE/oCJSZLEI+R+RT3khvWsETyGiOzC/rkLBcNeNhSkJisoBBKNIS99rbO6R1NCGZ+mJFAdx3P113q+HroT4iOjoc09QI7s9U/OnFfPK2KumRi0P2rWCUaD20yaT4j8wwMhD+z96cWz236E8sjBEC3PZ8qr9TXgSjDGDhuGtqhE7rwzKYqN//C6Rw4MvnvvXrUQsddTXQXPOU1cFI9zYDoYWBh6irXhNDf9voS7QazJ138JImaG4Z0zqvsCDWzxV/b65jMcHdz2HIUwpiBBGNHPIOMtS4dN5HhGdZYm9aFrDnGDGvJoRhr8zot8uwjfl9Wj8jidDKhJPBcGlgWuqE6wtMSx/WmBQiBojmA+7rf3egdVa3hKj90fbVoUa8G6B7LaoeXwpZeaqfqVUkeWLYBtka1uce43ZqXeojUzmyRy/w/9/ZKG9EtMuRqvKZVWaoRFt2MPsMD8QxFvlafH3I1ChcVw5x6hs2Ldzj5AWlzzB6wBQAA" generateStoredProcedures="false" fieldNameCase="Unchanged" fieldNamePrefix="_" xmlns="http://schemas.microsoft.com/dsltools/ORMDataModel">
+  <classes>
+    <dataBaseObjectModelHasClasses Id="f52bb78b-37b4-4577-bf3f-2d400be29dd1">
+      <externalPersistentType Id="6bd20e56-890a-4848-a701-5342d08a730d" name="TIG.TotalLink.Shared.DataModel.Core.DataObjectBase" nameSpace="TIG.TotalLink.Shared.DataModel.Core" virtualName="DataObjectBase" assemblyName="W:\TIG\TotalLink\Source\TIG.TotalLink.Shared.DataModel\TIG.TotalLink.Shared.DataModel.Core\bin\Debug\TIG.TotalLink.Shared.DataModel.Core.dll" deferredDeletion="False" optimisticLocking="False" addReferenceToAssembly="false" hasDefaultConstructor="true" hasSessionSpecifiedConstructor="false">
+        <fields>
+          <generalXpObjectHasFields Id="c24bb551-2bda-42b4-9af2-9fb33fd1dc67">
+            <externalPersistentTypeField Id="885e4915-a768-47e6-a0c4-8940c7654d67" name="Oid" virtualColumnType="Guid" key="true" />
+          </generalXpObjectHasFields>
+        </fields>
+      </externalPersistentType>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="d3916b00-270f-4e9b-8207-4f47aa39b4f9">
+      <xpObject Id="1ec69c17-4356-4d36-9681-e35edb572c2e" name="Task" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="Task" designerFileName="Task.Designer" className="Task" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="Task">
+        <fields>
+          <generalXpObjectHasFields Id="afe8a44f-62b8-4281-aabf-c74fe8cb7179">
+            <field Id="680511aa-256d-43d6-a156-e734b929394a" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="1000" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="fce704d6-e350-4ab2-b277-698507d36cd1">
+            <field Id="5d0e34f8-4a5d-473b-bca1-970eb415611d" name="Parent" virtualColumnType="Task" logicalType="Task" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="56802c5e-8f1e-4180-812e-8cdabc7ee102">
+            <externalPersistentTypeMoniker Id="b18d2131-3cce-4d5e-9bba-183a2234b0bf" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="91546422-000e-4c82-a434-19ae45f48d0a" sourceCollectionName="Children" name="TaskReferencesTask" targetFieldName="Parent">
+            <xpObjectMoniker Id="1ec69c17-4356-4d36-9681-e35edb572c2e" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="62e26b40-7022-4da6-a4b9-e6951e13ceef">
+            <collectionField Id="a97a7e8a-1bd2-46ee-911e-5f36f1e7dbf9" name="Children" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="f02b32f9-1ffb-4a30-adfb-1bf05d2f397a">
+      <externalPersistentType Id="b18d2131-3cce-4d5e-9bba-183a2234b0bf" name="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" nameSpace="TIG.TotalLink.Shared.DataModel.Admin" virtualName="StampedDataObjectBase" assemblyName="W:\TIG\TotalLink3\Source\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Admin\bin\Debug\TIG.TotalLink.Shared.DataModel.Admin.dll" deferredDeletion="False" optimisticLocking="False" addReferenceToAssembly="false" hasDefaultConstructor="true" constructorParameterType="Session" hasSessionSpecifiedConstructor="false">
+        <fields>
+          <generalXpObjectHasFields Id="f941ca76-b607-4620-a998-7d170ff3fc37">
+            <externalPersistentTypeField Id="b7afbdd6-736d-47fe-b5de-dae9bfd4143a" name="Oid" virtualColumnType="Guid" key="true" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="e268f877-d0f8-48c1-a664-8f766cca4933">
+            <externalPersistentTypeField Id="7bbe7904-bcd8-4af9-8088-5082d4532de9" name="P_CreatedBy" virtualColumnType="User" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="3f690039-208b-4e34-86ce-9aeaea4c5e98">
+            <externalPersistentTypeField Id="424fc5cd-02d9-42ca-a0a9-e010486dba79" name="P_ModifiedBy" virtualColumnType="User" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="a23247cf-07dd-4806-8dc9-542fdcb2dcd3">
+            <externalPersistentTypeField Id="2246d4d6-15a1-4fe9-9010-17d17561dbf7" name="CreatedBy" virtualColumnType="User" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="82ef74e7-b2dd-41ad-852e-7fb88e05d74b">
+            <externalPersistentTypeField Id="5cffca33-72ac-4343-a55c-57313f8675f0" name="CreatedDate" virtualColumnType="DateTime" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="993b60c1-0350-48fa-b3c4-ee693f4ebf69">
+            <externalPersistentTypeField Id="addf849b-9023-447e-9eaa-4573898c830b" name="ModifiedBy" virtualColumnType="User" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="b5d24e94-e2c5-45c2-b671-cb854de2492e">
+            <externalPersistentTypeField Id="09381776-473b-4e1b-b0b2-8864003b6695" name="ModifiedDate" virtualColumnType="DateTime" />
+          </generalXpObjectHasFields>
+        </fields>
+      </externalPersistentType>
+    </dataBaseObjectModelHasClasses>
+  </classes>
+</dataBaseObjectModel>

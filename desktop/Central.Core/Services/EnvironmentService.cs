@@ -83,7 +83,7 @@ public class EnvironmentService
     }
 
     /// <summary>Get the API URL for the active environment.</summary>
-    public string GetApiUrl() => ActiveProfile?.ApiUrl ?? "http://localhost:5000";
+    public string GetApiUrl() => ActiveProfile?.ApiUrl ?? "http://192.168.56.203:8000";
 
     /// <summary>Get the SignalR URL for the active environment.</summary>
     public string GetSignalRUrl() => ActiveProfile?.SignalRUrl ?? $"{GetApiUrl()}/hubs/notify";
@@ -95,7 +95,7 @@ public class EnvironmentService
     {
         _profiles = new List<EnvironmentProfile>
         {
-            new() { Name = "Local Development", Type = "dev", ApiUrl = "http://localhost:5000", IsActive = true },
+            new() { Name = "Local K8s", Type = "dev", ApiUrl = "http://192.168.56.203:8000", IsActive = true },
             new() { Name = "Test", Type = "test", ApiUrl = "https://test-api.central.example.com" },
             new() { Name = "Production", Type = "live", ApiUrl = "https://api.central.example.com" }
         };

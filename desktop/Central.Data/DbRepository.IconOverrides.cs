@@ -11,8 +11,7 @@ public partial class DbRepository
     public async Task<List<IconOverride>> GetIconDefaultsAsync(string context)
     {
         var list = new List<IconOverride>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, context, element_key, icon_name, icon_id, color FROM icon_defaults WHERE context=@c ORDER BY element_key", conn);
         cmd.Parameters.AddWithValue("c", context);
@@ -32,8 +31,7 @@ public partial class DbRepository
     public async Task<List<IconOverride>> GetAllIconDefaultsAsync()
     {
         var list = new List<IconOverride>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, context, element_key, icon_name, icon_id, color FROM icon_defaults ORDER BY context, element_key", conn);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -52,8 +50,7 @@ public partial class DbRepository
     public async Task<List<IconOverride>> GetUserIconOverridesAsync(int userId, string? context = null)
     {
         var list = new List<IconOverride>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var where = context != null ? "WHERE user_id=@uid AND COALESCE(context, element_type)=@c" : "WHERE user_id=@uid";
         await using var cmd = new NpgsqlCommand(
             $"SELECT id, COALESCE(context, element_type), element_key, icon_name, icon_id, color FROM user_icon_overrides {where} ORDER BY 2, 3", conn);
@@ -74,8 +71,7 @@ public partial class DbRepository
     /// <summary>Upsert an admin icon default.</summary>
     public async Task UpsertIconDefaultAsync(IconOverride ov)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             @"INSERT INTO icon_defaults (context, element_key, icon_name, icon_id, color)
               VALUES (@ctx, @key, @name, @iid, @col)
@@ -92,8 +88,7 @@ public partial class DbRepository
     /// <summary>Upsert a user icon override.</summary>
     public async Task UpsertUserIconOverrideAsync(int userId, IconOverride ov)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             @"INSERT INTO user_icon_overrides (user_id, context, element_key, icon_name, icon_id, color)
               VALUES (@uid, @ctx, @key, @name, @iid, @col)
@@ -111,8 +106,7 @@ public partial class DbRepository
     /// <summary>Delete an admin icon default.</summary>
     public async Task DeleteIconDefaultAsync(string context, string elementKey)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM icon_defaults WHERE context=@c AND element_key=@k", conn);
         cmd.Parameters.AddWithValue("c", context);
         cmd.Parameters.AddWithValue("k", elementKey);
@@ -122,8 +116,7 @@ public partial class DbRepository
     /// <summary>Delete a user icon override.</summary>
     public async Task DeleteUserIconOverrideAsync(int userId, string context, string elementKey)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "DELETE FROM user_icon_overrides WHERE user_id=@uid AND context=@c AND element_key=@k", conn);
         cmd.Parameters.AddWithValue("uid", userId);
@@ -135,8 +128,7 @@ public partial class DbRepository
     /// <summary>Delete all user icon overrides for a user.</summary>
     public async Task ResetAllUserIconOverridesAsync(int userId)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM user_icon_overrides WHERE user_id=@uid", conn);
         cmd.Parameters.AddWithValue("uid", userId);
         await cmd.ExecuteNonQueryAsync();
@@ -145,8 +137,7 @@ public partial class DbRepository
     /// <summary>Resolve an icon: user override → admin default → null (use code fallback).</summary>
     public async Task<IconOverride?> ResolveIconAsync(int userId, string context, string elementKey)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         // Check user override first
         await using var uCmd = new NpgsqlCommand(

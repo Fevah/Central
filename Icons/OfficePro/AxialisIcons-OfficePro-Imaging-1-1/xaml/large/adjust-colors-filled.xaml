@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M16.097,11.157c-3.015,1.555,-4.803,4.816,-4.827,8.592c3.151,2.05,6.689,2,9.654,-0.193C20.942,16.306,19.077,13.111,16.097,11.157z" Fill="#FFFFFF"/>
+      <Path Data="M16.097,11.157c-3.015,1.555,-4.803,4.816,-4.827,8.592c3.151,2.05,6.689,2,9.654,-0.193C20.942,16.306,19.077,13.111,16.097,11.157z" Fill="#797A7B" Opacity="0.15"/>
+      <Path Data="M6.36,11.275c-2.884,1.688,-4.825,4.844,-4.825,8.459c0,5.393,4.32,9.766,9.649,9.766c1.758,0,3.405,-0.476,4.824,-1.307M16.008,28.193M16.008,28.193" Fill="#F3B8B8" Stroke="#E32F2C" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+      <Path Data="M6.36,11.275C6.393,5.909,10.7,1.57,16.008,1.57s9.616,4.339,9.648,9.705" Fill="#93CBEE" Stroke="#1165B0" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+      <Path Data="M16.008,28.193c1.419,0.831,3.067,1.307,4.824,1.307c5.329,0,9.649,-4.372,9.649,-9.766c0,-3.615,-1.941,-6.771,-4.825,-8.459" Fill="#ADD9B2" Stroke="#11A04A" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+      <Path Data="M11.184,19.734c0,-3.615,1.94,-6.77,4.824,-8.459c-1.419,-0.831,-3.067,-1.307,-4.824,-1.307c-1.757,0,-3.405,0.476,-4.824,1.306l-0.001,0.061c0,3.615,1.941,6.771,4.825,8.459L11.184,19.734z" Fill="#DEBCD9" Stroke="#A1519F" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+      <Path Data="M16.008,28.193c2.868,-1.679,4.802,-4.809,4.824,-8.398c-1.419,0.831,-3.066,1.306,-4.824,1.306s-3.405,-0.476,-4.824,-1.306C11.206,23.384,13.141,26.514,16.008,28.193z" Fill="#F6D98E" Stroke="#E57428" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+      <Path Data="M25.655,11.253c-1.419,-0.831,-3.065,-1.285,-4.822,-1.285c-1.758,0,-3.405,0.476,-4.824,1.307c2.884,1.689,4.824,4.844,4.824,8.459l-0.001,0.061C23.717,18.107,25.655,14.868,25.655,11.253z" Fill="#BFE2E5" Stroke="#21B4C8" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

@@ -1,0 +1,1365 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<dataBaseObjectModel xmlns:dm0="http://schemas.microsoft.com/VisualStudio/2008/DslTools/Core" dslVersion="1.0.0.0" Id="d255ca1a-2bb9-420b-b047-1d38b1bc8040" namespace="TIG.TotalLink.Shared.DataModel.Inventory" dataBaseShemaInfo="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" generateStoredProcedures="false" fieldNameCase="Unchanged" fieldNamePrefix="_" generateDefaultConstructors="false" xmlns="http://schemas.microsoft.com/dsltools/ORMDataModel">
+  <classes>
+    <dataBaseObjectModelHasClasses Id="f9fec65a-5c89-4775-82e4-42754228e694">
+      <xpObject Id="41078811-8ad0-4474-af70-ca516e44cdab" name="Sku" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="Sku" designerFileName="Sku.Designer" className="Sku" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="Sku">
+        <fields>
+          <generalXpObjectHasFields Id="04cca07a-52f8-41b6-b76f-540b3b3cd603">
+            <field Id="1860c689-9ab2-4d7e-8137-a2a49fb07b66" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="150" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="c1287c5b-c94e-489c-b68a-5e28a3a85cf3">
+            <field Id="536fcf6c-3a3b-479d-ab1d-baa3148d5176" name="InventoryPostingGroup" columnType="Int64" explicitLoading="1" virtualColumnType="TIG.TotalLink.Shared.DataModel.Admin.PostingGroup" logicalType="TIG.TotalLink.Shared.DataModel.Admin.PostingGroup" delayedUpdateModifiedOnly="false" customAttributes="TIG.TotalLink.Shared.DataModel.Core.Attribute.RuntimeAssociation(&quot;SkuReferencesInventoryPostingGroup&quot;, &quot;InventoryPostingGroups&quot;)" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="15d80d15-7509-40a1-b411-eace5599d805">
+            <field Id="a7d5bc91-2fad-4ba5-b84c-39361d7b1605" name="UnitPrice" columnType="Decimal" virtualColumnType="Decimal" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="5ec5c4c2-9c6f-4725-af68-e297282706db">
+            <field Id="17e2b48a-410c-491e-90e8-f0c75cc7ce14" name="CostingMethod" columnType="Char" virtualColumnType="TIG.TotalLink.Shared.DataModel.Core.Enum.Inventory.CostingMethod" logicalType="TIG.TotalLink.Shared.DataModel.Core.Enum.Inventory.CostingMethod" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="7aa32d5d-388f-42f2-8144-38357e7d0392">
+            <field Id="5c49b982-0d60-4255-9aee-080b7996c238" name="UnitCost" columnType="Decimal" virtualColumnType="Decimal" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="1b2df7ae-cde5-4311-8580-3491a9726044">
+            <field Id="fcb8a1e8-2184-4f2d-becf-9215741182dc" name="GeneralProductPostingGroup" explicitLoading="1" virtualColumnType="TIG.TotalLink.Shared.DataModel.Admin.PostingGroup" logicalType="TIG.TotalLink.Shared.DataModel.Admin.PostingGroup" delayedUpdateModifiedOnly="false" customAttributes="TIG.TotalLink.Shared.DataModel.Core.Attribute.RuntimeAssociation(&quot;SkuReferencesGeneralProductPostingGroup&quot;, &quot;GeneralProductPostingGroups&quot;)" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="68c30e00-43e7-4778-9986-e545c32cf7dc">
+            <field Id="a0aebcb7-acfd-47c7-a3e3-c382ed9359bc" name="GSTProductPostingGroup" columnType="Guid" explicitLoading="1" virtualColumnType="TIG.TotalLink.Shared.DataModel.Admin.PostingGroup" logicalType="TIG.TotalLink.Shared.DataModel.Admin.PostingGroup" delayedUpdateModifiedOnly="false" customAttributes="TIG.TotalLink.Shared.DataModel.Core.Attribute.RuntimeAssociation(&quot;SkuReferencesGSTProductPostingGroup&quot;, &quot;GSTProductPostingGroups&quot;)" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="4019c450-19ad-40c1-91d7-bd5fb542461b">
+            <field Id="e7ef5ba7-8c53-42ce-8826-055540707a2a" name="ReplenishmentSystem" virtualColumnType="TIG.TotalLink.Shared.DataModel.Core.Enum.Inventory.ReplenishmentSystem" logicalType="TIG.TotalLink.Shared.DataModel.Core.Enum.Inventory.ReplenishmentSystem" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="5167311d-e84d-442a-bb21-5ff249ebaa31">
+            <field Id="ae696347-4a3b-45ff-ac50-2b4838018d51" name="ReorderingPolicy" virtualColumnType="TIG.TotalLink.Shared.DataModel.Core.Enum.Inventory.ReorderingPolicy" logicalType="TIG.TotalLink.Shared.DataModel.Core.Enum.Inventory.ReorderingPolicy" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="f13e414e-921b-4fff-99ac-b08af6066a3a">
+            <field Id="0bc35a94-5953-43db-bd39-b18b09cbe175" name="IncludeInventory" columnType="Boolean" virtualColumnType="Boolean" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="184d446f-5bd8-4186-8d54-61f3ed6ba4e4">
+            <field Id="4a17d6fb-f6bf-4397-be12-e84546efc700" name="ReschedulingPeriod" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="32" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="dccc1da4-9b65-49af-9c30-a200103413be">
+            <field Id="81e09af5-310c-4b33-8070-54fcd4c85f49" name="LotAccumulationPeriod" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="32" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="a80c031c-d428-4711-acdb-ca873b64f4d4">
+            <field Id="23922f1e-dbec-4ec1-8ea7-ed3c914ee737" name="Style" explicitLoading="1" virtualColumnType="Style" logicalType="Style" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="21202cd4-044a-468b-89d7-ac902168ecb2">
+            <field Id="b093305b-7fc7-4222-bf5f-304efe6c081c" name="Size" explicitLoading="1" virtualColumnType="Size" logicalType="Size" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="e079de96-9e91-4a87-998a-4da0d963c6d0">
+            <field Id="bce5e76c-1f4c-4c11-b37a-fb323f0a05e9" name="Colour" explicitLoading="1" virtualColumnType="Colour" logicalType="Colour" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="8066b886-c3a9-4dbe-be24-35ff84e061f9">
+            <field Id="90486ef8-0a42-4287-833c-16915bb1d8e5" name="BusinessDivision" explicitLoading="1" virtualColumnType="BusinessDivision" logicalType="BusinessDivision" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="2e592e20-f77f-4634-9c95-e30f5d5ce7ac">
+            <field Id="3858b7d7-89d9-49ed-a41a-e0b6c0efc45a" name="Season" explicitLoading="1" virtualColumnType="Season" logicalType="Season" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="e6e0f540-cd7c-4905-b5f4-fbac6950a062">
+            <field Id="967f7fc2-38c7-4834-8b63-53618e0c7cdd" name="PackUnitOfMeasure" columnType="UInt64" explicitLoading="1" virtualColumnType="UnitOfMeasure" logicalType="UnitOfMeasure" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="6e42c63b-dfc4-4226-8375-3533838061ce">
+            <field Id="39daa5c1-2d82-49c6-acb4-35b703abde7b" name="ItemUnitOfMeasure" explicitLoading="1" virtualColumnType="UnitOfMeasure" logicalType="UnitOfMeasure" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="4fa8ea82-06db-413a-a7bb-894539382cad">
+            <field Id="18546f4c-7d40-461b-8f3e-8db0a88ff7bd" name="PriceIncludesGST" columnType="Boolean" virtualColumnType="Boolean" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="ac605f05-2a7c-4097-9627-2a113c4b40ba">
+            <field Id="ca8e3667-56d9-4c46-91ef-58f8747045d6" name="AllowLineDiscount" columnType="Boolean" virtualColumnType="Boolean" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="1b19ab90-0ca0-474e-b57d-03efb8ce89b4">
+            <field Id="ce5b3566-3a76-4962-9447-f2cec2f8fb9a" name="Barcode" virtualColumnType="Barcode" logicalType="Barcode" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="0ccf82e8-c20d-429a-b6fb-973b54a2577a">
+            <field Id="4372d13a-8d1e-4bb4-8c59-3d99f2f23a60" name="Country" virtualColumnType="TIG.TotalLink.Shared.DataModel.Admin.Country" logicalType="TIG.TotalLink.Shared.DataModel.Admin.Country" delayedUpdateModifiedOnly="false" customAttributes="TIG.TotalLink.Shared.DataModel.Core.Attribute.RuntimeAssociation(&quot;SkuReferencesCountry&quot;, &quot;Skus&quot;)" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="44559379-7048-46ce-b323-bb1316d9dae3">
+            <persistentAlias Id="85578c2c-4c8e-42a2-a056-1beb384bdbac" name="PhysicalStock" columnType="Int32" virtualColumnType="Int32" expression="Iif(PhysicalStocks.Exists, PhysicalStocks.Sum(Quantity), 0)" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="1b847301-57cb-4f04-8c55-717f3f298c00">
+            <field Id="933021b9-f87c-48d1-adbd-923cd265a5b7" name="Web_SkuId" virtualColumnType="String" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="abe19cba-f729-4be2-97db-04cd209ebac0">
+            <field Id="d3be46f5-44c8-482c-b296-951361dae7da" name="Web_Colour" virtualColumnType="Colour" logicalType="Colour" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="3a13f890-6d6d-423d-8a40-51613c6d0dc3">
+            <field Id="89c0bea9-8bc9-4ffe-a77f-e7d22eeaf2bb" name="Web_Season" virtualColumnType="Season" logicalType="Season" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="b7f77da6-22e7-437c-a90f-9263f023c8d1">
+            <field Id="f2ee78d5-bd53-469d-8873-4d4e0baf752f" name="Web_ImageCodeFront" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="255" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="426340d4-9f55-44ac-b18d-5c9af3b5fb0d">
+            <field Id="4653eb67-13a6-4e5b-b89e-25ce7b5ba9e9" name="Web_ImageCodeBack" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="255" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="51bdc720-0bb0-4b64-a62f-f743d7c8c599">
+            <field Id="4cb47f90-555e-4648-ad37-c0931f567685" name="Web_ImageCodeSide" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="255" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="fc4b2559-a8cb-49b2-9a3c-0c66b641373e">
+            <field Id="f34dda36-2b24-46b3-8155-ed093d01ee89" name="Web_ImageCodeFull" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="255" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="dd194348-16a7-4e66-8dfc-7709f5b58dcc">
+            <field Id="85006f3a-37a6-4701-ad28-af8de74fffc0" name="Parent" virtualColumnType="Sku" logicalType="Sku" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="c02b1a5a-d591-4a86-a52a-dd4d2dfeaa39">
+            <field Id="4b076681-4024-4418-9a19-e8a985de6157" name="Reference" columnType="Int64" virtualColumnType="Int64" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="29f9a041-6aab-49df-9646-a167b576d3ca">
+            <field Id="19fa316b-2149-4985-b225-951fbaec930d" name="LegacyReference" virtualColumnType="String" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="2c1b861b-171a-467f-ad03-6d541d88a5c1">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="7bc527fa-7a67-4bb7-91e6-23e72c765cc5" sourceCollectionName="PriceRanges" name="PriceRangeReferencesSku" targetFieldName="Sku">
+            <xpObjectMoniker Id="f3691891-b80e-4630-92f7-5c2c8fb62b1c" />
+          </simpleAssociation>
+          <simpleAssociation Id="2a31bbe0-e2c9-481e-8f69-0c87cdc9846d" sourceCollectionName="PhysicalStocks" name="PhysicalStockReferencesSku" targetFieldName="Sku">
+            <xpObjectMoniker Id="acbc796e-de3d-4058-b284-8f8ecdabce2c" />
+          </simpleAssociation>
+          <simpleAssociation Id="7651d00a-a9b3-4393-b0a4-9e3cd028952c" sourceCollectionName="Children" name="SkuReferencesSku" targetFieldName="Parent">
+            <xpObjectMoniker Id="41078811-8ad0-4474-af70-ca516e44cdab" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="558b3f4f-2321-4235-8289-0d700bb52cd6">
+            <collectionField Id="b221fbbb-7dd4-4cbd-a6b9-4aabcf5227d6" name="PriceRanges" />
+          </xpObjectHasCollectionFields>
+          <xpObjectHasCollectionFields Id="80df769f-3a13-47b8-80f0-5e95f583348c">
+            <collectionField Id="daa4ad55-ab74-41dd-b401-dc49c4a22bbe" name="PhysicalStocks" />
+          </xpObjectHasCollectionFields>
+          <xpObjectHasCollectionFields Id="9f55f23e-201d-4596-a0ae-2ca046276dd0">
+            <collectionField Id="46f7dd8b-a0c4-408f-af3b-865ea8e572fb" name="Children" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="e0fdcaa9-a478-4e99-8c6e-43bfbc25d640">
+      <externalPersistentType Id="cfc223ef-a2c6-471a-a0c7-ec59cafc1825" name="TIG.TotalLink.Shared.DataModel.Core.DataObjectBase" nameSpace="TIG.TotalLink.Shared.DataModel.Core" virtualName="DataObjectBase" assemblyName="C:\tig\TotalLink\Source\TIG.TotalLink.Shared.DataModel\TIG.TotalLink.Shared.DataModel.Core\bin\Debug\TIG.TotalLink.Shared.DataModel.Core.dll" deferredDeletion="False" optimisticLocking="False" hasDefaultConstructor="true" hasSessionSpecifiedConstructor="false">
+        <fields>
+          <generalXpObjectHasFields Id="4b03427f-f2c5-4609-affd-a588fddc4bc4">
+            <externalPersistentTypeField Id="3370a416-7007-44bb-b17f-8244a8e0bb83" name="Oid" virtualColumnType="Guid" key="true" />
+          </generalXpObjectHasFields>
+        </fields>
+      </externalPersistentType>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="f4abecb1-815e-4bb6-87e3-5c34df3e255c">
+      <xpObject Id="47424a8d-d87a-454e-a5e3-e15d74a8ee2c" name="UnitOfMeasure" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="UnitOfMeasure" designerFileName="UnitOfMeasure.Designer" className="UnitOfMeasure" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="UnitOfMeasure">
+        <fields>
+          <generalXpObjectHasFields Id="ac049363-6a74-4757-ae39-5aa777f40580">
+            <field Id="718fcd23-6ff3-4e72-8a58-60dc02231375" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="76474e3d-9e7b-4011-a210-c43407d020b7">
+            <field Id="5570f6b9-ed57-45fc-b65f-eaca681f3939" name="Code" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="10" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="11f16aba-1df3-4789-8458-fd8bc67dfdbe">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="d8c44143-a0fb-410c-9703-0f2437e21dc3" sourceCollectionName="Skus" name="SkuReferencesUnitOfMeasure1" targetFieldName="PackUnitOfMeasure">
+            <xpObjectMoniker Id="41078811-8ad0-4474-af70-ca516e44cdab" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="d68d235c-8795-45f1-b73a-85388ff1e57b">
+            <collectionField Id="e2b91139-7449-4ff0-8e99-a635acd9f980" name="Skus" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="a32f83bb-b11f-49c8-a04c-a48a14166b50">
+      <xpObject Id="374c8f53-1dd8-4866-a1f8-426f71594037" name="Style" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="Style" designerFileName="Style.Designer" className="Style" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="Style">
+        <fields>
+          <generalXpObjectHasFields Id="d5528dd0-158c-4a4b-bd47-18329148ef5a">
+            <field Id="00baa411-5a85-4278-a65f-5b5b02436190" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="150" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="3bb43531-30e6-41a0-884b-ed6988e95626">
+            <field Id="d1414c75-6b19-463c-80d4-65a95c733be8" name="Code" virtualColumnType="String" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="22bf16eb-7575-49bf-97ad-cbcb7f295717">
+            <field Id="47902f12-6f3d-46f6-a2fd-0d790553f26f" name="Gender" explicitLoading="1" virtualColumnType="StyleGender" logicalType="StyleGender" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="48a559bf-7a23-4406-b289-bcf907fb2ce5">
+            <field Id="d9e30aa2-cd8d-4f3d-acec-82201b645f07" name="Category" explicitLoading="1" virtualColumnType="StyleCategory" logicalType="StyleCategory" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="a1046053-6b32-4f96-ad55-f55acf89ea70">
+            <field Id="347e91bd-7500-450b-9fe6-149526127fb4" name="ProductCategory" explicitLoading="1" virtualColumnType="ProductCategory" logicalType="ProductCategory" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="5681706b-15a8-4b5a-bada-1f4464233b8a">
+            <field Id="5fbfb4dc-8171-46aa-b139-c4e47cf26565" name="ProductType" explicitLoading="1" virtualColumnType="ProductType" logicalType="ProductType" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="625ccc5c-0b00-4f8e-86ef-8b974a6e5ec0">
+            <field Id="c0b4a368-2c75-4e03-aec8-5085e9b59242" name="StyleClass" explicitLoading="1" virtualColumnType="StyleClass" logicalType="StyleClass" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="3aa72c6b-665d-4971-9f99-23a23c5dd0fc">
+            <field Id="3d14bc88-7f0b-4c3e-a28f-7cbea9a581b2" name="Fabric" explicitLoading="1" virtualColumnType="Fabric" logicalType="Fabric" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="881de32a-87ef-4e13-a703-e8dab127faf6">
+            <field Id="9e426be9-87a3-4c20-8be0-0ed9a4f583af" name="Content" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="255" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="9b3b1dea-0080-408a-87b6-e466af29e594">
+            <field Id="c839fa99-d4ad-4127-9a24-a993e7dae9fc" name="LongDescription" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="Unlimited" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="5de8cf8f-068b-437c-bed1-9962b7f260fa">
+            <field Id="9e895c1d-6302-454f-8328-9d16ff376eb8" name="Department" explicitLoading="1" virtualColumnType="StyleDepartment" logicalType="StyleDepartment" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="bdd14000-0682-460c-8e9f-9667e12bda41">
+            <field Id="0dd45682-140f-4292-922a-dd57790cc48a" name="Fit" explicitLoading="1" virtualColumnType="Fit" logicalType="Fit" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="825bde7b-87cb-4cae-becd-7e51be2b32b0">
+            <field Id="2bca7297-2e6a-4d8d-98ed-12deae87d3f4" name="SizeRange" explicitLoading="1" virtualColumnType="SizeRange" logicalType="SizeRange" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="1c991674-5840-4e5b-b78b-0dd8fa47ba44">
+            <field Id="bb445603-9267-4d22-885c-3e0b398d4f5c" name="Web_Number" virtualColumnType="String" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="3decf0ef-5d47-473d-87c7-651950fa022d">
+            <field Id="be61e912-086e-411e-bd3b-6b739a83f717" name="Web_Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="150" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="1bc2fd00-58d2-444a-a512-770f9f660a6f">
+            <field Id="5e187bbf-4213-41d9-aad9-c71540cc05ac" name="Web_Description" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="Unlimited" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="421675de-e2a9-4ecb-8106-01bd01b63738">
+            <field Id="acbe37e9-1cc0-4c33-8021-4d7199ceee1f" name="Web_LongDescription" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="Unlimited" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="99a44310-ccfa-438e-9f48-18f4554dcfb6">
+            <field Id="209288f1-7db5-41e2-a230-536c480a6d44" name="Web_Details" virtualColumnType="String" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="bd3c0b4c-ef23-4773-bc44-e32a919a8837">
+            <field Id="2e33d478-82e7-4e3c-8306-990fba901878" name="Web_Category" virtualColumnType="StyleCategory" logicalType="StyleCategory" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="d6281fa3-f4a1-4d50-8f31-aedccac98ed5">
+            <field Id="af53e0b4-7dcb-4e7d-a93a-58b6b68f7fa0" name="Web_ProductCategory" virtualColumnType="ProductCategory" logicalType="ProductCategory" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="4786bb1f-2ee0-4ebb-ab87-27b613d5db07">
+            <field Id="3901ba07-356d-47db-b6c8-e6c15cdc8eb0" name="Web_ProductType" virtualColumnType="ProductType" logicalType="ProductType" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="ccd1f1a1-9ad5-4c88-bd95-3a837cf17305">
+            <field Id="2db1bdae-6c9c-4339-9fe7-9d5f2d477cd5" name="Web_StyleClass" virtualColumnType="StyleClass" logicalType="StyleClass" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="71b94e02-6aaa-4f74-8cd3-e39a2777d6ec">
+            <field Id="0f5bcab9-e78c-471a-93e7-f57bad8b89cc" name="Web_Industry" virtualColumnType="String" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="9b68f4be-35d5-4578-8e82-eabaf40e0019">
+            <field Id="36910ede-a97a-4def-a5fc-a3c4b24e3d28" name="Web_Fabric" virtualColumnType="Fabric" logicalType="Fabric" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="e06e8e89-85f1-4eb6-80b5-22896a89f5a5">
+            <field Id="7e32b8ad-abc9-4ddd-b2dd-ce9dd8264e7e" name="Web_Fit" virtualColumnType="Fit" logicalType="Fit" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="3f6ff9df-5573-4000-903c-39d0ba2e9239">
+            <field Id="26dfd9f4-78c9-4df5-957d-7236ce2378ce" name="Web_SizingTable" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="150" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="08d880b0-cf9b-4819-a46b-69f6910a0d6c">
+            <field Id="f5456bcf-42cd-4a8a-887d-be18e9f10e4b" name="Web_SizeRange" virtualColumnType="SizeRange" logicalType="SizeRange" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="10a0603d-0f6f-4d14-b1b9-dec7a33710a4">
+            <field Id="8db40785-14fe-479d-ad1a-c95a4fdcf097" name="Web_ImageCode1" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="255" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="196c40e0-6893-4939-a112-5db21c3e796a">
+            <field Id="3f4924ff-f73b-41b4-8b9c-3e150eafbd9e" name="Web_ImageCode2" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="255" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="b6d4f61d-2e93-4409-8329-169e56f7bd96">
+            <field Id="cf42d294-97d5-4a8a-a8d8-1b4ac62966f0" name="Web_ImageCode3" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="255" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="ebcf76d8-faf3-4924-b35c-99a6fb9211f3">
+            <field Id="2cb2dd29-7436-409a-a895-68eed2710fa0" name="Reference" columnType="Int64" virtualColumnType="Int64" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="e5f045d1-4b3f-4ae8-911c-c47fa790659d">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="8700c91c-447d-4b43-ba53-8dbaae58f6f7" sourceCollectionName="Skus" name="SkuReferencesStyle" targetFieldName="Style">
+            <xpObjectMoniker Id="41078811-8ad0-4474-af70-ca516e44cdab" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="1291bda5-7600-426f-9d9b-2a145184703f">
+            <collectionField Id="9e1c5b86-d0e4-4fc9-9197-ec51687d1de0" name="Skus" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="0abe6514-d7d8-442e-9d7c-812f46b5303f">
+      <xpObject Id="b377004e-1f91-4dca-b628-90853030b98d" name="Size" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="Size" designerFileName="Size.Designer" className="Size" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="Size">
+        <fields>
+          <generalXpObjectHasFields Id="50dcafa6-e042-4f90-927d-69c13cfa1839">
+            <field Id="efff1879-ea99-417a-810f-0e623df093c5" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="150" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="b00d2cf3-c42c-4370-b98c-1e146c33bdb6">
+            <field Id="d87a8e72-46e7-4355-b178-79df7badacfb" name="SizeRange" explicitLoading="1" virtualColumnType="SizeRange" logicalType="SizeRange" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="01572022-e9fd-4928-9d98-e5e047b60205">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="8ac297c8-e8ba-46eb-9f8c-16d6a7f94bd0" sourceCollectionName="Skus" name="SkuReferencesSize" targetFieldName="Size">
+            <xpObjectMoniker Id="41078811-8ad0-4474-af70-ca516e44cdab" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="0caacb02-76f1-4151-b525-a8df18d1017d">
+            <collectionField Id="dabc1f01-4ac6-4a3f-a690-c73924c1040f" name="Skus" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="15e94ab1-4d13-45c4-959e-a46e10044535">
+      <xpObject Id="d8e512c8-5cce-4aed-8224-a3429c6f219e" name="Colour" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="Colour" designerFileName="Colour.Designer" className="Colour" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="Colour">
+        <fields>
+          <generalXpObjectHasFields Id="48cdc130-0aff-4e9b-b496-918b9f9cba4c">
+            <field Id="d8c1d22f-b07c-402d-ab55-124ba6e372a3" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="150" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="cc5e6513-4252-4822-a80b-f4daa83f6950">
+            <field Id="ad7888b2-da90-4f8a-b53e-6a8e0f123e9e" name="Category" explicitLoading="1" virtualColumnType="ColourCategory" logicalType="ColourCategory" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="b15b2c40-5c5f-4150-8c68-590890164f9f">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="13b7063e-0128-447f-9cf3-b639f245ada1" sourceCollectionName="Skus" name="SkuReferencesColour" targetFieldName="Colour">
+            <xpObjectMoniker Id="41078811-8ad0-4474-af70-ca516e44cdab" />
+          </simpleAssociation>
+          <simpleAssociation Id="fc1c8f37-795d-48e3-9400-cc7440c69509" sourceCollectionName="Web_Skus" name="SkuReferencesWebColour" targetFieldName="Web_Colour">
+            <xpObjectMoniker Id="41078811-8ad0-4474-af70-ca516e44cdab" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="f9873106-dbb6-4daf-92f0-dbbe8b6c549f">
+            <collectionField Id="2df5dcbc-2864-48df-8bcc-3e4770d7a2d7" name="Skus" />
+          </xpObjectHasCollectionFields>
+          <xpObjectHasCollectionFields Id="a2f9642a-518e-485e-9a86-ae2ebafc99f9">
+            <collectionField Id="37d7af18-5b30-49f9-bf20-dd9453a68558" name="Web_Skus" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="7ba05a29-5d46-4d6e-996c-ad08d79a3813">
+      <xpObject Id="de9b55fb-395a-4f11-b65f-fcc4be551747" name="ColourCategory" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="ColourCategory" designerFileName="ColourCategory.Designer" className="ColourCategory" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="ColourCategory">
+        <fields>
+          <generalXpObjectHasFields Id="1229db3b-b77e-4999-9f16-9e3aaa210c5d">
+            <field Id="d001e777-a3e6-44b4-8e17-b989cc24c7fa" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="150" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="35f93767-3f70-494a-b808-c3366cfd708d">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="a9022a92-63fc-4a51-8d74-1f669da5bda2" sourceCollectionName="Colours" name="ColourReferencesColourCategory" targetFieldName="Category">
+            <xpObjectMoniker Id="d8e512c8-5cce-4aed-8224-a3429c6f219e" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="ec1e0984-737e-4225-ac2e-a3198f90d391">
+            <collectionField Id="a037e039-7c7c-487a-83f4-8a42b1eefd11" customAttributes="DevExpress.Xpo.Aggregated" name="Colours" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="b36aa3db-bce2-499b-8bd2-6bd03663d3b7">
+      <xpObject Id="4503e5a2-f115-4446-823c-2d6b6adc15ce" name="StyleGender" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="StyleGender" designerFileName="StyleGender.Designer" className="StyleGender" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="StyleGender">
+        <fields>
+          <generalXpObjectHasFields Id="041198a4-0c33-42b0-9f86-9c21bfb88d63">
+            <field Id="4880dcd0-fe88-4903-a754-2325e57886fb" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="150" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="521b9b1b-433f-4cb9-819b-8d7046148a31">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="877f0dc4-23d9-495b-be15-230a51bfe986" sourceCollectionName="Styles" name="StyleReferencesStyleGender" targetFieldName="Gender">
+            <xpObjectMoniker Id="374c8f53-1dd8-4866-a1f8-426f71594037" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="32b04fb4-c0ec-41b5-95d8-7b9598f5b5a4">
+            <collectionField Id="93f72922-d674-4867-8f00-783e61896f56" name="Styles" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="0c7caa39-890f-4faf-9674-b80d99eb0756">
+      <xpObject Id="f8c10bd4-70cc-496b-b444-984752747a02" name="StyleCategory" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="StyleCategory" designerFileName="StyleCategory.Designer" className="StyleCategory" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="StyleCategory">
+        <fields>
+          <generalXpObjectHasFields Id="e58dcab2-ed7f-4ce2-b148-aa99a5593bc6">
+            <field Id="da00eaff-a09b-43b3-a485-456ef932d38d" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="150" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="e3fe2e67-ea84-41ab-ad60-d3cc4de5495c">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="da31d0bc-8790-490e-b014-ede490620d2c" sourceCollectionName="Styles" name="StyleReferencesStyleCategory" targetFieldName="Category">
+            <xpObjectMoniker Id="374c8f53-1dd8-4866-a1f8-426f71594037" />
+          </simpleAssociation>
+          <simpleAssociation Id="869ef324-ef55-432e-83b4-c4a8a6ebb370" sourceCollectionName="Web_Styles" name="StyleReferencesWebStyleCategory" targetFieldName="Web_Category">
+            <xpObjectMoniker Id="374c8f53-1dd8-4866-a1f8-426f71594037" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="d694969a-bf18-4474-b6c8-a7d12e55dc64">
+            <collectionField Id="05a5ca58-ac1f-42d3-ab8e-c2ac24b0e5d6" name="Styles" />
+          </xpObjectHasCollectionFields>
+          <xpObjectHasCollectionFields Id="e9c695bc-4a7a-4755-9ccb-efe4b3fa4684">
+            <collectionField Id="a60cc815-8b55-43bc-9277-b45302cedfb6" name="Web_Styles" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="05c04ff7-f186-4518-afcb-b84f963d6947">
+      <xpObject Id="6f7f0925-e2f0-460b-8c43-9c4e869c1272" name="ProductCategory" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="ProductCategory" designerFileName="ProductCategory.Designer" className="ProductCategory" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="ProductCategory">
+        <fields>
+          <generalXpObjectHasFields Id="17624e18-0ce9-4aaa-8111-105b38c6f44b">
+            <field Id="ef5478b9-78ab-4248-910a-a6aa219dc34d" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="150" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="d7938ce4-2521-4952-b6b3-bfa9f3e42b72">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="97efe06d-f54f-40fd-a977-56679de9c12d" sourceCollectionName="Styles" name="StyleReferencesProductCategory" targetFieldName="ProductCategory">
+            <xpObjectMoniker Id="374c8f53-1dd8-4866-a1f8-426f71594037" />
+          </simpleAssociation>
+          <simpleAssociation Id="d403a75c-5aa0-40ef-b930-83350dc9253f" sourceCollectionName="Web_Styles" name="StyleReferencesWebProductCategory" targetFieldName="Web_ProductCategory">
+            <xpObjectMoniker Id="374c8f53-1dd8-4866-a1f8-426f71594037" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="06b939bc-fa60-42cd-b4f3-e73227f63bc6">
+            <collectionField Id="c4dcb754-ab04-4e03-9092-5b86d5447b37" name="Styles" />
+          </xpObjectHasCollectionFields>
+          <xpObjectHasCollectionFields Id="9c8bc810-04bc-451c-8632-506b269aa3ad">
+            <collectionField Id="00ed734e-91da-4062-ae8a-e13d6d7046b0" name="Web_Styles" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="b3426d40-9fc2-4bae-8429-acd7be0d1091">
+      <xpObject Id="1aae7b5b-1a58-4fb3-bd3a-48e958e996bb" name="ProductType" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="ProductType" designerFileName="ProductType.Designer" className="ProductType" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="ProductType">
+        <fields>
+          <generalXpObjectHasFields Id="12eafb05-7155-4d4a-b1fb-17d3386e6976">
+            <field Id="7d6f9e88-9c7b-443d-9326-781535c5db11" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="150" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="cf2a49ea-b602-4a20-8024-cb793d2a72b9">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="608e65f9-2e63-4212-b327-e6c5e76927e4" sourceCollectionName="Styles" name="StyleReferencesProductType" targetFieldName="ProductType">
+            <xpObjectMoniker Id="374c8f53-1dd8-4866-a1f8-426f71594037" />
+          </simpleAssociation>
+          <simpleAssociation Id="24c83af1-3c51-4591-8387-f0bdc5c047ac" sourceCollectionName="Web_Styles" name="StyleReferencesWebProductType" targetFieldName="Web_ProductType">
+            <xpObjectMoniker Id="374c8f53-1dd8-4866-a1f8-426f71594037" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="def83a16-d7b7-4df2-b6cf-aabb32bbceef">
+            <collectionField Id="ac988fee-06f8-4c18-a471-0b21fca5b1a8" name="Styles" />
+          </xpObjectHasCollectionFields>
+          <xpObjectHasCollectionFields Id="a594b33e-411e-4405-9e95-6dc03948d54b">
+            <collectionField Id="7b3c1e01-2f53-4b5a-a326-990587adc164" name="Web_Styles" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="6084bfe9-0b3a-4e39-9475-c62010f59adc">
+      <xpObject Id="833194d6-393d-439f-98d0-637ec9fc4a7f" name="StyleClass" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="StyleClass" designerFileName="StyleClass.Designer" className="StyleClass" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="StyleClass">
+        <fields>
+          <generalXpObjectHasFields Id="c2f515ad-88c1-4a7f-8945-59cca18ebdc4">
+            <field Id="408c5a22-0238-4a48-878d-b4c53d614771" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="150" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="4f95e94c-3fe3-415c-b6cf-1e7504b05e8f">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="b10ee90f-732c-4b6a-865c-e14c7df72c98" sourceCollectionName="Styles" name="StyleReferencesStyleClass" targetFieldName="StyleClass">
+            <xpObjectMoniker Id="374c8f53-1dd8-4866-a1f8-426f71594037" />
+          </simpleAssociation>
+          <simpleAssociation Id="b2471fce-3dcb-4214-ae3f-28e042443a94" sourceCollectionName="Web_Styles" name="StyleReferencesWebStyleClass" targetFieldName="Web_StyleClass">
+            <xpObjectMoniker Id="374c8f53-1dd8-4866-a1f8-426f71594037" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="f9bfa048-c76d-4368-b37e-c27a453d0294">
+            <collectionField Id="9549f04f-ded0-4e58-8ca3-de673c081460" name="Styles" />
+          </xpObjectHasCollectionFields>
+          <xpObjectHasCollectionFields Id="859d4bf7-2637-45f9-92c2-8eeede03b7a5">
+            <collectionField Id="0f546a7b-0462-40b6-a99d-5eee6435e829" name="Web_Styles" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="d0b245ab-a659-42c6-8410-de52925c6431">
+      <xpObject Id="300188c8-0dc8-43b9-b06e-4a8d676b8cd8" name="StyleDepartment" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="StyleDepartment" designerFileName="StyleDepartment.Designer" className="StyleDepartment" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="StyleDepartment">
+        <fields>
+          <generalXpObjectHasFields Id="8307cda3-e283-47a3-9b82-c1afd4377215">
+            <field Id="6e288f1d-18c4-42b4-b198-82780532dd95" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="150" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="830a474e-b6b1-4a37-a0ac-d5546eb46bd9">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="676c1a6e-8bcf-4ccc-856f-5b8977df5998" sourceCollectionName="Styles" name="StyleReferencesStyleDepartment" targetFieldName="Department">
+            <xpObjectMoniker Id="374c8f53-1dd8-4866-a1f8-426f71594037" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="978b8f71-274d-4003-afe6-35c35a5beca6">
+            <collectionField Id="26c8b252-4d24-41ba-a0d8-cfd3078dbe8d" name="Styles" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="00413823-1ff3-4130-9026-d017278cb163">
+      <xpObject Id="ca96c61d-f376-446b-b4f9-0e2c2f1dd118" name="Fabric" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="Fabric" designerFileName="Fabric.Designer" className="Fabric" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="Fabric">
+        <fields>
+          <generalXpObjectHasFields Id="bc43a29b-da28-4082-ac5b-af2f5424099e">
+            <field Id="0f27953e-ec2e-4c71-9c12-69eeec5fc7f9" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="150" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="f89faace-8e2f-4db6-bbac-bf593ac9ab40">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="012f1423-9b02-459d-a2a5-91d606078739" sourceCollectionName="Styles" name="StyleReferencesFabric" targetFieldName="Fabric">
+            <xpObjectMoniker Id="374c8f53-1dd8-4866-a1f8-426f71594037" />
+          </simpleAssociation>
+          <simpleAssociation Id="901f22a5-0e04-4778-8ff6-72e5c759c9bd" sourceCollectionName="Web_Styles" name="StyleReferencesWebFabric" targetFieldName="Web_Fabric">
+            <xpObjectMoniker Id="374c8f53-1dd8-4866-a1f8-426f71594037" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="84c1aced-175e-40da-94c0-a435f8d71dca">
+            <collectionField Id="c2758879-8928-46e2-af33-401f5a6a39a5" name="Styles" />
+          </xpObjectHasCollectionFields>
+          <xpObjectHasCollectionFields Id="cf067193-73cc-44f3-93c1-76ec0da922aa">
+            <collectionField Id="a7bb2d38-a528-488c-aa70-4ffb46ed39a9" name="Web_Styles" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="e95bad3d-4bed-4d90-8d9b-b682a287a0d4">
+      <xpObject Id="ea878338-8789-43fa-8975-7580f5cd9f22" name="Fit" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="Fit" designerFileName="Fit.Designer" className="Fit" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="Fit">
+        <fields>
+          <generalXpObjectHasFields Id="66c05636-45c5-41c4-8ecc-94eec5f7441d">
+            <field Id="2b3ea172-426e-4a77-96f6-810d51597d76" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="150" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="829cd111-09fe-4951-8bcf-6180aecd789e">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="5314e2bf-3e59-423d-87f5-bcb703f025f9" sourceCollectionName="Styles" name="StyleReferencesFit" targetFieldName="Fit">
+            <xpObjectMoniker Id="374c8f53-1dd8-4866-a1f8-426f71594037" />
+          </simpleAssociation>
+          <simpleAssociation Id="7ad651c2-9bb5-4808-bed4-bc03e9a17ef7" sourceCollectionName="Web_Styles" name="StyleReferencesWebFit" targetFieldName="Web_Fit">
+            <xpObjectMoniker Id="374c8f53-1dd8-4866-a1f8-426f71594037" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="88ebddbf-51b8-40b9-bf12-777a6c28c8ea">
+            <collectionField Id="de4ab406-7f33-4181-931e-afe5e3a33728" name="Styles" />
+          </xpObjectHasCollectionFields>
+          <xpObjectHasCollectionFields Id="7723f051-1b34-4aa2-a037-531ea030aca3">
+            <collectionField Id="8b384efd-9594-4b5c-a56b-55d5230a8b64" name="Web_Styles" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="ec147389-7391-4053-ae9b-55f22f76cc49">
+      <xpObject Id="e4e41146-deea-4985-b1e9-4b8fc0dc6801" name="SizeRange" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="SizeRange" designerFileName="SizeRange.Designer" className="SizeRange" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="SizeRange">
+        <fields>
+          <generalXpObjectHasFields Id="6aed7c63-bba5-4745-a66a-65235d1cde69">
+            <field Id="86a2d4cd-b99a-448b-8743-9342fbae791e" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="150" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="b2426037-4713-4e9d-abbf-84cdbd772e98">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="ebe9b9ac-8388-4759-bfe2-bfe26c924925" sourceCollectionName="Sizes" name="SizeReferencesSizeRange" targetFieldName="SizeRange">
+            <xpObjectMoniker Id="b377004e-1f91-4dca-b628-90853030b98d" />
+          </simpleAssociation>
+          <simpleAssociation Id="fdba58ab-e647-4cbb-9145-f023eb4300f7" sourceCollectionName="Styles" name="StyleReferencesSizeRange" targetFieldName="SizeRange">
+            <xpObjectMoniker Id="374c8f53-1dd8-4866-a1f8-426f71594037" />
+          </simpleAssociation>
+          <simpleAssociation Id="dd058a2f-917f-4863-bd4c-64bf116bf7ba" sourceCollectionName="Web_Styles" name="StyleReferencesWebSizeRange" targetFieldName="Web_SizeRange">
+            <xpObjectMoniker Id="374c8f53-1dd8-4866-a1f8-426f71594037" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="ce8ec39b-018d-4b99-82b3-06accaa9efca">
+            <collectionField Id="581c660d-79ce-46b9-b972-c42785837636" customAttributes="DevExpress.Xpo.Aggregated" name="Sizes" />
+          </xpObjectHasCollectionFields>
+          <xpObjectHasCollectionFields Id="609635ca-ed82-466c-b824-10573379f20b">
+            <collectionField Id="b3c4c779-db60-4b3d-8410-c6ce6082eee6" name="Styles" />
+          </xpObjectHasCollectionFields>
+          <xpObjectHasCollectionFields Id="0530088a-8f02-49ff-826c-159e3deb0373">
+            <collectionField Id="33a3adc9-02c8-4e65-9ef5-4b21f9f821d7" name="Web_Styles" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="217cf73e-52d4-46bc-af0a-8d312e25247f">
+      <xpObject Id="6eba7050-7ad6-469f-bc51-9727e875be61" name="BusinessDivision" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="BusinessDivision" designerFileName="BusinessDivision.Designer" className="BusinessDivision" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="BusinessDivision">
+        <fields>
+          <generalXpObjectHasFields Id="de7a5fe5-9369-4db7-8f57-bb916d3949e1">
+            <field Id="b1761d9e-fe66-4f63-a353-0cd8044ef43d" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="150" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="ccacd172-772e-47de-bf82-3fa6c7daf033">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="517965d4-4798-4be5-8143-4b38c7c80ca7" sourceCollectionName="Skus" name="SkuReferencesBusinessDivision" targetFieldName="BusinessDivision">
+            <xpObjectMoniker Id="41078811-8ad0-4474-af70-ca516e44cdab" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="6386b201-2a6a-4501-b4ad-8fea938a9e0b">
+            <collectionField Id="026932e3-2a14-4314-a1bb-4a8b413a890a" name="Skus" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="66ae6525-4f0d-49df-89b3-d38793c5d0f9">
+      <xpObject Id="04877f42-cd2b-457b-9eaf-15e0fa5c51c9" name="Season" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="Season" designerFileName="Season.Designer" className="Season" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="Season">
+        <fields>
+          <generalXpObjectHasFields Id="eb18edd7-0fbb-46b8-af2b-ba502a36eda5">
+            <field Id="1643aaf7-e2e8-4494-b873-2a03e59bab07" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="150" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="dc917bec-ea65-40cd-a891-446d620548e3">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="9196986c-22cf-4c16-a92f-ffad01f4a8dc" sourceCollectionName="Skus" name="SkuReferencesSeason" targetFieldName="Season">
+            <xpObjectMoniker Id="41078811-8ad0-4474-af70-ca516e44cdab" />
+          </simpleAssociation>
+          <simpleAssociation Id="7d18db85-04e1-47bc-84ec-a5d6daa714a0" sourceCollectionName="Web_Skus" name="SkuReferencesWebSeason" targetFieldName="Web_Season">
+            <xpObjectMoniker Id="41078811-8ad0-4474-af70-ca516e44cdab" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="7ed0bbd3-1f8b-40b6-ab48-b6aed642425e">
+            <collectionField Id="f1933820-b82a-45e0-b12b-ca0cbf6c7d1c" name="Skus" />
+          </xpObjectHasCollectionFields>
+          <xpObjectHasCollectionFields Id="17a1993b-f671-416d-8fc9-cc7f7aa7fbbf">
+            <collectionField Id="8a6653e1-bb67-456b-aad1-0eec2dfbcf0a" name="Web_Skus" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="72e572fa-dc05-46b3-aa96-db664cd718bd">
+      <xpObject Id="f3691891-b80e-4630-92f7-5c2c8fb62b1c" name="PriceRange" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="PriceRange" designerFileName="PriceRange.Designer" className="PriceRange" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="PriceRange">
+        <fields>
+          <generalXpObjectHasFields Id="13fd9f8c-c1a7-4a49-8d3a-70cd9d4ac104">
+            <field Id="7f1c8ca8-687b-4896-b6e8-99cc623c9913" name="MinimumQuantity" columnType="Int32" virtualColumnType="Int32" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="986cc3a9-fb78-49c4-a859-e6add218df8a">
+            <field Id="d6c599e1-d417-4a89-b1e4-bd1e7a71ce65" name="DirectUnitCost" columnType="Decimal" virtualColumnType="Decimal" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="d736d9e3-603c-4d13-9bfc-fa3451130486">
+            <field Id="7ca54fb5-bf6a-454b-bc02-e3213fa9d3c0" name="UnitPrice" columnType="Decimal" virtualColumnType="Decimal" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="6ec27155-6fb9-4ec6-a3ae-92abbee9fdc8">
+            <field Id="d2980e4d-7db7-47cc-a39e-e822e3b1d921" name="Sku" columnType="Single" explicitLoading="1" virtualColumnType="Sku" logicalType="Sku" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="41a94892-70b3-4e46-978f-5577bcc71fa5">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="6518a425-ea0b-4f48-8bad-55f47adcb6cf">
+      <xpObject Id="8da22613-0ec2-4c9c-bec1-aae3f90d86c7" name="BarcodeType" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="BarcodeType" designerFileName="BarcodeType.Designer" className="BarcodeType" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="BarcodeType">
+        <fields>
+          <generalXpObjectHasFields Id="a4c2eeed-2728-49e3-a467-e2628212f26a">
+            <field Id="6852acd0-b7b3-4037-a682-6dd4751c8842" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="150" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="f00f931e-0614-4657-bf9c-ae17cf2d3846">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="c24dfcd8-f9b5-4263-90fc-196e60584778" sourceCollectionName="Barcodes" name="BarcodeReferencesBarcodeType" targetFieldName="BarcodeType">
+            <xpObjectMoniker Id="f456ad1f-0027-4c28-8ad5-bd6bf6c4496b" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="f2e97562-0062-4d02-a987-7e91a095a66d">
+            <collectionField Id="6e4a09b6-d766-43d0-a993-5981ecc7f62f" name="Barcodes" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="83c85e67-c86d-4f06-8352-8a5b8f6d3d19">
+      <xpObject Id="f456ad1f-0027-4c28-8ad5-bd6bf6c4496b" name="Barcode" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="Barcode" designerFileName="Barcode.Designer" className="Barcode" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="Barcode">
+        <fields>
+          <generalXpObjectHasFields Id="c4cdb474-8377-4b63-b936-3772be2f6072">
+            <field Id="ea0a9b3d-07bc-43f1-ba8b-2ec6c6b588a8" name="BarcodeType" explicitLoading="1" virtualColumnType="BarcodeType" logicalType="BarcodeType" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="a283ed2e-89da-4646-a68f-3b620fe29fd2">
+            <field Id="e3ce6c63-79cf-4330-9b81-732eab3231b9" name="Number" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="150" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="69bff5b4-95a9-4c49-a43c-53d306413390">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="80e8648a-a337-4fd8-bdfc-c5322ce1686f" sourceCollectionName="Skus" name="SkuReferencesBarcode" targetFieldName="Barcode">
+            <xpObjectMoniker Id="41078811-8ad0-4474-af70-ca516e44cdab" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="f7cd3188-e602-4ee3-a7e2-cb5fc557025e">
+            <collectionField Id="f723a5ae-f267-472a-a0f8-2a283bd279b5" name="Skus" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="99005566-ad3f-487d-9c90-4c111c21066d">
+      <externalPersistentType Id="1f3ed32d-3d6e-4379-a2af-750b9c2f13ab" name="TIG.TotalLink.Shared.DataModel.Admin.Country" nameSpace="TIG.TotalLink.Shared.DataModel.Admin" virtualName="Country" assemblyName="W:\TIG\TotalLink3\Source\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Admin\bin\Debug\TIG.TotalLink.Shared.DataModel.Admin.dll" deferredDeletion="True" optimisticLocking="True" addReferenceToAssembly="false" hasDefaultConstructor="true" constructorParameterType="Session" hasSessionSpecifiedConstructor="false">
+        <fields>
+          <generalXpObjectHasFields Id="c876026c-3f35-46c7-a5ed-c44ba4ce1589">
+            <externalPersistentTypeField Id="0a52e38f-1ce4-4f02-8d3a-36d6fbc4267a" name="Oid" virtualColumnType="Guid" key="true" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="59e54fc4-eabb-4dc2-b8df-fc41a60fd672">
+            <externalPersistentTypeField Id="612b0463-7210-4d48-98eb-75e20348edef" name="Code" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="d9eb7985-42ed-4025-91fb-8507684279bb">
+            <externalPersistentTypeField Id="acf4eb8e-d4fe-4127-a8ba-f9af7ea4770a" name="Name" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="47a43867-66ae-4ab2-8b00-5a46088b2cd1">
+            <externalPersistentTypeField Id="3da8d608-39ba-4516-b173-a1a4320f5cdb" name="Authorized" virtualColumnType="Boolean" />
+          </generalXpObjectHasFields>
+        </fields>
+      </externalPersistentType>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="7f35a9cd-40bb-4373-97bc-41ee77a19478">
+      <externalPersistentType Id="a60f245a-f636-439b-83b0-b936f718c024" name="TIG.TotalLink.Shared.DataModel.Admin.PostingGroup" nameSpace="TIG.TotalLink.Shared.DataModel.Admin" virtualName="PostingGroup" assemblyName="W:\TIG\TotalLink3\Source\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Admin\bin\Debug\TIG.TotalLink.Shared.DataModel.Admin.dll" deferredDeletion="True" optimisticLocking="True" addReferenceToAssembly="false" hasDefaultConstructor="true" constructorParameterType="Session" hasSessionSpecifiedConstructor="false">
+        <fields>
+          <generalXpObjectHasFields Id="5a59abfa-f191-4799-9146-3ce733b5a561">
+            <externalPersistentTypeField Id="f7c3e1a4-4e8a-46c2-bf87-64af55a2c406" name="Oid" virtualColumnType="Guid" key="true" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="aa086589-67de-4ea7-a5db-89a5163db542">
+            <externalPersistentTypeField Id="6e197cb3-fcd1-4a55-a7eb-40e5355b3b69" name="Code" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="ae50d9f4-cc76-4ae7-ad1b-b13503265abd">
+            <externalPersistentTypeField Id="25f562b8-81ca-4b33-bbce-95fbe217dc9f" name="Name" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+        </fields>
+      </externalPersistentType>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="037dc34e-dfe8-417a-81a4-e4f2ada817b0">
+      <xpObject Id="af295d46-ba7c-42da-a396-de333f6c313f" name="WarehouseLocation" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="WarehouseLocation" designerFileName="WarehouseLocation.Designer" className="WarehouseLocation" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="WarehouseLocation">
+        <fields>
+          <generalXpObjectHasFields Id="397b9fb9-fb04-4ea6-8c9f-7e6ec018b920">
+            <field Id="ec6c9fdc-e6e9-46e4-9a1c-7620d537d9cf" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="d41578fd-7fe3-4814-b465-be46c7445f22">
+            <field Id="348618e1-46ff-4f6d-9e61-b25bcff3f267" name="Code" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="10" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="600088be-eaa5-45fe-ba92-ac7296428953">
+            <field Id="bbd3dc91-af4a-4d03-b366-02e1e1be9283" name="Address" virtualColumnType="TIG.TotalLink.Shared.DataModel.Crm.Address" logicalType="TIG.TotalLink.Shared.DataModel.Crm.Address" delayedUpdateModifiedOnly="false" customAttributes="TIG.TotalLink.Shared.DataModel.Core.Attribute.RuntimeAssociation(&quot;WarehouseLocationReferencesAddress&quot;, &quot;WarehouseLocations&quot;)" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="6bffdda1-e78a-465d-9cfb-edb934137414">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="a894903b-d192-4195-8b79-568d625b274b" sourceCollectionName="BinLocations" name="BinLocationReferencesWarehouseLocation" targetFieldName="WarehouseLocation">
+            <xpObjectMoniker Id="45f82333-1606-47e3-9751-f2e5a530e553" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="5b678ab1-9b9f-436d-aa0e-73a6ecedb3cd">
+            <collectionField Id="621f87bc-809e-4c91-ada2-40eb0303359b" customAttributes="DevExpress.Xpo.Aggregated" name="BinLocations" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="83d33fd3-4110-48c7-92f1-a73c1d0907f9">
+      <externalPersistentType Id="83e982a4-e0fd-4c3f-9a71-9cbf7aab0e3d" name="TIG.TotalLink.Shared.DataModel.Crm.Address" nameSpace="TIG.TotalLink.Shared.DataModel.Crm" virtualName="Address" assemblyName="C:\tig\TotalLink3\Source\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\bin\Debug\TIG.TotalLink.Shared.DataModel.Crm.dll" deferredDeletion="True" optimisticLocking="True" addReferenceToAssembly="false" hasDefaultConstructor="true" constructorParameterType="Session" hasSessionSpecifiedConstructor="false">
+        <fields>
+          <generalXpObjectHasFields Id="0f0f6f8e-7fdd-4539-a2cf-24fd60d169dd">
+            <externalPersistentTypeField Id="d5ceef67-b99b-4c04-9181-cb27254b4c8c" name="Oid" virtualColumnType="Guid" key="true" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="ddb26df6-3c36-46cf-8881-1dd43299ab9d">
+            <externalPersistentTypeField Id="377ae72f-edeb-4696-a30e-c824d58a3028" name="P_UnitType" virtualColumnType="UnitType" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="3be85e75-0f4a-4fbf-90ea-38d9723a4986">
+            <externalPersistentTypeField Id="df6850ba-6c6f-498f-9fb6-6e0122f6d6cb" name="P_StreetType" virtualColumnType="StreetType" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="583733e3-1861-4109-9d29-bcde2e957021">
+            <externalPersistentTypeField Id="b326a67e-83c7-4069-8088-9906da0a135d" name="P_ValidationAPI" virtualColumnType="AddressValidationApi" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="36517cd3-4260-40d0-b00d-c9a049412a9a">
+            <externalPersistentTypeField Id="924cdf16-8d52-496e-bb5c-c64d8d81efd5" name="P_AddressType" virtualColumnType="AddressType" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="8756ecf6-4091-4c05-89f4-0cf20d30ea8e">
+            <externalPersistentTypeField Id="7c16a2db-6aca-48c1-97bf-194724f8e4a2" name="P_Contact" virtualColumnType="Contact" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="41e24347-5883-47d7-91e6-57a0dc16beb8">
+            <externalPersistentTypeField Id="9ec867b5-e25c-41f3-9c5d-f01ad9127680" name="P_Postcode" virtualColumnType="Postcode" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="df5062dd-a336-47dc-841e-423fe37d1096">
+            <externalPersistentTypeField Id="70956535-c0a4-4b95-a94d-1bc4badbe06b" name="Label" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="5d75269c-03c4-44a7-a8b4-533265e22614">
+            <externalPersistentTypeField Id="f06457b4-b9c3-44b6-89b7-3a160d362e6a" name="IsDefault" virtualColumnType="Boolean" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="926ae488-f4f0-480d-b583-2258a288c0ab">
+            <externalPersistentTypeField Id="967f0358-1454-4124-aed0-7c7799f61043" name="AttentionTo" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="859ed142-26d6-4678-8a68-c4905b1856bc">
+            <externalPersistentTypeField Id="ecf08111-8f98-4880-8810-0ccd0bdace35" name="UnitType" virtualColumnType="UnitType" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="fb49b9a9-46fc-40a0-b672-036753fcdd42">
+            <externalPersistentTypeField Id="1981c33c-510b-4cb0-894b-5afd35e20614" name="UnitNumber" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="8028d654-8949-48e0-ae2a-a9a439a31055">
+            <externalPersistentTypeField Id="bdb80bc8-3c68-4889-b467-c479a2778fbb" name="StreetNumber" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="71adc451-17e4-4fa6-870a-0c5c20b2d132">
+            <externalPersistentTypeField Id="7c770856-8687-464d-af23-610b4bf38f9e" name="StreetName" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="224bfcbc-99ea-44f0-b434-180882bf1121">
+            <externalPersistentTypeField Id="298f96f7-d1c3-45f4-ae99-f86c80ba6e56" name="StreetType" virtualColumnType="StreetType" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="f3bfcac2-3f4c-42fd-ba64-3024a750f222">
+            <externalPersistentTypeField Id="8562155e-7c42-4090-8b9b-fbbefad64d12" name="LegacyLine1" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="75b873f2-1955-45b7-bfa9-c360aa0652c6">
+            <externalPersistentTypeField Id="034f4ec1-ed50-4736-80f2-0ffebde6b13a" name="LegacyLine2" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="89560318-eadf-4d54-9eb2-8de3b7849a6a">
+            <externalPersistentTypeField Id="50938a62-4f56-41d7-9fe8-d8ead65ee324" name="City" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="9679ac24-80eb-4dcc-abb6-9d7a6c1a4395">
+            <externalPersistentTypeField Id="57638cff-8ed4-4f72-84af-34edce070896" name="ValidationAPI" virtualColumnType="AddressValidationApi" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="dc2bb83c-ff2d-4141-a374-7386a1e81d40">
+            <externalPersistentTypeField Id="e294e938-f30e-4d21-9268-f1eaf0af20db" name="ValidationDate" virtualColumnType="DateTime" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="cc7c4471-2d9a-46a4-a41e-6e958f7cea5a">
+            <externalPersistentTypeField Id="5e1b44fc-949f-482d-96d2-6d7d13fff034" name="CompanyName" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="8591eb2d-48f9-4493-8e4a-d03344696708">
+            <externalPersistentTypeField Id="cfff0aaf-fef4-45e0-98e7-abcb5d14d3ac" name="Longitude" virtualColumnType="Decimal" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="a3b5157e-90cb-4d4f-a4ee-03bf35ddcb4c">
+            <externalPersistentTypeField Id="c9422736-6454-4df2-a8da-b798ebdd2e77" name="Latitude" virtualColumnType="Decimal" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="fa27b579-e84b-4614-95eb-b5e029995bbc">
+            <externalPersistentTypeField Id="a986301e-0f37-499c-b3ad-9081200c0c46" name="AddressType" virtualColumnType="AddressType" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="f4aa03b0-8f92-48c8-b189-e53e8f90b6a2">
+            <externalPersistentTypeField Id="99d9498a-9cf9-4b59-94bf-7cc348a0e828" name="Contact" virtualColumnType="Contact" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="7a4539c1-0597-4f77-9d4b-9d1b17fe0cc3">
+            <externalPersistentTypeField Id="1c2a0ed8-7651-49ac-a254-c546ddb0c686" name="Postcode" virtualColumnType="Postcode" />
+          </generalXpObjectHasFields>
+        </fields>
+      </externalPersistentType>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="65a5d293-31de-40b1-a2b1-8aae10296157">
+      <externalPersistentType Id="af5f29d8-300e-4806-818a-c75593fb2902" name="TIG.TotalLink.Shared.DataModel.Crm.Contact" nameSpace="TIG.TotalLink.Shared.DataModel.Crm" virtualName="Contact" assemblyName="C:\tig\TotalLink3\Source\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Crm\bin\Debug\TIG.TotalLink.Shared.DataModel.Crm.dll" deferredDeletion="True" optimisticLocking="True" addReferenceToAssembly="false" hasDefaultConstructor="true" constructorParameterType="Session" hasSessionSpecifiedConstructor="false">
+        <fields>
+          <generalXpObjectHasFields Id="4d98453b-6184-4bc3-ac23-addd92e7b817">
+            <externalPersistentTypeField Id="32fb2677-f5d5-4d29-b3d8-d882513bcf45" name="Oid" virtualColumnType="Guid" key="true" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="aa186fa4-755a-48d4-a62b-b8f49b39a45b">
+            <externalPersistentTypeField Id="16a08eaf-883b-4ad4-85d2-28401fca7ad9" name="P_ContactType" virtualColumnType="ContactType" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="b946e787-52e3-425b-91d4-573d86cf0653">
+            <externalPersistentTypeField Id="66ab346d-7d05-42e4-8729-8e21ac7e6a62" name="P_IndustryClass" virtualColumnType="IndustryClass" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="deae90cc-24ee-4db0-95c6-73e1e1d651a3">
+            <externalPersistentTypeField Id="6ba56663-c5be-41c3-8f66-26c050b39ce1" name="P_Currency" virtualColumnType="Currency" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="6f189f88-2124-40e7-ac25-85a3ae38886a">
+            <externalPersistentTypeField Id="12374de3-a999-43c5-a43e-8670a1d766e7" name="P_Language" virtualColumnType="Language" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="3f3a9454-c9ff-4999-a7b9-718e435304d3">
+            <externalPersistentTypeField Id="dcc5399c-2a22-4928-883c-2c59cda5b070" name="P_Title" virtualColumnType="Title" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="64227e07-1979-4c5d-846f-3ec0a6a4f3e7">
+            <externalPersistentTypeField Id="9feccb0c-0669-4aee-83ab-f63ee7c9187f" name="P_GlobalRegion" virtualColumnType="GlobalRegion" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="8010d83b-2d61-48bf-acb7-c52ae4c84277">
+            <externalPersistentTypeField Id="152d4985-b0a3-4b4d-9bb7-ea80ae5bda0b" name="P_InternetChatType" virtualColumnType="ChatType" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="3f885513-7d4e-4d62-9523-1884864b3cf1">
+            <externalPersistentTypeField Id="b54c6454-b215-49dd-ac6f-74b677608e81" name="P_PaymentTerms" virtualColumnType="PaymentTerms" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="20a91b61-50de-42fc-92b9-652f4c7633d4">
+            <externalPersistentTypeField Id="788dd220-676a-4c22-9d17-a85b29da62a3" name="P_ReminderTerms" virtualColumnType="ReminderTerms" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="804f6142-daf0-44f4-9ba8-4792a9f8d30c">
+            <externalPersistentTypeField Id="7dffca41-8424-4bd2-8b5a-ac36d6c0c166" name="P_CashFlowPaymentTerms" virtualColumnType="PaymentTerms" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="7798442f-3a1c-46bd-ab3d-987c855cc96b">
+            <externalPersistentTypeField Id="4df5ee31-1527-4462-a76e-7d0b9aa4916f" name="P_PaymentMethod" virtualColumnType="PaymentMethod" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="7b220f73-f087-43e4-8506-f637baed0e51">
+            <externalPersistentTypeField Id="0beb7b8b-f9cf-46ba-9e61-e58dc7b7403d" name="P_OwnershipType" virtualColumnType="OwnershipType" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="729e5fbe-c603-4720-a7b8-e3dcf6cb060d">
+            <externalPersistentTypeField Id="7b2c806e-152e-4b43-94a9-9f619a943c8b" name="P_BusinessType" virtualColumnType="BusinessType" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="b1ae0bbc-ba65-4141-8b33-dcdcba210691">
+            <externalPersistentTypeField Id="03a211c8-6807-4d32-8e63-0c62bb3cb152" name="P_GSTBusinessPostingGroup" virtualColumnType="PostingGroup" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="1459006c-a425-4807-a8c8-c7d1ff0bbb4b">
+            <externalPersistentTypeField Id="693a6f16-eb4f-4f90-99dd-cedd4ba49a87" name="P_GeneralBusinessPostingGroup" virtualColumnType="PostingGroup" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="b2c9443b-53db-460e-b4a8-d1d5dc7931a9">
+            <externalPersistentTypeField Id="4c778b0e-94a1-46f8-86c7-a6d1c9446e29" name="P_ContactPostingGroup" virtualColumnType="PostingGroup" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="9d2ed027-f0b1-449a-a5f8-2a80d0e4adfe">
+            <externalPersistentTypeField Id="c6a77114-e279-42d0-9ced-1ecec4de208f" name="P_ShipmentMethod" virtualColumnType="ShipmentMethod" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="1a1543ef-77cb-468b-9043-bbe7369571a6">
+            <externalPersistentTypeField Id="bcb5d9d5-b6c9-4f05-a3bc-fccd7211a868" name="NavId" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="5e9f657d-b0d8-496f-9f16-db894b2f862c">
+            <externalPersistentTypeField Id="a1c68760-bcd0-4d33-a31a-eba14763d29f" name="CreditLimit" virtualColumnType="Decimal" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="9a9ac6e7-84b5-49c5-850e-5194fe4fa753">
+            <externalPersistentTypeField Id="a306dfd0-0c42-49b5-9dda-76805b5c9f9e" name="ContactType" virtualColumnType="ContactType" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="98b0963f-4b27-4966-983a-831e5c26f0e2">
+            <externalPersistentTypeField Id="c81a56e0-8fd8-4ef4-af86-b46cb292a673" name="IndustryClass" virtualColumnType="IndustryClass" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="74edcd2c-8e21-46f4-b903-27b49fa6be7c">
+            <externalPersistentTypeField Id="5737b52c-a8f5-4f39-86d3-1806b1405688" name="Email" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="5751f295-3b80-4edf-9348-c976b5f39681">
+            <externalPersistentTypeField Id="874f3564-d8bd-469d-902c-f7eded36cf52" name="Webpage" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="be75ba6a-d28f-4bb2-a69a-445be00f2606">
+            <externalPersistentTypeField Id="2c988da4-6d72-4a7b-a3e9-e3d1e7d18e97" name="Currency" virtualColumnType="Currency" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="f78d1840-dd8b-4e3f-bc5b-1e122b84b452">
+            <externalPersistentTypeField Id="9bfb9af8-44a8-4483-a2dc-5a42a99dc7b3" name="Language" virtualColumnType="Language" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="12d0fea3-adad-4a1e-8ffe-89968318d9ef">
+            <externalPersistentTypeField Id="580120c6-f224-4c93-a211-e5fa6f7d65e2" name="FirstName" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="5d0ac74c-41c1-40cf-bd64-3a189f1a074c">
+            <externalPersistentTypeField Id="4b8435bc-9993-4682-bec7-f0e9f56e4332" name="MiddleName" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="09564808-683d-40cf-8575-142189e1a6be">
+            <externalPersistentTypeField Id="85f26b4b-ee55-4ff3-b27a-9e388915a442" name="LastName" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="67513681-1f28-45bb-944c-64ac4ba1c703">
+            <externalPersistentTypeField Id="707b6096-d502-4ce4-be7b-0cb1c54486ec" name="Title" virtualColumnType="Title" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="e2e1b023-d28b-4d40-bae1-ee39237eb346">
+            <externalPersistentTypeField Id="828c1b73-36ff-4010-bc5c-50fff7f7ec6b" name="Birthdate" virtualColumnType="DateTime" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="dcef6c51-10c0-41b9-9214-3b6a6041d677">
+            <externalPersistentTypeField Id="7a72704a-2b03-48ef-a541-4e08906dd7b5" name="Nickname" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="1f442ab8-a8cb-46f8-9edd-dd0ec4d4bda2">
+            <externalPersistentTypeField Id="d264f89b-88c1-46a1-8c9a-53eaaf549c27" name="TotalStores" virtualColumnType="Int32" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="48fe516a-e2c7-47ee-999d-2ffd103c998e">
+            <externalPersistentTypeField Id="9cfd139d-08c9-444f-b043-64f6aae52b33" name="TotalEmployees" virtualColumnType="Int32" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="bc409a98-42b8-4ae4-9c33-376507fed00c">
+            <externalPersistentTypeField Id="36240cc8-e5da-408d-8070-b86979d54865" name="GlobalRegion" virtualColumnType="GlobalRegion" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="b12a3fea-fc0d-42d3-a2fd-1de7fb6b3cf0">
+            <externalPersistentTypeField Id="90d5b911-55b2-4c30-9a4a-309d5a520bc6" name="HomePhone" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="eba117f0-4f89-401c-9d08-55451cdbf65e">
+            <externalPersistentTypeField Id="3c706857-6663-43c7-ac7b-1bd092896592" name="HomePhone2" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="e8a4d147-d9f8-4575-b82f-84c6573c2dba">
+            <externalPersistentTypeField Id="54560048-6e0a-4fc6-8511-27c43df0c451" name="Mobile" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="6847586f-ed22-4466-8f74-18be38c5cbb6">
+            <externalPersistentTypeField Id="16057f42-8abd-49e0-a1dc-7bf3a01709ae" name="Fax" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="f268be60-67aa-4032-83d9-3e7639e7b3a9">
+            <externalPersistentTypeField Id="f78b32b0-11f5-42c8-8311-42135dd41e19" name="BusinessPhone" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="2cd81251-31de-4f57-8f25-a48409f5d45a">
+            <externalPersistentTypeField Id="4c93b8b8-37eb-43d8-af57-6d285ef5d4f6" name="BusinessPhone2" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="00a9987d-7549-4851-bf80-d70bab38c9da">
+            <externalPersistentTypeField Id="92dde5e6-75ca-4138-97e3-c9996b5187e1" name="BusinessFax" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="10242d50-00bd-431d-90da-ed73c25c72eb">
+            <externalPersistentTypeField Id="db12b751-bd9f-4ae5-9821-3fad747814c2" name="BusinessMobile" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="b7e6e760-c6a8-419e-9157-52c6b8785a1b">
+            <externalPersistentTypeField Id="b68dface-7502-41d1-bfd4-338edd509b9d" name="Pager" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="fd4714c4-e2b5-4f82-929b-f4ea0c91eaed">
+            <externalPersistentTypeField Id="7d2fe76c-be9e-47d6-a00e-3fafd277dadc" name="Facebook" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="e1c58a61-0a29-4399-bd13-f7f85c2eece3">
+            <externalPersistentTypeField Id="7a9d72a6-079c-493d-a150-d074be877fd0" name="Twitter" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="8c43473b-ccc5-4cec-9136-25be498acca2">
+            <externalPersistentTypeField Id="23429928-d410-404a-8526-d845d673d736" name="InternetChat" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="57552462-c7d1-4c4a-892f-52e5245dc5be">
+            <externalPersistentTypeField Id="67b41d96-e39c-4c78-b705-8101bfe2d709" name="InternetChatType" virtualColumnType="ChatType" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="9b3d6985-15d8-445f-a095-4630a1bc80cd">
+            <externalPersistentTypeField Id="7d26fcfb-7180-4e83-a1e5-f53164506a08" name="BlockedReason" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="548fe453-ed8b-4290-b9c7-1af18bc2c436">
+            <externalPersistentTypeField Id="e4e3c56e-4b9e-4097-92d4-2b9c447722be" name="AllowLineDiscount" virtualColumnType="Boolean" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="b9eea94e-e776-4cf5-87a0-129ac45c8421">
+            <externalPersistentTypeField Id="bd49aa93-75f2-4049-8c73-d2916e92613e" name="GSTIncluded" virtualColumnType="Boolean" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="d1271597-bf8c-47e6-9be2-38c48b64ce49">
+            <externalPersistentTypeField Id="b4920f8d-a9f4-4670-8a92-59aaaba4fadf" name="PrepaymentPercent" virtualColumnType="Decimal" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="c768645a-612a-450a-8753-5d2c63c2cb5a">
+            <externalPersistentTypeField Id="e3e4bd7f-8796-41cf-b81a-d92dc38a7029" name="BackOrderNotAccepted" virtualColumnType="Boolean" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="7784b98a-131c-43e8-8bd4-6e5d4edef6cc">
+            <externalPersistentTypeField Id="8b38804d-c777-4757-ba54-c50010bc7453" name="PaymentTerms" virtualColumnType="PaymentTerms" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="0a3490ef-238d-4814-97c4-9d72d2eab5de">
+            <externalPersistentTypeField Id="ec12a3ac-27e0-4f0e-9cb9-4c10b2aabae5" name="ReminderTerms" virtualColumnType="ReminderTerms" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="ce6278ba-cbf6-4275-a6ac-3d1da1c27e71">
+            <externalPersistentTypeField Id="54134660-de51-4621-92ff-b50d83eb7598" name="CashFlowPaymentTerms" virtualColumnType="PaymentTerms" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="b8dc6137-c208-4b88-aa08-7e306989e6b0">
+            <externalPersistentTypeField Id="5699b671-dc6f-436a-b60c-6212694c33ac" name="ACN" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="4486532b-18b3-429c-9bcf-ff64a36fda78">
+            <externalPersistentTypeField Id="2c4f97a0-613a-46bd-bda5-6c90f9bbf450" name="ABN" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="4dafaf24-99e5-4fef-97a8-d60daab98f67">
+            <externalPersistentTypeField Id="7e54b946-d11a-46ce-a56b-6348aa5874b2" name="CompanyRegistered" virtualColumnType="Boolean" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="7858c8da-cf19-473e-85e5-b9bfb261dabc">
+            <externalPersistentTypeField Id="271f920b-21cb-4a6e-9d61-a62e014cc2e8" name="PaymentMethod" virtualColumnType="PaymentMethod" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="78ce70f8-b899-43d7-a093-10e4b3b041ae">
+            <externalPersistentTypeField Id="798693f5-7337-43ce-9779-623f0bace68f" name="OwnershipType" virtualColumnType="OwnershipType" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="9e84a266-1f69-45ca-b27e-7ca5ce64f0fe">
+            <externalPersistentTypeField Id="bc37744e-ca33-4031-b462-a8d0ae0e1cf8" name="BranchNumber" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="50dc92ec-918c-4f2a-8b8f-1f0edd82d3fa">
+            <externalPersistentTypeField Id="258743d3-6707-4f9a-90e0-94f7218b6a69" name="Reference" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="d7ca90a8-b57d-4643-aaa4-1254ebd6f2e7">
+            <externalPersistentTypeField Id="a4ca7b72-a6e7-41f7-837d-a7aebbedc46c" name="BusinessExtension" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="211e78bf-6235-4752-8360-2b9b309ab1c9">
+            <externalPersistentTypeField Id="ab26645f-ec4a-4e58-ab8b-b952303a4ff7" name="SearchName" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="21fb03e3-87d8-4baa-acea-d8e0f92cdfbf">
+            <externalPersistentTypeField Id="bec5a1b5-296d-408b-8b33-22b49a1d009a" name="BusinessType" virtualColumnType="BusinessType" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="26c916df-edc8-4883-9d9a-aac2afb45aa5">
+            <externalPersistentTypeField Id="6cf50a3f-e6d7-4253-93b5-dc002d8ced17" name="GSTBusinessPostingGroup" virtualColumnType="PostingGroup" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="5fd62585-ba99-4aae-8ba9-7481cc4c05df">
+            <externalPersistentTypeField Id="80f94728-6c32-4011-85fb-1079750a91a3" name="GeneralBusinessPostingGroup" virtualColumnType="PostingGroup" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="9c1b1d96-71ca-4f9a-83ea-33f5fdfedca6">
+            <externalPersistentTypeField Id="5ac8704d-c370-4d39-80ac-4b2972b3547c" name="ContactPostingGroup" virtualColumnType="PostingGroup" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="7082dd88-85a1-406d-b00f-c52b94cdf347">
+            <externalPersistentTypeField Id="75a45a8b-2c2a-4074-a92f-98e7700d1f5d" name="ShipmentMethod" virtualColumnType="ShipmentMethod" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="e228b188-8a5e-4b59-bce8-5d066bca845b">
+            <externalPersistentTypeField Id="a8062861-466d-4626-a5de-703c9b67a102" name="Legacy" virtualColumnType="String" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="fcb49cf9-b842-4636-a47b-b494a5eb19bf">
+            <externalPersistentTypeField Id="4241ce23-e221-4b08-ad60-2ce221f8cc22" name="AllowPartialDelivery" virtualColumnType="Boolean" />
+          </generalXpObjectHasFields>
+        </fields>
+      </externalPersistentType>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="b5bfa6e3-88a4-4de9-90c7-f0ff6e5bfbdf">
+      <xpObject Id="45f82333-1606-47e3-9751-f2e5a530e553" name="BinLocation" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="BinLocation" designerFileName="BinLocation.Designer" className="BinLocation" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="BinLocation">
+        <fields>
+          <generalXpObjectHasFields Id="91573327-b76a-466a-8035-8c0b82ff2cfd">
+            <field Id="04e55c8d-b327-4d95-a22b-93be1e792e67" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="c311cc86-6c0a-4cf3-a5cd-71ef2ef35329">
+            <field Id="4f561be3-8cfd-4184-a4c6-96927a85ae59" name="IsleCode" virtualColumnType="String" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="f804bdd2-76dc-4127-86e1-63067c6c87ef">
+            <field Id="92270c0d-06f7-4038-99f1-af3a055de378" name="BinCode" virtualColumnType="String" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="675c6a5b-7635-47bc-9783-65ac81c78d2a">
+            <field Id="75b70f28-98a9-40fd-b7a6-d97b074215ad" name="WarehouseLocation" virtualColumnType="WarehouseLocation" logicalType="WarehouseLocation" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="34c5082a-b995-4a76-bd25-5189e1a5efcb">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="d1abcf67-598d-46f4-bcb2-ad26196055ad" sourceCollectionName="TargetStockAdjustments" name="StockAdjustmentReferencesBinLocation" targetFieldName="TargetBinLocation">
+            <xpObjectMoniker Id="6347e4c9-31f7-4e52-9067-1d1f816b043f" />
+          </simpleAssociation>
+          <simpleAssociation Id="ce287225-e11f-4094-9e9f-9a21359336a5" sourceCollectionName="SourceStockAdjustments" name="StockAdjustmentReferencesBinLocation1" targetFieldName="SourceBinLocation">
+            <xpObjectMoniker Id="6347e4c9-31f7-4e52-9067-1d1f816b043f" />
+          </simpleAssociation>
+          <simpleAssociation Id="6a721ee6-407c-4bce-a366-bc1d6d3894b5" sourceCollectionName="PhysicalStocks" name="PhysicalStockReferencesBinLocation" targetFieldName="BinLocation">
+            <xpObjectMoniker Id="acbc796e-de3d-4058-b284-8f8ecdabce2c" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="1d2d4987-96c9-4f74-89c4-114f7a395df7">
+            <collectionField Id="1213cddf-1e7b-4795-ab0d-a8334cfff178" name="TargetStockAdjustments" />
+          </xpObjectHasCollectionFields>
+          <xpObjectHasCollectionFields Id="721ac708-2f77-4612-98f8-f3d61d6cf1d7">
+            <collectionField Id="2a5be185-25a0-49ee-8335-154b2b66b4b3" name="SourceStockAdjustments" />
+          </xpObjectHasCollectionFields>
+          <xpObjectHasCollectionFields Id="d1e8474d-6d2a-4311-a3ac-b64a5d2bd49d">
+            <collectionField Id="94604abc-05ae-4426-bb46-767194a4d441" customAttributes="DevExpress.Xpo.Aggregated" name="PhysicalStocks" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="5a518782-e512-4387-a900-622dcafe1a59">
+      <xpObject Id="6774f4f2-2e90-4993-8394-acbad4767725" name="PhysicalStockType" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="PhysicalStockType" designerFileName="PhysicalStockType.Designer" className="PhysicalStockType" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="PhysicalStockType">
+        <fields>
+          <generalXpObjectHasFields Id="082cadda-1eda-42c5-84b7-262ab1cab473">
+            <field Id="27179067-c91f-40ca-b658-44eb8caaf8e1" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="bb60f50c-d447-4de8-9d10-628df81b6597">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="c4cb708e-ff5f-43f0-b938-f23819989886" sourceCollectionName="PhysicalStocks" name="PhysicalStockReferencesPhysicalStockType" targetFieldName="PhysicalStockType">
+            <xpObjectMoniker Id="acbc796e-de3d-4058-b284-8f8ecdabce2c" />
+          </simpleAssociation>
+          <simpleAssociation Id="99f95721-c37e-40eb-9be4-e1620a82793b" sourceCollectionName="TargetStockAdjustments" name="StockAdjustmentReferencesPhysicalStockType" targetFieldName="TargetPhysicalStockType">
+            <xpObjectMoniker Id="6347e4c9-31f7-4e52-9067-1d1f816b043f" />
+          </simpleAssociation>
+          <simpleAssociation Id="eeeeee28-b9ba-46ce-a414-ca461533e302" sourceCollectionName="SourceStockAdjustments" name="StockAdjustmentReferencesPhysicalStockType1" targetFieldName="SourcePhysicalStockType">
+            <xpObjectMoniker Id="6347e4c9-31f7-4e52-9067-1d1f816b043f" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="1e7c92e2-01fe-4870-ae75-d51599aa9689">
+            <collectionField Id="7b25fb06-1c92-4ae3-b4d2-c657f84bb97b" name="PhysicalStocks" />
+          </xpObjectHasCollectionFields>
+          <xpObjectHasCollectionFields Id="6b238e13-e7df-41ce-9f5f-448b5baab409">
+            <collectionField Id="f4037ceb-5860-4fdd-add7-1bf0b7a91b1e" name="TargetStockAdjustments" />
+          </xpObjectHasCollectionFields>
+          <xpObjectHasCollectionFields Id="f256222c-ef3a-432d-951c-d92c2364da25">
+            <collectionField Id="0284a6c1-d67d-4360-b4ab-257a4fa3f620" name="SourceStockAdjustments" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="36e11d69-7ab8-446c-80d3-437df8b9707d">
+      <xpObject Id="acbc796e-de3d-4058-b284-8f8ecdabce2c" name="PhysicalStock" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="PhysicalStock" designerFileName="PhysicalStock.Designer" className="PhysicalStock" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="PhysicalStock">
+        <fields>
+          <generalXpObjectHasFields Id="acd24ed9-599c-4daa-bf90-008c8b2da0ff">
+            <field Id="cf2b5145-88a6-4d45-9e39-c9c36165c3a4" name="Sku" virtualColumnType="Sku" logicalType="Sku" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="7e5b74e8-0ea6-4ce2-828b-3e321c7d6c6d">
+            <field Id="bd1fcb20-6282-4e98-aaf5-1f1451791419" name="PhysicalStockType" virtualColumnType="PhysicalStockType" logicalType="PhysicalStockType" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="e244065b-c002-437b-ad3c-8feb49c1ebf1">
+            <field Id="56060829-72da-459d-b544-d6078ca823af" name="Quantity" columnType="Int32" virtualColumnType="Int32" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="a3d9855e-a823-46a7-9ebd-d72f619d4de8">
+            <field Id="58b27a15-7599-43a4-a2ca-00894cb86a8d" name="BinLocation" virtualColumnType="BinLocation" logicalType="BinLocation" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="581106dd-f814-4195-9ecc-29f6d64a70d5">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <indexes>
+          <xpObjectHasIndexes Id="901edb72-8e80-442d-9f34-287569fbb37e">
+            <index Id="3c910147-f23f-4924-a7ab-82a49346dd0b" name="IX_PhysicalStock">
+              <fieldsInIndex>
+                <indexReferencesFields Id="d5f87c04-f006-47ab-8f60-a360a1071f7f">
+                  <fieldMoniker Id="cf2b5145-88a6-4d45-9e39-c9c36165c3a4" />
+                </indexReferencesFields>
+                <indexReferencesFields Id="68e87e32-7300-431c-a148-1206095405ea">
+                  <fieldMoniker Id="bd1fcb20-6282-4e98-aaf5-1f1451791419" />
+                </indexReferencesFields>
+                <indexReferencesFields Id="41584bca-2ba5-4ec0-adcc-d35ffdee3e07">
+                  <fieldMoniker Id="58b27a15-7599-43a4-a2ca-00894cb86a8d" />
+                </indexReferencesFields>
+              </fieldsInIndex>
+            </index>
+          </xpObjectHasIndexes>
+        </indexes>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="e2299f1e-bd73-443f-80dc-c88debc1b299">
+      <xpObject Id="386841ad-a247-421b-bb61-8c5698818168" name="StockAdjustmentReason" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="StockAdjustmentReason" designerFileName="StockAdjustmentReason.Designer" className="StockAdjustmentReason" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="StockAdjustmentReason">
+        <fields>
+          <generalXpObjectHasFields Id="48e5d5b7-1576-41ca-9132-68b22a5f427d">
+            <field Id="e27af6a2-b509-4e59-a040-cc6feffabb83" name="Name" virtualColumnType="String" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="e0cf2fd4-9ea2-44fd-b548-d66f960f5655">
+            <field Id="5ffd2b64-63ec-4c44-bc6f-1b748fe40de2" name="IsTargetIncrease" columnType="Boolean" virtualColumnType="Boolean" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="208108ac-d006-4f7c-8cb9-b85dc0925c8c">
+            <field Id="54d2b958-10ef-49c4-a726-11d9cdcb05af" name="IsSourceIncrease" columnType="Boolean" virtualColumnType="Boolean" delayedUpdateModifiedOnly="false" isNullable="true" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="f3f20b01-0658-49ad-8472-a5e94db94029">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+        <saTargets>
+          <simpleAssociation Id="f8edf21b-3033-4464-87a7-fd5d06034bc5" sourceCollectionName="StockAdjustments" name="StockAdjustmentReferencesStockAdjustmentReason" targetFieldName="Reason">
+            <xpObjectMoniker Id="6347e4c9-31f7-4e52-9067-1d1f816b043f" />
+          </simpleAssociation>
+        </saTargets>
+        <collectionFields>
+          <xpObjectHasCollectionFields Id="ec2ed3a1-cb03-4469-a123-83f92220687f">
+            <collectionField Id="7c03d076-c015-4e9c-b2b2-c48b0a67e157" name="StockAdjustments" />
+          </xpObjectHasCollectionFields>
+        </collectionFields>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="50ae6ca1-5683-4b6b-84b5-6c7d5b41a247">
+      <xpObject Id="6347e4c9-31f7-4e52-9067-1d1f816b043f" name="StockAdjustment" baseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" userFileName="StockAdjustment" designerFileName="StockAdjustment.Designer" className="StockAdjustment" virtualBaseClass="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" virtualName="StockAdjustment">
+        <fields>
+          <generalXpObjectHasFields Id="51073437-a773-4819-8c91-65ff055636b1">
+            <field Id="1d71be23-b0f2-408b-a8f0-31de43e080cd" name="Sku" virtualColumnType="Sku" logicalType="Sku" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="46dd6143-380b-4ae1-9931-336553a13240">
+            <field Id="aaba955c-9411-4b7d-a1ed-92cc6822a7e9" name="Quantity" columnType="Int32" virtualColumnType="Int32" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="ef527ceb-def0-4008-922b-2946b3d631b7">
+            <field Id="16284675-abd6-419b-8f63-262a0c1a7d49" name="Notes" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="Unlimited" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="9f79eaac-5a2a-4fec-8649-32f3928e760f">
+            <field Id="82a585e7-d4c3-4c4e-8b58-69cb146869a4" name="TargetBinLocation" virtualColumnType="BinLocation" logicalType="BinLocation" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="bb490315-c1b3-4be6-a229-67d92c08e3e1">
+            <field Id="1d3010a3-3bfa-4107-8999-98094b5074de" name="SourceBinLocation" virtualColumnType="BinLocation" logicalType="BinLocation" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="6950015a-39f7-4636-87c9-4ae62ad5e4fe">
+            <field Id="10b0e9ed-726b-4e26-ac2a-a93858e2725d" name="Reason" virtualColumnType="StockAdjustmentReason" logicalType="StockAdjustmentReason" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="e9ef2642-a35f-468f-9e59-a41b222f4aaf">
+            <field Id="524501cb-ec7c-4f86-982f-7eb03b12f725" name="TargetPhysicalStockType" virtualColumnType="PhysicalStockType" logicalType="PhysicalStockType" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="a3bf9ef7-8199-45cc-bdee-e34f5eb6a0b1">
+            <field Id="5fdf3e4f-9997-4127-8fba-46dbc77ab89d" name="SourcePhysicalStockType" virtualColumnType="PhysicalStockType" logicalType="PhysicalStockType" delayedUpdateModifiedOnly="false" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="1c440fd1-bd9d-4acd-a4d9-2264a2e67fc7">
+            <field Id="8a5dea2a-e81a-4970-a632-08d0ede0579d" name="Vendor" virtualColumnType="TIG.TotalLink.Shared.DataModel.Crm.Contact" logicalType="TIG.TotalLink.Shared.DataModel.Crm.Contact" delayedUpdateModifiedOnly="false" customAttributes="TIG.TotalLink.Shared.DataModel.Core.Attribute.RuntimeAssociation(&quot;StockAdjustmentReferencesContact&quot;, &quot;StockAdjustments&quot;)" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="0fd66e73-7d49-4471-899a-6728cd7d97fa">
+            <field Id="741d9060-3e65-4ff3-a13b-23488359331a" name="VendorReference" virtualColumnType="String" delayedUpdateModifiedOnly="false" size="255" />
+          </generalXpObjectHasFields>
+        </fields>
+        <superClass>
+          <inheritance Id="666992f7-d489-490a-a254-6912a5834894">
+            <externalPersistentTypeMoniker Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" />
+          </inheritance>
+        </superClass>
+      </xpObject>
+    </dataBaseObjectModelHasClasses>
+    <dataBaseObjectModelHasClasses Id="72fa38b8-96a3-4461-88ca-3272e1942552">
+      <externalPersistentType Id="1dd0e9c5-e4e3-4d13-bffc-11412a9bd901" name="TIG.TotalLink.Shared.DataModel.Admin.StampedDataObjectBase" nameSpace="TIG.TotalLink.Shared.DataModel.Admin" virtualName="StampedDataObjectBase" assemblyName="W:\TIG\TotalLink3\Source\TIG.TotalLink.Server\Shared\DataModel\TIG.TotalLink.Shared.DataModel.Admin\bin\Debug\TIG.TotalLink.Shared.DataModel.Admin.dll" deferredDeletion="False" optimisticLocking="False" addReferenceToAssembly="false" hasDefaultConstructor="true" constructorParameterType="Session" hasSessionSpecifiedConstructor="false">
+        <fields>
+          <generalXpObjectHasFields Id="63d7072f-4fe7-4647-8623-f051a9c6f8ac">
+            <externalPersistentTypeField Id="54824f4b-b842-45d1-8619-6b55ac012112" name="Oid" virtualColumnType="Guid" key="true" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="7247575d-e06a-42e9-aaf4-33fa68910c6a">
+            <externalPersistentTypeField Id="f5176dd9-0f46-4faa-8a73-66836488729a" name="P_CreatedBy" virtualColumnType="User" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="0bfb5b9b-d857-45a7-a2ed-0ca0dd85653f">
+            <externalPersistentTypeField Id="3a90f75b-da8a-4391-aaea-b7217f772f0d" name="P_ModifiedBy" virtualColumnType="User" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="8963affb-d540-4757-a7f3-464affbcbfeb">
+            <externalPersistentTypeField Id="d8a5bb19-7618-4052-8799-6faa034b2af0" name="CreatedBy" virtualColumnType="User" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="f0180ce7-8601-4467-9933-bee7418530ce">
+            <externalPersistentTypeField Id="0b1578bb-1e03-4ddb-b00d-b640eeb93d4b" name="CreatedDate" virtualColumnType="DateTime" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="d0fa91a2-7138-42f1-b311-7297a7c78ba1">
+            <externalPersistentTypeField Id="2fc89c18-844c-4073-8ba3-f597d146eede" name="ModifiedBy" virtualColumnType="User" />
+          </generalXpObjectHasFields>
+          <generalXpObjectHasFields Id="ad0f637a-e663-47cb-8a85-f0bfded08cb6">
+            <externalPersistentTypeField Id="5ec1c820-3fb9-426a-8158-7438d7c1ec73" name="ModifiedDate" virtualColumnType="DateTime" />
+          </generalXpObjectHasFields>
+        </fields>
+      </externalPersistentType>
+    </dataBaseObjectModelHasClasses>
+  </classes>
+  <externalTypes>
+    <dataBaseObjectModelHasExternalTypes Id="3fdd9217-4c0c-41fc-96d6-4813e5e2c16b">
+      <externalType Id="b3aeb461-4277-4ba1-90fb-e5e166d61513" name="CostingMethod" namespace="TIG.TotalLink.Shared.DataModel.Core.Enum.Inventory" />
+    </dataBaseObjectModelHasExternalTypes>
+    <dataBaseObjectModelHasExternalTypes Id="2cd5254f-1246-45ce-a07f-d19143c3d287">
+      <externalType Id="3b2603b6-a84c-432c-b2a0-d51f9026dd23" name="ReplenishmentSystem" namespace="TIG.TotalLink.Shared.DataModel.Core.Enum.Inventory" />
+    </dataBaseObjectModelHasExternalTypes>
+    <dataBaseObjectModelHasExternalTypes Id="e9dd9e3f-e2e3-4a9d-adf3-af74a131970c">
+      <externalType Id="2750b6e4-524c-4809-87d8-166243f4dda6" name="ReorderingPolicy" namespace="TIG.TotalLink.Shared.DataModel.Core.Enum.Inventory" />
+    </dataBaseObjectModelHasExternalTypes>
+  </externalTypes>
+</dataBaseObjectModel>

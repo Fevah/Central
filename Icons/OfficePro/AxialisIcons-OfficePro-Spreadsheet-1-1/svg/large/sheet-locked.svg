@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <path d="M1.5,2.5v22h29V2.5H1.5zM23,21.2c0,0.442,-0.358,0.8,-0.8,0.8H9.8c-0.442,0,-0.8,-0.358,-0.8,-0.8v-9.4c0,-0.442,0.358,-0.8,0.8,-0.8h1.2V9.021C11,6.252,13.243,4,16,4s5,2.252,5,5.021V11h1.2c0.442,0,0.8,0.358,0.8,0.8V21.2z" fill="#FFFFFF"/>
+    <path d="M1,2v23h30V2H1zM30,24H2V3h28V24z" fill="#383838"/>
+    <polygon points="1.5,28.5 12.533,28.5 16.5,24.5 1.5,24.5" fill="#92CBEE" stroke-linejoin="miter"/>
+    <path d="M23.108,25.6l-3.375,3.4h-5.694l3.375,-3.4H23.108zM24.214,25.6l-3.375,3.4h5.694l3.375,-3.4H24.214z" fill="#78797A" opacity="0.2"/>
+    <path d="M23.117,25.6l-3.375,3.4h-5.703l0.992,-1h4.294l2.383,-2.4H23.117zM28.508,25.6l-2.383,2.4h-4.294l-0.992,1h5.703l3.375,-3.4H28.508z" fill="#78797A" opacity="0.3"/>
+    <path d="M17.7,24h-2.2H1v5h11.742l3.967,-4H31v-1H17.7zM12.325,28H2v-3h13.3L12.325,28z" fill="#0964B0"/>
+    <path d="M9,19v2.2v2.8H8v-5H2v-1h6v-4H2v-1h6V9H2V8h6V3h1v5h2.104c-0.067,0.323,-0.102,0.658,-0.104,1H9v2.8v1.2v1v4V19zM17,3h-1v1c0.342,0,0.677,0.035,1,0.101V3zM30,9V8h-6V3h-1v5h-2.104c0.067,0.323,0.102,0.658,0.104,1H23v2.8v1.2v1v4v1v2.2v2.8h1v-5h6v-1h-6v-4h6v-1h-6V9H30zM16,22v2h1v-2H16z" fill="#787979" opacity="0.6"/>
+    <path d="M2,3v21h28V3H2zM29,23H3V4h26V23z" fill="#FFFFFF" opacity="0.5"/>
+    <path d="M19.5,12.5V9.021C19.5,7.084,17.925,5.5,16,5.5l0,0c-1.925,0,-3.5,1.584,-3.5,3.521V12.5" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M10.5,12.5h11v8H10.5V12.5z" fill="#F7DA8E" stroke="#E57428" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <line x1="16" y1="16.5" x2="16" y2="18.5" fill="#F7DA8E" stroke="#E57428" stroke-width="1" stroke-miterlimit="1"/>
+  </g>
+</svg>

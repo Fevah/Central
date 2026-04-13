@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <rect y="2" width="16" height="12" fill="#63BF80"/>
+    <path d="M14.5,8.0003L8,13L1.5,8.0003L8,3L14.5,8.0003z" fill="#F7CE73"/>
+    <path d="M10.8394,7.9658c0,1.6026,-1.2762,2.9026,-2.8502,2.9026s-2.8502,-1.3,-2.8502,-2.9026c0,-1.6032,1.2762,-2.9026,2.8502,-2.9026C9.5632,5.0632,10.8394,6.3626,10.8394,7.9658z" fill="#77A2D6"/>
+    <path d="M10.8394,7.9658c0,1.6026,-1.2762,2.9026,-2.8502,2.9026s-2.8502,-1.3,-2.8502,-2.9026c0,-1.6032,1.2762,-2.9026,2.8502,-2.9026C9.5632,5.0632,10.8394,6.3626,10.8394,7.9658z" fill="#221F20" opacity="0.1"/>
+    <path d="M10.75,8.6756c-0.0802,0.3249,-0.2118,0.6291,-0.3895,0.9006C9.3336,8.3607,6.94,7.38,5.1774,7.5102c0.0504,-0.3237,0.15,-0.6303,0.2968,-0.9095C7.2563,6.594,9.4831,7.4129,10.75,8.6756z" fill="#FFFFFF"/>
+    <ellipse cx="6.9708" cy="8.3229" rx="0.2167" ry="0.2225" fill="#8FC6EC"/>
+    <ellipse cx="6.4292" cy="9.2129" rx="0.2167" ry="0.2225" fill="#8FC6EC"/>
+    <ellipse cx="5.8333" cy="8.3229" rx="0.2167" ry="0.2225" fill="#8FC6EC"/>
+    <ellipse cx="7.5667" cy="9.9361" rx="0.2167" ry="0.2225" fill="#8FC6EC"/>
+    <ellipse cx="7.7833" cy="8.8236" rx="0.2167" ry="0.2225" fill="#8FC6EC"/>
+    <ellipse cx="9.2458" cy="9.9361" rx="0.2167" ry="0.2225" fill="#8FC6EC"/>
+    <ellipse cx="9.7333" cy="7.0991" rx="0.2167" ry="0.2225" fill="#8FC6EC"/>
+    <ellipse cx="8.5958" cy="9.3798" rx="0.2167" ry="0.2225" fill="#8FC6EC"/>
+    <path d="M16,14H0V2h16V14zM1,13h14V3H1V13z" fill="#211F20" opacity="0.20"/>
+  </g>
+</svg>

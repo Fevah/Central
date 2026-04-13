@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Polygon Points="8.5,15.5 0.5,15.5 0.5,7.5 7.5,0.5 15.5,0.5 15.5,8.5" Fill="#FFFFFF" StrokeLineJoin="Miter" Opacity="0.5"/>
+      <Path Data="M2.9977,15.9h-1c0,-0.9912,-0.8064,-1.7977,-1.7977,-1.7977v-1C1.7426,13.1023,2.9977,14.3574,2.9977,15.9z" Fill="#6485C3"/>
+      <Path Data="M5.5604,15.9h-1c0,-2.4043,-1.9561,-4.3604,-4.3604,-4.3604v-1C3.1558,10.5396,5.5604,12.9442,5.5604,15.9z" Fill="#6485C3"/>
+      <Path Data="M7.7256,15.9h-1c0,-3.5982,-2.9273,-6.5256,-6.5256,-6.5256v-1C4.3496,8.3744,7.7256,11.7504,7.7256,15.9z" Fill="#6485C3"/>
+      <Rectangle Canvas.Left="6.1945" Canvas.Top="2.4151" Width="6.0552" Height="0.9" RenderTransformOrigin="-1.02301 -2.68344" Fill="#6485C3">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="0.7107 -0.7035 0.7035 0.7107 0.6524 7.31665"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Rectangle Canvas.Left="11.0344" Canvas.Top="4.3023" Width="5.2429" Height="0.9" RenderTransformOrigin="-2.10464 -4.78033" Fill="#6485C3">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="0.7112 -0.703 0.703 0.7112 0.60269 10.9718"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Rectangle Canvas.Left="7.6778" Canvas.Top="10.0314" Width="5.6489" Height="0.9" RenderTransformOrigin="-1.35917 -11.146" Fill="#6485C3">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="0.7071 -0.7071 0.7071 0.7071 -4.33541 10.4963"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Path Data="M8.7071,16H0V7.2929L7.2929,0H16v8.7071L8.7071,16zM1,15h7.2929L15,8.2929V1H7.7071L1,7.7071V15z" Fill="#6486C4"/>
+      <Rectangle Canvas.Left="7.0503" Canvas.Top="3.5" Width="9.8995" Height="1" RenderTransformOrigin="-0.712187 -3.5" Fill="#6486C4">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="0.7071 -0.7071 0.7071 0.7071 0.68629 9.65685"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Polygon Points="9,15.5 8,15.5 8,8 0.5,8 0.5,7 9,7" Fill="#6486C4" StrokeLineJoin="Miter"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

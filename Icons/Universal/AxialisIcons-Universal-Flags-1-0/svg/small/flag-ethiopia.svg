@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <rect y="10" width="16" height="4" fill="#F37980"/>
+    <rect y="6" width="16" height="4" fill="#F7CE73"/>
+    <rect y="2" width="16" height="4" fill="#63BF80"/>
+    <circle cx="8.022" cy="8.069" r="3.711" fill="#77A2D6"/>
+    <polygon points="10.647,7.274 8.658,7.274 8.022,5.418 7.412,7.274 5.424,7.274 7.041,8.414 6.431,10.27 8.021,9.13 9.638,10.27 9.028,8.414" fill="#FFCF34" stroke-linejoin="miter"/>
+    <polygon points="9.957,7.486 8.95,8.201 8.711,7.485 9.957,7.485" fill="#FFCF34" stroke-linejoin="miter"/>
+    <polygon points="8.022,6.107 8.42,7.273 7.651,7.273" fill="#FFCF34" stroke-linejoin="miter"/>
+    <polygon points="6.087,7.486 7.333,7.486 7.094,8.202" fill="#FFCF34" stroke-linejoin="miter"/>
+    <polygon points="6.829,9.712 7.2,8.546 7.836,8.997" fill="#FFCF34" stroke-linejoin="miter"/>
+    <polygon points="7.28,8.334 7.572,7.486 8.5,7.486 8.792,8.334 8.023,8.864" fill="#FFCF34" stroke-linejoin="miter"/>
+    <polygon points="9.215,9.712 8.208,8.996 8.844,8.545" fill="#FFCF34" stroke-linejoin="miter"/>
+    <polygon points="8.022,9.394 8.128,9.474 8.128,10.72 7.916,10.72 7.916,9.474" fill="#FFCF34" stroke-linejoin="miter"/>
+    <polygon points="6.644,8.413 5.425,8.758 5.372,8.546 6.406,8.254" fill="#FFCF34" stroke-linejoin="miter"/>
+    <polygon points="7.2,7.035 6.325,5.948 6.484,5.815 7.306,6.822 7.253,7.034 7.2,7.034" fill="#FFCF34" stroke-linejoin="miter"/>
+    <polygon points="8.791,7.035 8.738,6.823 9.56,5.816 9.719,5.949 8.844,7.036 8.791,7.036" fill="#FFCF34" stroke-linejoin="miter"/>
+    <polygon points="10.673,8.546 10.62,8.758 9.401,8.413 9.64,8.254" fill="#FFCF34" stroke-linejoin="miter"/>
+    <path d="M16,14H0V2h16V14zM1,13h14V3H1V13z" fill="#211F20" opacity="0.20"/>
+  </g>
+</svg>

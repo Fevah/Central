@@ -1,0 +1,11 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Currencies>
+  <Currency Code="AUD" Name="Australian dollar(s)" />
+  <Currency Code="CAD" Name="Canadian dollar(s)" />
+  <Currency Code="EUR" Name="Euro" />
+  <Currency Code="GBP" Name="Pound Sterling" />
+  <Currency Code="NZD" Name="New Zealand dollar(s)" />
+  <Currency Code="SGD" Name="Singapore dollar(s)" />
+  <Currency Code="THB" Name="Thai baht" />
+  <Currency Code="USD" Name="US dollar(s)" />
+</Currencies>

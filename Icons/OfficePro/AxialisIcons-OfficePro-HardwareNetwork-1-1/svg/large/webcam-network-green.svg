@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <path d="M1,28.5h10.5M20.5,28.5h10.5M16,26.5v-3.5" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <rect x="11.5" y="26.5" width="9" height="4" fill="#ACD8B1" stroke="#0BA04A" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <path d="M10.501,18.872c-1.704,1.067,-2.892,2.56,-2.892,3.64c0,2.007,3.546,0.334,8.41,0.334s8.285,1.673,8.285,-0.334c0,-1.074,-1.142,-2.559,-2.798,-3.624" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <ellipse cx="15.956" cy="11.019" rx="9.54" ry="9.519" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <circle cx="15.962" cy="3.763" r="1.1" fill="#EF3E3B"/>
+    <circle cx="15.963" cy="10.983" r="4.931" fill="#FFFFFF" stroke="#228BCB" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M12.928,10.983c0,-1.676,1.359,-3.034,3.034,-3.034" fill="#FFFFFF" stroke="#228BCB" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+  </g>
+</svg>

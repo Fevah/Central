@@ -13,8 +13,7 @@ public partial class DbRepository
 
     public async Task UpdateSshOverrideIpAsync(Guid switchId, string ip)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("UPDATE switches SET ssh_override_ip=@ip WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("@id", switchId);
         cmd.Parameters.AddWithValue("@ip", ip);
@@ -25,8 +24,7 @@ public partial class DbRepository
 
     public async Task AddAuditLogAsync(Guid switchId, string op, string action, string? field, string? oldVal, string? newVal, string desc = "")
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("""
             INSERT INTO switch_audit_log (switch_id, operator, action, field_name, old_value, new_value, description)
             VALUES (@sid, @op, @act, @f, @old, @new, @desc)
@@ -44,8 +42,7 @@ public partial class DbRepository
     public async Task<List<(int Id, DateTime Timestamp, string Operator, string Action, string Field, string OldValue, string NewValue, string Description)>> GetAuditLogAsync(Guid switchId)
     {
         var list = new List<(int, DateTime, string, string, string, string, string, string)>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, timestamp, operator, action, COALESCE(field_name,''), COALESCE(old_value,''), COALESCE(new_value,''), COALESCE(description,'') FROM switch_audit_log WHERE switch_id=@id ORDER BY timestamp DESC", conn);
         cmd.Parameters.AddWithValue("@id", switchId);
@@ -59,8 +56,7 @@ public partial class DbRepository
 
     public async Task SaveConfigBackupAsync(Guid switchId, string configText, string sourceIp, string op, string desc)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("""
             INSERT INTO config_backups (switch_id, operator, description, config_text, line_count, source_ip)
             VALUES (@id, @op, @desc, @cfg, @lines, @ip)
@@ -77,8 +73,7 @@ public partial class DbRepository
     public async Task<List<(int Id, DateTime CreatedAt, string Operator, string Description, int LineCount)>> GetConfigBackupsAsync(Guid switchId)
     {
         var list = new List<(int, DateTime, string, string, int)>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, created_at, operator, COALESCE(description,''), line_count FROM config_backups WHERE switch_id=@id ORDER BY created_at DESC", conn);
         cmd.Parameters.AddWithValue("@id", switchId);
@@ -90,8 +85,7 @@ public partial class DbRepository
 
     public async Task<string?> GetConfigBackupTextAsync(int backupId)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT config_text FROM config_backups WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("@id", backupId);
         return (await cmd.ExecuteScalarAsync()) as string;
@@ -99,8 +93,7 @@ public partial class DbRepository
 
     public async Task UpdateConfigBackupDescriptionAsync(int backupId, string description)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("UPDATE config_backups SET description=@d WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("@id", backupId);
         cmd.Parameters.AddWithValue("@d", description);
@@ -118,8 +111,7 @@ public partial class DbRepository
 
     public async Task UpdateServerNicStatusAsync(Server s)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = "UPDATE servers SET nic1_status=@n1, nic2_status=@n2, nic3_status=@n3, nic4_status=@n4 WHERE id=@id";
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("@id", s.Id);
@@ -137,8 +129,7 @@ public partial class DbRepository
     public async Task<List<SwitchRecord>> GetSwitchesAsync(List<string>? allowedSites = null)
     {
         var list = new List<SwitchRecord>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         var where = "";
         if (allowedSites != null && allowedSites.Count > 0)
@@ -205,8 +196,7 @@ public partial class DbRepository
 
     public async Task<SwitchRecord?> GetSwitchByHostnameAsync(string hostname)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var sql = """
             SELECT
                 id, hostname, site, role,
@@ -257,8 +247,7 @@ public partial class DbRepository
 
     public async Task UpdatePingResultAsync(string hostname, bool ok, double? ms)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             UPDATE switches SET last_ping_ok = @ok, last_ping_ms = @ms, last_ping_at = NOW()
             WHERE hostname = @h
@@ -272,8 +261,7 @@ public partial class DbRepository
 
     public async Task UpdateSshResultAsync(string hostname, bool ok)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             UPDATE switches SET last_ssh_ok = @ok, last_ssh_at = NOW()
             WHERE hostname = @h
@@ -288,8 +276,7 @@ public partial class DbRepository
 
     public async Task SaveSwitchVersionAsync(SwitchVersion v)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             INSERT INTO switch_versions (switch_id, captured_at, mac_address, hardware_model, serial_number, uptime,
                 linux_version, linux_date, l2l3_version, l2l3_date, ovs_version, ovs_date, raw_output)
@@ -328,8 +315,7 @@ public partial class DbRepository
 
     public async Task<SwitchVersion?> GetLatestSwitchVersionAsync(Guid switchId)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             SELECT id, switch_id, captured_at, mac_address, hardware_model,
                    linux_version, linux_date, l2l3_version, l2l3_date, ovs_version, ovs_date, raw_output
@@ -360,8 +346,7 @@ public partial class DbRepository
 
     public async Task SaveSwitchInterfacesAsync(Guid switchId, List<SwitchInterface> interfaces)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         // Clear previous
         await using (var del = new NpgsqlCommand("DELETE FROM switch_interfaces WHERE switch_id = @sid", conn))
         {
@@ -391,8 +376,7 @@ public partial class DbRepository
     public async Task<List<SwitchInterface>> GetSwitchInterfacesAsync(Guid switchId)
     {
         var list = new List<SwitchInterface>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             SELECT id, switch_id, captured_at, interface_name, admin_status, link_status, speed, mtu, description, lldp_host, lldp_port
             FROM switch_interfaces WHERE switch_id = @sid
@@ -442,8 +426,7 @@ public partial class DbRepository
     public async Task<Dictionary<string, string>> GetInterfaceDescriptionsAsync(string hostname)
     {
         var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             SELECT si.interface_name, si.description
             FROM switch_interfaces si
@@ -469,8 +452,7 @@ public partial class DbRepository
         if (hostnames.Count == 0) return result;
         foreach (var h in hostnames) result[h] = new(StringComparer.OrdinalIgnoreCase);
 
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             SELECT s.hostname, si.interface_name, si.description
             FROM switch_interfaces si
@@ -497,8 +479,7 @@ public partial class DbRepository
     public async Task<List<string>> GetModelInterfacesAsync(string model)
     {
         var list = new List<string>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT interface_name FROM switch_model_interfaces WHERE model = @m ORDER BY sort_order, interface_name", conn);
         cmd.Parameters.AddWithValue("@m", model);
@@ -512,8 +493,7 @@ public partial class DbRepository
     public async Task SaveInterfaceOpticsAsync(Guid switchId, List<InterfaceOptics> optics)
     {
         if (optics.Count == 0) return;
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             INSERT INTO interface_optics (switch_id, captured_at, interface_name, channel, temp_c, temp_f, voltage, bias_ma, tx_power_dbm, rx_power_dbm, module_type)
             VALUES (@sid, NOW(), @name, @ch, @tc, @tf, @v, @bias, @tx, @rx, @mod)
@@ -539,8 +519,7 @@ public partial class DbRepository
     public async Task<List<InterfaceOptics>> GetLatestOpticsAsync(Guid switchId)
     {
         var list = new List<InterfaceOptics>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             SELECT DISTINCT ON (interface_name) id, switch_id, captured_at, interface_name, channel,
                    temp_c, temp_f, voltage, bias_ma, tx_power_dbm, rx_power_dbm, module_type
@@ -576,8 +555,7 @@ public partial class DbRepository
     public async Task<List<InterfaceOptics>> GetOpticsHistoryAsync(Guid switchId, string interfaceName)
     {
         var list = new List<InterfaceOptics>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             SELECT id, switch_id, captured_at, interface_name, channel,
                    temp_c, temp_f, voltage, bias_ma, tx_power_dbm, rx_power_dbm, module_type
@@ -615,8 +593,7 @@ public partial class DbRepository
     {
         try
         {
-            await using var conn = new NpgsqlConnection(_connectionString);
-            await conn.OpenAsync();
+            await using var conn = await OpenConnectionAsync();
             await using var cmd = new NpgsqlCommand("SELECT 1", conn);
             await cmd.ExecuteScalarAsync();
             return true;
@@ -628,8 +605,7 @@ public partial class DbRepository
 
     public async Task<AppUser?> GetUserByUsernameAsync(string username)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = "SELECT id, username, display_name, role, is_active, auto_login FROM app_users WHERE username = @u AND is_active = TRUE";
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("@u", username);
@@ -649,8 +625,7 @@ public partial class DbRepository
     public async Task<List<AppUser>> GetAllUsersAsync()
     {
         var list = new List<AppUser>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             SELECT id, username, display_name, role, is_active, auto_login,
                    COALESCE(user_type, 'Standard'), COALESCE(email, ''),
@@ -690,8 +665,7 @@ public partial class DbRepository
 
     public async Task UpsertUserAsync(AppUser u)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (u.Id == 0)
         {
             const string sql = """
@@ -748,8 +722,7 @@ public partial class DbRepository
     /// <summary>Delete a user. Protected users (System, Service) cannot be deleted.</summary>
     public async Task<bool> DeleteUserAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         // Guard: check if user is protected
         await using var chk = new NpgsqlCommand(
@@ -770,8 +743,7 @@ public partial class DbRepository
     public async Task<Dictionary<string, RolePermission>> GetRolePermissionsAsync(string role)
     {
         var dict = new Dictionary<string, RolePermission>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = "SELECT module, can_view, can_edit, can_delete, COALESCE(can_view_reserved, true) FROM role_permissions WHERE role = @r";
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("@r", role);
@@ -795,8 +767,7 @@ public partial class DbRepository
     public async Task<List<(string Code, string Name, string Category)>> GetPermissionGrantsForRoleAsync(string roleName)
     {
         var list = new List<(string, string, string)>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(@"
             SELECT p.code, p.name, p.category
             FROM role_permission_grants rpg
@@ -816,8 +787,7 @@ public partial class DbRepository
     public async Task<List<RoleRecord>> GetAllRolesAsync()
     {
         var list = new List<RoleRecord>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         // Load roles
         const string rolesSql = "SELECT id, name, description, COALESCE(priority, 0), COALESCE(is_system, false) FROM roles ORDER BY priority DESC, id";
@@ -863,8 +833,7 @@ public partial class DbRepository
     public async Task<List<string>> GetRoleNamesAsync()
     {
         var list = new List<string>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT name FROM roles ORDER BY id", conn);
         await using var rdr = await cmd.ExecuteReaderAsync();
         while (await rdr.ReadAsync()) list.Add(rdr.GetString(0));
@@ -873,8 +842,7 @@ public partial class DbRepository
 
     public async Task UpsertRoleAsync(RoleRecord r)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         // Upsert role record
         if (r.Id == 0)
@@ -925,8 +893,7 @@ public partial class DbRepository
 
     public async Task DeleteRoleAsync(int id, string roleName)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         // Remove permissions first
         await using var pcmd = new NpgsqlCommand("DELETE FROM role_permissions WHERE role=@r", conn);
         pcmd.Parameters.AddWithValue("@r", roleName);
@@ -942,8 +909,7 @@ public partial class DbRepository
     public async Task<List<RoleSiteAccess>> GetRoleSitesAsync(string role)
     {
         var list = new List<RoleSiteAccess>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = "SELECT building, allowed FROM role_sites WHERE role = @r ORDER BY building";
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("@r", role);
@@ -960,8 +926,7 @@ public partial class DbRepository
     public async Task<List<string>> GetAllowedSitesAsync(string role)
     {
         var list = new List<string>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = "SELECT building FROM role_sites WHERE role = @r AND allowed = TRUE ORDER BY building";
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("@r", role);
@@ -972,8 +937,7 @@ public partial class DbRepository
 
     public async Task UpsertRoleSiteAsync(string role, string building, bool allowed)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             INSERT INTO role_sites (role, building, allowed) VALUES (@r, @b, @a)
             ON CONFLICT (role, building) DO UPDATE SET allowed = EXCLUDED.allowed
@@ -988,8 +952,7 @@ public partial class DbRepository
     public async Task SeedRoleSitesAsync(string role)
     {
         // Ensure all buildings from switch_guide exist for this role
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             INSERT INTO role_sites (role, building, allowed)
             SELECT @r, building, TRUE FROM (SELECT DISTINCT building FROM switch_guide) b
@@ -1004,8 +967,7 @@ public partial class DbRepository
 
     public async Task<string?> GetUserSettingAsync(int userId, string key)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = "SELECT setting_value FROM user_settings WHERE user_id = @uid AND setting_key = @key";
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("@uid", userId);
@@ -1016,8 +978,7 @@ public partial class DbRepository
 
     public async Task SaveUserSettingAsync(int userId, string key, string value)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             INSERT INTO user_settings (user_id, setting_key, setting_value)
             VALUES (@uid, @key, @val)
@@ -1032,8 +993,7 @@ public partial class DbRepository
 
     public async Task DeleteUserSettingAsync(int userId, string key)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = "DELETE FROM user_settings WHERE user_id = @uid AND setting_key = @key";
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("@uid", userId);
@@ -1046,8 +1006,7 @@ public partial class DbRepository
     /// <summary>Insert a new SSH log entry and return its ID.</summary>
     public async Task<int> InsertSshLogAsync(Guid? switchId, string hostname, string hostIp, string username, int port)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             INSERT INTO ssh_logs (switch_id, hostname, host_ip, username, port, started_at)
             VALUES (@sid, @host, @ip, @user, @port, NOW())
@@ -1065,8 +1024,7 @@ public partial class DbRepository
     /// <summary>Update an SSH log entry with results.</summary>
     public async Task UpdateSshLogAsync(int logId, bool success, string error, string rawOutput, int configLines, string logEntries)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             UPDATE ssh_logs SET finished_at = NOW(), success = @ok, error = @err,
                 raw_output = @raw, config_lines = @lines, log_entries = @log
@@ -1085,8 +1043,7 @@ public partial class DbRepository
     /// <summary>Load SSH logs (most recent first, limit 500).</summary>
     public async Task<List<SshLogEntry>> GetSshLogsAsync()
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             SELECT id, switch_id, hostname, host_ip, started_at, finished_at,
                    success, username, port, error, raw_output, config_lines, log_entries
@@ -1120,8 +1077,7 @@ public partial class DbRepository
     /// <summary>Delete SSH logs older than N days.</summary>
     public async Task PurgeSshLogsAsync(int daysOld = 30)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = "DELETE FROM ssh_logs WHERE started_at < NOW() - INTERVAL '1 day' * @days";
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("@days", daysOld);
@@ -1134,8 +1090,7 @@ public partial class DbRepository
     {
         try
         {
-            await using var conn = new NpgsqlConnection(_connectionString);
-            await conn.OpenAsync();
+            await using var conn = await OpenConnectionAsync();
             const string sql = """
                 INSERT INTO app_log (level, tag, source, message, detail, username)
                 VALUES (@level, @tag, @source, @msg, @detail, @user)
@@ -1155,8 +1110,7 @@ public partial class DbRepository
     public async Task<List<AppLogEntry>> GetAppLogsAsync(int limit = 1000)
     {
         var list = new List<AppLogEntry>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var sql = $"SELECT id,timestamp,level,tag,source,message,detail,username FROM app_log ORDER BY timestamp DESC LIMIT {limit}";
         await using var cmd = new NpgsqlCommand(sql, conn);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -1177,8 +1131,7 @@ public partial class DbRepository
 
     public async Task DeleteAppLogAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM app_log WHERE id = @id", conn);
         cmd.Parameters.AddWithValue("@id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -1186,8 +1139,7 @@ public partial class DbRepository
 
     public async Task ClearAppLogsAsync()
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM app_log", conn);
         await cmd.ExecuteNonQueryAsync();
     }
@@ -1197,8 +1149,7 @@ public partial class DbRepository
     public async Task<List<(string SectionKey, string ItemKey, bool Enabled)>> GetBuilderSelectionsAsync(string deviceName)
     {
         var list = new List<(string, string, bool)>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT section_key, item_key, enabled FROM builder_selections WHERE device_name = @d ORDER BY id", conn);
         cmd.Parameters.AddWithValue("@d", deviceName);
@@ -1210,8 +1161,7 @@ public partial class DbRepository
 
     public async Task UpsertBuilderSelectionAsync(string deviceName, string sectionKey, string itemKey, bool enabled)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         const string sql = """
             INSERT INTO builder_selections (device_name, section_key, item_key, enabled)
             VALUES (@d, @s, @i, @e)
@@ -1228,8 +1178,7 @@ public partial class DbRepository
 
     public async Task SaveBuilderSelectionsAsync(string deviceName, List<(string SectionKey, string ItemKey, bool Enabled)> selections)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var tx = await conn.BeginTransactionAsync();
         await using (var del = new NpgsqlCommand("DELETE FROM builder_selections WHERE device_name = @d", conn, tx))
         {
@@ -1254,8 +1203,7 @@ public partial class DbRepository
     public async Task<List<ConfigVersionEntry>> GetConfigVersionsAsync(Guid switchId)
     {
         var list = new List<ConfigVersionEntry>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("""
             SELECT id, downloaded_at, version_num, line_count, diff_from_prev, COALESCE(operator,''), COALESCE(source_ip::text,'')
             FROM running_configs WHERE switch_id=@id ORDER BY downloaded_at DESC
@@ -1280,8 +1228,7 @@ public partial class DbRepository
 
     public async Task<string?> GetConfigVersionTextAsync(Guid versionId)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT config_text FROM running_configs WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("@id", versionId);
         return (await cmd.ExecuteScalarAsync()) as string;
@@ -1289,8 +1236,7 @@ public partial class DbRepository
 
     public async Task DeleteConfigVersionAsync(Guid versionId)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM running_configs WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("@id", versionId);
         await cmd.ExecuteNonQueryAsync();
@@ -1301,8 +1247,7 @@ public partial class DbRepository
     public async Task<List<BgpRecord>> GetBgpRecordsAsync(List<string>? sites = null)
     {
         var list = new List<BgpRecord>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         var where = sites != null && sites.Count > 0 ? "WHERE s.site = ANY(@sites)" : "";
         var sql = $@"
@@ -1351,8 +1296,7 @@ public partial class DbRepository
     public async Task<List<BgpNeighborRecord>> GetBgpNeighborsAsync(Guid switchId)
     {
         var list = new List<BgpNeighborRecord>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var sql = @"SELECT n.id, n.bgp_id, n.neighbor_ip::text, COALESCE(n.remote_as::text,''), COALESCE(n.description,''),
                            COALESCE(n.bfd_enabled,false), COALESCE(n.ipv4_unicast,false)
                     FROM bgp_neighbors n
@@ -1381,8 +1325,7 @@ public partial class DbRepository
     public async Task<List<BgpNetworkRecord>> GetBgpNetworksAsync(Guid switchId)
     {
         var list = new List<BgpNetworkRecord>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var sql = @"SELECT n.id, n.bgp_id, n.network_prefix::text
                     FROM bgp_networks n
                     JOIN bgp_config b ON b.id = n.bgp_id
@@ -1409,8 +1352,7 @@ public partial class DbRepository
         List<(string ip, string remoteAs, bool bfd, string desc)> neighbors,
         List<string> networks)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var tx = await conn.BeginTransactionAsync();
 
         // Upsert bgp_config

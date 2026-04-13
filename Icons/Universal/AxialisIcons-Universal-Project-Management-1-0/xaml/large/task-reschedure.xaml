@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="24" Height="24" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M16.9633,11.28V0.72h4.502c0.9925,0,1.8,0.7913,1.8,1.764v7.032c0,0.9727,-0.8075,1.764,-1.8,1.764H16.9633z" Fill="#FFFFFF" Opacity="0.5"/>
+      <Path Data="M2.5347,11.28c-0.9925,0,-1.8,-0.7913,-1.8,-1.764V2.484c0,-0.9727,0.8075,-1.764,1.8,-1.764h7.4714v10.56H2.5347z" Fill="#FFFFFF" Opacity="0.5"/>
+      <Rectangle Canvas.Left="7.9653" Canvas.Top="5.0204" Width="8" Height="1.9592" RenderTransformOrigin="-0.995663 -2.56247" Fill="#FFFFFF" Opacity="0.5">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="-1.83697e-16 1 -1 -1.83697e-16 17.9653 -5.96531"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Rectangle Canvas.Left="11.0041" Canvas.Top="5.0204" Width="8" Height="1.9592" RenderTransformOrigin="-1.37551 -2.56247" Fill="#FFFFFF" Opacity="0.5">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="-1.83697e-16 1 -1 -1.83697e-16 21.0041 -9.00408"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Path Data="M17,12V0h4.4771C22.8682,0,24,1.1143,24,2.484v7.032c0,1.3697,-1.1318,2.484,-2.5229,2.484H17zM21.4271,10c0.3159,0,0.5729,-0.2543,0.5729,-0.5668V2.5668c0,-0.3125,-0.257,-0.5668,-0.5729,-0.5668H18v8H21.4271zM14,12v-2h2v2H14zM11,12v-2h2v2H11zM2.533,12C1.1363,12,0,10.8856,0,9.516V2.484C0,1.1143,1.1363,0,2.533,0H10v2H2.5718C2.2565,2,2,2.2543,2,2.5668v6.8664c0,0.3125,0.2565,0.5668,0.5718,0.5668H10v2H2.533zM14,2V0h2v2H14zM11,2V0h2v2H11z" Fill="#6486C4"/>
+      <Path Data="M17,24v-3h1v3H17z" Fill="#7D7C7B"/>
+      <Path Data="M17,20v-3h1v3H17z" Fill="#7D7C7B"/>
+      <Path Data="M17,16v-3h1v3H17z" Fill="#7D7C7B"/>
+      <Polygon Points="9.6887,22.5696 12.2584,20 1,20 1,18 12.2584,18 9.5387,15.2803 10.953,13.8661 16.0869,19 11.103,23.9839" Fill="#9070B1" StrokeLineJoin="Miter"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

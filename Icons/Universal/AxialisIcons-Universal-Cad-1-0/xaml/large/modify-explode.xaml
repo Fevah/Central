@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="24" Height="24" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Left="6.75" Canvas.Top="6.75" Width="10.5" Height="10.5" Fill="#FFFFFF" Opacity="0.5"/>
+      <Path Data="M18,18H6V6h12V18zM8,16h8V8H8V16z" Fill="#7D7C7B"/>
+      <Rectangle Canvas.Left="0.75" Canvas.Top="6.75" Width="3.5" Height="10.5" Fill="#6486C4" Opacity="0.5"/>
+      <Path Data="M5,18H0V6h5V18zM1.5,16.5h2V7.5H1.5V16.5z" Fill="#6486C4"/>
+      <Rectangle Canvas.Left="19.75" Canvas.Top="6.75" Width="3.5" Height="10.5" Fill="#6486C4" Opacity="0.5"/>
+      <Path Data="M24,18h-5V6h5V18zM20.5,16.5h2V7.5h-2V16.5z" Fill="#6486C4"/>
+      <Rectangle Canvas.Left="10.25" Canvas.Top="-2.75" Width="3.5" Height="10.5" RenderTransformOrigin="-2.92857 0.261905" Fill="#6486C4" Opacity="0.5">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="-1.83697e-16 1 -1 -1.83697e-16 14.5 -9.5"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Path Data="M18,5H6V0h12V5zM7.5,3.5h9V1.5H7.5V3.5z" Fill="#6486C4"/>
+      <Rectangle Canvas.Left="10.25" Canvas.Top="16.25" Width="3.5" Height="10.5" RenderTransformOrigin="-2.92857 -1.54762" Fill="#6486C4" Opacity="0.5">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="-1.83697e-16 1 -1 -1.83697e-16 33.5 9.5"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Path Data="M18,24H6v-5h12V24zM7.5,22.5h9v-2H7.5V22.5z" Fill="#6486C4"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

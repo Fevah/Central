@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M1.5,12V4M12,14.5H4M14.5,4v8M4,1.5h8" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Ellipse Canvas.Left="0" Canvas.Top="0" Width="3" Height="3" Fill="#EF3E3B"/>
+      <Ellipse Canvas.Left="13" Canvas.Top="0" Width="3" Height="3" Fill="#EF3E3B"/>
+      <Ellipse Canvas.Left="13" Canvas.Top="13" Width="3" Height="3" Fill="#EF3E3B"/>
+      <Ellipse Canvas.Left="0" Canvas.Top="13" Width="3" Height="3" Fill="#EF3E3B"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

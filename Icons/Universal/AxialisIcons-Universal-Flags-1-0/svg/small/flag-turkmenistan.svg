@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <rect y="2" width="16" height="12" fill="#63BF80"/>
+    <rect x="2" y="2" width="3" height="12" fill="#F37980"/>
+    <polygon points="3.29,3.38 3.11,3.207 3.29,3.033 3.71,3.033 3.89,3.207 3.71,3.38" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <polygon points="4.16,5.01 2.84,5.01 2.15,5.582 2.84,6.171 4.16,6.171 4.85,5.582" fill="#63BF80" stroke-linejoin="miter"/>
+    <polygon points="3.98,5.998 3.02,5.998 2.51,5.582 3.02,5.166 3.98,5.166 4.49,5.582" fill="#63BF80" stroke-linejoin="miter"/>
+    <polygon points="2.84,2.635 2.15,3.207 2.84,3.779 4.16,3.779 4.85,3.207 4.16,2.635" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="3.98,3.623 3.02,3.623 2.51,3.207 3.02,2.791 3.98,2.791 4.49,3.207" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="4.1,4.49 5,3.97 5,4.993" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="5,6.171 5,6.724 4.158,6.724 4.1,6.691" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="2.858,2 2,2.496 2,2" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="2.9,4.49 2,4.993 2,3.969" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="2,6.724 2,6.171 2.9,6.691 2.842,6.724" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="3.29,5.755 3.08,5.582 3.29,5.409 3.68,5.409 3.89,5.582 3.68,5.755" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="5,2.496 4.142,2 5,2" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="3.29,12.829 3.11,12.656 3.29,12.482 3.71,12.482 3.89,12.656 3.71,12.829" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <polygon points="2.84,12.083 2.15,12.655 2.84,13.227 4.16,13.227 4.85,12.655 4.16,12.083" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="3.98,13.072 3.02,13.072 2.51,12.656 3.02,12.24 3.98,12.24 4.49,12.656" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="5,13.447 5,14 4.158,14 4.1,13.967" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="2.858,11.449 2,11.945 2,11.449" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="2,14 2,13.447 2.9,13.967 2.842,14" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="5,11.945 4.142,11.449 5,11.449" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="3.29,8.104 3.11,7.931 3.29,7.758 3.71,7.758 3.89,7.931 3.71,8.104" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <polygon points="4.16,9.734 2.84,9.734 2.15,10.306 2.84,10.895 4.16,10.895 4.85,10.306" fill="#63BF80" stroke-linejoin="miter"/>
+    <polygon points="3.98,10.722 3.02,10.722 2.51,10.306 3.02,9.89 3.98,9.89 4.49,10.306" fill="#63BF80" stroke-linejoin="miter"/>
+    <polygon points="2.84,7.359 2.15,7.931 2.84,8.503 4.16,8.503 4.85,7.931 4.16,7.359" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="3.98,8.347 3.02,8.347 2.51,7.931 3.02,7.515 3.98,7.515 4.49,7.931" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="4.1,9.214 5,8.694 5,9.717" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="5,10.895 5,11.448 4.158,11.448 4.1,11.415" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="2.858,6.724 2,7.22 2,6.724" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="2.9,9.214 2,9.717 2,8.694" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="2,11.449 2,10.896 2.9,11.416 2.842,11.449" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="3.29,10.479 3.08,10.306 3.29,10.133 3.68,10.133 3.89,10.306 3.68,10.479" fill="#FFE61D" stroke-linejoin="miter"/>
+    <polygon points="5,7.22 4.142,6.724 5,6.724" fill="#FFE61D" stroke-linejoin="miter"/>
+    <path d="M10.364,3.843c0.952,0.415,1.611,1.367,1.636,2.441c0,1.489,-1.196,2.685,-2.685,2.685c-0.659,0,-1.269,-0.244,-1.733,-0.635c0.269,0.122,0.586,0.195,0.928,0.22c1.465,0.049,2.71,-1.099,2.783,-2.563C11.341,5.137,10.975,4.356,10.364,3.843" fill="#FFFFFF"/>
+    <polygon points="7.801,5.82 7.923,5.454 8.289,5.454 7.996,5.234 8.118,4.892 7.801,5.112 7.508,4.892 7.63,5.234 7.313,5.454 7.679,5.454" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <polygon points="7.679,4.087 7.801,4.453 7.923,4.087 8.289,4.087 7.996,3.867 8.118,3.501 7.801,3.721 7.508,3.501 7.63,3.867 7.313,4.087" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <polygon points="9.046,4.795 9.168,5.161 9.29,4.795 9.656,4.795 9.363,4.575 9.461,4.209 9.168,4.429 8.851,4.209 8.973,4.575 8.68,4.795" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <polygon points="6.629,5.918 6.751,5.552 6.434,5.772 6.141,5.552 6.263,5.918 5.946,6.138 6.337,6.138 6.435,6.504 6.557,6.138 6.948,6.138" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <polygon points="7.801,7.188 7.923,6.846 8.289,6.846 7.996,6.626 8.118,6.26 7.801,6.48 7.508,6.26 7.63,6.626 7.313,6.846 7.679,6.846" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <path d="M16,14H0V2h16V14zM1,13h14V3H1V13z" fill="#211F20" opacity="0.20"/>
+  </g>
+</svg>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Top="2" Width="16" Height="12" Fill="#F37980"/>
+      <Polyline Points="5.514,11.429 6.457,8.6 4,6.829 7.057,6.829 8,4 8.943,6.829 12,6.829 9.514,8.571 10.457,11.4 8,9.686 5.514,11.429" Fill="#63BF80" StrokeLineJoin="Miter"/>
+      <Polyline Points="8.514,9.314 9.285,9.857 9,8.971 8.514,9.314" Fill="#63BF80" StrokeLineJoin="Miter"/>
+      <Polyline Points="7,8.971 6.714,9.857 7.485,9.314 7,8.971" Fill="#63BF80" StrokeLineJoin="Miter"/>
+      <Polyline Points="7.2,8.371 8,8.942 8.8,8.371 8.486,7.457 7.486,7.457 7.2,8.371" Fill="#63BF80" StrokeLineJoin="Miter"/>
+      <Polyline Points="5.914,7.457 6.686,8 6.857,7.457 5.914,7.457" Fill="#63BF80" StrokeLineJoin="Miter"/>
+      <Polyline Points="9.314,8 10.085,7.457 9.142,7.457 9.314,8" Fill="#63BF80" StrokeLineJoin="Miter"/>
+      <Polyline Points="7.714,6.829 8.285,6.829 8,5.943 7.714,6.829" Fill="#63BF80" StrokeLineJoin="Miter"/>
+      <Polyline Points="5.514,11.429 6.457,8.6 4,6.829 7.057,6.829 8,4 8.943,6.829 12,6.829 9.514,8.571 10.457,11.4 8,9.686 5.514,11.429" Fill="#FFFFFF" StrokeLineJoin="Miter" Opacity="0.1"/>
+      <Polyline Points="8.514,9.314 9.285,9.857 9,8.971 8.514,9.314" Fill="#FFFFFF" StrokeLineJoin="Miter" Opacity="0.1"/>
+      <Polyline Points="7,8.971 6.714,9.857 7.485,9.314 7,8.971" Fill="#FFFFFF" StrokeLineJoin="Miter" Opacity="0.1"/>
+      <Polyline Points="7.2,8.371 8,8.942 8.8,8.371 8.486,7.457 7.486,7.457 7.2,8.371" Fill="#FFFFFF" StrokeLineJoin="Miter" Opacity="0.1"/>
+      <Polyline Points="5.914,7.457 6.686,8 6.857,7.457 5.914,7.457" Fill="#FFFFFF" StrokeLineJoin="Miter" Opacity="0.1"/>
+      <Polyline Points="9.314,8 10.085,7.457 9.142,7.457 9.314,8" Fill="#FFFFFF" StrokeLineJoin="Miter" Opacity="0.1"/>
+      <Polyline Points="7.714,6.829 8.285,6.829 8,5.943 7.714,6.829" Fill="#FFFFFF" StrokeLineJoin="Miter" Opacity="0.1"/>
+      <Path Data="M16,14H0V2h16V14zM1,13h14V3H1V13z" Fill="#211F20" Opacity="0.20"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

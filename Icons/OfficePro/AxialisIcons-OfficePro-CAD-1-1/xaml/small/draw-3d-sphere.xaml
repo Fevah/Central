@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Ellipse Canvas.Left="0.526" Canvas.Top="0.526" Width="14.948" Height="14.948" Fill="#FFFFFF" Opacity="0.6"/>
+      <Ellipse Canvas.Left="3.569" Canvas.Top="0.034" Width="8.81" Height="15.932" Stroke="#787979" StrokeThickness="1" StrokeMiterLimit="1" Opacity="0.6"/>
+      <Ellipse Canvas.Left="0" Canvas.Top="0" Width="16" Height="16" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

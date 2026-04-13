@@ -25,14 +25,20 @@ project structure without updating the architecture doc first.
 | Doc | Purpose |
 |-----|---------|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Master build plan — 8 phases, solution structure, module interfaces, RBAC, migration path |
-| [docs/SERVER_ARCHITECTURE.md](docs/SERVER_ARCHITECTURE.md) | Multi-user server — API, gRPC, SignalR, Podman pod layout, background services |
+| [docs/SERVER_ARCHITECTURE.md](docs/SERVER_ARCHITECTURE.md) | Multi-user server — API, gRPC, SignalR, K8s deployment, background services |
 | [docs/TOTALLINK_PATTERNS.md](docs/TOTALLINK_PATTERNS.md) | TotalLink source patterns — reference implementations for module system, ribbon, CRUD, undo |
-| [docs/FEATURE_TEST_CHECKLIST.md](docs/FEATURE_TEST_CHECKLIST.md) | 1,200+ testable items across 173 sections — every feature manually verifiable |
+| [docs/FEATURE_TEST_CHECKLIST.md](docs/FEATURE_TEST_CHECKLIST.md) | 1,400+ testable items across 180 sections — every feature manually verifiable |
 | [docs/TASKS_BUILDOUT.md](docs/TASKS_BUILDOUT.md) | Task module 11-phase buildout plan (Hansoft/P4 Plan clone) — all phases complete |
+| [docs/MERGE_PLAN.md](docs/MERGE_PLAN.md) | Central + Secure merge — 10 phases, unified auth, API gateway, K8s elastic scaling |
+| [docs/CREDENTIALS.md](docs/CREDENTIALS.md) | All login credentials, DSNs, SSH info, service URLs, K8s access |
 
 ### All 8 Phases + Task Module COMPLETE — Platform is production-ready
 
-15 projects. .NET 10 / PG 18.3 / Npgsql 10.0.2 / DX 25.2 / Svg.NET 3.4.7 / Elsa 3.5.3. 0 build errors. 451 unit tests.
+23 projects. .NET 10 / PG 18.3 / Npgsql 10.0.2 / DX 25.2 / Svg.NET 3.4.7 / Elsa 3.5.3. 0 build errors. 1,900 unit tests.
+
+### Central + Secure Merge — Phase 1.1 COMPLETE
+
+Auth-service (Rust) running in K8s. RLS multi-tenancy on all tables. Terraform + Terragrunt IaC.
 
 Phase 3 (Enterprise Desktop) — all complete:
 - ✅ Backstage (User Profile + settings, Theme gallery, Connection, About, Switch User, Exit)
@@ -163,37 +169,90 @@ everything in PostgreSQL for the WPF desktop application to query.
 
 ## Infrastructure
 
-- **Runtime**: Podman pod (local, rootless)
-- **Database**: PostgreSQL 18.3 running in Podman pod (async I/O, uuidv7(), virtual generated columns)
-- **VM option**: Vagrant + VirtualBox/VMware Workstation — 8 GB RAM, 100 GB storage
-- **No Docker** — Podman only
+- **Runtime**: Kubernetes 1.31 on VMware Workstation (7 nodes, Terraform + Terragrunt IaC)
+- **Database**: PostgreSQL 18.3 HA StatefulSet in K8s (primary + streaming replica)
+- **Cache**: Redis 7 StatefulSet in K8s
+- **Containers**: Podman for builds, K8s for running
+- **Load Balancing**: MetalLB L2 (192.168.56.200-220)
+- **No Docker** — Podman builds only, K8s for orchestration
 
-### Start the local database pod
+### K8s Cluster (primary environment)
 
-```bash
-# First-time setup (creates pod, applies schema)
-./infra/setup.sh
-
-# Daily use
-./infra/setup.sh start
-./infra/setup.sh stop
-./infra/setup.sh psql        # open psql shell
-./infra/setup.sh logs        # tail postgres logs
-./infra/setup.sh status
+```
+k8s-master      192.168.56.10   control-plane (Calico + MetalLB)
+k8s-worker-01   192.168.56.21   role=database  (4 CPU / 8GB — PG primary)
+k8s-worker-02   192.168.56.22   role=database  (4 CPU / 8GB — PG replica)
+k8s-worker-03   192.168.56.23   role=general
+k8s-worker-04   192.168.56.24   role=general
+k8s-worker-05   192.168.56.25   role=general
+k8s-worker-06   192.168.56.26   role=general
 ```
 
-### Using the Vagrant VM instead
+### Service endpoints (via MetalLB)
+
+| Service | External IP | Port |
+|---------|------------|------|
+| Central API | `http://192.168.56.200` | 5000 |
+| PostgreSQL (write) | `192.168.56.201` | 5432 |
+| PostgreSQL (read) | `192.168.56.202` | 5432 |
+| Container Registry | `192.168.56.10` | 30500 |
+
+### Daily commands
 
 ```bash
-cd infra
-vagrant up      # provisions 8 GB / 100 GB VM, installs Podman + Python
-vagrant ssh
-vagrant halt
+# Set K8s context
+export KUBECONFIG=~/.kube/central-local.conf
+
+# Check status
+./infra/setup.sh k8s-status
+
+# Connect to DB
+./infra/setup.sh k8s-psql central
+./infra/setup.sh k8s-psql secure_auth
+
+# View logs
+./infra/setup.sh k8s-logs central-api
+./infra/setup.sh k8s-logs auth-service
+
+# Build + push container images
+podman build -f Central.Api/Containerfile -t central-api:latest .
+podman tag central-api:latest 192.168.56.10:30500/central/central-api:latest
+podman push 192.168.56.10:30500/central/central-api:latest --tls-verify=false
+
+# Deploy to K8s
+./infra/setup.sh k8s-deploy
+
+# Start/stop VMs
+cd infra/vagrant && vagrant halt    # stop all
+cd infra/vagrant && vagrant up      # start all
+```
+
+### IaC Structure (Terraform + Terragrunt)
+
+```
+infra/
+├── terragrunt.hcl                    # Root config (S3 backend, provider)
+├── modules/                          # 11 Terraform modules (33 .tf files)
+│   ├── vpc, eks, rds, elasticache    # AWS infrastructure
+│   ├── ecr, s3, kms, secrets         # Storage + security
+│   ├── monitoring, k8s-service       # Observability + K8s deployments
+│   └── local-cluster/                # VMware VMs via Vagrant
+├── environments/                     # Terragrunt per-environment configs
+│   ├── _envcommon/                   # DRY module templates
+│   ├── local/                        # VMware Workstation (current)
+│   ├── dev/, staging/, prod/         # AWS environments
+├── k8s/base/                         # Kustomize manifests (8 YAML)
+├── vagrant/                          # Generated Vagrantfile
+├── ansible/                          # K8s bootstrap roles
+└── scripts/                          # Migration + utility scripts
 ```
 
 ## Database
 
-**DSN**: `postgresql://central:central@localhost:5432/central`
+**Write DSN**: `postgresql://central:central@192.168.56.201:5432/central`
+**Read DSN**: `postgresql://central:central@192.168.56.202:5432/central`
+**Auth DSN**: `postgresql://central:central@192.168.56.201:5432/secure_auth`
+**Desktop DSN**: `Host=192.168.56.201;Port=5432;Database=central;Username=central;Password=central`
 
 Schema file: [db/schema.sql](db/schema.sql)
 

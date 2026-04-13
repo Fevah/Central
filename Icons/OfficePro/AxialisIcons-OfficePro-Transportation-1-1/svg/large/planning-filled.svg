@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <polygon points="7.5,5.5 7.5,15 17,15 17,23.4 30.5,23.4 30.5,5.5" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <path d="M7,5v10h1V6h22v17H17.762c0.01,0.012,-0.35,0.023,-0.762,0.035V24h14V5H7z" fill="#383838"/>
+    <rect x="7.5" y="1.5" width="23" height="4" fill="#92CBEE" stroke="#0964B0" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <path d="M12.5,30.5l3,-2.4V16.5H4.4l-2.9,3v11H12.5zM12.5,19.5l3.025,-3.025" fill="#F7DA8E" stroke="#E57428" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <polyline points="1.5,19.5 12.5,19.5 12.5,30.3" fill="#F7DA8E" stroke="#E57428" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1" stroke-linejoin="miter"/>
+    <polygon points="8,19.5 8,22.5 6,22.5 6,19.5 9,16.5 11.05,16.5" fill="#C8C6C4" stroke="#383838" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+    <path d="M5.801,26.5H5v2.458c0,0.023,-0.023,0.042,-0.051,0.042h-0.898c-0.028,0,-0.051,-0.019,-0.051,-0.042V26.5h-0.819L4.5,24.244l1.308,2.244C5.805,26.493,5.804,26.494,5.801,26.5z" fill="#383838"/>
+    <path d="M8.803,26.5H8v2.458c0,0.023,-0.023,0.042,-0.051,0.042h-0.898c-0.028,0,-0.051,-0.019,-0.051,-0.042V26.5h-0.819L7.5,24.244l1.309,2.245C8.806,26.494,8.805,26.495,8.803,26.5z" fill="#383838"/>
+    <g>
+      <rect x="12" y="11" width="14" height="1" fill="#228BCB"/>
+      <rect x="10" y="8" width="7" height="1" fill="#228BCB"/>
+      <rect x="19" y="17" width="7" height="1" fill="#228BCB"/>
+    </g>
+    <path d="M27,15h-9v-1h9V15zM21,20v1h7v-1H21z" fill="#EE3D3B"/>
+  </g>
+</svg>

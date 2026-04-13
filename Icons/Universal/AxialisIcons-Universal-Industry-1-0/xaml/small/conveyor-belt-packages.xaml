@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M13,15.5H3c-1.3807,0,-2.5,-1.1193,-2.5,-2.5v0c0,-1.3807,1.1193,-2.5,2.5,-2.5h10c1.3807,0,2.5,1.1193,2.5,2.5v0C15.5,14.3807,14.3807,15.5,13,15.5z" Fill="#FFFFFF" Opacity="0.5"/>
+      <Path Data="M13,16H3c-1.6542,0,-3,-1.3458,-3,-3s1.3458,-3,3,-3h10c1.6542,0,3,1.3458,3,3S14.6542,16,13,16zM3,11c-1.1028,0,-2,0.8972,-2,2s0.8972,2,2,2h10c1.1028,0,2,-0.8972,2,-2s-0.8972,-2,-2,-2H3z" Fill="#6E6F72"/>
+      <Ellipse Canvas.Left="2.5" Canvas.Top="12" Width="2" Height="2" Fill="#FFFFFF" Opacity="0.5"/>
+      <Path Data="M3.5,14.5c-0.8271,0,-1.5,-0.6729,-1.5,-1.5s0.6729,-1.5,1.5,-1.5s1.5,0.6729,1.5,1.5S4.3271,14.5,3.5,14.5zM3.5,12.5c-0.2757,0,-0.5,0.2243,-0.5,0.5s0.2243,0.5,0.5,0.5s0.5,-0.2243,0.5,-0.5S3.7757,12.5,3.5,12.5z" Fill="#6E6F72"/>
+      <Ellipse Canvas.Left="7" Canvas.Top="12" Width="2" Height="2" Fill="#FFFFFF" Opacity="0.5"/>
+      <Path Data="M8,14.5c-0.8271,0,-1.5,-0.6729,-1.5,-1.5s0.6729,-1.5,1.5,-1.5s1.5,0.6729,1.5,1.5S8.8271,14.5,8,14.5zM8,12.5c-0.2757,0,-0.5,0.2243,-0.5,0.5s0.2243,0.5,0.5,0.5s0.5,-0.2243,0.5,-0.5S8.2757,12.5,8,12.5z" Fill="#6E6F72"/>
+      <Ellipse Canvas.Left="11.5" Canvas.Top="12" Width="2" Height="2" Fill="#FFFFFF" Opacity="0.5"/>
+      <Path Data="M12.5,14.5c-0.8271,0,-1.5,-0.6729,-1.5,-1.5s0.6729,-1.5,1.5,-1.5s1.5,0.6729,1.5,1.5S13.3271,14.5,12.5,14.5zM12.5,12.5c-0.2757,0,-0.5,0.2243,-0.5,0.5s0.2243,0.5,0.5,0.5s0.5,-0.2243,0.5,-0.5S12.7757,12.5,12.5,12.5z" Fill="#6E6F72"/>
+      <Rectangle Canvas.Left="0.5" Canvas.Top="2.5" Width="6" Height="6" Fill="#FFFFFF" Opacity="0.5"/>
+      <Path Data="M7,9H0V2h7V9zM1,8h5V3H1V8z" Fill="#EEAD56"/>
+      <Rectangle Canvas.Left="2.5" Canvas.Top="2.5" Width="2" Height="2" Fill="#FFFFFF" Opacity="0.5"/>
+      <Path Data="M5,5H2V2h3V5zM3,4h1V3H3V4z" Fill="#6E6F72"/>
+      <Rectangle Canvas.Left="9.5" Canvas.Top="2.5" Width="6" Height="6" Fill="#FFFFFF" Opacity="0.5"/>
+      <Path Data="M16,9H9V2h7V9zM10,8h5V3h-5V8z" Fill="#EEAD56"/>
+      <Rectangle Canvas.Left="11.5" Canvas.Top="2.5" Width="2" Height="2" Fill="#FFFFFF" Opacity="0.5"/>
+      <Path Data="M14,5h-3V2h3V5zM12,4h1V3h-1V4z" Fill="#6E6F72"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

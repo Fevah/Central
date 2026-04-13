@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <rect x="10.5" y="3.5" width="20" height="25" fill="#FFFFFF"/>
+    <ellipse cx="25.55" cy="10.5" rx="2.05" ry="2" fill="#FFFFFF" stroke="#ED8730" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M10.545,18.151L14.152,14.5l11.854,12M30.5,23.325L23.857,16.6l-3.667,3.713" fill="#FFFFFF" stroke="#228BCB" stroke-width="1" stroke-miterlimit="1"/>
+    <rect x="10.5" y="3.5" width="20" height="25" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M1,3.5h8M1,28.5h8" fill="none" stroke="#787979" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M4.5,12.5V5.117M7.7,8.345L4.498,5.117L1.397,8.245" fill="none" stroke="#228BCB" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M4.5,19.517V26.9M1.397,23.771L4.498,26.9L7.7,23.671" fill="none" stroke="#228BCB" stroke-width="1" stroke-miterlimit="1"/>
+  </g>
+</svg>

@@ -1,0 +1,67 @@
+﻿<UserControl x:Class="TIG.TotalLink.Client.Module.Admin.View.Backstage.WidgetCardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             xmlns:i="http://schemas.microsoft.com/expression/2010/interactivity"
+             xmlns:dxlc="http://schemas.devexpress.com/winfx/2008/xaml/layoutcontrol"
+             xmlns:dxgt="http://schemas.devexpress.com/winfx/2008/xaml/grid/themekeys"
+             xmlns:backstage="clr-namespace:TIG.TotalLink.Client.Module.Admin.ViewModel.Backstage"
+             mc:Ignorable="d"
+             d:DesignHeight="300"
+             d:DesignWidth="300"
+             d:DataContext="{d:DesignInstance backstage:WidgetCardViewModel, IsDesignTimeCreatable=True}">
+
+    <dxlc:LayoutControl Orientation="Vertical"
+                        UseLayoutRounding="True">
+        <dxlc:LayoutGroup View="Group"
+                          Orientation="Vertical">
+            <dxg:GridControl x:Name="GridControl"
+                             ItemsSource="{Binding Widgets}"
+                             SelectedItem="{Binding Widget, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             SelectionMode="Row"
+                             AutoExpandAllGroups="True"
+                             CustomColumnSort="GridControl_CustomColumnSort">
+                <i:Interaction.Triggers>
+                    <i:EventTrigger EventName="SelectionChanged">
+                        <i:InvokeCommandAction Command="{Binding SelectionChangedCommand}"
+                                               CommandParameter="{Binding Widget}" />
+                    </i:EventTrigger>
+                </i:Interaction.Triggers>
+                <dxg:GridControl.Columns>
+                    <dxg:GridColumn FieldName="Name"
+                                    SortIndex="0" />
+                    <dxg:GridColumn FieldName="Category"
+                                    GroupIndex="0"
+                                    SortMode="Custom" />
+                    <dxg:GridColumn FieldName="Description" />
+                    <dxg:GridColumn FieldName="Module" />
+                    <dxg:GridColumn FieldName="ViewName" />
+                </dxg:GridControl.Columns>
+                <dxg:GridControl.View>
+                    <dxg:CardView CardLayout="Rows"
+                                  ShowGroupPanel="False"
+                                  AllowEditing="False"
+                                  AllowCardResizing="False"
+                                  ShowSearchPanelMode="Always"
+                                  WheelScrollLines="1">
+                        <dxg:CardView.GroupValueTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Value}"
+                                           Margin="5,0" />
+                            </DataTemplate>
+                        </dxg:CardView.GroupValueTemplate>
+                        <dxg:CardView.CardTemplate>
+                            <DataTemplate>
+                                <ContentPresenter Width="200"
+                                                  Content="{Binding}"
+                                                  ContentTemplate="{DynamicResource {dxgt:CardTemplatesThemeKey ResourceKey=CardTemplate}}" />
+                            </DataTemplate>
+                        </dxg:CardView.CardTemplate>
+                    </dxg:CardView>
+                </dxg:GridControl.View>
+            </dxg:GridControl>
+        </dxlc:LayoutGroup>
+    </dxlc:LayoutControl>
+</UserControl>

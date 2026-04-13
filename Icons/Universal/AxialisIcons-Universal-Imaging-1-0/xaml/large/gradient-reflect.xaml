@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="24" Height="24" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M22,22H2V2h20V22z" Fill="#FFFFFF" Opacity="0.5"/>
+      <Path Data="M24,24H0V0h24V24zM2,22h20V2H2V22z" Fill="#7B7B7B"/>
+      <Path Data="M3,3.6923V3h18v0.6923H3z" Fill="#808285"/>
+      <Path Data="M3,4.3846v-0.6923h18v0.6923H3z" Fill="#8A8C8E"/>
+      <Path Data="M3,5.0769v-0.6923h18v0.6923H3z" Fill="#939598"/>
+      <Path Data="M3,5.7692v-0.6923h18v0.6923H3z" Fill="#9D9FA2"/>
+      <Path Data="M3,6.4615v-0.6923h18v0.6923H3z" Fill="#A7A9AC"/>
+      <Path Data="M3,7.1538v-0.6923h18v0.6923H3z" Fill="#B1B3B6"/>
+      <Path Data="M3,7.8462v-0.6923h18v0.6923H3z" Fill="#BCBEC0"/>
+      <Path Data="M3,8.5385v-0.6923h18v0.6923H3z" Fill="#C7C8CA"/>
+      <Path Data="M3,9.2308v-0.6923h18v0.6923H3z" Fill="#D1D3D4"/>
+      <Path Data="M3,9.9231v-0.6923h18v0.6923H3z" Fill="#DCDDDE"/>
+      <Path Data="M3,10.6154v-0.6923h18v0.6923H3z" Fill="#E2E3E4"/>
+      <Path Data="M3,11.3077v-0.6923h18v0.6923H3z" Fill="#EBEBEC"/>
+      <Path Data="M3,12v-0.6923h18V12H3z" Fill="#F1F2F2"/>
+      <Path Data="M21,20.3077V21H3v-0.6923H21z" Fill="#808285"/>
+      <Path Data="M21,19.6154v0.6923H3v-0.6923H21z" Fill="#8A8C8E"/>
+      <Path Data="M21,18.9231v0.6923H3v-0.6923H21z" Fill="#939598"/>
+      <Path Data="M21,18.2308v0.6923H3v-0.6923H21z" Fill="#9D9FA2"/>
+      <Path Data="M21,17.5385v0.6923H3v-0.6923H21z" Fill="#A7A9AC"/>
+      <Path Data="M21,16.8462v0.6923H3v-0.6923H21z" Fill="#B1B3B6"/>
+      <Path Data="M21,16.1538v0.6923H3v-0.6923H21z" Fill="#BCBEC0"/>
+      <Path Data="M21,15.4615v0.6923H3v-0.6923H21z" Fill="#C7C8CA"/>
+      <Path Data="M21,14.7692v0.6923H3v-0.6923H21z" Fill="#D1D3D4"/>
+      <Path Data="M21,14.0769v0.6923H3v-0.6923H21z" Fill="#DCDDDE"/>
+      <Path Data="M21,13.3846v0.6923H3v-0.6923H21z" Fill="#E2E3E4"/>
+      <Path Data="M21,12.6923v0.6923H3v-0.6923H21z" Fill="#EBEBEC"/>
+      <Path Data="M21,12v0.6923H3V12H21z" Fill="#F1F2F2"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

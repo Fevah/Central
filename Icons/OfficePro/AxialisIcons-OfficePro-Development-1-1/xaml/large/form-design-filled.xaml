@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="32" Height="32" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M18.236,24.29c-0.207,0.207,-0.593,0.593,-4.636,2.024l-2.913,1.031l0.992,-2.927c1.388,-4.095,1.781,-4.487,1.991,-4.698L25.5,7.922V7.5H1.5v22h24V17.053L18.236,24.29z" Fill="#FFFFFF"/>
+      <Polygon Points="25,17.551 25,29 2,29 2,8 25,8 25,8.421 26,7.423 26,7 1,7 1,30 26,30 26,16.555" Fill="#383838" StrokeLineJoin="Miter"/>
+      <Rectangle Canvas.Left="1.5" Canvas.Top="2.5" Width="24" Height="5" Fill="#DFBCD9"/>
+      <Path Data="M26,7.423V2H1v6h24.422L26,7.423zM2,7V3h23v4H2z" Fill="#A0519F"/>
+      <Path Data="M12.541,22H12v-3h2.393l-0.722,0.721c-0.057,0.057,-0.127,0.127,-0.226,0.279H13v0.87C12.872,21.16,12.721,21.529,12.541,22zM12.173,23H12v0.488C12.06,23.318,12.117,23.155,12.173,23zM16.398,17H13v-1h4.401l1.003,-1H12v3h3.396L16.398,17zM5,25h5v-1H5V25zM20.409,13H13v-1h8v0.41l1,-0.997V11H12v3h7.406L20.409,13zM5,13h5v-1H5V13zM18.527,24H19v1h-1.984c-0.543,0.242,-1.344,0.564,-2.541,1H20v-3h-0.469L18.527,24zM20.535,22H21v-0.464L20.535,22zM5,21h5v-1H5V21zM5,17h5v-1H5V17z" Fill="#787979"/>
+      <Path Data="M28.595,11.765l1.789,-1.783c0.662,-0.662,-1.704,-3.029,-2.367,-2.367l-1.801,1.796L28.595,11.765z" Fill="#F3B8B8" Stroke="#E42D2C" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1"/>
+      <Path Data="M16.893,23.428l-0.059,0.058C16.491,23.829,12.9,25.1,12.9,25.1s1.231,-3.631,1.574,-3.974l0.059,-0.058L16.893,23.428z" Fill="#FFFFFF" Stroke="#383838" StrokeThickness="1" StrokeMiterLimit="1"/>
+      <Polygon Points="16.893,23.428 28.595,11.765 26.217,9.412 14.533,21.068" Fill="#92CBEE" Stroke="#0964B0" StrokeThickness="1" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeMiterLimit="1" StrokeLineJoin="Round"/>
+      <Line X1="28.881" Y1="12.081" X2="25.919" Y2="9.125" Stroke="#787979" StrokeThickness="1.1" StrokeMiterLimit="1"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

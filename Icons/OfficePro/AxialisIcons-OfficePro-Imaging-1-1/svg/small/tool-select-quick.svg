@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <path d="M10.567,7.146L9.033,8.68L7.664,7.311l1.533,-1.533L10.567,7.146z" fill="#FFFFFF"/>
+    <path d="M9.204,5.655l4.523,-4.804c0.391,-0.434,1.06,-0.47,1.496,-0.081l0,0c0.436,0.389,0.472,1.057,0.081,1.491L10.795,7.05" fill="#C8C6C4"/>
+    <path d="M9.145,9.302l-0.614,-0.589l6.461,-6.741c0.11,-0.125,0.166,-0.284,0.157,-0.45c-0.009,-0.168,-0.083,-0.323,-0.209,-0.435c-0.26,-0.233,-0.662,-0.211,-0.896,0.048l-0.009,0.01l-6.48,6.762l-0.614,-0.589l6.476,-6.757c0.547,-0.602,1.484,-0.651,2.091,-0.108c0.296,0.264,0.47,0.628,0.492,1.023c0.021,0.395,-0.113,0.775,-0.378,1.07l-0.009,0.01L9.145,9.302z" fill="#383838"/>
+    <path d="M8.749,9.976c-0.696,1.398,-1.501,1.584,-5.89,1.519c-0.065,-0.001,-0.082,-0.089,-0.022,-0.113c1.537,-0.622,1.281,-0.503,2.458,-2.888C6.546,5.96,9.741,7.984,8.749,9.976z" fill="#92CBEE" stroke="#0964B0" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <path d="M9.192,5.713l1.404,1.404" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <g>
+      <polygon points="14,16 12.5,16 12.5,15 13,15 13,14.5 14,14.5" fill="#383838" stroke-linejoin="miter"/>
+      <path d="M11.125,16H9.292v-1h1.833V16zM7.917,16H6.083v-1h1.833V16zM4.708,16H2.875v-1h1.833V16z" fill="#383838"/>
+      <polygon points="1.5,16 0,16 0,14.5 1,14.5 1,15 1.5,15" fill="#383838" stroke-linejoin="miter"/>
+      <path d="M1,12.735H0v-2.353h1V12.735zM1,8.618H0V6.265h1V8.618z" fill="#383838"/>
+      <polygon points="1,4.5 0,4.5 0,3 1.5,3 1.5,4 1,4" fill="#383838" stroke-linejoin="miter"/>
+      <path d="M7.917,4H6.083V3h1.833V4zM4.708,4H2.875V3h1.833V4z" fill="#383838"/>
+      <path d="M14,12.735h-1v-2.353h1V12.735zM14,8.618h-1V7.265l1,-1V8.618z" fill="#383838"/>
+    </g>
+  </g>
+</svg>

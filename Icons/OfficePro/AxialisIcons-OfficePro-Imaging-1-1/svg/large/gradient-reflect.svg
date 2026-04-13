@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <rect x="1.5" y="2.5" width="29" height="27" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M3,4.923V4h26v0.923H3z" fill="#808285"/>
+    <path d="M3,5.846v-0.923h26v0.923H3z" fill="#8A8C8E"/>
+    <path d="M3,6.769v-0.923h26v0.923H3z" fill="#939598"/>
+    <path d="M3,7.692v-0.923h26v0.923H3z" fill="#9D9FA2"/>
+    <path d="M3,8.615v-0.923h26v0.923H3z" fill="#A7A9AC"/>
+    <path d="M3,9.538v-0.923h26v0.923H3z" fill="#B1B3B6"/>
+    <path d="M3,10.462v-0.923h26v0.923H3z" fill="#BCBEC0"/>
+    <path d="M3,11.385v-0.923h26v0.923H3z" fill="#C7C8CA"/>
+    <path d="M3,12.308v-0.923h26v0.923H3z" fill="#D1D3D4"/>
+    <path d="M3,13.231v-0.923h26v0.923H3z" fill="#DCDDDE"/>
+    <path d="M3,14.154v-0.923h26v0.923H3z" fill="#E2E3E4"/>
+    <path d="M3,15.077v-0.923h26v0.923H3z" fill="#EBEBEC"/>
+    <path d="M3,16v-0.923h26V16H3z" fill="#F1F2F2"/>
+    <path d="M29,27.077V28H3v-0.923H29z" fill="#808285"/>
+    <path d="M29,26.154v0.923H3v-0.923H29z" fill="#8A8C8E"/>
+    <path d="M29,25.231v0.923H3v-0.923H29z" fill="#939598"/>
+    <path d="M29,24.308v0.923H3v-0.923H29z" fill="#9D9FA2"/>
+    <path d="M29,23.385v0.923H3v-0.923H29z" fill="#A7A9AC"/>
+    <path d="M29,22.462v0.923H3v-0.923H29z" fill="#B1B3B6"/>
+    <path d="M29,21.538v0.923H3v-0.923H29z" fill="#BCBEC0"/>
+    <path d="M29,20.615v0.923H3v-0.923H29z" fill="#C7C8CA"/>
+    <path d="M29,19.692v0.923H3v-0.923H29z" fill="#D1D3D4"/>
+    <path d="M29,18.769v0.923H3v-0.923H29z" fill="#DCDDDE"/>
+    <path d="M29,17.846v0.923H3v-0.923H29z" fill="#E2E3E4"/>
+    <path d="M29,16.923v0.923H3v-0.923H29z" fill="#EBEBEC"/>
+    <path d="M29,16v0.923H3V16H29z" fill="#F1F2F2"/>
+  </g>
+</svg>

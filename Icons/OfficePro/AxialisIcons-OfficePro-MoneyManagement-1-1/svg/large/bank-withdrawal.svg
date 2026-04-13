@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <path d="M9.951,2.7L12.7,5.481L9.951,8.262M4.5,14V7.483C4.5,6.388,5.388,5.5,6.483,5.5L12.5,5.5" fill="none" stroke="#EE3D3B" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M27.3,9.909c0,0,0,2.638,0,2.954c0,1.22,-2.862,2.638,-6.398,2.638c-3.536,0,-6.402,-1.417,-6.402,-2.623c0,-0.27,0,-2.969,0,-2.969" fill="#FFFFFF" stroke="#ED8730" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M27.3,9.893c0,1.599,-2.83,2.668,-6.376,2.668c-3.547,0,-6.422,-1.07,-6.422,-2.668c0,-0.945,1.225,-1.995,3.198,-2.417" fill="#FFFFFF" stroke="#ED8730" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M30.5,4.449c0,0,0,2.674,0,2.994c0,1.237,-2.862,2.673,-6.398,2.673c-3.536,0,-6.402,-1.436,-6.402,-2.658c0,-0.274,0,-3.008,0,-3.008" fill="#FFFFFF" stroke="#ED8730" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M24.124,1.5C27.67,1.5,30.5,2.813,30.5,4.433s-2.83,2.704,-6.376,2.704c-3.547,0,-6.422,-1.084,-6.422,-2.704S20.577,1.5,24.124,1.5z" fill="#FFFFFF" stroke="#ED8730" stroke-width="1" stroke-miterlimit="1"/>
+    <rect x="3.5" y="20.5" width="13" height="8" fill="#FFFFFF"/>
+    <rect x="8.5" y="23.5" width="3" height="5" fill="#FFFFFF" stroke="#ED8730" stroke-width="1" stroke-miterlimit="1"/>
+    <polygon points="17.5,28.5 2.5,28.5 2.5,30.5 17.517,30.5" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+    <path d="M10,15.6l8.5,4.339V20.5H1.5v-0.561L10,15.6z" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <path d="M3.5,20.5v8M5.5,20.5v8M14.5,20.5v8M16.5,20.5v8" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="1" y1="30.5" x2="19" y2="30.5" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <circle cx="10" cy="18.4" r="1" fill="#78797A"/>
+  </g>
+</svg>

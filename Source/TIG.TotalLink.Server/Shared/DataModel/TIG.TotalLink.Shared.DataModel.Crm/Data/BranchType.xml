@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<BranchTypes>
+  <BranchType Name="Branch" />
+  <BranchType Name="Dealership" />
+  <BranchType Name="Head Office" />
+  <BranchType Name="Store" />
+  <BranchType Name="Franchise" />
+</BranchTypes>

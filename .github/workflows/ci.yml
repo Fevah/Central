@@ -9,8 +9,12 @@ on:
 env:
   DOTNET_VERSION: '10.0.x'
   NODE_VERSION: '24'
+  RUST_VERSION: '1.92'
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/central
 
 jobs:
+  # ── .NET (Desktop + API) ────────────────────────────────────────────
   dotnet-build-test:
     name: .NET Build & Test
     runs-on: windows-latest
@@ -22,7 +26,14 @@ jobs:
       - run: dotnet restore desktop/Central.sln
       - run: dotnet build desktop/Central.sln -c Release -p:Platform=x64 --no-restore
       - run: dotnet test desktop/Central.Tests/ -c Release -p:Platform=x64 --no-build -v normal
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: desktop/Central.Tests/TestResults/
 
+  # ── Angular Web Client ──────────────────────────────────────────────
   angular-build:
     name: Angular Build
     runs-on: ubuntu-latest
@@ -31,14 +42,118 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web-client/package-lock.json
       - run: cd web-client && npm ci && npx ng build --configuration production
+      - uses: actions/upload-artifact@v4
+        with:
+          name: angular-dist
+          path: web-client/dist/
 
-  container-images:
-    name: Build Containers
+  # ── Rust Services ───────────────────────────────────────────────────
+  rust-check:
+    name: Rust Check & Clippy
     runs-on: ubuntu-latest
-    needs: [dotnet-build-test, angular-build]
-    if: github.ref == 'refs/heads/main'
+    defaults:
+      run:
+        working-directory: ${{ github.workspace }}/../Secure/SecureAPP
     steps:
       - uses: actions/checkout@v4
-      - name: Build Central.Api image
-        run: docker build -f desktop/Central.Api/Containerfile -t central-api:${{ github.sha }} desktop/
+        with:
+          path: central
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/SecureAPP
+          path: secure
+          token: ${{ secrets.SECURE_REPO_TOKEN }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          components: clippy
+      - name: Install build deps
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libssl-dev cmake protobuf-compiler
+      - name: Cargo check all services
+        working-directory: secure
+        run: |
+          cargo check -p auth-service
+          cargo check -p gateway-service
+          cargo check -p task-service
+          cargo check -p storage-service
+          cargo check -p sync-service
+          cargo check -p audit-service
+
+  # ── Terraform Validate ──────────────────────────────────────────────
+  terraform-validate:
+    name: Terraform Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.14'
+      - name: Validate all modules
+        run: |
+          for mod in infra/modules/*/; do
+            echo "Validating $mod..."
+            cd "$mod"
+            terraform init -backend=false
+            terraform validate
+            cd "$GITHUB_WORKSPACE"
+          done
+
+  # ── Container Images ────────────────────────────────────────────────
+  container-images:
+    name: Build & Push Containers
+    runs-on: ubuntu-latest
+    needs: [dotnet-build-test, angular-build, rust-check]
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Central API (.NET)
+      - name: Build Central.Api
+        run: |
+          docker build -f desktop/Central.Api/Containerfile \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/central-api:${{ github.sha }} \
+            -t ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/central-api:latest \
+            desktop/
+      - name: Push Central.Api
+        run: |
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/central-api:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/central-api:latest
+
+  # ── K8s Deploy (manual trigger) ─────────────────────────────────────
+  deploy-k8s:
+    name: Deploy to K8s
+    runs-on: ubuntu-latest
+    needs: [container-images]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+      - name: Deploy manifests
+        run: kubectl apply -k infra/k8s/base/
+      - name: Rollout restart
+        run: |
+          kubectl -n central rollout restart deployment/central-api
+          kubectl -n central rollout restart deployment/gateway
+          kubectl -n central rollout restart deployment/auth-service
+          kubectl -n central rollout restart deployment/task-service
+      - name: Verify
+        run: |
+          kubectl -n central rollout status deployment/central-api --timeout=120s
+          kubectl -n central rollout status deployment/gateway --timeout=120s
+          kubectl -n central get pods -n central

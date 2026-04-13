@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="16" Height="16" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Path Data="M15,15H1V1h14V15z" Fill="#FFFFFF" Opacity="0.5"/>
+      <Path Data="M16,16H0V0h16V16zM1,15h14V1H1V15z" Fill="#6D6E71"/>
+      <Canvas>
+        <Polygon Points="8,8 7.0601,2 4.8215,2" Fill="#8C8E90" StrokeLineJoin="Miter"/>
+        <Polygon Points="2,2.5017 8,8 4.8598,2 2,2" Fill="#939598" StrokeLineJoin="Miter"/>
+        <Polygon Points="2,5.5773 8,8 2,2.4168" Fill="#9B9DA0" StrokeLineJoin="Miter"/>
+        <Polygon Points="2,7.989 8,8 2,5.5016" Fill="#A5A7AA" StrokeLineJoin="Miter"/>
+        <Polygon Points="14,8 8,8 14,10.3941" Fill="#DEDFE0" StrokeLineJoin="Miter"/>
+        <Polygon Points="14,10.3852 8,8 14,13.5263" Fill="#D8D9DA" StrokeLineJoin="Miter"/>
+        <Polygon Points="14,13.5188 8,8 11.1268,14 14,14" Fill="#D1D3D4" StrokeLineJoin="Miter"/>
+        <Polygon Points="8,8 8.9193,14 11.152,14" Fill="#CBCCCE" StrokeLineJoin="Miter"/>
+        <Polygon Points="8,8 7.0325,14 9.0076,14" Fill="#C4C6C8" StrokeLineJoin="Miter"/>
+        <Polygon Points="7.0601,14 8,8 4.8215,14" Fill="#BEC0C2" StrokeLineJoin="Miter"/>
+        <Polygon Points="2,14 4.8598,14 8,8 2,13.4983" Fill="#B8BABC" StrokeLineJoin="Miter"/>
+        <Polygon Points="2,13.5832 8,8 2,10.4227" Fill="#B1B3B6" StrokeLineJoin="Miter"/>
+        <Polygon Points="2,10.4984 8,8 2,8.011" Fill="#ABADB0" StrokeLineJoin="Miter"/>
+        <Polygon Points="14,8 14,5.6059 8,8" Fill="#E6E7E8" StrokeLineJoin="Miter"/>
+        <Polygon Points="14,5.6148 14,2.4737 8,8" Fill="#EFEFF0" StrokeLineJoin="Miter"/>
+        <Polygon Points="14,2 11.1268,2 8,8 14,2.4812" Fill="#F6F6F6" StrokeLineJoin="Miter"/>
+        <Polygon Points="8.9193,2 8,8 11.152,2" Fill="#7E8083" StrokeLineJoin="Miter"/>
+        <Polygon Points="8,8 9.0076,2 7.0325,2" Fill="#86888A" StrokeLineJoin="Miter"/>
+      </Canvas>
+    </Canvas>
+  </Canvas>
+</Viewbox>

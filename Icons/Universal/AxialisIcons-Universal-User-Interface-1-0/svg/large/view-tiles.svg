@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="24px" height="24px" viewBox="0 0 24 24" enable-background="new 0 0 24 24" xml:space="preserve">
+  <g id="icon">
+    <rect x="2" y="5" width="20" height="17" fill="#FFFFFF" opacity="0.5"/>
+    <polygon points="22,5 22,22 2,22 2,5 0,5 0,24 24,24 24,5" fill="#7B7B7B" stroke-linejoin="miter"/>
+    <path d="M24,5H0V1h24V5z" fill="#52B250"/>
+    <polygon points="10.5,12.4 5.6,12.4 5.6,7.5 9.275,7.5 10.5,8.725" fill="#FFFFFF" stroke-linejoin="miter" opacity="0.5"/>
+    <path d="M11,13H5V7h4.207L11,8.7929V13zM6,12h4V9.2071L8.7929,8H6V12z" fill="#6E6F72"/>
+    <path d="M8.886,10.2927l-0.0083,0.0001c-0.2169,0.0031,-0.4401,0.1268,-0.6822,0.3781l-0.0293,0.0304l0.0284,0.0314c0.1415,0.1566,0.3299,0.3554,0.5466,0.5221l-0.0918,0.1694c-0.3055,-0.2322,-0.5696,-0.5358,-0.8037,-0.8048c-0.3533,-0.4061,-0.6584,-0.7568,-0.9858,-0.7568c-0.015,0,-0.0301,0.0008,-0.0449,0.0022c-0.2487,0.0251,-0.5164,0.2607,-0.8149,0.7181V12h4v-0.9329C9.6042,10.6456,9.2572,10.2927,8.886,10.2927z" fill="#52B250"/>
+    <circle cx="8.3217" cy="9.27" r="0.5717" fill="#EEAD56"/>
+    <polygon points="10.5,19.4 5.6,19.4 5.6,14.5 9.275,14.5 10.5,15.725" fill="#FFFFFF" stroke-linejoin="miter" opacity="0.5"/>
+    <path d="M11,20H5v-6h4.207L11,15.7929V20zM6,19h4v-2.7929L8.7929,15H6V19z" fill="#6E6F72"/>
+    <circle cx="8.3217" cy="16.27" r="0.5717" fill="#EEAD56"/>
+    <path d="M6,19v-1.387l0.7786,-0.7635L8.9714,19H6zM8.0573,17.8511L9.222,19H10v-0.4995l-1.3429,-1.2377L8.0573,17.8511z" fill="#52B4C0"/>
+    <path d="M19,10h-7V9h7V10zM17,11h-5v1h5V11zM19,16h-7v1h7V16zM17,18h-5v1h5V18z" fill="#6E6F72"/>
+  </g>
+</svg>

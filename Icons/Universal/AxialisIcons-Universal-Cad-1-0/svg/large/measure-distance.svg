@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!-- Generator: Adobe Illustrator 26.3.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+	 viewBox="0 0 24 24" style="enable-background:new 0 0 24 24;" xml:space="preserve">
+<g id="icon">
+	<line style="fill:none;" x1="0.75" y1="2.5" x2="0.75" y2="13"/>
+	<rect y="2.5" style="fill:#6E6F72;" width="1.5" height="10.5"/>
+	<line style="fill:none;" x1="22.25" y1="2.5" x2="22.25" y2="13"/>
+	<rect x="21.5" y="2.5" style="fill:#6E6F72;" width="1.5" height="10.5"/>
+	<polygon style="fill:#6486C4;" points="20.45,7.75 15.5,5.182 15.5,7 7.5,7 7.5,5.182 2.55,7.75 7.5,10.389 7.5,8.5 15.5,8.5 
+		15.5,10.389 	"/>
+	<rect x="0.75" y="16.846" style="opacity:0.5;fill:#FFFFFF;enable-background:new    ;" width="21.5" height="6.5"/>
+	<path style="fill:#EEAD56;" d="M23,24H0v-8h23V24z M21.5,17.5h-20v5h20V17.5z"/>
+	<path style="fill:#7C7B7A;" d="M4,21H3v-3.5h1V21z M6,20H5v-2.5h1V20z M8,20H7v-2.5h1V20z M10,20H9v-2.5h1V20z M12,21h-1v-3.5h1V21
+		z M14,20h-1v-2.5h1V20z M16,20h-1v-2.5h1V20z M18,20h-1v-2.5h1V20z M20,21h-1v-3.5h1V21z M12,21h1.5"/>
+</g>
+</svg>

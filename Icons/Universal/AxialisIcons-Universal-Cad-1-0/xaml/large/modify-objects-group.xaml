@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="24" Height="24" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Left="9" Canvas.Top="1.5" Width="6" Height="10.5" RenderTransformOrigin="-1.5 -0.142857" Fill="#6486C4" Opacity="0.5">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="6.12323e-17 -1 1 6.12323e-17 5.25 18.75"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Path Data="M18,10.5H6V3h12V10.5zM7.5,9h9V4.5H7.5V9z" Fill="#6486C4"/>
+      <Ellipse Canvas.Left="7.5" Canvas.Top="12.75" Width="9" Height="9" Fill="#6486C4" Opacity="0.5"/>
+      <Path Data="M12,22.5c-2.8948,0,-5.25,-2.3552,-5.25,-5.25S9.1052,12,12,12s5.25,2.3552,5.25,5.25S14.8948,22.5,12,22.5zM12,13.5c-2.0678,0,-3.75,1.6822,-3.75,3.75S9.9322,21,12,21s3.75,-1.6822,3.75,-3.75S14.0678,13.5,12,13.5z" Fill="#6486C4"/>
+      <Polygon Points="6,24 1,24 1,0 6,0 6,2 3,2 3,22 6,22" Fill="#7B7B7B" StrokeLineJoin="Miter"/>
+      <Polygon Points="23,24 18,24 18,22 21,22 21,2 18,2 18,0 23,0" Fill="#7B7B7B" StrokeLineJoin="Miter"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

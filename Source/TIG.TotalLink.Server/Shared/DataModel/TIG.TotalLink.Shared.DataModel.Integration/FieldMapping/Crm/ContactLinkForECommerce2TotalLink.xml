@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SyncMapping>
+  <EntityMappings>
+    <EntityMapping Name="ContactLinks">
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="Oid" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Oid" Type="System.Guid" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="SourceId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Source" Type="Contact" Convert="Entity(Oid, [SourceId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="TargetId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="Target" Type="Contact" Convert="Entity(Oid, [TargetId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+      <FieldMapping>
+        <SourceFields>
+          <Field Name="ContactLinkTypeId" Type="System.Guid" />
+        </SourceFields>
+        <TargetFields>
+          <Field Name="ContactLinkType" Type="ContactLinkType" Convert="Entity(Oid, [ContactLinkTypeId], System.Guid)" />
+        </TargetFields>
+      </FieldMapping>
+    </EntityMapping>
+  </EntityMappings>
+</SyncMapping>

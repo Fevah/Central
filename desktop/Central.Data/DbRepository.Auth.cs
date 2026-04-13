@@ -10,8 +10,7 @@ public partial class DbRepository
     public async Task<List<IdentityProviderConfig>> GetIdentityProvidersAsync(bool enabledOnly = false)
     {
         var list = new List<IdentityProviderConfig>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var where = enabledOnly ? "WHERE is_enabled = true" : "";
         await using var cmd = new NpgsqlCommand(
             $"SELECT id, provider_type, name, is_enabled, is_default, priority, config_json::text, metadata_url FROM identity_providers {where} ORDER BY priority", conn);
@@ -28,8 +27,7 @@ public partial class DbRepository
 
     public async Task UpsertIdentityProviderAsync(IdentityProviderConfig p)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (p.Id == 0)
         {
             await using var cmd = new NpgsqlCommand(
@@ -56,8 +54,7 @@ public partial class DbRepository
 
     public async Task DeleteIdentityProviderAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM identity_providers WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -67,8 +64,7 @@ public partial class DbRepository
 
     public async Task<IdentityProviderConfig?> GetProviderByDomainAsync(string emailDomain)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             @"SELECT p.id, p.provider_type, p.name, p.is_enabled, p.is_default, p.priority, p.config_json::text, p.metadata_url
               FROM identity_providers p JOIN idp_domain_mappings d ON d.provider_id = p.id
@@ -87,8 +83,7 @@ public partial class DbRepository
     public async Task<List<IdpDomainMapping>> GetDomainMappingsAsync()
     {
         var list = new List<IdpDomainMapping>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT d.id, d.email_domain, d.provider_id, p.name FROM idp_domain_mappings d JOIN identity_providers p ON p.id=d.provider_id ORDER BY d.email_domain", conn);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -99,8 +94,7 @@ public partial class DbRepository
 
     public async Task UpsertDomainMappingAsync(string emailDomain, int providerId)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             @"INSERT INTO idp_domain_mappings (email_domain, provider_id) VALUES (@dom, @pid)
               ON CONFLICT (email_domain) DO UPDATE SET provider_id=@pid", conn);
@@ -114,8 +108,7 @@ public partial class DbRepository
     public async Task<List<ClaimMapping>> GetClaimMappingsAsync(int? providerId = null)
     {
         var list = new List<ClaimMapping>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var where = providerId.HasValue ? "WHERE provider_id=@pid" : "";
         await using var cmd = new NpgsqlCommand(
             $"SELECT id, provider_id, claim_type, claim_value, target_role, priority, is_enabled FROM claim_mappings {where} ORDER BY priority", conn);
@@ -133,8 +126,7 @@ public partial class DbRepository
 
     public async Task UpsertClaimMappingAsync(ClaimMapping cm)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (cm.Id == 0)
         {
             await using var cmd = new NpgsqlCommand(
@@ -161,8 +153,7 @@ public partial class DbRepository
 
     public async Task DeleteClaimMappingAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM claim_mappings WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -173,8 +164,7 @@ public partial class DbRepository
     public async Task<List<UserExternalIdentity>> GetUserExternalIdentitiesAsync(int? userId = null)
     {
         var list = new List<UserExternalIdentity>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var where = userId.HasValue ? "WHERE e.user_id=@uid" : "";
         await using var cmd = new NpgsqlCommand(
             $@"SELECT e.id, e.user_id, e.provider_id, e.external_id, e.external_email, e.linked_at, e.last_login_at, p.name, u.username
@@ -198,8 +188,7 @@ public partial class DbRepository
 
     public async Task LinkExternalIdentityAsync(int userId, int providerId, string externalId, string? email)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             @"INSERT INTO user_external_identities (user_id, provider_id, external_id, external_email)
               VALUES (@uid, @pid, @eid, @email)
@@ -214,8 +203,7 @@ public partial class DbRepository
     public async Task LogAuthEventAsync(string eventType, string? username, bool success,
         string? providerType = null, int? userId = null, string? errorMessage = null)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             @"INSERT INTO auth_events (event_type, provider_type, username, user_id, success, error_message)
               VALUES (@et, @pt, @u, @uid, @s, @err)", conn);
@@ -231,8 +219,7 @@ public partial class DbRepository
     public async Task<List<AuthEvent>> GetAuthEventsAsync(int limit = 200)
     {
         var list = new List<AuthEvent>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             $"SELECT id, timestamp, event_type, provider_type, username, user_id, success, error_message FROM auth_events ORDER BY timestamp DESC LIMIT {limit}", conn);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -252,8 +239,7 @@ public partial class DbRepository
 
     public async Task IncrementFailedLoginAsync(string username)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             @"UPDATE app_users SET failed_login_count = COALESCE(failed_login_count, 0) + 1 WHERE username=@u", conn);
         cmd.Parameters.AddWithValue("u", username);
@@ -262,8 +248,7 @@ public partial class DbRepository
 
     public async Task LockUserAsync(string username, int lockoutMinutes)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             @"UPDATE app_users SET locked_until = NOW() + @dur * INTERVAL '1 minute' WHERE username=@u", conn);
         cmd.Parameters.AddWithValue("u", username);
@@ -273,8 +258,7 @@ public partial class DbRepository
 
     public async Task ResetFailedLoginAsync(string username)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             @"UPDATE app_users SET failed_login_count = 0, locked_until = NULL WHERE username=@u", conn);
         cmd.Parameters.AddWithValue("u", username);
@@ -283,8 +267,7 @@ public partial class DbRepository
 
     public async Task<(int failedCount, DateTime? lockedUntil)> GetLockoutStatusAsync(string username)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT COALESCE(failed_login_count,0), locked_until FROM app_users WHERE username=@u", conn);
         cmd.Parameters.AddWithValue("u", username);

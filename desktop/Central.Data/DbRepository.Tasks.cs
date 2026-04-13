@@ -12,8 +12,7 @@ public partial class DbRepository
     public async Task<List<Portfolio>> GetPortfoliosAsync()
     {
         var list = new List<Portfolio>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(@"
             SELECT p.id, p.name, p.description, p.owner_id, COALESCE(u.display_name,''),
                    p.archived, p.created_at, p.updated_at
@@ -33,8 +32,7 @@ public partial class DbRepository
 
     public async Task UpsertPortfolioAsync(Portfolio p)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (p.Id == 0)
         {
             await using var cmd = new NpgsqlCommand(@"
@@ -62,8 +60,7 @@ public partial class DbRepository
 
     public async Task DeletePortfolioAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM portfolios WHERE id = @id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -76,8 +73,7 @@ public partial class DbRepository
     public async Task<List<Programme>> GetProgrammesAsync()
     {
         var list = new List<Programme>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(@"
             SELECT p.id, p.portfolio_id, p.name, p.description, p.owner_id,
                    COALESCE(u.display_name,''), p.created_at, p.updated_at
@@ -97,8 +93,7 @@ public partial class DbRepository
 
     public async Task UpsertProgrammeAsync(Programme p)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (p.Id == 0)
         {
             await using var cmd = new NpgsqlCommand(@"
@@ -126,8 +121,7 @@ public partial class DbRepository
 
     public async Task DeleteProgrammeAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM programmes WHERE id = @id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -140,8 +134,7 @@ public partial class DbRepository
     public async Task<List<TaskProject>> GetTaskProjectsAsync()
     {
         var list = new List<TaskProject>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(@"
             SELECT id, programme_id, name, description, scheduling_method, default_mode,
                    method_template, calendar, archived, created_at, updated_at
@@ -161,8 +154,7 @@ public partial class DbRepository
 
     public async Task UpsertTaskProjectAsync(TaskProject p)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (p.Id == 0)
         {
             await using var cmd = new NpgsqlCommand(@"
@@ -199,8 +191,7 @@ public partial class DbRepository
 
     public async Task DeleteTaskProjectAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM task_projects WHERE id = @id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -213,8 +204,7 @@ public partial class DbRepository
     public async Task<List<ProjectMember>> GetProjectMembersAsync(int projectId)
     {
         var list = new List<ProjectMember>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(@"
             SELECT pm.id, pm.project_id, pm.user_id, COALESCE(u.display_name,''), pm.role
             FROM project_members pm LEFT JOIN app_users u ON u.id = pm.user_id
@@ -232,8 +222,7 @@ public partial class DbRepository
 
     public async Task UpsertProjectMemberAsync(ProjectMember m)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(@"
             INSERT INTO project_members (project_id, user_id, role)
             VALUES (@pid, @uid, @role)
@@ -246,8 +235,7 @@ public partial class DbRepository
 
     public async Task RemoveProjectMemberAsync(int projectId, int userId)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "DELETE FROM project_members WHERE project_id = @pid AND user_id = @uid", conn);
         cmd.Parameters.AddWithValue("pid", projectId);
@@ -262,8 +250,7 @@ public partial class DbRepository
     public async Task<List<Sprint>> GetSprintsAsync(int? projectId = null)
     {
         var list = new List<Sprint>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var sql = @"SELECT id, project_id, name, start_date, end_date, goal, status,
                            velocity_points, velocity_hours, created_at
                     FROM sprints" + (projectId.HasValue ? " WHERE project_id = @pid" : "") + " ORDER BY start_date DESC, name";
@@ -286,8 +273,7 @@ public partial class DbRepository
 
     public async Task UpsertSprintAsync(Sprint s)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (s.Id == 0)
         {
             await using var cmd = new NpgsqlCommand(@"
@@ -320,8 +306,7 @@ public partial class DbRepository
 
     public async Task DeleteSprintAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM sprints WHERE id = @id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -334,8 +319,7 @@ public partial class DbRepository
     public async Task<List<Release>> GetReleasesAsync(int? projectId = null)
     {
         var list = new List<Release>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var sql = @"SELECT id, project_id, name, target_date, description, status, created_at
                     FROM releases" + (projectId.HasValue ? " WHERE project_id = @pid" : "") + " ORDER BY target_date, name";
         await using var cmd = new NpgsqlCommand(sql, conn);
@@ -353,8 +337,7 @@ public partial class DbRepository
 
     public async Task UpsertReleaseAsync(Release r)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (r.Id == 0)
         {
             await using var cmd = new NpgsqlCommand(@"
@@ -382,8 +365,7 @@ public partial class DbRepository
 
     public async Task DeleteReleaseAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM releases WHERE id = @id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -396,8 +378,7 @@ public partial class DbRepository
     public async Task<List<TaskLink>> GetTaskLinksAsync(int taskId)
     {
         var list = new List<TaskLink>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(@"
             SELECT tl.id, tl.source_id, tl.target_id, tl.link_type, tl.lag_days,
                    COALESCE(t.title,''), tl.created_at
@@ -423,8 +404,7 @@ public partial class DbRepository
 
     public async Task UpsertTaskLinkAsync(TaskLink link)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(@"
             INSERT INTO task_links (source_id, target_id, link_type, lag_days)
             VALUES (@src, @tgt, @type, @lag)
@@ -438,8 +418,7 @@ public partial class DbRepository
 
     public async Task DeleteTaskLinkAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM task_links WHERE id = @id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -452,8 +431,7 @@ public partial class DbRepository
     public async Task<List<TaskDependency>> GetTaskDependenciesAsync(int? taskId = null)
     {
         var list = new List<TaskDependency>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var where = taskId.HasValue ? " WHERE td.predecessor_id = @tid OR td.successor_id = @tid" : "";
         await using var cmd = new NpgsqlCommand($@"
             SELECT td.id, td.predecessor_id, td.successor_id, td.dep_type, td.lag_days,
@@ -476,8 +454,7 @@ public partial class DbRepository
 
     public async Task UpsertTaskDependencyAsync(TaskDependency dep)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(@"
             INSERT INTO task_dependencies (predecessor_id, successor_id, dep_type, lag_days)
             VALUES (@pred, @succ, @type, @lag)
@@ -491,8 +468,7 @@ public partial class DbRepository
 
     public async Task DeleteTaskDependencyAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM task_dependencies WHERE id = @id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -505,8 +481,7 @@ public partial class DbRepository
     public async Task<List<SprintAllocation>> GetSprintAllocationsAsync(int sprintId)
     {
         var list = new List<SprintAllocation>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(@"
             SELECT sa.id, sa.sprint_id, sa.user_id, COALESCE(u.display_name,''),
                    sa.capacity_hours, sa.capacity_points
@@ -527,8 +502,7 @@ public partial class DbRepository
 
     public async Task UpsertSprintAllocationAsync(SprintAllocation a)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(@"
             INSERT INTO sprint_allocations (sprint_id, user_id, capacity_hours, capacity_points)
             VALUES (@sid, @uid, @hrs, @pts)
@@ -547,8 +521,7 @@ public partial class DbRepository
     public async Task<List<SprintBurndownPoint>> GetSprintBurndownAsync(int sprintId)
     {
         var list = new List<SprintBurndownPoint>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(@"
             SELECT id, sprint_id, snapshot_date, points_remaining, hours_remaining,
                    points_completed, hours_completed
@@ -569,8 +542,7 @@ public partial class DbRepository
 
     public async Task SnapshotSprintBurndownAsync(int sprintId)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT snapshot_sprint_burndown(@sid)", conn);
         cmd.Parameters.AddWithValue("sid", sprintId);
         await cmd.ExecuteNonQueryAsync();
@@ -583,8 +555,7 @@ public partial class DbRepository
     /// <summary>Commit a backlog item to a sprint (sets committed_to, doesn't copy).</summary>
     public async Task CommitToSprintAsync(int taskId, int sprintId)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "UPDATE tasks SET committed_to = @sid, updated_at = now() WHERE id = @tid", conn);
         cmd.Parameters.AddWithValue("sid", sprintId);
@@ -595,8 +566,7 @@ public partial class DbRepository
     /// <summary>Remove a task from a sprint (uncommit).</summary>
     public async Task UncommitFromSprintAsync(int taskId)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "UPDATE tasks SET committed_to = NULL, updated_at = now() WHERE id = @tid", conn);
         cmd.Parameters.AddWithValue("tid", taskId);
@@ -606,8 +576,7 @@ public partial class DbRepository
     /// <summary>Update backlog priority ordering for a task.</summary>
     public async Task UpdateBacklogPriorityAsync(int taskId, int priority)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "UPDATE tasks SET backlog_priority = @pri, updated_at = now() WHERE id = @tid", conn);
         cmd.Parameters.AddWithValue("pri", priority);
@@ -618,8 +587,7 @@ public partial class DbRepository
     /// <summary>Update sprint priority ordering for a task.</summary>
     public async Task UpdateSprintPriorityAsync(int taskId, int priority)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "UPDATE tasks SET sprint_priority = @pri, updated_at = now() WHERE id = @tid", conn);
         cmd.Parameters.AddWithValue("pri", priority);
@@ -630,8 +598,7 @@ public partial class DbRepository
     /// <summary>Get sprint summary stats (total points, hours, completed counts).</summary>
     public async Task<(decimal totalPoints, decimal totalHours, decimal donePoints, decimal doneHours, int itemCount)> GetSprintStatsAsync(int sprintId)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(@"
             SELECT COALESCE(SUM(points), 0), COALESCE(SUM(COALESCE(estimated_hours,0)), 0),
                    COALESCE(SUM(CASE WHEN status='Done' THEN points ELSE 0 END), 0),
@@ -648,8 +615,7 @@ public partial class DbRepository
     /// <summary>Close a sprint: record velocity, snapshot burndown, optionally carry forward incomplete items.</summary>
     public async Task CloseSprintAsync(int sprintId, int? carryForwardToSprintId = null)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
 
         // Snapshot final burndown
         await using (var snap = new NpgsqlCommand("SELECT snapshot_sprint_burndown(@sid)", conn))
@@ -688,8 +654,7 @@ public partial class DbRepository
     public async Task<List<BoardColumn>> GetBoardColumnsAsync(int projectId, string boardName = "Default")
     {
         var list = new List<BoardColumn>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(@"
             SELECT bc.id, bc.project_id, bc.board_name, bc.column_name, bc.status_mapping,
                    bc.sort_order, bc.wip_limit, bc.color,
@@ -714,8 +679,7 @@ public partial class DbRepository
 
     public async Task UpsertBoardColumnAsync(BoardColumn col)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (col.Id == 0)
         {
             await using var cmd = new NpgsqlCommand(@"
@@ -747,8 +711,7 @@ public partial class DbRepository
 
     public async Task DeleteBoardColumnAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM board_columns WHERE id = @id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -757,8 +720,7 @@ public partial class DbRepository
     /// <summary>Move a task to a board column (updates board_column + status).</summary>
     public async Task MoveTaskToColumnAsync(int taskId, string columnName, string? statusMapping)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var sql = statusMapping != null
             ? "UPDATE tasks SET board_column=@col, status=@st, updated_at=now(), completed_at = CASE WHEN @st='Done' THEN COALESCE(completed_at,now()) ELSE completed_at END WHERE id=@tid"
             : "UPDATE tasks SET board_column=@col, updated_at=now() WHERE id=@tid";
@@ -776,8 +738,7 @@ public partial class DbRepository
     public async Task<List<BoardLane>> GetBoardLanesAsync(int projectId, string boardName = "Default")
     {
         var list = new List<BoardLane>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(@"
             SELECT id, project_id, board_name, lane_name, lane_field, sort_order
             FROM board_lanes WHERE project_id = @pid AND board_name = @bn
@@ -805,8 +766,7 @@ public partial class DbRepository
     public async Task<List<TaskBaseline>> GetBaselinesAsync(int taskId)
     {
         var list = new List<TaskBaseline>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, task_id, baseline_name, start_date, finish_date, points, hours, saved_at FROM task_baselines WHERE task_id=@tid ORDER BY saved_at", conn);
         cmd.Parameters.AddWithValue("tid", taskId);
@@ -826,8 +786,7 @@ public partial class DbRepository
 
     public async Task<int> SaveProjectBaselineAsync(int projectId, string baselineName)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("SELECT save_project_baseline(@pid, @bn)", conn);
         cmd.Parameters.AddWithValue("pid", projectId);
         cmd.Parameters.AddWithValue("bn", baselineName);
@@ -839,8 +798,7 @@ public partial class DbRepository
     public async Task<List<Central.Core.Models.GanttPredecessorLink>> GetGanttLinksAsync(int? projectId = null)
     {
         var list = new List<Central.Core.Models.GanttPredecessorLink>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var where = projectId.HasValue
             ? " WHERE td.predecessor_id IN (SELECT id FROM tasks WHERE project_id=@pid) OR td.successor_id IN (SELECT id FROM tasks WHERE project_id=@pid)"
             : "";
@@ -876,8 +834,7 @@ public partial class DbRepository
     public async Task BatchTriageBugsAsync(List<int> taskIds, string severity, string bugPriority)
     {
         if (taskIds.Count == 0) return;
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var idList = string.Join(",", taskIds);
         await using var cmd = new NpgsqlCommand($@"
             UPDATE tasks SET severity=@sev, bug_priority=@bp,
@@ -897,8 +854,7 @@ public partial class DbRepository
     public async Task<List<SavedReport>> GetSavedReportsAsync(int? projectId = null)
     {
         var list = new List<SavedReport>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var where = projectId.HasValue ? " WHERE r.project_id = @pid OR r.project_id IS NULL" : "";
         await using var cmd = new NpgsqlCommand($@"
             SELECT r.id, r.project_id, r.name, r.folder, r.query_json::text,
@@ -921,8 +877,7 @@ public partial class DbRepository
 
     public async Task UpsertSavedReportAsync(SavedReport r)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (r.Id == 0)
         {
             await using var cmd = new NpgsqlCommand(@"
@@ -952,8 +907,7 @@ public partial class DbRepository
 
     public async Task DeleteSavedReportAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM saved_reports WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -966,8 +920,7 @@ public partial class DbRepository
     public async Task<List<Central.Core.Models.Dashboard>> GetDashboardsAsync()
     {
         var list = new List<Central.Core.Models.Dashboard>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(@"
             SELECT d.id, d.name, d.layout_json::text, d.template,
                    d.created_by, COALESCE(u.display_name,''), d.shared_with::text,
@@ -988,8 +941,7 @@ public partial class DbRepository
 
     public async Task UpsertDashboardAsync(Central.Core.Models.Dashboard d)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (d.Id == 0)
         {
             await using var cmd = new NpgsqlCommand(@"
@@ -1018,8 +970,7 @@ public partial class DbRepository
 
     public async Task DeleteDashboardAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM dashboards WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -1032,8 +983,7 @@ public partial class DbRepository
     public async Task<List<CustomColumn>> GetCustomColumnsAsync(int projectId)
     {
         var list = new List<CustomColumn>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, project_id, name, column_type, config, sort_order, default_value, is_required FROM custom_columns WHERE project_id=@pid ORDER BY sort_order", conn);
         cmd.Parameters.AddWithValue("pid", projectId);
@@ -1051,8 +1001,7 @@ public partial class DbRepository
 
     public async Task UpsertCustomColumnAsync(CustomColumn col)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (col.Id == 0)
         {
             await using var cmd = new NpgsqlCommand(@"
@@ -1085,8 +1034,7 @@ public partial class DbRepository
 
     public async Task DeleteCustomColumnAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM custom_columns WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -1097,8 +1045,7 @@ public partial class DbRepository
     public async Task<List<TaskCustomValue>> GetCustomValuesAsync(int taskId)
     {
         var list = new List<TaskCustomValue>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(@"
             SELECT cv.task_id, cv.column_id, cc.name, cc.column_type,
                    cv.value_text, cv.value_number, cv.value_date, cv.value_json::text
@@ -1124,8 +1071,7 @@ public partial class DbRepository
     public async Task<Dictionary<int, Dictionary<string, string>>> GetAllCustomValuesAsync(int projectId)
     {
         var result = new Dictionary<int, Dictionary<string, string>>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(@"
             SELECT cv.task_id, cc.name, cc.column_type,
                    cv.value_text, cv.value_number, cv.value_date
@@ -1154,8 +1100,7 @@ public partial class DbRepository
 
     public async Task UpsertCustomValueAsync(int taskId, int columnId, string? text, decimal? number, DateTime? date, string? json)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(@"
             INSERT INTO task_custom_values (task_id, column_id, value_text, value_number, value_date, value_json)
             VALUES (@tid, @cid, @txt, @num, @dt, @js)
@@ -1175,8 +1120,7 @@ public partial class DbRepository
     public async Task<List<CustomColumnPermission>> GetCustomColumnPermissionsAsync(int columnId)
     {
         var list = new List<CustomColumnPermission>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand(
             "SELECT id, column_id, user_id, group_name, can_view, can_edit FROM custom_column_permissions WHERE column_id=@cid", conn);
         cmd.Parameters.AddWithValue("cid", columnId);
@@ -1193,8 +1137,7 @@ public partial class DbRepository
 
     public async Task UpsertCustomColumnPermissionAsync(CustomColumnPermission p)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (p.Id == 0)
         {
             await using var cmd = new NpgsqlCommand(@"
@@ -1225,8 +1168,7 @@ public partial class DbRepository
     public async Task<List<TimeEntry>> GetTimeEntriesAsync(int? userId = null, DateTime? from = null, DateTime? to = null)
     {
         var list = new List<TimeEntry>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var conditions = new List<string>();
         if (userId.HasValue) conditions.Add("te.user_id = @uid");
         if (from.HasValue) conditions.Add("te.entry_date >= @from");
@@ -1256,8 +1198,7 @@ public partial class DbRepository
 
     public async Task UpsertTimeEntryAsync(TimeEntry e)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (e.Id == 0)
         {
             await using var cmd = new NpgsqlCommand(@"
@@ -1285,8 +1226,7 @@ public partial class DbRepository
 
     public async Task DeleteTimeEntryAsync(int id)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         await using var cmd = new NpgsqlCommand("DELETE FROM time_entries WHERE id=@id", conn);
         cmd.Parameters.AddWithValue("id", id);
         await cmd.ExecuteNonQueryAsync();
@@ -1299,8 +1239,7 @@ public partial class DbRepository
     public async Task<List<ActivityFeedItem>> GetActivityFeedAsync(int? projectId = null, int limit = 100)
     {
         var list = new List<ActivityFeedItem>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var where = projectId.HasValue ? " WHERE af.project_id = @pid" : "";
         await using var cmd = new NpgsqlCommand($@"
             SELECT af.id, af.project_id, af.task_id, af.user_id,
@@ -1330,8 +1269,7 @@ public partial class DbRepository
     public async Task<List<TaskViewConfig>> GetTaskViewsAsync(int? projectId = null)
     {
         var list = new List<TaskViewConfig>();
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         var where = projectId.HasValue ? " WHERE project_id = @pid" : "";
         await using var cmd = new NpgsqlCommand($"SELECT id, project_id, name, view_type, config_json::text, created_by, is_default, shared_with::text, created_at FROM task_views {where} ORDER BY name", conn);
         if (projectId.HasValue) cmd.Parameters.AddWithValue("pid", projectId.Value);
@@ -1349,8 +1287,7 @@ public partial class DbRepository
 
     public async Task UpsertTaskViewAsync(TaskViewConfig v)
     {
-        await using var conn = new NpgsqlConnection(_connectionString);
-        await conn.OpenAsync();
+        await using var conn = await OpenConnectionAsync();
         if (v.Id == 0)
         {
             await using var cmd = new NpgsqlCommand(@"

@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<FindMethods>
+  <FindMethod Name="Search Engine" />
+  <FindMethod Name="Telemarketing" />
+  <FindMethod Name="Email" />
+  <FindMethod Name="Referral" />
+  <FindMethod Name="Other" />
+</FindMethods>

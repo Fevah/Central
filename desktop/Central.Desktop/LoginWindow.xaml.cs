@@ -211,6 +211,10 @@ public partial class LoginWindow : DevExpress.Xpf.Core.DXWindow
 
     // ── Manual Login ──────────────────────────────────────────────────────
 
+    // Pending MFA state
+    private string? _pendingMfaSessionId;
+    private AuthenticationResult? _pendingMfaResult;
+
     private async void ManualLogin_Click(object sender, RoutedEventArgs e)
     {
         var username = UsernameEdit.Text?.Trim() ?? "";
@@ -228,6 +232,16 @@ public partial class LoginWindow : DevExpress.Xpf.Core.DXWindow
         try
         {
             var result = await _authService.AuthenticateLocalAsync(username, password);
+
+            // MFA required — show TOTP input
+            if (result.RequiresMfa)
+            {
+                _pendingMfaSessionId = result.SessionId;
+                _pendingMfaResult = result;
+                ShowMfaPanel(result.MfaMethods);
+                return;
+            }
+
             if (!result.Success)
             {
                 StatusText.Text = result.ErrorMessage ?? "Invalid username or password.";
@@ -235,24 +249,77 @@ public partial class LoginWindow : DevExpress.Xpf.Core.DXWindow
                 return;
             }
 
-            var established = await _authService.EstablishSessionAsync(result);
-            if (!established)
-            {
-                StatusText.Text = "Failed to establish session.";
-                ManualLoginButton.IsEnabled = true;
-                return;
-            }
-
-            await UpdateLastLoginAsync(AuthContext.Instance.CurrentUser?.Id ?? 0);
-            ResultMode = LoginMode.Manual;
-            LoginSucceeded = true;
-            DialogResult = true;
+            await CompleteLogin(result);
         }
         catch (Exception ex)
         {
             StatusText.Text = $"Login failed: {ex.Message}";
             ManualLoginButton.IsEnabled = true;
         }
+    }
+
+    private void ShowMfaPanel(string[]? methods)
+    {
+        StatusText.Text = "MFA verification required. Enter your 6-digit code:";
+        ManualLoginButton.IsEnabled = false;
+
+        // Dynamically show MFA input — reuse PasswordEdit for code entry
+        PasswordEdit.Password = "";
+        PasswordEdit.Tag = "MFA";  // Signal that we're in MFA mode
+        ManualLoginButton.Content = "Verify Code";
+        ManualLoginButton.IsEnabled = true;
+        ManualLoginButton.Click -= ManualLogin_Click;
+        ManualLoginButton.Click += MfaVerify_Click;
+        PasswordEdit.Focus();
+    }
+
+    private async void MfaVerify_Click(object sender, RoutedEventArgs e)
+    {
+        var code = PasswordEdit.Password?.Trim() ?? "";
+        if (string.IsNullOrEmpty(code) || code.Length != 6)
+        {
+            StatusText.Text = "Enter your 6-digit verification code.";
+            return;
+        }
+
+        StatusText.Text = "Verifying MFA code...";
+        ManualLoginButton.IsEnabled = false;
+
+        try
+        {
+            var result = await _authService.VerifyMfaAsync(_pendingMfaSessionId!, code);
+            if (!result.Success)
+            {
+                StatusText.Text = result.ErrorMessage ?? "Invalid code. Try again.";
+                ManualLoginButton.IsEnabled = true;
+                PasswordEdit.Password = "";
+                PasswordEdit.Focus();
+                return;
+            }
+
+            await CompleteLogin(result);
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = $"MFA failed: {ex.Message}";
+            ManualLoginButton.IsEnabled = true;
+        }
+    }
+
+    private async Task CompleteLogin(AuthenticationResult result)
+    {
+        var established = await _authService.EstablishSessionAsync(result);
+        if (!established)
+        {
+            StatusText.Text = "Failed to establish session.";
+            ManualLoginButton.IsEnabled = true;
+            return;
+        }
+
+        await UpdateLastLoginAsync(AuthContext.Instance.CurrentUser?.Id ?? 0);
+        ResultMode = LoginMode.Manual;
+        LoginSucceeded = true;
+        DialogResult = true;
     }
 
     // ── Offline ───────────────────────────────────────────────────────────

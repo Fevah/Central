@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <polygon points="30.5,30.5 8.5,30.5 8.5,1.5 23.5,1.5 30.5,8.5" fill="#FFFFFF" stroke-linejoin="miter"/>
+    <path d="M23.707,1H8v9.5h1V2h14v7h7v21H9v-1.5H8v2.5h23V8.293L23.707,1zM24,8V2.707L29.293,8H24z" fill="#383838"/>
+    <rect x="1.562" y="12.823" width="16.938" height="13.77" fill="#FFFFFF"/>
+    <ellipse cx="14.047" cy="15.942" rx="1.447" ry="1.442" fill="#F7DA8E" stroke="#E57428" stroke-width="1" stroke-linecap="round" stroke-miterlimit="1"/>
+    <path d="M1.513,21.15l3.472,-3.286L14.322,26.7H1.513C1.513,26.7,1.484,21.178,1.513,21.15z" fill="#92CBEE"/>
+    <polygon points="9.75,22.175 12.609,19.469 18.386,24.77 18.386,26.592 14.302,26.592" fill="#92CBEE" stroke-linejoin="miter"/>
+    <path d="M1.513,21.115l3.472,-3.286l9.337,8.836M18.465,24.897l-5.835,-5.522l-2.889,2.734" fill="none" stroke="#0964B0" stroke-width="1" stroke-miterlimit="1"/>
+    <rect x="1.5" y="12.5" width="17" height="13.985" fill="none" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+  </g>
+</svg>

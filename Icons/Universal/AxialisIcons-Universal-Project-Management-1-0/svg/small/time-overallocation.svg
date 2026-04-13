@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
+  <g id="icon">
+    <circle cx="8" cy="8" r="7.5" fill="#FFFFFF"/>
+    <path d="M7.9758,0.6452v7.8266c-1.5769,1.4752,-3.5099,3.059,-5.2745,4.7049C1.4013,11.847,0.6,10.0276,0.6,8.021C0.6,3.9475,3.9023,0.6452,7.9758,0.6452z" fill="#CC525E" opacity="0.5"/>
+    <path d="M8,0C3.5888,0,0,3.5888,0,8s3.5888,8,8,8s8,-3.5888,8,-8S12.4112,0,8,0zM8,15c-3.8598,0,-7,-3.1402,-7,-7s3.1402,-7,7,-7s7,3.1402,7,7S11.8598,15,8,15z" fill="#6E6F72"/>
+    <path d="M8,8.6588c-0.0376,0,-0.0755,-0.0042,-0.1129,-0.0129l-5,-1.1588l0.2258,-0.9742L7.5,7.5297V2h1v6.1588c0,0.1524,-0.0696,0.2966,-0.1889,0.3915C8.2218,8.6212,8.1119,8.6588,8,8.6588z" fill="#6486C4"/>
+  </g>
+</svg>

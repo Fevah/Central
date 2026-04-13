@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Viewbox xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Stretch="Uniform">
+  <Canvas Width="24" Height="24" Canvas.Left="0" Canvas.Top="0">
+    <Canvas>
+      <Rectangle Canvas.Left="-4.45" Canvas.Top="10.55" Width="16.5" Height="6" RenderTransformOrigin="0.269697 -1.75833" Fill="#FFFFFF" Opacity="0.5">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="-1.83697e-16 1 -1 -1.83697e-16 17.35 9.75"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Rectangle Canvas.Left="6.05" Canvas.Top="6.05" Width="16.5" Height="15" RenderTransformOrigin="-0.366667 -0.403333" Fill="#FFFFFF" Opacity="0.5">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="-1.83697e-16 1 -1 -1.83697e-16 27.85 -0.75"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Polygon Points="0,23 0,4.5 23,4.5 23,19.732 21,17.832 21,6 2,6 2,21 17.804,21 19.804,23" Fill="#7D7C7B" StrokeLineJoin="Miter"/>
+      <Rectangle Width="23" Height="6" Fill="#6486C4"/>
+      <Polygon Points="6,21 6,18 2,18 2,17 6,17 6,14 2,14 2,13 6,13 6,10 2,10 2,9 6,9 6,6 7,6 7,21" Fill="#CC525E" StrokeLineJoin="Miter"/>
+      <Path Data="M12.3168,16.2l-3.9329,-0.0364l2.4237,-3.0911L9.6307,9.3341l3.6917,1.3399l3.2021,-2.2739l-0.1398,3.9168l3.1588,2.3348l-3.7815,1.0814l-1.2511,3.7137L12.3168,16.2zM14.0569,16.0043l0.5351,-1.5884l1.61,-0.4605l-1.3445,-0.9939l0.0597,-1.6719l-1.3673,0.9708l-1.5766,-0.5722l0.5024,1.5959L11.4439,14.6l1.6745,0.0154L14.0569,16.0043z" Fill="#EEAD56"/>
+      <Rectangle Canvas.Left="18.5516" Canvas.Top="13.5175" Width="1.5" Height="11.5916" RenderTransformOrigin="-12.3677 -1.16615" Fill="#EEAD56">
+        <Rectangle.RenderTransform>
+          <MatrixTransform Matrix="0.7071 -0.7071 0.7071 0.7071 -8.00326 19.3051"/>
+        </Rectangle.RenderTransform>
+      </Rectangle>
+      <Rectangle Canvas.Left="2" Canvas.Top="6" Width="4" Height="15" Fill="#CC525E" Opacity="0.3"/>
+    </Canvas>
+  </Canvas>
+</Viewbox>

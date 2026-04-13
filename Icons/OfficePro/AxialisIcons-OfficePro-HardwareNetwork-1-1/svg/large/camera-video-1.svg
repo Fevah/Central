@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="32px" height="32px" viewBox="0 0 32 32" enable-background="new 0 0 32 32" xml:space="preserve">
+  <g id="icon">
+    <polyline points="15.5,17.7 15.5,30.5 3.5,30.5 3.5,18.1" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+    <polyline points="3.5,7.4 3.5,1.5 15.5,1.5 15.5,7.7" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1" stroke-linejoin="miter"/>
+    <path d="M17,6.5h12.567C30.634,6.5,31.5,7.366,31.5,8.433v8.133c0,1.068,-0.866,1.933,-1.933,1.933H17" fill="#FFFFFF" stroke="#383838" stroke-width="1" stroke-miterlimit="1"/>
+    <line x1="6.5" y1="26.5" x2="12.5" y2="26.5" fill="none" stroke="#787979" stroke-width="1" stroke-miterlimit="1"/>
+    <ellipse cx="9.5" cy="12.517" rx="8" ry="7.983" fill="#FFFFFF" stroke="#228BCB" stroke-width="1.1" stroke-miterlimit="1"/>
+    <path d="M6.867,8.509c0.747,-0.48,1.639,-0.759,2.595,-0.759c2.641,0,4.782,2.123,4.782,4.742c0,1.068,-0.356,2.053,-0.956,2.845" fill="#FFFFFF" stroke="#228BCB" stroke-width="1" stroke-miterlimit="1"/>
+  </g>
+</svg>

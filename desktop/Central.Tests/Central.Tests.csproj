@@ -26,6 +26,7 @@
     <ProjectReference Include="..\Central.Security\Central.Security.csproj" />
     <ProjectReference Include="..\Central.Observability\Central.Observability.csproj" />
     <ProjectReference Include="..\Central.Workflows\Central.Workflows.csproj" />
+    <ProjectReference Include="..\Central.Licensing\Central.Licensing.csproj" />
   </ItemGroup>
 
 </Project>

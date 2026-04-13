@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="24px" height="24px" viewBox="0 0 24 24" enable-background="new 0 0 24 24" xml:space="preserve">
+  <g id="icon">
+    <path d="M24,22h-3.5v-2h1.5v-1.5h2V22zM19,22h-3v-2h3V22zM14.5,22h-3v-2h3V22zM10,22H7v-2h3V22zM24,17h-2v-3h2V17zM4,17H2v-3h2V17zM24,12.5h-2V9.5h2V12.5zM4,12.5H2V9.5h2V12.5zM24,8h-2V5h2V8zM4,8H2V5h2V8zM24,3.5h-2V2h2V3.5zM4,3.5H2V2h2V3.5zM24,2h-3.5V0h3.5V2zM19,2h-3V0h3V2zM14.5,2h-3V0h3V2zM10,2H7V0h3V2zM5.5,2H2V0h3.5V2z" fill="#7B7B7B"/>
+    <rect y="19" width="5" height="5" fill="#7B7B7B"/>
+    <path d="M19,17H7V5h12V17z" fill="#FFFFFF" opacity="0.5"/>
+    <path d="M20,18H6V4h14V18zM7,17h12V5H7V17z" fill="#7B7B7B"/>
+    <ellipse cx="15.5206" cy="7.5729" rx="1.5348" ry="1.5271" fill="#EEAC55"/>
+    <g>
+      <polygon points="19,14.1931 15.6357,10.7731 13.6861,12.8818 17.4716,17 19,17" fill="#52B4C0" stroke-linejoin="miter"/>
+      <polygon points="7,12.0285 7,17 16.6571,17 9.5304,9.2917" fill="#52B4C0" stroke-linejoin="miter"/>
+    </g>
+  </g>
+</svg>
