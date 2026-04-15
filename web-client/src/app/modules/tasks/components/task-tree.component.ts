@@ -1,11 +1,15 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   DxTreeListModule, DxSelectBoxModule, DxToolbarModule,
   DxPopupModule, DxFormModule, DxTreeListComponent
 } from 'devextreme-angular';
 import { DxoSummaryModule, DxiTotalItemModule } from 'devextreme-angular/ui/nested';
+import { Subscription, Subject } from 'rxjs';
+import { auditTime } from 'rxjs/operators';
 import { TaskService, Task, Project } from '../../../core/services/task.service';
+import { SseService } from '../../../core/services/sse.service';
+import { TasksSubNavComponent } from './tasks-sub-nav.component';
 import { confirm } from 'devextreme/ui/dialog';
 import notify from 'devextreme/ui/notify';
 
@@ -13,10 +17,12 @@ import notify from 'devextreme/ui/notify';
   selector: 'app-task-tree',
   standalone: true,
   imports: [
-    CommonModule, DxTreeListModule, DxSelectBoxModule, DxToolbarModule,
+    CommonModule, TasksSubNavComponent,
+    DxTreeListModule, DxSelectBoxModule, DxToolbarModule,
     DxPopupModule, DxFormModule, DxoSummaryModule, DxiTotalItemModule
   ],
   template: `
+    <app-tasks-sub-nav></app-tasks-sub-nav>
     <dx-toolbar class="task-toolbar">
       <dxi-item location="before">
         <dx-select-box [items]="projects" displayExpr="name" valueExpr="id"
@@ -110,9 +116,33 @@ export class TaskTreeComponent implements OnInit {
   severities = ['Critical', 'Major', 'Minor', 'Trivial'];
   risks = ['High', 'Medium', 'Low'];
 
-  constructor(private taskService: TaskService) {}
+  /** Coalesce bursts of SSE events into one re-fetch. */
+  private readonly reload$ = new Subject<void>();
+  private rtSub?: Subscription;
 
-  ngOnInit(): void { this.loadProjects(); this.loadTasks(); }
+  constructor(private taskService: TaskService, private sse: SseService) {}
+
+  ngOnInit(): void {
+    this.loadProjects();
+    this.loadTasks();
+
+    // Funnel realtime task events into a debounced reload.
+    this.rtSub = this.reload$.pipe(auditTime(500)).subscribe(() => this.loadTasks());
+    this.rtSub.add(
+      this.sse.events$.subscribe(e => {
+        if (e.event_type === 'task_created' ||
+            e.event_type === 'task_updated' ||
+            e.event_type === 'task_deleted' ||
+            e.event_type === 'sprint_changed') {
+          this.reload$.next();
+        }
+      })
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.rtSub?.unsubscribe();
+  }
 
   loadProjects(): void {
     this.taskService.getProjects().subscribe({

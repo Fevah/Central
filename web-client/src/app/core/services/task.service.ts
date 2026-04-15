@@ -41,16 +41,65 @@ export interface Project {
 
 export interface Sprint {
   id: number;
-  project_id: number;
+  project_id?: number;
   name: string;
   start_date: string | null;
   end_date: string | null;
+  goal?: string | null;
   status: string;
+  velocity_points?: number | null;
+  velocity_hours?: number | null;
+}
+
+export interface BurndownPoint {
+  snapshot_date: string;
+  points_remaining: number;
+  hours_remaining: number;
+  points_completed: number;
+  hours_completed: number;
+}
+
+export interface TimeEntry {
+  id: number;
+  entry_date: string;
+  hours: number;
+  activity_type: string;
+  notes: string;
+  user: string;
+}
+
+export interface NewTimeEntry {
+  hours: number;
+  entry_date?: string;
+  activity_type?: string;
+  notes?: string;
+  user_id?: number;
+}
+
+export interface TaskDependency {
+  id: number;
+  predecessor_id: number;
+  successor_id: number;
+  dep_type?: string;
+  lag_days?: number;
+  predecessor_title?: string;
+  successor_title?: string;
+}
+
+export interface TaskActivity {
+  id: number;
+  timestamp: string;
+  action: string;
+  summary: string;
+  user: string;
 }
 
 @Injectable({ providedIn: 'root' })
 export class TaskService {
+  /** task-service base — used for the high-frequency CRUD + SSE stream. */
   private baseUrl = environment.taskServiceUrl;
+  /** Central.Api base — used for sprints, burndown, time entries, dependencies. */
+  private centralBase = environment.centralApiUrl;
 
   constructor(private http: HttpClient) {}
 
@@ -87,6 +136,66 @@ export class TaskService {
   }
 
   getSprints(projectId: number): Observable<Sprint[]> {
-    return this.http.get<Sprint[]>(`${this.baseUrl}/api/v1/tasks/projects/${projectId}/sprints`);
+    // Sprints are owned by Central.Api (richer DTO with velocity etc.)
+    return this.http.get<Sprint[]>(`${this.centralBase}/api/projects/${projectId}/sprints`);
+  }
+
+  createSprint(projectId: number, body: Partial<Sprint>): Observable<{ id: number }> {
+    return this.http.post<{ id: number }>(
+      `${this.centralBase}/api/projects/${projectId}/sprints`, body);
+  }
+
+  updateSprint(projectId: number, id: number, body: Partial<Sprint>): Observable<{ id: number }> {
+    return this.http.put<{ id: number }>(
+      `${this.centralBase}/api/projects/${projectId}/sprints/${id}`, body);
+  }
+
+  deleteSprint(projectId: number, id: number): Observable<void> {
+    return this.http.delete<void>(`${this.centralBase}/api/projects/${projectId}/sprints/${id}`);
+  }
+
+  // ── Burndown ─────────────────────────────────────────────────────────
+
+  getBurndown(projectId: number, sprintId: number): Observable<BurndownPoint[]> {
+    return this.http.get<BurndownPoint[]>(
+      `${this.centralBase}/api/projects/${projectId}/sprints/${sprintId}/burndown`);
+  }
+
+  /** Force-snapshot today's burndown numbers (idempotent — overwrites today). */
+  snapshotBurndown(projectId: number, sprintId: number): Observable<{ snapshotted: boolean }> {
+    return this.http.post<{ snapshotted: boolean }>(
+      `${this.centralBase}/api/projects/${projectId}/sprints/${sprintId}/burndown/snapshot`, null);
+  }
+
+  // ── Time entries ─────────────────────────────────────────────────────
+
+  getTimeEntries(taskId: number): Observable<TimeEntry[]> {
+    return this.http.get<TimeEntry[]>(`${this.centralBase}/api/tasks/${taskId}/time`);
+  }
+
+  addTimeEntry(taskId: number, entry: NewTimeEntry): Observable<{ id: number }> {
+    return this.http.post<{ id: number }>(`${this.centralBase}/api/tasks/${taskId}/time`, entry);
+  }
+
+  deleteTimeEntry(taskId: number, entryId: number): Observable<void> {
+    return this.http.delete<void>(`${this.centralBase}/api/tasks/${taskId}/time/${entryId}`);
+  }
+
+  // ── Dependencies (Gantt) ─────────────────────────────────────────────
+
+  getDependencies(taskId: number): Observable<TaskDependency[]> {
+    return this.http.get<TaskDependency[]>(`${this.centralBase}/api/tasks/${taskId}/dependencies`);
+  }
+
+  // ── Activity feed ────────────────────────────────────────────────────
+
+  getTaskActivity(taskId: number, limit = 50): Observable<TaskActivity[]> {
+    return this.http.get<TaskActivity[]>(
+      `${this.centralBase}/api/tasks/${taskId}/activity?limit=${limit}`);
+  }
+
+  /** Global recent activity across all tasks (uses /api/activity). */
+  getGlobalActivity(limit = 100): Observable<any[]> {
+    return this.http.get<any[]>(`${this.centralBase}/api/activity/global?limit=${limit}`);
   }
 }

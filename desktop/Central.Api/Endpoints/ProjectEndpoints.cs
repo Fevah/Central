@@ -203,6 +203,66 @@ public static class ProjectEndpoints
             return Results.Ok();
         });
 
+        // Update sprint dates / goal / status. Velocity is recomputed when
+        // tasks are committed/completed; not editable directly here.
+        group.MapPut("/{projectId}/sprints/{id}", async (int projectId, int id, SprintReq req, DbConnectionFactory db) =>
+        {
+            await using var conn = new NpgsqlConnection(db.ConnectionString);
+            await conn.OpenAsync();
+            await using var cmd = new NpgsqlCommand(@"
+                UPDATE sprints
+                SET name=@n, start_date=@s, end_date=@e, goal=@g, status=@st
+                WHERE id=@id AND project_id=@pid RETURNING id", conn);
+            cmd.Parameters.AddWithValue("id", id);
+            cmd.Parameters.AddWithValue("pid", projectId);
+            cmd.Parameters.AddWithValue("n", req.Name ?? "");
+            cmd.Parameters.AddWithValue("s", (object?)req.StartDate ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("e", (object?)req.EndDate ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("g", (object?)req.Goal ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("st", req.Status ?? "Planning");
+            var result = await cmd.ExecuteScalarAsync();
+            return result is null ? Results.NotFound() : Results.Ok(new { id });
+        });
+
+        // Burndown snapshot history. Returns one row per day the snapshot
+        // function ran. The Tasks module's WPF panel renders this as a
+        // DxChart with "ideal" vs "actual" lines; the web client mirrors that.
+        group.MapGet("/{projectId}/sprints/{id}/burndown", async (int projectId, int id, DbConnectionFactory db) =>
+        {
+            await using var conn = new NpgsqlConnection(db.ConnectionString);
+            await conn.OpenAsync();
+            var list = new List<object>();
+            await using var cmd = new NpgsqlCommand(@"
+                SELECT snapshot_date, points_remaining, hours_remaining,
+                       points_completed, hours_completed
+                FROM sprint_burndown
+                WHERE sprint_id=@sid
+                ORDER BY snapshot_date", conn);
+            cmd.Parameters.AddWithValue("sid", id);
+            await using var rdr = await cmd.ExecuteReaderAsync();
+            while (await rdr.ReadAsync())
+                list.Add(new {
+                    snapshot_date    = rdr.GetDateTime(0).ToString("yyyy-MM-dd"),
+                    points_remaining = rdr.GetDecimal(1),
+                    hours_remaining  = rdr.GetDecimal(2),
+                    points_completed = rdr.GetDecimal(3),
+                    hours_completed  = rdr.GetDecimal(4),
+                });
+            return Results.Ok(list);
+        });
+
+        // Force a fresh burndown snapshot for today (idempotent — uses the
+        // SQL function's ON CONFLICT to overwrite today's row).
+        group.MapPost("/{projectId}/sprints/{id}/burndown/snapshot", async (int projectId, int id, DbConnectionFactory db) =>
+        {
+            await using var conn = new NpgsqlConnection(db.ConnectionString);
+            await conn.OpenAsync();
+            await using var cmd = new NpgsqlCommand("SELECT snapshot_sprint_burndown(@sid)", conn);
+            cmd.Parameters.AddWithValue("sid", id);
+            await cmd.ExecuteNonQueryAsync();
+            return Results.Ok(new { snapshotted = true });
+        });
+
         // ── Releases ──
 
         group.MapGet("/{projectId}/releases", async (int projectId, DbConnectionFactory db) =>

@@ -2,6 +2,8 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { ErrorLoggerService } from './error-logger.service';
+import { ModuleRegistryService } from './module-registry.service';
 
 export interface AuthUser {
   id: string;
@@ -34,8 +36,17 @@ export class AuthService {
 
   user$ = this.currentUser$.asObservable();
 
-  constructor(private http: HttpClient) {
+  constructor(
+    private http: HttpClient,
+    private errorLogger: ErrorLoggerService,
+    private moduleRegistry: ModuleRegistryService,
+  ) {
     this.loadFromStorage();
+    // Stamp client-side log entries with the active username so support can
+    // tie a logged error back to the user who hit it.
+    this.user$.subscribe(u =>
+      this.errorLogger.setCurrentUser(u?.email ?? u?.display_name ?? null)
+    );
   }
 
   get isAuthenticated(): boolean {
@@ -108,6 +119,9 @@ export class AuthService {
     localStorage.setItem('central_refresh_token', resp.refresh_token);
     localStorage.setItem('central_user', JSON.stringify(resp.user));
     this.scheduleRefresh(resp.expires_in);
+    // Load licensed modules for this tenant so the sidebar + guards know
+    // what to render. Fire-and-forget; subscribers update reactively.
+    this.moduleRegistry.reload().subscribe();
   }
 
   private clearSession(): void {
@@ -118,6 +132,7 @@ export class AuthService {
     localStorage.removeItem('central_refresh_token');
     localStorage.removeItem('central_user');
     if (this.refreshTimer) clearTimeout(this.refreshTimer);
+    this.moduleRegistry.clear();
   }
 
   private loadFromStorage(): void {
@@ -128,6 +143,8 @@ export class AuthService {
       this.refreshToken = localStorage.getItem('central_refresh_token');
       this.currentUser$.next(JSON.parse(user));
       this.scheduleRefresh(600); // refresh in 10 min
+      // Rehydrate module list on reload — token was already valid.
+      this.moduleRegistry.reload().subscribe();
     }
   }
 

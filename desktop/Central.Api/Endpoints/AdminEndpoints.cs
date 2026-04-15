@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Npgsql;
+using Central.Core.Auth;
 using Central.Data;
 
 namespace Central.Api.Endpoints;
@@ -50,6 +51,31 @@ public static class AdminEndpoints
             cmd.Parameters.AddWithValue("id", id);
             await cmd.ExecuteNonQueryAsync();
             return Results.Ok();
+        });
+
+        // Tenant-scoped password reset. Generates a fresh salt + hash and writes
+        // both columns. The Rust auth-service also stores Argon2id hashes in its
+        // own `users` table; this endpoint only resets the legacy WPF login path.
+        // Web/mobile users who authenticate via the auth-service should use the
+        // forgot-password / reset-password flow there instead.
+        group.MapPost("/users/{id:int}/reset-password", async (int id, DbConnectionFactory db, JsonElement body) =>
+        {
+            var newPassword = body.TryGetProperty("password", out var p) ? p.GetString() ?? "" : "";
+            if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 8)
+                return Results.BadRequest(new { error = "Password must be at least 8 characters" });
+
+            var salt = PasswordHasher.GenerateSalt();
+            var hash = PasswordHasher.Hash(newPassword, salt);
+
+            await using var conn = await db.OpenConnectionAsync();
+            await using var cmd = new NpgsqlCommand(
+                @"UPDATE app_users SET password_hash = @h, salt = @s, updated_at = NOW()
+                  WHERE id = @id RETURNING id", conn);
+            cmd.Parameters.AddWithValue("id", id);
+            cmd.Parameters.AddWithValue("h", hash);
+            cmd.Parameters.AddWithValue("s", salt);
+            var result = await cmd.ExecuteScalarAsync();
+            return result is null ? Results.NotFound() : Results.Ok(new { id, password_reset = true });
         });
 
         // ── Roles ──────────────────────────────────────────────────────

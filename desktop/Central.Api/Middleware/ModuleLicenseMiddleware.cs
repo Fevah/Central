@@ -13,17 +13,20 @@ public class ModuleLicenseMiddleware
     private readonly RequestDelegate _next;
     private static readonly Dictionary<string, string> PathToModule = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["/api/devices"] = "devices",
-        ["/api/switches"] = "switches",
-        ["/api/links"] = "links",
-        ["/api/bgp"] = "routing",
-        ["/api/vlans"] = "vlans",
-        ["/api/tasks"] = "tasks",
+        ["/api/devices"]      = "devices",
+        ["/api/switches"]     = "switches",
+        ["/api/links"]        = "links",
+        ["/api/bgp"]          = "routing",
+        ["/api/vlans"]        = "vlans",
+        ["/api/tasks"]        = "tasks",
+        ["/api/projects"]     = "tasks",
         ["/api/appointments"] = "tasks",
-        ["/api/admin"] = "admin",
-        ["/api/identity"] = "admin",
-        ["/api/keys"] = "admin",
-        ["/api/audit"] = "admin",
+        ["/api/admin"]        = "admin",
+        ["/api/identity"]     = "admin",
+        ["/api/keys"]         = "admin",
+        ["/api/audit"]        = "audit",
+        ["/api/servicedesk"]  = "servicedesk",
+        ["/api/global-admin"] = "globaladmin",
     };
 
     public ModuleLicenseMiddleware(RequestDelegate next) => _next = next;

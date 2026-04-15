@@ -46,3 +46,20 @@ logs/
 
 # SecureAPP symlink/copy (separate repo)
 SecureAPP/
+
+# Vagrant local VM state — disk images, mem dumps, lock files (60+ GB)
+# These are local-only; never commit. Pre-existing tracked entries should
+# be removed with `git rm --cached -r infra/vagrant/.vagrant/`.
+.vagrant/
+**/.vagrant/
+
+# Terraform local state
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Docker/podman build context leftovers
+*.tar
+*.tar.gz
+!backups/**/*.sql.gz

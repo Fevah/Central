@@ -258,6 +258,84 @@ public static class TaskEndpoints
             return Results.Ok(list);
         });
 
+        // POST /api/tasks/{id}/time — log time against a task. UserId is
+        // resolved from the JWT subject claim if not supplied (so users
+        // can only log against themselves through normal UI flows).
+        group.MapPost("/{id}/time", async (int id, TimeEntryRequest req, DbConnectionFactory db, HttpContext ctx) =>
+        {
+            if (req.Hours <= 0)
+                return Results.BadRequest(new { error = "hours must be > 0" });
+
+            // Try to derive user_id from JWT if not supplied. Falls back to
+            // null which the DB allows for service-account usage.
+            int? userId = req.UserId;
+            if (userId is null)
+            {
+                var sub = ctx.User?.FindFirst("user_id")?.Value
+                       ?? ctx.User?.FindFirst("sub")?.Value;
+                if (int.TryParse(sub, out var parsed)) userId = parsed;
+            }
+
+            await using var conn = new NpgsqlConnection(db.ConnectionString);
+            await conn.OpenAsync();
+            await using var cmd = new NpgsqlCommand(@"
+                INSERT INTO time_entries (task_id, user_id, entry_date, hours, activity_type, notes)
+                VALUES (@tid, @uid, @ed, @h, @at, @n) RETURNING id", conn);
+            cmd.Parameters.AddWithValue("tid", id);
+            cmd.Parameters.AddWithValue("uid", (object?)userId ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("ed",  req.EntryDate ?? DateTime.Today);
+            cmd.Parameters.AddWithValue("h",   req.Hours);
+            cmd.Parameters.AddWithValue("at",  (object?)req.ActivityType ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("n",   (object?)req.Notes ?? DBNull.Value);
+            var newId = (int)(await cmd.ExecuteScalarAsync())!;
+            return Results.Created($"/api/tasks/{id}/time/{newId}", new { id = newId });
+        });
+
+        // DELETE /api/tasks/{id}/time/{entryId} — remove a time entry. The
+        // server doesn't enforce ownership at this level — that's a job for
+        // the future tighter authz layer.
+        group.MapDelete("/{id}/time/{entryId:int}", async (int id, int entryId, DbConnectionFactory db) =>
+        {
+            await using var conn = new NpgsqlConnection(db.ConnectionString);
+            await conn.OpenAsync();
+            await using var cmd = new NpgsqlCommand(
+                "DELETE FROM time_entries WHERE id=@eid AND task_id=@tid RETURNING id", conn);
+            cmd.Parameters.AddWithValue("eid", entryId);
+            cmd.Parameters.AddWithValue("tid", id);
+            var result = await cmd.ExecuteScalarAsync();
+            return result is null ? Results.NotFound() : Results.NoContent();
+        });
+
+        // GET /api/tasks/{id}/activity — recent activity for a single task.
+        // Sourced from activity_feed (migration 067) which is populated by
+        // the log_task_activity() trigger.
+        group.MapGet("/{id}/activity", async (int id, int? limit, DbConnectionFactory db) =>
+        {
+            await using var conn = new NpgsqlConnection(db.ConnectionString);
+            await conn.OpenAsync();
+            var list = new List<object>();
+            await using var cmd = new NpgsqlCommand(@"
+                SELECT a.id, a.created_at, a.action, a.summary,
+                       COALESCE(u.display_name, a.username, '') AS who
+                FROM activity_feed a
+                LEFT JOIN app_users u ON u.id = a.user_id
+                WHERE a.task_id = @tid
+                ORDER BY a.created_at DESC
+                LIMIT @lim", conn);
+            cmd.Parameters.AddWithValue("tid", id);
+            cmd.Parameters.AddWithValue("lim", limit ?? 50);
+            await using var rdr = await cmd.ExecuteReaderAsync();
+            while (await rdr.ReadAsync())
+                list.Add(new {
+                    id        = rdr.GetInt32(0),
+                    timestamp = rdr.GetDateTime(1),
+                    action    = rdr.IsDBNull(2) ? "" : rdr.GetString(2),
+                    summary   = rdr.IsDBNull(3) ? "" : rdr.GetString(3),
+                    user      = rdr.GetString(4),
+                });
+            return Results.Ok(list);
+        });
+
         return group;
     }
 
@@ -300,4 +378,6 @@ public static class TaskEndpoints
     private record CommentRequest(int? UserId, string? Text);
     private record CommitRequest(int SprintId);
     private record LinkRequest(int TargetId, string? LinkType, int? LagDays);
+    private record TimeEntryRequest(decimal Hours, string? ActivityType, string? Notes,
+                                    DateTime? EntryDate, int? UserId);
 }

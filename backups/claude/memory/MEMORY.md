@@ -1,0 +1,28 @@
+- [Project rename](project_rename.md) — Renamed from SwitchBuilder → Core → Central (~2026-03-28)
+- [Central platform](project_switchbuilder.md) — 23-project .NET 10 / PG 18.3 / DX 25.2 engine, all 8 phases complete
+- [Modular engine](project_modular_platform.md) — ListViewModelBase, ImporterBase, SettingsProvider, PanelMessageBus, IconService
+- [Server infrastructure](project_server_infra.md) — K8s cluster, API+Auth+PG+Redis, MetalLB, Terraform+Terragrunt
+- [K8s cluster](project_k8s_cluster.md) — 7-node local K8s on VMware, HA PostgreSQL, MetalLB 192.168.56.200-220
+- [Merge complete](project_merge_complete.md) — All 10 phases done (2026-04-14). 7 Rust services, 3 clients, 12 K8s manifests
+- [Test count](project_test_count.md) — 2,028 tests across 165 classes (updated 2026-04-14)
+- [Service Desk module](project_servicedesk_module.md) — ME sync, dashboards, teams, group categories, dirty tracking, write-back
+- [Admin module stats](project_admin_module_full.md) — 1,006 features, 318 tests, 55 migrations, 29 API groups
+- [Enterprise V2](project_enterprise_v2.md) — Multi-tenancy, licensing, global admin, 21 projects, 0 errors
+- [Auth providers](project_auth_providers.md) — SAML2/Duo, Entra ID, Okta, Public/Local, unified session
+- [New module checklist](feedback_new_module_checklist.md) — **CRITICAL** 12-phase checklist for new modules/grids
+- [Engine mindset](feedback_engine_mindset.md) — **CRITICAL** all TotalLink features needed, modernised, consistent
+- [DX WPF 25.2 patterns](feedback_devexpress_wpf.md) — ItemClick, combo wiring, DockController, SVG, TreeList, no PageHeaderTemplate
+- [WPF resource isolation](feedback_wpf_resources.md) — Module UserControls can't see Window resources — define locally
+- [Build platform](feedback_build_platform.md) — Must build x64, .NET 10, check crash.log
+- [K8s not Podman for services](feedback_k8s_not_podman.md) — Services run in K8s. Podman only for container builds.
+- [Podman not Docker](feedback_podman_not_docker.md) — Always Podman CLI for builds, never Docker
+- [IaC Terraform+Terragrunt](feedback_iac_terraform.md) — All infra must be Terraform modules + Terragrunt environments
+- [Debugging approach](feedback_debugging.md) — Diff working vs broken, query data, check DX API first
+- [Pod backup](feedback_pod_backup.md) — **CRITICAL** always pg_dump before destructive infra changes
+- [ActivePanel grid](feedback_activepanel_grid.md) — Every grid must register in ActivePanel + GetActiveGrid + activation map
+- [Feature checklist](feedback_feature_checklist.md) — **CRITICAL** always update FEATURE_TEST_CHECKLIST.md when adding features
+- [ME API reference](reference_me_api.md) — Zoho EU OAuth, fields_required, completed_time, refresh token rotation
+- [User profile](user_network_engineer.md) — Network engineer, FS/PicOS, enterprise WPF, iterates quickly
+- ["c" means continue](feedback_continue_shorthand.md) — Just "c" = keep going, don't ask
+- [Start all services on reboot](feedback_startup_services.md) — **"rebooted" means start K8s VMs + Angular + FastAPI, not just verify**
+- [Always use latest stable versions](feedback_latest_versions.md) — **Query Docker Hub / npm / crates.io for latest before writing version numbers, never guess**

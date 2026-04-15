@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DxSortableModule, DxScrollViewModule } from 'devextreme-angular';
 import { TaskService, Task } from '../../../core/services/task.service';
+import { TasksSubNavComponent } from './tasks-sub-nav.component';
 
 interface KanbanColumn {
   name: string;
@@ -13,8 +14,9 @@ interface KanbanColumn {
 @Component({
   selector: 'app-kanban-board',
   standalone: true,
-  imports: [CommonModule, DxSortableModule, DxScrollViewModule],
+  imports: [CommonModule, TasksSubNavComponent, DxSortableModule, DxScrollViewModule],
   template: `
+    <app-tasks-sub-nav></app-tasks-sub-nav>
     <div class="kanban-board">
       <div class="kanban-column" *ngFor="let col of columns">
         <div class="column-header" [style.border-top-color]="col.color">

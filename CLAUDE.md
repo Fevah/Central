@@ -34,11 +34,24 @@ project structure without updating the architecture doc first.
 
 ### All 8 Phases + Task Module COMPLETE — Platform is production-ready
 
-23 projects. .NET 10 / PG 18.3 / Npgsql 10.0.2 / DX 25.2 / Svg.NET 3.4.7 / Elsa 3.5.3. 0 build errors. 1,900 unit tests.
+23 projects. .NET 10 / PG 18.3 / Npgsql 10.0.2 / DX 25.2 / Svg.NET 3.4.7 / Elsa 3.5.3. 0 build errors. 2,028 unit tests.
 
-### Central + Secure Merge — Phase 1.1 COMPLETE
+### Central + Secure Merge — ALL 10 PHASES COMPLETE
 
-Auth-service (Rust) running in K8s. RLS multi-tenancy on all tables. Terraform + Terragrunt IaC.
+| Phase | What | Key Deliverables |
+|-------|------|-----------------|
+| 1 | Auth + RLS | auth-service (Rust), Argon2id re-hash, RLS, PgBouncer, user migration script |
+| 2 | API Gateway | Reverse proxy, rate limiting, TLS, WebSocket/SignalR, health aggregation |
+| 3 | Task Service | 26 Rust endpoints, SSE stream, batch ops, cursor pagination, Redis pub/sub |
+| 4 | Storage + Sync | CAS/MinIO storage, vector clock sync, SQLite offline cache, auto-sync on reconnect |
+| 5 | Flutter Mobile | 4 screens (Tasks+Kanban, Network, SD), drift DB, sync client, FCM push, build script |
+| 6 | Angular Web | 7 modules (Tasks, Kanban, Network, SD, Audit, Admin, Dashboard), SSE, DxDataGrid/DxTreeList |
+| 7 | M365 Audit | audit-service (9 endpoints), GDPR scoring (11 articles), WPF module (5 panels), Angular dashboard |
+| 8 | K8s Scaling | Prometheus/Grafana/Jaeger/Loki, PDB, sealed-secrets, read replicas, PgBouncer |
+| 9 | IaC + CI/CD | 4 GH Actions workflows, multi-arch builds, backup with retention, env promotion |
+| 10 | Admin Console | Angular 5-tab admin (health, tenants CRUD, users, licenses, infra), WPF 5-panel Global Admin |
+
+7 Rust services (all with source), 3 client surfaces (WPF + Flutter + Angular), 12 K8s manifests.
 
 Phase 3 (Enterprise Desktop) — all complete:
 - ✅ Backstage (User Profile + settings, Theme gallery, Connection, About, Switch User, Exit)
@@ -121,10 +134,10 @@ Phase 4: ✅ COMPLETE (API Server):
 - ✅ Multi-target Core+Data (net8.0 for API + net8.0-windows for WPF)
 - ✅ Dockerfile + pod.yaml (API container ready to enable)
 
-### Solution Structure (15 projects)
+### Solution Structure
 
 ```
-desktop/
+desktop/                                # .NET 10 / WPF / DevExpress 25.2 (15 C# projects)
 ├── Central.Core/              # Engine framework — auth, models, widgets, services, RibbonConfig, TaskFileParser
 ├── Central.Data/              # PostgreSQL repos + AppLogger + IconService — shared by API + Desktop
 ├── Central.Api/               # REST + SignalR + SSH + Jobs + Elsa Workflows
@@ -139,7 +152,27 @@ desktop/
 ├── Central.Module.Admin/      # Users, roles, lookups, SSH/app logs, jobs, ribbon config, ribbon tree panels, AD browser, migrations, backups, purge, locations, references, podman, scheduler
 ├── Central.Module.Tasks/      # Task management — 16 panels: tree, backlog, sprint, burndown, kanban, gantt, QA, dashboards, reports, timesheet, activity, portfolio, import
 ├── Central.Module.ServiceDesk/ # ManageEngine SD — sync, dashboards, teams, group categories, write-back
-└── Central.Tests/             # 451 unit + integration tests
+└── Central.Tests/             # 2,028 unit + integration tests
+
+SecureAPP/                              # Rust / Axum / Cargo workspace (7 services + 4 tools)
+├── services/
+│   ├── auth-service/          # Enterprise auth — MFA, WebAuthn, SAML, OIDC, JWT (COMPLETE)
+│   ├── admin-service/         # Global admin — tenant management, setup wizard (COMPLETE)
+│   ├── gateway/               # API gateway — reverse proxy, rate limiting, TLS, WebSocket/SignalR (COMPLETE)
+│   ├── task-service/          # Task management — 26 endpoints, SSE, batch, search, Redis events (COMPLETE)
+│   ├── storage-service/       # CAS storage — MinIO/S3, BLAKE3 dedup, multipart upload, pre-signed URLs (COMPLETE)
+│   ├── sync-service/          # Offline sync — vector clocks, push/pull, conflict resolution (COMPLETE)
+│   └── audit-service/         # M365 forensics, GDPR scoring, investigations, evidence export (COMPLETE)
+├── tools/
+│   ├── tray-manager/          # Desktop system tray operations tool
+│   ├── backup-manager/        # Scheduled PG backup automation
+│   ├── backup-service/        # Backup REST API
+│   └── backup-app/            # Backup CLI
+└── clients/
+    ├── desktop/               # Minimal Rust desktop client
+    └── mobile/                # Flutter mobile — 4 screens, drift offline DB, sync client, FCM push, build script (COMPLETE)
+
+web-client/                             # Angular 21 + DevExtreme 25.2 — 6 modules, SSE, auth (COMPLETE)
 ```
 
 ### TotalLink Source Reference
@@ -196,6 +229,45 @@ k8s-worker-06   192.168.56.26   role=general
 | PostgreSQL (write) | `192.168.56.201` | 5432 |
 | PostgreSQL (read) | `192.168.56.202` | 5432 |
 | Container Registry | `192.168.56.10` | 30500 |
+
+### Post-reboot startup
+
+When the machine is rebooted, start **all** services in this order:
+
+```bash
+# 1. K8s VMs (Vagrant checks if already running)
+cd infra/vagrant && vagrant status
+# if any VM is "poweroff": vagrant up
+
+# 2. Refresh kubeconfig if cert errors after reboot
+vagrant ssh k8s-master -c "sudo cat /etc/kubernetes/admin.conf" > ~/.kube/central-local.conf
+
+# 3. Verify K8s cluster + services
+export KUBECONFIG=~/.kube/central-local.conf
+kubectl get nodes
+kubectl -n central get pods
+
+# 4. Start Angular dev server (background)
+cd web-client && npx ng serve --port 4200 --host 0.0.0.0 &
+# Access at http://localhost:4200
+
+# 5. Start FastAPI web app (background)
+./run.sh &
+# Access at http://localhost:8080
+
+# 6. WPF desktop (GUI — launch manually from bin/x64/Release)
+```
+
+**Rule for Claude:** When user says "rebooted" or "start services", run ALL of steps 1-5 above. Verify each reaches a "ready" state before reporting done.
+
+**Rule for versions:** Always check for the **latest stable** before writing a version number. Don't guess image tags or package versions — query the registry:
+- Docker: `curl -s "https://hub.docker.com/v2/repositories/<owner>/<image>/tags/?page_size=20"`
+- GitHub: `gh release list --repo owner/name --limit 5`
+- npm: `npm view <pkg> version`
+- Cargo: `cargo search <crate>`
+- NuGet: `dotnet package search <pkg>`
+
+A version matrix is maintained in `docs/CREDENTIALS.md` — keep it current when bumping anything.
 
 ### Daily commands
 

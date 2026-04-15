@@ -196,6 +196,11 @@ app.MapGroup("/api/health").MapHealthEndpoints();
 app.MapGroup("/api/version").MapVersionEndpoints();
 app.MapGroup("/api/updates").WithTags("Updates").MapUpdateEndpoints();
 
+// Inbound client-side error logging (browsers/mobile push errors here so
+// they land in app_log alongside server logs). Anonymous on purpose — auth
+// failures themselves should still be loggable.
+app.MapGroup("/api/log/client").WithTags("Logging").MapClientLogEndpoints();
+
 // Files
 app.MapGroup("/api/files").WithTags("Files").MapFileEndpoints().RequireAuthorization();
 
