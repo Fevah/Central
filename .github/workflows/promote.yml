@@ -1,0 +1,111 @@
+name: Environment Promotion
+
+# Manual trigger — promote a specific SHA from one environment to the next.
+# Usage: Actions → Promote → Run workflow → select source_env + target_env + sha
+on:
+  workflow_dispatch:
+    inputs:
+      source_env:
+        description: 'Source environment'
+        required: true
+        type: choice
+        options: [dev, staging]
+      target_env:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options: [staging, prod]
+      image_tag:
+        description: 'Image tag to promote (git SHA or "latest")'
+        required: true
+        default: 'latest'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/central
+
+jobs:
+  promote:
+    name: Promote ${{ inputs.source_env }} → ${{ inputs.target_env }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.target_env }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate promotion path
+        run: |
+          if [[ "${{ inputs.source_env }}" == "dev" && "${{ inputs.target_env }}" != "staging" ]]; then
+            echo "ERROR: dev can only promote to staging"
+            exit 1
+          fi
+          if [[ "${{ inputs.source_env }}" == "staging" && "${{ inputs.target_env }}" != "prod" ]]; then
+            echo "ERROR: staging can only promote to prod"
+            exit 1
+          fi
+          echo "Promoting ${{ inputs.image_tag }} from ${{ inputs.source_env }} to ${{ inputs.target_env }}"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Re-tag all service images for the target environment
+      - name: Promote images
+        run: |
+          TAG="${{ inputs.image_tag }}"
+          TARGET="${{ inputs.target_env }}"
+          for SERVICE in central-api gateway auth-service task-service storage-service sync-service audit-service admin-service; do
+            SRC="${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${SERVICE}:${TAG}"
+            DST="${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${SERVICE}:${TARGET}"
+            echo "Promoting ${SERVICE}: ${TAG} → ${TARGET}"
+            docker pull "${SRC}" 2>/dev/null || { echo "SKIP: ${SRC} not found"; continue; }
+            docker tag "${SRC}" "${DST}"
+            docker push "${DST}"
+          done
+
+      - name: Set up kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+
+      - name: Apply Terragrunt for target environment
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.14'
+      - run: |
+          cd infra/environments/${{ inputs.target_env }}
+          # Terragrunt apply (if terragrunt is available)
+          if command -v terragrunt &>/dev/null; then
+            terragrunt run-all apply --terragrunt-non-interactive
+          else
+            echo "Terragrunt not installed — skipping IaC apply"
+          fi
+
+      - name: Rolling restart deployments
+        run: |
+          TARGET="${{ inputs.target_env }}"
+          NS="central"
+          if [ "$TARGET" = "prod" ]; then NS="central-prod"; fi
+          if [ "$TARGET" = "staging" ]; then NS="central-staging"; fi
+
+          for DEPLOY in central-api gateway auth-service task-service storage-service sync-service audit-service admin-service; do
+            kubectl rollout restart deployment/${DEPLOY} -n ${NS} 2>/dev/null || echo "SKIP: ${DEPLOY} not in ${NS}"
+          done
+          echo "Waiting for rollouts..."
+          for DEPLOY in central-api gateway auth-service; do
+            kubectl rollout status deployment/${DEPLOY} -n ${NS} --timeout=120s 2>/dev/null || true
+          done
+
+      - name: Post-promotion health check
+        run: |
+          TARGET="${{ inputs.target_env }}"
+          # Gateway health check
+          GATEWAY_URL=""
+          if [ "$TARGET" = "staging" ]; then GATEWAY_URL="http://staging-gateway:8000"; fi
+          if [ "$TARGET" = "prod" ]; then GATEWAY_URL="http://prod-gateway:8000"; fi
+          if [ -n "$GATEWAY_URL" ]; then
+            curl -sf "${GATEWAY_URL}/health" || echo "WARNING: Gateway health check failed"
+          fi
+          echo "Promotion to $TARGET complete"

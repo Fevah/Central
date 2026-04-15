@@ -1,0 +1,116 @@
+---
+# PgBouncer — Transaction-mode connection pooling for all services
+# Sits between services and PostgreSQL, reduces connection churn.
+# Services connect to pgbouncer:5432, PgBouncer connects to postgres-0:5432
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgbouncer-config
+  namespace: central
+data:
+  pgbouncer.ini: |
+    [databases]
+    central = host=postgres-0.postgres.central.svc.cluster.local port=5432 dbname=central
+    secure_auth = host=postgres-0.postgres.central.svc.cluster.local port=5432 dbname=secure_auth
+    secure_tasks = host=postgres-0.postgres.central.svc.cluster.local port=5432 dbname=central
+    secure_storage = host=postgres-0.postgres.central.svc.cluster.local port=5432 dbname=central
+    secure_sync = host=postgres-0.postgres.central.svc.cluster.local port=5432 dbname=central
+    secure_audit = host=postgres-0.postgres.central.svc.cluster.local port=5432 dbname=central
+
+    [pgbouncer]
+    listen_addr = 0.0.0.0
+    listen_port = 5432
+    auth_type = md5
+    auth_file = /etc/pgbouncer/userlist.txt
+    pool_mode = transaction
+    max_client_conn = 500
+    default_pool_size = 25
+    min_pool_size = 5
+    reserve_pool_size = 5
+    reserve_pool_timeout = 3
+    server_reset_query = DISCARD ALL
+    log_connections = 0
+    log_disconnections = 0
+    stats_period = 60
+    admin_users = central
+    server_tls_sslmode = prefer
+
+  userlist.txt: |
+    "central" "central"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgbouncer
+  namespace: central
+  labels:
+    app: pgbouncer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pgbouncer
+  template:
+    metadata:
+      labels:
+        app: pgbouncer
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9127"
+    spec:
+      containers:
+        - name: pgbouncer
+          image: edoburu/pgbouncer:v1.25.1-p0
+          ports:
+            - containerPort: 5432
+              name: pgbouncer
+          volumeMounts:
+            - name: config
+              mountPath: /bitnami/pgbouncer/conf/pgbouncer.ini
+              subPath: pgbouncer.ini
+            - name: config
+              mountPath: /etc/pgbouncer/userlist.txt
+              subPath: userlist.txt
+          env:
+            - name: PGBOUNCER_AUTH_TYPE
+              value: "md5"
+          livenessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 128Mi
+      volumes:
+        - name: config
+          configMap:
+            name: pgbouncer-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgbouncer
+  namespace: central
+  labels:
+    app: pgbouncer
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP
+      name: pgbouncer
+  selector:
+    app: pgbouncer

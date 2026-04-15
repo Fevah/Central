@@ -1,0 +1,70 @@
+---
+# Pod Disruption Budgets — zero-downtime deploys
+# Ensures at least 1 pod stays running during voluntary disruptions
+# (node drain, rolling update, cluster upgrade).
+
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: central-api-pdb
+  namespace: central
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: central-api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: gateway-pdb
+  namespace: central
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: gateway
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: auth-service-pdb
+  namespace: central
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: auth-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: task-service-pdb
+  namespace: central
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: task-service
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: postgres-pdb
+  namespace: central
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: postgres
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redis-pdb
+  namespace: central
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: redis

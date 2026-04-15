@@ -1,0 +1,81 @@
+<dx:DXDialogWindow x:Class="Central.Desktop.Views.GlobalActionsAdminDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+    xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+    xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+    Title="Global Action Overrides"
+    Width="820" Height="560"
+    WindowStartupLocation="CenterOwner">
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Margin="0,0,0,6" TextWrapping="Wrap" FontSize="12">
+            <Run FontWeight="SemiBold">Per-module ribbon action overrides.</Run>
+            <LineBreak />
+            Each row is a (module, action) pair. Leaving Icon blank inherits from the global row or the hardcoded default.
+            Setting Hidden removes the button on that module's tab. "global" affects every module that has no explicit override.
+        </TextBlock>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,6">
+            <CheckBox x:Name="OnlyCustomCheckBox" Content="Show only rows with overrides" Margin="0,0,12,0"
+                      Checked="OnlyCustom_Changed" Unchecked="OnlyCustom_Changed" />
+            <TextBlock Text="{Binding ElementName=RowsGrid, Path=VisibleRowCount, StringFormat='{}{0} rows'}"
+                       Foreground="Gray" VerticalAlignment="Center" />
+        </StackPanel>
+
+        <dxg:GridControl x:Name="RowsGrid" Grid.Row="2" AutoGenerateColumns="None" EnableSmartColumnsGeneration="False">
+            <dxg:GridControl.View>
+                <dxg:TableView ShowGroupPanel="False" AllowEditing="True" NavigationStyle="Cell"
+                               ShowAutoFilterRow="True" AllowColumnFiltering="True" />
+            </dxg:GridControl.View>
+            <dxg:GridControl.Columns>
+                <dxg:GridColumn FieldName="Module" Header="Module" Width="110" AllowEditing="False" />
+                <dxg:GridColumn FieldName="Action" Header="Action" Width="90" AllowEditing="False" />
+                <dxg:GridColumn FieldName="DefaultIcon" Header="Default" Width="140" AllowEditing="False">
+                    <dxg:GridColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Image Width="16" Height="16" Margin="0,0,6,0" Source="{Binding RowData.Row.DefaultPreview}" />
+                                <TextBlock Text="{Binding RowData.Row.DefaultIcon}" VerticalAlignment="Center"
+                                           Foreground="Gray" FontSize="11" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </dxg:GridColumn.CellTemplate>
+                </dxg:GridColumn>
+                <dxg:GridColumn FieldName="CustomIcon" Header="Override Icon" Width="200">
+                    <dxg:GridColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Image Width="16" Height="16" Margin="0,0,6,0" Source="{Binding RowData.Row.CustomPreview}" />
+                                <TextBlock Text="{Binding RowData.Row.CustomIcon}" VerticalAlignment="Center"
+                                           FontSize="11" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </dxg:GridColumn.CellTemplate>
+                    <dxg:GridColumn.EditSettings>
+                        <dxe:ButtonEditSettings AllowDefaultButton="True">
+                            <dxe:ButtonEditSettings.Buttons>
+                                <dxe:ButtonInfo GlyphKind="Search" Click="PickIcon_Click" />
+                                <dxe:ButtonInfo GlyphKind="Cancel" Click="ClearIcon_Click" />
+                            </dxe:ButtonEditSettings.Buttons>
+                        </dxe:ButtonEditSettings>
+                    </dxg:GridColumn.EditSettings>
+                </dxg:GridColumn>
+                <dxg:GridColumn FieldName="IsHidden" Header="Hidden" Width="70" />
+                <dxg:GridColumn FieldName="IsDirty" Header="Changed" Width="70" AllowEditing="False" />
+            </dxg:GridControl.Columns>
+        </dxg:GridControl>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+            <Button Content="Reset row" Click="ResetRow_Click" Padding="10,4" Margin="0,0,6,0" />
+            <Button Content="Save all" Click="SaveAll_Click" Padding="14,4" Margin="0,0,6,0" FontWeight="SemiBold" />
+            <Button Content="Close" Click="Close_Click" Padding="14,4" />
+        </StackPanel>
+    </Grid>
+</dx:DXDialogWindow>

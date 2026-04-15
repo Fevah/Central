@@ -1,0 +1,41 @@
+---
+# PostgreSQL Read Replica Service
+# Routes read-only queries to postgres-1 (streaming replica).
+# Services like task-service and audit-service use this for heavy queries
+# while writes go to the primary (postgres-0) via pgbouncer.
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-read
+  namespace: central
+  labels:
+    app: postgres
+    role: replica
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP
+      name: postgres
+  selector:
+    app: postgres
+    statefulset.kubernetes.io/pod-name: postgres-1
+---
+# External access via MetalLB (matches existing 192.168.56.202)
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-read-lb
+  namespace: central
+  annotations:
+    metallb.universe.tf/address-pool: default
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 192.168.56.202
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: postgres
+    statefulset.kubernetes.io/pod-name: postgres-1
