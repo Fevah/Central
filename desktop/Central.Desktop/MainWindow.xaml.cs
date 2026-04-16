@@ -663,22 +663,22 @@ public partial class MainWindow
             if (e.PropertyName == nameof(MainViewModel.IsGlobalTenantsPanelOpen))
             {
                 ToggleDockPanel(GlobalTenantsPanel, VM.IsGlobalTenantsPanelOpen);
-                if (VM.IsGlobalTenantsPanelOpen) BindGlobalAdminGrids();
+                if (VM.IsGlobalTenantsPanelOpen) LoadGlobalAdminPanelAsync("global_tenants");
             }
             if (e.PropertyName == nameof(MainViewModel.IsGlobalUsersPanelOpen))
             {
                 ToggleDockPanel(GlobalUsersPanel, VM.IsGlobalUsersPanelOpen);
-                if (VM.IsGlobalUsersPanelOpen) BindGlobalAdminGrids();
+                if (VM.IsGlobalUsersPanelOpen) LoadGlobalAdminPanelAsync("global_users");
             }
             if (e.PropertyName == nameof(MainViewModel.IsGlobalSubscriptionsPanelOpen))
             {
                 ToggleDockPanel(GlobalSubscriptionsPanel, VM.IsGlobalSubscriptionsPanelOpen);
-                if (VM.IsGlobalSubscriptionsPanelOpen) BindGlobalAdminGrids();
+                if (VM.IsGlobalSubscriptionsPanelOpen) LoadGlobalAdminPanelAsync("global_subscriptions");
             }
             if (e.PropertyName == nameof(MainViewModel.IsGlobalLicensesPanelOpen))
             {
                 ToggleDockPanel(GlobalLicensesPanel, VM.IsGlobalLicensesPanelOpen);
-                if (VM.IsGlobalLicensesPanelOpen) BindGlobalAdminGrids();
+                if (VM.IsGlobalLicensesPanelOpen) LoadGlobalAdminPanelAsync("global_licenses");
             }
             if (e.PropertyName == nameof(MainViewModel.IsPlatformDashboardPanelOpen))
             {
@@ -1720,8 +1720,16 @@ public partial class MainWindow
                             {
                                 try
                                 {
-                                    if (barChk.IsChecked == true) DockManager.DockController.Restore(p);
-                                    else DockManager.DockController.Close(p);
+                                    if (barChk.IsChecked == true)
+                                    {
+                                        DockManager.DockController.Restore(p);
+                                        // Sync VM boolean so PropertyChanged fires data load
+                                        SyncPanelOpenState(p, true);
+                                    }
+                                    else
+                                    {
+                                        DockManager.DockController.Close(p);
+                                    }
                                 }
                                 catch (Exception ex)
                                 {
@@ -2101,6 +2109,17 @@ public partial class MainWindow
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Icon preload error: {ex.Message}"); }
     }
 
+    /// <summary>Public wrapper so dialogs can resolve ribbon glyph images.</summary>
+    public static System.Windows.Media.ImageSource? ResolveGlyphImageStatic(string name) => ResolveGlyphImage(name);
+
+    /// <summary>Reload the live global action override map and refresh the ribbon.</summary>
+    public async Task ReloadGlobalActionOverridesAsync()
+    {
+        // Stub — full implementation will reload overrides from DB and re-inject icons
+        await Task.CompletedTask;
+        Central.Core.Services.GlobalActionService.Instance.RaiseOverridesChanged();
+    }
+
     private static System.Windows.Media.ImageSource? ResolveGlyphImage(string name)
     {
         if (string.IsNullOrEmpty(name)) return null;
@@ -2200,6 +2219,19 @@ public partial class MainWindow
         var item = FindName(panelId) as DevExpress.Xpf.Docking.BaseLayoutItem
                 ?? FindName(panelId + "Panel") as DevExpress.Xpf.Docking.BaseLayoutItem;
         return item;
+    }
+
+    /// <summary>Sync a VM boolean when a dock panel is opened via DockController.Restore (check buttons).</summary>
+    private void SyncPanelOpenState(DevExpress.Xpf.Docking.BaseLayoutItem panel, bool isOpen)
+    {
+        if (panel == GlobalTenantsPanel) VM.IsGlobalTenantsPanelOpen = isOpen;
+        else if (panel == GlobalUsersPanel) VM.IsGlobalUsersPanelOpen = isOpen;
+        else if (panel == GlobalSubscriptionsPanel) VM.IsGlobalSubscriptionsPanelOpen = isOpen;
+        else if (panel == GlobalLicensesPanel) VM.IsGlobalLicensesPanelOpen = isOpen;
+        else if (panel == PlatformDashboardPanel) VM.IsPlatformDashboardPanelOpen = isOpen;
+        else if (panel == RibbonConfigPanel) VM.IsRibbonConfigPanelOpen = isOpen;
+        else if (panel == ServiceDeskPanel) VM.IsServiceDeskPanelOpen = isOpen;
+        else if (panel == IntegrationsPanel) VM.IsIntegrationsPanelOpen = isOpen;
     }
 
     /// <summary>Hide panels the user can't access based on module permissions.</summary>
@@ -7513,51 +7545,398 @@ public partial class MainWindow
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // GLOBAL ADMIN
+    // GLOBAL ADMIN — ViewModel-driven panels + context tab wiring
     // ═══════════════════════════════════════════════════════════════════════
 
     private bool _globalAdminBound;
+    private static Task Audit(string action, string? entityType = null, string? entityId = null, object? details = null)
+        => Central.Module.GlobalAdmin.Services.GlobalAdminAuditService.LogAsync(action, entityType, entityId, details);
+
+    /// <summary>Navigate to a Global Admin panel and select a tenant by slug.</summary>
+    private void NavigateToTenant(string slug)
+    {
+        VM.IsGlobalTenantsPanelOpen = true;
+        BindGlobalAdminGrids();
+        _tenantsVm?.RefreshCommand.Execute(null);
+        // Select after data loads
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
+        {
+            var match = _tenantsVm?.Items.FirstOrDefault(t => t.Slug == slug);
+            if (match != null) _tenantsVm!.CurrentItem = match;
+        });
+    }
+
+    /// <summary>Navigate to Global Users panel and select a user by email.</summary>
+    private void NavigateToGlobalUser(string email)
+    {
+        VM.IsGlobalUsersPanelOpen = true;
+        BindGlobalAdminGrids();
+        _globalUsersVm?.RefreshCommand.Execute(null);
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
+        {
+            var match = _globalUsersVm?.Items.FirstOrDefault(u => u.Email == email);
+            if (match != null) _globalUsersVm!.CurrentItem = match;
+        });
+    }
+
+    /// <summary>Refresh all Global Admin grids that are currently open.</summary>
+    private void CascadeRefreshGlobalAdmin()
+    {
+        if (VM.IsGlobalTenantsPanelOpen) _tenantsVm?.RefreshCommand.Execute(null);
+        if (VM.IsGlobalUsersPanelOpen) _globalUsersVm?.RefreshCommand.Execute(null);
+        if (VM.IsGlobalSubscriptionsPanelOpen) _subscriptionsVm?.RefreshCommand.Execute(null);
+        if (VM.IsGlobalLicensesPanelOpen) _licensesVm?.RefreshCommand.Execute(null);
+    }
+
+    /// <summary>Validate tenant slug format (lowercase alphanumeric + hyphens, 3-50 chars).</summary>
+    private static bool ValidateSlug(string slug, out string error)
+    {
+        error = "";
+        if (string.IsNullOrWhiteSpace(slug)) { error = "Slug is required"; return false; }
+        if (slug.Length < 3 || slug.Length > 50) { error = "Slug must be 3-50 characters"; return false; }
+        if (!System.Text.RegularExpressions.Regex.IsMatch(slug, @"^[a-z0-9][a-z0-9-]*[a-z0-9]$"))
+        { error = "Slug must be lowercase alphanumeric with hyphens only"; return false; }
+        return true;
+    }
+    private Central.Module.GlobalAdmin.ViewModels.TenantsListViewModel? _tenantsVm;
+    private Central.Module.GlobalAdmin.ViewModels.GlobalUsersListViewModel? _globalUsersVm;
+    private Central.Module.GlobalAdmin.ViewModels.SubscriptionsListViewModel? _subscriptionsVm;
+    private Central.Module.GlobalAdmin.ViewModels.ModuleLicensesListViewModel? _licensesVm;
 
     private void BindGlobalAdminGrids()
     {
-        if (!_globalAdminBound)
+        if (_globalAdminBound) return;
+        Central.Module.GlobalAdmin.Services.GlobalAdminAuditService.Initialize(VM.Repo);
+
+        // ── Tenants ViewModel ──
+        _tenantsVm = new Central.Module.GlobalAdmin.ViewModels.TenantsListViewModel
         {
-            TenantsGridPanel.Grid.ItemsSource = VM.GlobalTenants;
-            GlobalUsersGridPanel.Grid.ItemsSource = VM.GlobalUsers;
-            SubscriptionsGridPanel.Grid.ItemsSource = VM.GlobalSubscriptions;
-            LicensesGridPanel.Grid.ItemsSource = VM.GlobalLicenses;
+            Loader = () => VM.Repo.GetTenantsTypedAsync(),
+            Inserter = async t => { var id = await VM.Repo.CreateTenantTypedAsync(t); t.Id = id; _ = Audit("tenant_created", "tenant", t.Slug); return 1; },
+            Updater = async t => { await VM.Repo.UpdateTenantAsync(t); _ = Audit("tenant_updated", "tenant", t.Slug); },
+            Deleter = async t => { await VM.Repo.DeleteTenantAsync(t.Id); _ = Audit("tenant_deleted", "tenant", t.Slug); },
+            OnSuspend = async t =>
+            {
+                await VM.Repo.SuspendTenantByIdAsync(t.Id);
+                t.IsActive = false;
+                _ = Audit("tenant_suspended", "tenant", t.Slug);
+                NotificationService.Instance.Success($"Tenant '{t.Slug}' suspended");
+            },
+            OnActivate = async t =>
+            {
+                await VM.Repo.ActivateTenantByIdAsync(t.Id);
+                t.IsActive = true;
+                _ = Audit("tenant_activated", "tenant", t.Slug);
+                NotificationService.Instance.Success($"Tenant '{t.Slug}' activated");
+            },
+            OnProvisionSchema = async t =>
+            {
+                if (t.Slug == "default") { NotificationService.Instance.Warning("Cannot provision default tenant"); return; }
+                var schemaManager = new Central.Tenancy.TenantSchemaManager(App.Dsn);
+                var migrationsDir = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "migrations");
+                await schemaManager.ProvisionTenantAsync($"tenant_{t.Slug}", migrationsDir);
+                _ = Audit("schema_provisioned", "tenant", t.Slug);
+                NotificationService.Instance.Success($"Schema tenant_{t.Slug} provisioned");
+            }
+        };
+        TenantsGridPanel.Grid.ItemsSource = _tenantsVm.Items;
 
-            // Context menus
-            Central.Desktop.Services.GridContextMenuBuilder.AttachSimple(TenantsGridPanel.Grid,
-                ("Suspend Tenant", () => _ = SuspendSelectedTenantAsync()),
-                ("Activate Tenant", () => _ = ActivateSelectedTenantAsync()),
-                ("Provision Schema", () => _ = ProvisionSelectedTenantAsync()),
-                ("─", null!),
-                ("Export to Clipboard", () => ExportGridToClipboard(TenantsGridPanel.Grid)),
-                ("─", null!),
-                ("Refresh", () => _ = VM.LoadPanelDataAsync("global_tenants", force: true)));
+        // ── Global Users ViewModel ──
+        _globalUsersVm = new Central.Module.GlobalAdmin.ViewModels.GlobalUsersListViewModel
+        {
+            Loader = () => VM.Repo.GetGlobalUsersTypedAsync(),
+            Deleter = async u => { await VM.Repo.DeleteGlobalUserAsync(u.Id); _ = Audit("user_removed", "user", u.Email); },
+            OnToggleAdmin = async u =>
+            {
+                await VM.Repo.ToggleGlobalAdminByIdAsync(u.Id);
+                u.IsGlobalAdmin = !u.IsGlobalAdmin;
+                _ = Audit("admin_toggled", "user", u.Email, new { is_admin = u.IsGlobalAdmin });
+                NotificationService.Instance.Success($"Admin {(u.IsGlobalAdmin ? "granted" : "revoked")} for {u.Email}");
+            },
+            OnResetPassword = async u => ShowResetPasswordDialog(u)
+        };
+        GlobalUsersGridPanel.Grid.ItemsSource = _globalUsersVm.Items;
 
-            Central.Desktop.Services.GridContextMenuBuilder.AttachSimple(GlobalUsersGridPanel.Grid,
-                ("Toggle Global Admin", () => _ = ToggleGlobalAdminAsync()),
-                ("─", null!),
-                ("Export to Clipboard", () => ExportGridToClipboard(GlobalUsersGridPanel.Grid)),
-                ("─", null!),
-                ("Refresh", () => _ = VM.LoadPanelDataAsync("global_users", force: true)));
+        // ── Subscriptions ViewModel ──
+        _subscriptionsVm = new Central.Module.GlobalAdmin.ViewModels.SubscriptionsListViewModel
+        {
+            Loader = () => VM.Repo.GetSubscriptionsTypedAsync(),
+            OnChangePlan = async sub =>
+            {
+                ShowAssignPlanDialog(); // opens dialog for the selected tenant
+            },
+            OnCancel = async sub =>
+            {
+                if (System.Windows.MessageBox.Show($"Cancel subscription for {sub.TenantSlug}?", "Confirm",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+                await VM.Repo.CancelSubscriptionAsync(sub.Id);
+                sub.Status = "cancelled";
+                NotificationService.Instance.Success($"Subscription cancelled for {sub.TenantSlug}");
+            }
+        };
+        SubscriptionsGridPanel.Grid.ItemsSource = _subscriptionsVm.Items;
 
-            Central.Desktop.Services.GridContextMenuBuilder.AttachSimple(SubscriptionsGridPanel.Grid,
-                ("Export to Clipboard", () => ExportGridToClipboard(SubscriptionsGridPanel.Grid)),
-                ("─", null!),
-                ("Refresh", () => _ = VM.LoadPanelDataAsync("global_subscriptions", force: true)));
+        // ── Module Licenses ViewModel ──
+        _licensesVm = new Central.Module.GlobalAdmin.ViewModels.ModuleLicensesListViewModel
+        {
+            Loader = () => VM.Repo.GetLicensesTypedAsync(),
+            OnGrantModule = () => { ShowGrantModuleDialog(); return Task.CompletedTask; },
+            OnRevokeModule = async lic =>
+            {
+                if (lic.IsBase) { NotificationService.Instance.Warning("Cannot revoke base module"); return; }
+                if (System.Windows.MessageBox.Show($"Revoke {lic.ModuleName} from {lic.TenantSlug}?", "Confirm",
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+                await VM.Repo.RevokeModuleLicenseAsync(lic.Id);
+                _licensesVm!.Items.Remove(lic);
+                NotificationService.Instance.Success($"License revoked: {lic.ModuleName} from {lic.TenantSlug}");
+            }
+        };
+        LicensesGridPanel.Grid.ItemsSource = _licensesVm.Items;
 
-            Central.Desktop.Services.GridContextMenuBuilder.AttachSimple(LicensesGridPanel.Grid,
-                ("Revoke License", () => _ = RevokeSelectedLicenseAsync()),
-                ("─", null!),
-                ("Export to Clipboard", () => ExportGridToClipboard(LicensesGridPanel.Grid)),
-                ("─", null!),
-                ("Refresh", () => _ = VM.LoadPanelDataAsync("global_licenses", force: true)));
+        // ── Context tab button wiring ──
+        GATenantNewBtn.ItemClick += (_, _) => _tenantsVm.AddCommand.Execute(null);
+        GATenantEditBtn.ItemClick += (_, _) => ShowTenantDetailDialog(isEdit: true);
+        GATenantDeleteBtn.ItemClick += (_, _) => _tenantsVm.DeleteCommand.Execute(null);
+        GATenantSuspendBtn.ItemClick += (_, _) => _tenantsVm.SuspendCommand.Execute(null);
+        GATenantActivateBtn.ItemClick += (_, _) => _tenantsVm.ActivateCommand.Execute(null);
+        GATenantProvisionBtn.ItemClick += (_, _) => _tenantsVm.ProvisionSchemaCommand.Execute(null);
+        GATenantWizardBtn.ItemClick += (_, _) => ShowTenantSetupWizard();
+        GATenantRefreshBtn.ItemClick += (_, _) => _tenantsVm.RefreshCommand.Execute(null);
+        GATenantExportBtn.ItemClick += (_, _) => _tenantsVm.ExportCommand.Execute(null);
 
-            _globalAdminBound = true;
+        GAUserInviteBtn.ItemClick += (_, _) => ShowInviteUserDialog();
+        GAUserEditBtn.ItemClick += (_, _) => ShowManageMembershipsDialog();
+        GAUserDeleteBtn.ItemClick += (_, _) => _globalUsersVm.DeleteCommand.Execute(null);
+        GAUserToggleAdminBtn.ItemClick += (_, _) => _globalUsersVm.ToggleAdminCommand.Execute(null);
+        GAUserResetPwdBtn.ItemClick += (_, _) => _globalUsersVm.ResetPasswordCommand.Execute(null);
+        GAUserRefreshBtn.ItemClick += (_, _) => _globalUsersVm.RefreshCommand.Execute(null);
+        GAUserExportBtn.ItemClick += (_, _) => _globalUsersVm.ExportCommand.Execute(null);
+
+        GASubAssignBtn.ItemClick += (_, _) => ShowAssignPlanDialog();
+        GASubChangePlanBtn.ItemClick += (_, _) => _subscriptionsVm.ChangePlanCommand.Execute(null);
+        GASubCancelBtn.ItemClick += (_, _) => _subscriptionsVm.CancelSubscriptionCommand.Execute(null);
+        GASubRefreshBtn.ItemClick += (_, _) => _subscriptionsVm.RefreshCommand.Execute(null);
+        GASubExportBtn.ItemClick += (_, _) => _subscriptionsVm.ExportCommand.Execute(null);
+
+        GALicGrantBtn.ItemClick += (_, _) => _licensesVm.GrantModuleCommand.Execute(null);
+        GALicRevokeBtn.ItemClick += (_, _) => _licensesVm.RevokeModuleCommand.Execute(null);
+        GALicRefreshBtn.ItemClick += (_, _) => _licensesVm.RefreshCommand.Execute(null);
+        GALicExportBtn.ItemClick += (_, _) => _licensesVm.ExportCommand.Execute(null);
+
+        // ── Cross-panel navigation: double-click tenant slug in Subscriptions/Licenses ──
+        SubscriptionsGridPanel.Grid.MouseDoubleClick += (_, _) =>
+        {
+            if (_subscriptionsVm?.CurrentItem?.TenantSlug is string slug && !string.IsNullOrEmpty(slug))
+                NavigateToTenant(slug);
+        };
+        LicensesGridPanel.Grid.MouseDoubleClick += (_, _) =>
+        {
+            if (_licensesVm?.CurrentItem?.TenantSlug is string slug && !string.IsNullOrEmpty(slug))
+                NavigateToTenant(slug);
+        };
+
+        _globalAdminBound = true;
+    }
+
+    /// <summary>Load data for the active Global Admin ViewModel.</summary>
+    private void LoadGlobalAdminPanelAsync(string panelKey)
+    {
+        BindGlobalAdminGrids();
+        switch (panelKey)
+        {
+            case "global_tenants":
+                _tenantsVm!.RefreshCommand.Execute(null);
+                break;
+            case "global_users":
+                _globalUsersVm!.RefreshCommand.Execute(null);
+                break;
+            case "global_subscriptions":
+                _subscriptionsVm!.RefreshCommand.Execute(null);
+                break;
+            case "global_licenses":
+                _licensesVm!.RefreshCommand.Execute(null);
+                break;
         }
+    }
+
+    // ── Global Admin dialogs ──────────────────────────────────────────
+
+    private void ShowTenantDetailDialog(bool isEdit = false)
+    {
+        var tenant = isEdit ? _tenantsVm?.CurrentItem : new Central.Core.Models.TenantRecord { Tier = "free" };
+        if (tenant == null) return;
+
+        var dlg = new Central.Module.GlobalAdmin.Views.Dialogs.TenantDetailDialog(tenant, isEdit) { Owner = this };
+        dlg.LoadTenantDetails = async id =>
+        {
+            var subs = await VM.Repo.GetTenantSubscriptionsAsync(id);
+            var lics = await VM.Repo.GetTenantModulesAsync(id);
+            var members = await VM.Repo.GetTenantMembersAsync(id);
+            return (subs, lics, members);
+        };
+
+        if (dlg.ShowDialogWindow()?.IsDefault == true)
+        {
+            // Validate slug on new tenants
+            if (!isEdit && !ValidateSlug(tenant.Slug, out var slugErr))
+            {
+                NotificationService.Instance.Warning(slugErr);
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(tenant.DisplayName))
+            {
+                NotificationService.Instance.Warning("Display name is required");
+                return;
+            }
+
+            if (isEdit)
+            {
+                _ = Task.Run(async () =>
+                {
+                    await VM.Repo.UpdateTenantAsync(tenant);
+                    _ = Audit("tenant_updated", "tenant", tenant.Slug);
+                    Dispatcher.Invoke(() => { _tenantsVm!.RefreshCommand.Execute(null); CascadeRefreshGlobalAdmin(); });
+                });
+            }
+            else
+            {
+                _ = Task.Run(async () =>
+                {
+                    tenant.Id = await VM.Repo.CreateTenantTypedAsync(tenant);
+                    _ = Audit("tenant_created", "tenant", tenant.Slug);
+                    Dispatcher.Invoke(() =>
+                    {
+                        _tenantsVm!.Items.Insert(0, tenant);
+                        NotificationService.Instance.Success($"Tenant '{tenant.Slug}' created");
+                    });
+                });
+            }
+        }
+    }
+
+    private async void ShowAssignPlanDialog()
+    {
+        // Get the tenant from either the Tenants grid or the Subscriptions grid
+        var tenantId = _tenantsVm?.CurrentItem?.Id ?? _subscriptionsVm?.CurrentItem?.TenantId ?? Guid.Empty;
+        var tenantSlug = _tenantsVm?.CurrentItem?.Slug ?? _subscriptionsVm?.CurrentItem?.TenantSlug ?? "";
+        if (tenantId == Guid.Empty) { NotificationService.Instance.Warning("Select a tenant first"); return; }
+
+        var plans = await VM.Repo.GetPlanItemsAsync();
+        var dlg = new Central.Module.GlobalAdmin.Views.Dialogs.AssignPlanDialog(tenantSlug, plans) { Owner = this };
+        if (dlg.ShowDialogWindow()?.IsDefault == true && dlg.SelectedPlanId > 0)
+        {
+            await VM.Repo.CreateSubscriptionAsync(tenantId, dlg.SelectedPlanId, dlg.SelectedStatus, dlg.SelectedExpiry);
+            _subscriptionsVm!.RefreshCommand.Execute(null);
+            _tenantsVm!.RefreshCommand.Execute(null); // plan_name may have changed
+            _ = Audit("plan_assigned", "subscription", tenantSlug, new { plan_id = dlg.SelectedPlanId, status = dlg.SelectedStatus });
+            CascadeRefreshGlobalAdmin();
+            NotificationService.Instance.Success($"Plan assigned to {tenantSlug}");
+        }
+    }
+
+    private async void ShowGrantModuleDialog()
+    {
+        var tenantId = _tenantsVm?.CurrentItem?.Id ?? _licensesVm?.CurrentItem?.TenantId ?? Guid.Empty;
+        var tenantSlug = _tenantsVm?.CurrentItem?.Slug ?? _licensesVm?.CurrentItem?.TenantSlug ?? "";
+        if (tenantId == Guid.Empty) { NotificationService.Instance.Warning("Select a tenant first"); return; }
+
+        var modules = await VM.Repo.GetModuleItemsAsync(tenantId);
+        var dlg = new Central.Module.GlobalAdmin.Views.Dialogs.GrantModuleDialog(tenantSlug, modules) { Owner = this };
+        if (dlg.ShowDialogWindow()?.IsDefault == true && dlg.SelectedModuleIds.Count > 0)
+        {
+            await VM.Repo.BulkGrantModulesAsync(tenantId, dlg.SelectedModuleIds, dlg.SelectedExpiry);
+            _licensesVm!.RefreshCommand.Execute(null);
+            _ = Audit("modules_granted", "license", tenantSlug, new { count = dlg.SelectedModuleIds.Count });
+            NotificationService.Instance.Success($"Granted {dlg.SelectedModuleIds.Count} module(s) to {tenantSlug}");
+        }
+    }
+
+    private async void ShowInviteUserDialog()
+    {
+        var tenants = await VM.Repo.GetTenantOptionsAsync();
+        var dlg = new Central.Module.GlobalAdmin.Views.Dialogs.InviteUserDialog(tenants) { Owner = this };
+        if (dlg.ShowDialogWindow()?.IsDefault != true || !dlg.Validate()) return;
+
+        var salt = Central.Core.Auth.PasswordHasher.GenerateSalt();
+        var hash = Central.Core.Auth.PasswordHasher.Hash(dlg.Password, salt);
+        var userId = await VM.Repo.CreateGlobalUserAsync(dlg.Email, dlg.DisplayName, hash, salt, dlg.IsGlobalAdmin);
+
+        // Add tenant memberships
+        foreach (var tid in dlg.SelectedTenantIds)
+            await VM.Repo.AddTenantMembershipAsync(userId, tid, "Viewer");
+
+        _globalUsersVm!.RefreshCommand.Execute(null);
+        _ = Audit("user_invited", "user", dlg.Email, new { admin = dlg.IsGlobalAdmin, tenants = dlg.SelectedTenantIds.Count });
+        NotificationService.Instance.Success($"User {dlg.Email} invited");
+    }
+
+    private async void ShowManageMembershipsDialog()
+    {
+        var user = _globalUsersVm?.CurrentItem;
+        if (user == null) return;
+
+        var memberships = await VM.Repo.GetUserMembershipsAsync(user.Id);
+        var tenants = await VM.Repo.GetTenantOptionsAsync();
+        var dlg = new Central.Module.GlobalAdmin.Views.Dialogs.ManageMembershipsDialog(user.Id, user.Email, memberships, tenants) { Owner = this };
+        dlg.OnAddMembership = (uid, tid, role) => VM.Repo.AddTenantMembershipAsync(uid, tid, role);
+        dlg.OnRemoveMembership = id => VM.Repo.RemoveTenantMembershipAsync(id);
+        dlg.OnChangeRole = (id, role) => VM.Repo.UpdateMembershipRoleAsync(id, role);
+        dlg.ShowDialogWindow();
+
+        // Refresh to pick up changed tenant counts
+        _globalUsersVm.RefreshCommand.Execute(null);
+    }
+
+    private async void ShowResetPasswordDialog(Central.Core.Models.GlobalUserRecord user)
+    {
+        var dlg = new Central.Module.GlobalAdmin.Views.Dialogs.ResetPasswordDialog(user.Email) { Owner = this };
+        if (dlg.ShowDialogWindow()?.IsDefault != true || !dlg.Validate()) return;
+
+        var salt = Central.Core.Auth.PasswordHasher.GenerateSalt();
+        var hash = Central.Core.Auth.PasswordHasher.Hash(dlg.NewPassword, salt);
+        await VM.Repo.ResetGlobalUserPasswordAsync(user.Id, hash, salt, dlg.ForceEmailVerification);
+        if (dlg.ForceEmailVerification) user.EmailVerified = false;
+        _ = Audit("password_reset", "user", user.Email);
+        NotificationService.Instance.Success($"Password reset for {user.Email}");
+    }
+
+    private async void ShowTenantSetupWizard()
+    {
+        var plans = await VM.Repo.GetPlanItemsAsync();
+        var modules = await VM.Repo.GetModuleItemsAsync();
+        var wizard = new Central.Module.GlobalAdmin.Views.Dialogs.TenantSetupWizard(plans, modules) { Owner = this };
+        wizard.CreateTenant = (slug, name, domain, tier) => VM.Repo.CreateTenantTypedAsync(new Central.Core.Models.TenantRecord { Slug = slug, DisplayName = name, Domain = domain, Tier = tier });
+        wizard.CreateSubscription = (tid, pid, status, exp) => VM.Repo.CreateSubscriptionAsync(tid, pid, status, exp);
+        wizard.BulkGrantModules = (tid, mids, exp) => VM.Repo.BulkGrantModulesAsync(tid, mids, exp);
+        wizard.ProvisionSchema = async slug =>
+        {
+            var sm = new Central.Tenancy.TenantSchemaManager(App.Dsn);
+            var dir = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "migrations");
+            await sm.ProvisionTenantAsync($"tenant_{slug}", dir);
+        };
+        wizard.CreateUser = async (email, name, hash, salt, admin) => await VM.Repo.CreateGlobalUserAsync(email, name, hash, salt, admin);
+        wizard.AddMembership = (uid, tid, role) => VM.Repo.AddTenantMembershipAsync(uid, tid, role);
+        wizard.ShowDialogWindow();
+
+        if (wizard.Provisioned)
+        {
+            _ = Central.Module.GlobalAdmin.Services.GlobalAdminAuditService.LogAsync("tenant_provisioned", "tenant", "", new { wizard = true });
+            _tenantsVm?.RefreshCommand.Execute(null);
+            _subscriptionsVm?.RefreshCommand.Execute(null);
+            _licensesVm?.RefreshCommand.Execute(null);
+            _globalUsersVm?.RefreshCommand.Execute(null);
+            NotificationService.Instance.Success("Tenant provisioned via wizard");
+        }
+    }
+
+    private async Task LoadGlobalAdminAuditAsync()
+    {
+        try
+        {
+            var entries = await VM.Repo.GetGlobalAdminAuditAsync();
+            AuditGridPanel.LoadData(entries);
+        }
+        catch (Exception ex) { VM.StatusText = $"Audit log: {ex.Message}"; }
     }
 
     private async Task LoadPlatformDashboardAsync()
@@ -7566,96 +7945,17 @@ public partial class MainWindow
         {
             var (total, active, users, verified, subs) = await VM.Repo.GetPlatformMetricsAsync();
             PlatformDashPanel.UpdateMetrics(total, active, users, verified, subs);
+
+            // Load chart data
+            var tierData = await VM.Repo.GetSubscriptionDistributionAsync();
+            PlatformDashPanel.UpdateTierChart(tierData);
+
+            var usersData = await VM.Repo.GetTopTenantsByUsersAsync();
+            PlatformDashPanel.UpdateUsersByTenantChart(usersData);
+
+            var moduleData = await VM.Repo.GetModuleAdoptionAsync();
+            PlatformDashPanel.UpdateModuleAdoptionChart(moduleData);
         }
         catch (Exception ex) { VM.StatusText = $"Dashboard: {ex.Message}"; }
-    }
-
-    private async Task SuspendSelectedTenantAsync()
-    {
-        if (TenantsGridPanel.Grid.CurrentItem is not Dictionary<string, object?> row) return;
-        if (row.GetValueOrDefault("id") is not Guid id) return;
-        try
-        {
-            await using var conn = new Npgsql.NpgsqlConnection(App.Dsn);
-            await conn.OpenAsync();
-            await using var cmd = new Npgsql.NpgsqlCommand(
-                "UPDATE central_platform.tenants SET is_active = false, updated_at = NOW() WHERE id = @id", conn);
-            cmd.Parameters.AddWithValue("id", id);
-            await cmd.ExecuteNonQueryAsync();
-            await VM.LoadPanelDataAsync("global_tenants", force: true);
-            VM.StatusText = $"Tenant suspended  ·  {DateTime.Now:HH:mm:ss}";
-        }
-        catch (Exception ex) { VM.StatusText = $"Suspend failed: {ex.Message}"; }
-    }
-
-    private async Task ActivateSelectedTenantAsync()
-    {
-        if (TenantsGridPanel.Grid.CurrentItem is not Dictionary<string, object?> row) return;
-        if (row.GetValueOrDefault("id") is not Guid id) return;
-        try
-        {
-            await using var conn = new Npgsql.NpgsqlConnection(App.Dsn);
-            await conn.OpenAsync();
-            await using var cmd = new Npgsql.NpgsqlCommand(
-                "UPDATE central_platform.tenants SET is_active = true, updated_at = NOW() WHERE id = @id", conn);
-            cmd.Parameters.AddWithValue("id", id);
-            await cmd.ExecuteNonQueryAsync();
-            await VM.LoadPanelDataAsync("global_tenants", force: true);
-            VM.StatusText = $"Tenant activated  ·  {DateTime.Now:HH:mm:ss}";
-        }
-        catch (Exception ex) { VM.StatusText = $"Activate failed: {ex.Message}"; }
-    }
-
-    private async Task ProvisionSelectedTenantAsync()
-    {
-        if (TenantsGridPanel.Grid.CurrentItem is not Dictionary<string, object?> row) return;
-        var slug = row.GetValueOrDefault("slug")?.ToString();
-        if (string.IsNullOrEmpty(slug) || slug == "default") return;
-        try
-        {
-            var schemaManager = new Central.Tenancy.TenantSchemaManager(App.Dsn);
-            var migrationsDir = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "migrations");
-            await schemaManager.ProvisionTenantAsync($"tenant_{slug}", migrationsDir);
-            VM.StatusText = $"Schema tenant_{slug} provisioned  ·  {DateTime.Now:HH:mm:ss}";
-        }
-        catch (Exception ex) { VM.StatusText = $"Provision failed: {ex.Message}"; }
-    }
-
-    private async Task ToggleGlobalAdminAsync()
-    {
-        if (GlobalUsersGridPanel.Grid.CurrentItem is not Dictionary<string, object?> row) return;
-        if (row.GetValueOrDefault("id") is not Guid id) return;
-        var current = row.GetValueOrDefault("is_global_admin") is true;
-        try
-        {
-            await using var conn = new Npgsql.NpgsqlConnection(App.Dsn);
-            await conn.OpenAsync();
-            await using var cmd = new Npgsql.NpgsqlCommand(
-                "UPDATE central_platform.global_users SET is_global_admin = @ga WHERE id = @id", conn);
-            cmd.Parameters.AddWithValue("ga", !current);
-            cmd.Parameters.AddWithValue("id", id);
-            await cmd.ExecuteNonQueryAsync();
-            await VM.LoadPanelDataAsync("global_users", force: true);
-            VM.StatusText = $"Global admin {(!current ? "granted" : "revoked")}  ·  {DateTime.Now:HH:mm:ss}";
-        }
-        catch (Exception ex) { VM.StatusText = $"Toggle admin failed: {ex.Message}"; }
-    }
-
-    private async Task RevokeSelectedLicenseAsync()
-    {
-        if (LicensesGridPanel.Grid.CurrentItem is not Dictionary<string, object?> row) return;
-        if (row.GetValueOrDefault("id") is not int id) return;
-        try
-        {
-            await using var conn = new Npgsql.NpgsqlConnection(App.Dsn);
-            await conn.OpenAsync();
-            await using var cmd = new Npgsql.NpgsqlCommand(
-                "DELETE FROM central_platform.tenant_module_licenses WHERE id = @id", conn);
-            cmd.Parameters.AddWithValue("id", id);
-            await cmd.ExecuteNonQueryAsync();
-            await VM.LoadPanelDataAsync("global_licenses", force: true);
-            VM.StatusText = $"License revoked  ·  {DateTime.Now:HH:mm:ss}";
-        }
-        catch (Exception ex) { VM.StatusText = $"Revoke failed: {ex.Message}"; }
     }
 }

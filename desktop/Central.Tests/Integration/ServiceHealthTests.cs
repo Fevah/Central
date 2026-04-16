@@ -1,4 +1,5 @@
 using System.Net.Http;
+using Npgsql;
 using Xunit;
 
 namespace Central.Tests.Integration;
@@ -36,6 +37,53 @@ public class ServiceHealthTests
             Assert.Fail($"{url} timed out after {timeoutSeconds}s — service may be hung");
         }
     }
+
+    // ── Database connectivity ──
+
+    [Fact]
+    public async Task PostgreSQL_IsReachable()
+    {
+        if (Skip) return;
+        var dsn = Environment.GetEnvironmentVariable("CENTRAL_DSN")
+            ?? "Host=127.0.0.1;Port=5432;Database=central;Username=central;Password=central;Timeout=5";
+        await using var conn = new NpgsqlConnection(dsn);
+        try
+        {
+            await conn.OpenAsync();
+            await using var cmd = new NpgsqlCommand("SELECT count(*) FROM switches", conn);
+            var count = (long)(await cmd.ExecuteScalarAsync())!;
+            Assert.True(count >= 0, "switches table query returned negative count");
+        }
+        catch (NpgsqlException ex)
+        {
+            Assert.Fail($"PostgreSQL unreachable: {ex.Message}");
+        }
+        catch (TimeoutException)
+        {
+            Assert.Fail("PostgreSQL connection timed out");
+        }
+    }
+
+    [Fact]
+    public async Task SecureAuth_IsReachable()
+    {
+        if (Skip) return;
+        var dsn = Environment.GetEnvironmentVariable("AUTH_DSN")
+            ?? "Host=127.0.0.1;Port=5432;Database=secure_auth;Username=central;Password=central;Timeout=5";
+        await using var conn = new NpgsqlConnection(dsn);
+        try
+        {
+            await conn.OpenAsync();
+            await using var cmd = new NpgsqlCommand("SELECT 1", conn);
+            await cmd.ExecuteScalarAsync();
+        }
+        catch (NpgsqlException ex)
+        {
+            Assert.Fail($"secure_auth DB unreachable: {ex.Message}");
+        }
+    }
+
+    // ── HTTP service endpoints ──
 
     [Fact]
     public Task CentralApi_IsReachable() =>

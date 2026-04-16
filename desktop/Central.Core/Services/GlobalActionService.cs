@@ -35,9 +35,9 @@ public sealed class GlobalActionService : INotifyPropertyChanged
     /// <summary>
     /// Back-compat alias for <see cref="ActionAdd"/>. Kept so any callers that
     /// referenced "new" continue to resolve — the canonical term is "add"
-    /// (matches <c>ListViewModelBase.AddCommand</c> and legacy ribbon_items rows).
+    /// (matches <c>IActionTarget.AddCommand</c> and legacy ribbon_items rows).
     /// </summary>
-    [Obsolete("Use ActionAdd — the canonical term is 'add', matching ListViewModelBase.AddCommand and existing ribbon_items rows.")]
+    [Obsolete("Use ActionAdd — the canonical term is 'add', matching IActionTarget.AddCommand and existing ribbon_items rows.")]
     public const string ActionNew = ActionAdd;
 
     public static readonly string[] AllActions =
@@ -48,14 +48,14 @@ public sealed class GlobalActionService : INotifyPropertyChanged
 
     public static GlobalActionService Instance { get; } = new();
 
-    private Func<ListViewModelBase?>? _activeVmResolver;
+    private Func<IActionTarget?>? _activeVmResolver;
     private Func<string, string, GlobalActionOverride?>? _overrideProvider;
     private Action<string>? _fallbackDispatcher;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
     /// <summary>Called by the shell to tell the service how to find the active panel's VM.</summary>
-    public void SetActiveViewModelResolver(Func<ListViewModelBase?> resolver)
+    public void SetActiveViewModelResolver(Func<IActionTarget?> resolver)
         => _activeVmResolver = resolver;
 
     /// <summary>
@@ -67,7 +67,7 @@ public sealed class GlobalActionService : INotifyPropertyChanged
 
     /// <summary>
     /// Shell-supplied fallback dispatcher invoked when the active panel doesn't
-    /// expose a <see cref="ListViewModelBase"/> — typical for UserControl panels
+    /// expose a <see cref="IActionTarget"/> — typical for UserControl panels
     /// that drive a DevExpress grid directly. The fallback is responsible for
     /// the legacy dispatch (view.AddNewRow(), DeleteFocusedRow(), etc.).
     /// </summary>
@@ -90,7 +90,7 @@ public sealed class GlobalActionService : INotifyPropertyChanged
         var vm = _activeVmResolver?.Invoke();
         if (vm != null)
         {
-            var cmd = ResolveCommand(vm, actionKey);
+            var cmd = vm.GetActionCommand(actionKey);
             if (cmd != null && cmd.CanExecute(null))
             {
                 cmd.Execute(null);
@@ -112,21 +112,8 @@ public sealed class GlobalActionService : INotifyPropertyChanged
     public ICommand? ResolveCommand(string actionKey)
     {
         var vm = _activeVmResolver?.Invoke();
-        return vm == null ? null : ResolveCommand(vm, actionKey);
+        return vm?.GetActionCommand(actionKey);
     }
-
-    private static ICommand? ResolveCommand(ListViewModelBase vm, string actionKey) => actionKey switch
-    {
-        ActionAdd       => vm.AddCommand,
-        ActionEdit      => vm.EditCommand,
-        ActionDelete    => vm.DeleteCommand,
-        ActionDuplicate => vm.DuplicateCommand,
-        ActionRefresh   => vm.RefreshCommand,
-        ActionExport    => vm.ExportCommand,
-        ActionUndo      => vm.UndoCommand,
-        ActionRedo      => vm.RedoCommand,
-        _               => null
-    };
 
     // ── Icon / visibility / tooltip resolution ──────────────────────────
 

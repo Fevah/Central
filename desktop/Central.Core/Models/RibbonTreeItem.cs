@@ -48,6 +48,32 @@ public class RibbonTreeItem : INotifyPropertyChanged
     /// <summary>Link target: 'panel:PanelName', 'url:https://...', 'action:ActionKey', 'page:PageName'</summary>
     public string? LinkTarget { get => _linkTarget; set { _linkTarget = value; N(); } }
 
+    // Extended extras fields (JSONB round-trip via RibbonTreeItemExtras)
+    private string? _tooltip;
+    private string? _keyTip;
+    private string? _glyphSmall;
+    private string? _glyphLarge;
+    private string? _color;
+    private string? _visibilityBinding;
+    private bool _qatPinned;
+    private bool? _isChecked;
+    private string? _dropdownItems;
+    private int? _galleryColumns;
+    private bool _isSynthetic;
+
+    public string? Tooltip { get => _tooltip; set { _tooltip = value; N(); } }
+    public string? KeyTip { get => _keyTip; set { _keyTip = value; N(); } }
+    public string? GlyphSmall { get => _glyphSmall; set { _glyphSmall = value; N(); } }
+    public string? GlyphLarge { get => _glyphLarge; set { _glyphLarge = value; N(); } }
+    public string? Color { get => _color; set { _color = value; N(); } }
+    public string? VisibilityBinding { get => _visibilityBinding; set { _visibilityBinding = value; N(); } }
+    public bool QatPinned { get => _qatPinned; set { _qatPinned = value; N(); } }
+    public bool? IsChecked { get => _isChecked; set { _isChecked = value; N(); } }
+    public string? DropdownItems { get => _dropdownItems; set { _dropdownItems = value; N(); } }
+    public int? GalleryColumns { get => _galleryColumns; set { _galleryColumns = value; N(); } }
+    /// <summary>True for synthetic tree rows (★ Global Actions sections) that don't map to a DB ribbon_items row.</summary>
+    public bool IsSynthetic { get => _isSynthetic; set { _isSynthetic = value; N(); } }
+
     /// <summary>What to display — custom text if set, otherwise default text.</summary>
     public string DisplayText => !string.IsNullOrEmpty(CustomText) ? CustomText : Text;
 

@@ -11,10 +11,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DevExpress.Wpf.Grid" Version="25.2.5" />
-    <PackageReference Include="DevExpress.Wpf.Charts" Version="25.2.5" />
-    <PackageReference Include="DevExpress.Wpf.Gantt" Version="25.2.5" />
-    <PackageReference Include="DevExpress.Wpf.Core" Version="25.2.5" />
+    <PackageReference Include="DevExpress.Wpf.Grid" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Charts" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Gantt" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Core" Version="25.2.6" />
   </ItemGroup>
 
   <ItemGroup>

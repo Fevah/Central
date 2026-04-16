@@ -1,0 +1,33 @@
+<dxc:DXDialogWindow x:Class="Central.Module.GlobalAdmin.Views.Dialogs.AssignPlanDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:dxc="http://schemas.devexpress.com/winfx/2008/xaml/core"
+        xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+        xmlns:dxlc="http://schemas.devexpress.com/winfx/2008/xaml/layoutcontrol"
+        Title="Assign Subscription Plan" Width="420" Height="340"
+        WindowStartupLocation="CenterOwner">
+
+    <dxlc:LayoutControl Orientation="Vertical" Padding="12">
+
+        <dxlc:LayoutItem Label="Tenant">
+            <dxe:TextEdit x:Name="TenantLabel" IsReadOnly="True" />
+        </dxlc:LayoutItem>
+
+        <dxlc:LayoutItem Label="Plan">
+            <dxe:ComboBoxEdit x:Name="PlanCombo" IsTextEditable="False"
+                              DisplayMember="DisplayText" ValueMember="Id" />
+        </dxlc:LayoutItem>
+
+        <dxlc:LayoutItem Label="Status">
+            <dxe:ComboBoxEdit x:Name="StatusCombo" IsTextEditable="False" />
+        </dxlc:LayoutItem>
+
+        <dxlc:LayoutItem Label="Expires">
+            <dxe:DateEdit x:Name="ExpiryDate" NullText="(no expiry)" AllowNullInput="True" />
+        </dxlc:LayoutItem>
+
+        <TextBlock x:Name="PlanDetails" TextWrapping="Wrap" Margin="0,8,0,0"
+                   Foreground="#999" FontSize="12" />
+
+    </dxlc:LayoutControl>
+</dxc:DXDialogWindow>

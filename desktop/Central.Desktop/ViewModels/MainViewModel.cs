@@ -110,6 +110,11 @@ public class MainViewModel : INotifyPropertyChanged
             OnPropertyChanged(nameof(IsLinkPanelActive));
             OnPropertyChanged(nameof(IsSwitchPanelActive));
             OnPropertyChanged(nameof(IsAdminPanelActive));
+            OnPropertyChanged(nameof(IsGlobalAdminPanelActive));
+            OnPropertyChanged(nameof(IsGlobalTenantsPanelActive));
+            OnPropertyChanged(nameof(IsGlobalUsersPanelActive));
+            OnPropertyChanged(nameof(IsGlobalSubsPanelActive));
+            OnPropertyChanged(nameof(IsGlobalLicensesPanelActive));
         }
     }
 
@@ -119,6 +124,14 @@ public class MainViewModel : INotifyPropertyChanged
     public bool IsSwitchPanelActive => ActivePanel == ActivePanel.Switches;
     /// <summary>Context tab visibility — Admin context tab shows for Admin panel.</summary>
     public bool IsAdminPanelActive => ActivePanel == ActivePanel.Admin;
+
+    // Global Admin context tabs — dynamic per active panel
+    public bool IsGlobalAdminPanelActive => ActivePanel is ActivePanel.GlobalTenants or ActivePanel.GlobalUsers
+        or ActivePanel.GlobalSubscriptions or ActivePanel.GlobalLicenses;
+    public bool IsGlobalTenantsPanelActive => ActivePanel == ActivePanel.GlobalTenants;
+    public bool IsGlobalUsersPanelActive => ActivePanel == ActivePanel.GlobalUsers;
+    public bool IsGlobalSubsPanelActive => ActivePanel == ActivePanel.GlobalSubscriptions;
+    public bool IsGlobalLicensesPanelActive => ActivePanel == ActivePanel.GlobalLicenses;
 
     /// <summary>Human-readable name of the active panel for status bar display.</summary>
     public string ActivePanelName => ActivePanel switch

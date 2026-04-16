@@ -1,0 +1,92 @@
+<dxc:DXDialogWindow x:Class="Central.Module.GlobalAdmin.Views.Dialogs.TenantSetupWizard"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:dxc="http://schemas.devexpress.com/winfx/2008/xaml/core"
+        xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+        xmlns:dxlc="http://schemas.devexpress.com/winfx/2008/xaml/layoutcontrol"
+        Title="New Tenant Setup Wizard" Width="550" Height="500"
+        WindowStartupLocation="CenterOwner">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <dxc:DXTabControl x:Name="WizardTabs" Grid.Row="0">
+
+            <!-- Step 1: Tenant Details -->
+            <dxc:DXTabItem Header="1. Tenant">
+                <dxlc:LayoutControl Orientation="Vertical" Padding="16">
+                    <TextBlock Text="Create a new tenant" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" />
+                    <dxlc:LayoutItem Label="Slug (unique ID)">
+                        <dxe:TextEdit x:Name="WizSlug" NullText="my-company" />
+                    </dxlc:LayoutItem>
+                    <dxlc:LayoutItem Label="Display Name">
+                        <dxe:TextEdit x:Name="WizName" NullText="My Company Ltd" />
+                    </dxlc:LayoutItem>
+                    <dxlc:LayoutItem Label="Domain">
+                        <dxe:TextEdit x:Name="WizDomain" NullText="mycompany.com (optional)" />
+                    </dxlc:LayoutItem>
+                    <dxlc:LayoutItem Label="Tier">
+                        <dxe:ComboBoxEdit x:Name="WizTier" IsTextEditable="False" />
+                    </dxlc:LayoutItem>
+                </dxlc:LayoutControl>
+            </dxc:DXTabItem>
+
+            <!-- Step 2: Plan -->
+            <dxc:DXTabItem Header="2. Plan">
+                <dxlc:LayoutControl Orientation="Vertical" Padding="16">
+                    <TextBlock Text="Choose a subscription plan" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" />
+                    <dxe:ListBoxEdit x:Name="WizPlanList" Height="200"
+                                     DisplayMember="DisplayText" ValueMember="Id" SelectionMode="Single" />
+                    <TextBlock x:Name="WizPlanDetails" Foreground="#999" FontSize="12" TextWrapping="Wrap" Margin="0,8,0,0" />
+                </dxlc:LayoutControl>
+            </dxc:DXTabItem>
+
+            <!-- Step 3: Modules -->
+            <dxc:DXTabItem Header="3. Modules">
+                <dxlc:LayoutControl Orientation="Vertical" Padding="16">
+                    <TextBlock Text="Select modules to license" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" />
+                    <dxe:ListBoxEdit x:Name="WizModuleList" Height="250"
+                                     SelectionMode="Multiple"
+                                     DisplayMember="DisplayText" ValueMember="Id" />
+                </dxlc:LayoutControl>
+            </dxc:DXTabItem>
+
+            <!-- Step 4: Admin User -->
+            <dxc:DXTabItem Header="4. Admin">
+                <dxlc:LayoutControl Orientation="Vertical" Padding="16">
+                    <TextBlock Text="Create the first admin user" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" />
+                    <dxlc:LayoutItem Label="Email">
+                        <dxe:TextEdit x:Name="WizAdminEmail" NullText="admin@mycompany.com" />
+                    </dxlc:LayoutItem>
+                    <dxlc:LayoutItem Label="Display Name">
+                        <dxe:TextEdit x:Name="WizAdminName" />
+                    </dxlc:LayoutItem>
+                    <dxlc:LayoutItem Label="Password">
+                        <dxe:PasswordBoxEdit x:Name="WizAdminPassword" />
+                    </dxlc:LayoutItem>
+                </dxlc:LayoutControl>
+            </dxc:DXTabItem>
+
+            <!-- Step 5: Summary -->
+            <dxc:DXTabItem Header="5. Summary">
+                <dxlc:LayoutControl Orientation="Vertical" Padding="16">
+                    <TextBlock Text="Review and provision" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" />
+                    <TextBlock x:Name="WizSummary" TextWrapping="Wrap" FontSize="13" />
+                    <ProgressBar x:Name="WizProgress" Height="20" Margin="0,16,0,0" Visibility="Collapsed" IsIndeterminate="True" />
+                    <TextBlock x:Name="WizStatusMsg" Foreground="#22C55E" FontSize="12" Margin="0,8,0,0" />
+                </dxlc:LayoutControl>
+            </dxc:DXTabItem>
+
+        </dxc:DXTabControl>
+
+        <!-- Navigation buttons -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="16">
+            <Button x:Name="WizBackBtn" Content="Back" Padding="16,6" Margin="0,0,8,0" />
+            <Button x:Name="WizNextBtn" Content="Next" Padding="16,6" Margin="0,0,8,0" />
+            <Button x:Name="WizProvisionBtn" Content="Provision" Padding="16,6" Visibility="Collapsed" />
+        </StackPanel>
+    </Grid>
+</dxc:DXDialogWindow>

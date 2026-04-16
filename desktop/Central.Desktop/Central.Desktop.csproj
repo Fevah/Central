@@ -21,20 +21,20 @@
 
   <ItemGroup>
     <!-- DevExpress WPF -->
-    <PackageReference Include="DevExpress.Wpf.Grid" Version="25.2.5" />
-    <PackageReference Include="DevExpress.Wpf.Ribbon" Version="25.2.5" />
-    <PackageReference Include="DevExpress.Wpf.Docking" Version="25.2.5" />
-    <PackageReference Include="DevExpress.Wpf.Core" Version="25.2.5" />
-    <PackageReference Include="DevExpress.Wpf.Themes.Office2019Colorful" Version="25.2.5" />
-    <PackageReference Include="DevExpress.Wpf.Themes.Office2019DarkGray" Version="25.2.5" />
-    <PackageReference Include="DevExpress.Wpf.Themes.Office2019Black" Version="25.2.5" />
-    <PackageReference Include="DevExpress.Wpf.Themes.Office2019White" Version="25.2.5" />
-    <PackageReference Include="DevExpress.Wpf.Themes.Win11Dark" Version="25.2.5" />
-    <PackageReference Include="DevExpress.Wpf.Themes.Win11Light" Version="25.2.5" />
-    <PackageReference Include="DevExpress.Wpf.Themes.VS2019Dark" Version="25.2.5" />
-    <PackageReference Include="DevExpress.Wpf.Themes.VS2019Light" Version="25.2.5" />
-    <PackageReference Include="DevExpress.Wpf.Themes.VS2019Blue" Version="25.2.5" />
-    <PackageReference Include="DevExpress.Wpf.Diagram" Version="25.2.5" />
+    <PackageReference Include="DevExpress.Wpf.Grid" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Ribbon" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Docking" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Core" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Themes.Office2019Colorful" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Themes.Office2019DarkGray" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Themes.Office2019Black" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Themes.Office2019White" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Themes.Win11Dark" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Themes.Win11Light" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Themes.VS2019Dark" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Themes.VS2019Light" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Themes.VS2019Blue" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Diagram" Version="25.2.6" />
 
     <!-- PostgreSQL + SSH -->
     <PackageReference Include="Npgsql" Version="10.0.2" />

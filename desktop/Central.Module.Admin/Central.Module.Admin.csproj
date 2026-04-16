@@ -13,9 +13,9 @@
     <ProjectReference Include="..\Central.Data\Central.Data.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="DevExpress.Wpf.Grid" Version="25.2.5" />
-    <PackageReference Include="DevExpress.Wpf.Core" Version="25.2.5" />
+    <PackageReference Include="DevExpress.Wpf.Grid" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Core" Version="25.2.6" />
     <!-- DevExpress.Wpf.Scheduler 25.2.5 available — swap to native SchedulerControl when license includes it -->
-    <!-- <PackageReference Include="DevExpress.Wpf.Scheduler" Version="25.2.5" /> -->
+    <!-- <PackageReference Include="DevExpress.Wpf.Scheduler" Version="25.2.6" /> -->
   </ItemGroup>
 </Project>

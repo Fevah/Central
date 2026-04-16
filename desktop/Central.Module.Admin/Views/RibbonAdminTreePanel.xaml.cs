@@ -45,7 +45,10 @@ public partial class RibbonAdminTreePanel : System.Windows.Controls.UserControl
     {
         Items.Clear();
         _nextId = 1;
-        var defaultMap = adminDefaults?.ToDictionary(d => d.ItemKey, d => d, StringComparer.OrdinalIgnoreCase) ?? new();
+        var defaultMap = new Dictionary<string, (string ItemKey, string? Icon, string? Text, bool IsHidden)>(StringComparer.OrdinalIgnoreCase);
+        if (adminDefaults != null)
+            foreach (var d in adminDefaults)
+                defaultMap[d.ItemKey] = d; // last-write-wins for case-insensitive dupes
 
         foreach (var page in pages.OrderBy(p => p.SortOrder))
         {

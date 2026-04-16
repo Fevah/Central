@@ -1000,6 +1000,123 @@
                     </dxr:RibbonPageGroup>
                 </dxr:RibbonPage>
             </dxr:RibbonPageCategory>
+
+            <!-- Global Admin context tabs — dynamic per active panel -->
+            <dxr:RibbonPageCategory x:Name="GlobalAdminContextCategory" Caption="Platform"
+                                     Color="#4CAF50" IsVisible="{Binding IsGlobalAdminPanelActive}">
+
+                <!-- Tenant Actions — visible when Tenants grid is active -->
+                <dxr:RibbonPage Caption="Tenant Actions" IsVisible="{Binding IsGlobalTenantsPanelActive}">
+                    <dxr:RibbonPageGroup Caption="Tenant">
+                        <dxb:BarButtonItem x:Name="GATenantNewBtn" Content="New Tenant"
+                                           Glyph="{dx:DXImage 'SvgImages/Actions/New.svg'}"
+                                           RibbonStyle="Large" />
+                        <dxb:BarButtonItem x:Name="GATenantEditBtn" Content="Edit"
+                                           Glyph="{dx:DXImage 'SvgImages/Actions/Edit.svg'}"
+                                           RibbonStyle="SmallWithText" />
+                        <dxb:BarButtonItem x:Name="GATenantDeleteBtn" Content="Delete"
+                                           Glyph="{dx:DXImage 'SvgImages/Actions/Delete.svg'}"
+                                           RibbonStyle="SmallWithText" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Operations">
+                        <dxb:BarButtonItem x:Name="GATenantSuspendBtn" Content="Suspend"
+                                           Glyph="{dx:DXImage 'SvgImages/Scheduling/PauseCircled.svg'}"
+                                           RibbonStyle="SmallWithText" />
+                        <dxb:BarButtonItem x:Name="GATenantActivateBtn" Content="Activate"
+                                           Glyph="{dx:DXImage 'SvgImages/Scheduling/PlayCircled.svg'}"
+                                           RibbonStyle="SmallWithText" />
+                        <dxb:BarButtonItem x:Name="GATenantProvisionBtn" Content="Provision Schema"
+                                           Glyph="{dx:DXImage 'SvgImages/Setup/ManageRelations.svg'}"
+                                           RibbonStyle="SmallWithText" />
+                        <dxb:BarButtonItem x:Name="GATenantWizardBtn" Content="Setup Wizard"
+                                           Glyph="{dx:DXImage 'SvgImages/Wizards/Wizard.svg'}"
+                                           RibbonStyle="Large" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Data">
+                        <dxb:BarButtonItem x:Name="GATenantRefreshBtn" Content="Refresh"
+                                           Glyph="{dx:DXImage 'SvgImages/Actions/Refresh.svg'}"
+                                           RibbonStyle="SmallWithText" />
+                        <dxb:BarButtonItem x:Name="GATenantExportBtn" Content="Export"
+                                           Glyph="{dx:DXImage 'SvgImages/Export/ExportToXLS.svg'}"
+                                           RibbonStyle="SmallWithText" />
+                    </dxr:RibbonPageGroup>
+                </dxr:RibbonPage>
+
+                <!-- User Actions — visible when Global Users grid is active -->
+                <dxr:RibbonPage Caption="User Actions" IsVisible="{Binding IsGlobalUsersPanelActive}">
+                    <dxr:RibbonPageGroup Caption="Users">
+                        <dxb:BarButtonItem x:Name="GAUserInviteBtn" Content="Invite User"
+                                           Glyph="{dx:DXImage 'SvgImages/Actions/New.svg'}"
+                                           RibbonStyle="Large" />
+                        <dxb:BarButtonItem x:Name="GAUserEditBtn" Content="Edit"
+                                           Glyph="{dx:DXImage 'SvgImages/Actions/Edit.svg'}"
+                                           RibbonStyle="SmallWithText" />
+                        <dxb:BarButtonItem x:Name="GAUserDeleteBtn" Content="Remove"
+                                           Glyph="{dx:DXImage 'SvgImages/Actions/Delete.svg'}"
+                                           RibbonStyle="SmallWithText" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Operations">
+                        <dxb:BarButtonItem x:Name="GAUserToggleAdminBtn" Content="Toggle Admin"
+                                           Glyph="{dx:DXImage 'SvgImages/Business Objects/BOPermission.svg'}"
+                                           RibbonStyle="SmallWithText" />
+                        <dxb:BarButtonItem x:Name="GAUserResetPwdBtn" Content="Reset Password"
+                                           Glyph="{dx:DXImage 'SvgImages/Actions/Reset.svg'}"
+                                           RibbonStyle="SmallWithText" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Data">
+                        <dxb:BarButtonItem x:Name="GAUserRefreshBtn" Content="Refresh"
+                                           Glyph="{dx:DXImage 'SvgImages/Actions/Refresh.svg'}"
+                                           RibbonStyle="SmallWithText" />
+                        <dxb:BarButtonItem x:Name="GAUserExportBtn" Content="Export"
+                                           Glyph="{dx:DXImage 'SvgImages/Export/ExportToXLS.svg'}"
+                                           RibbonStyle="SmallWithText" />
+                    </dxr:RibbonPageGroup>
+                </dxr:RibbonPage>
+
+                <!-- Subscription Actions — visible when Subscriptions grid is active -->
+                <dxr:RibbonPage Caption="Subscription Actions" IsVisible="{Binding IsGlobalSubsPanelActive}">
+                    <dxr:RibbonPageGroup Caption="Subscriptions">
+                        <dxb:BarButtonItem x:Name="GASubAssignBtn" Content="Assign Plan"
+                                           Glyph="{dx:DXImage 'SvgImages/Actions/New.svg'}"
+                                           RibbonStyle="Large" />
+                        <dxb:BarButtonItem x:Name="GASubChangePlanBtn" Content="Change Plan"
+                                           Glyph="{dx:DXImage 'SvgImages/Actions/Edit.svg'}"
+                                           RibbonStyle="SmallWithText" />
+                        <dxb:BarButtonItem x:Name="GASubCancelBtn" Content="Cancel"
+                                           Glyph="{dx:DXImage 'SvgImages/Actions/Delete.svg'}"
+                                           RibbonStyle="SmallWithText" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Data">
+                        <dxb:BarButtonItem x:Name="GASubRefreshBtn" Content="Refresh"
+                                           Glyph="{dx:DXImage 'SvgImages/Actions/Refresh.svg'}"
+                                           RibbonStyle="SmallWithText" />
+                        <dxb:BarButtonItem x:Name="GASubExportBtn" Content="Export"
+                                           Glyph="{dx:DXImage 'SvgImages/Export/ExportToXLS.svg'}"
+                                           RibbonStyle="SmallWithText" />
+                    </dxr:RibbonPageGroup>
+                </dxr:RibbonPage>
+
+                <!-- License Actions — visible when Module Licenses grid is active -->
+                <dxr:RibbonPage Caption="License Actions" IsVisible="{Binding IsGlobalLicensesPanelActive}">
+                    <dxr:RibbonPageGroup Caption="Licensing">
+                        <dxb:BarButtonItem x:Name="GALicGrantBtn" Content="Grant Module"
+                                           Glyph="{dx:DXImage 'SvgImages/Actions/New.svg'}"
+                                           RibbonStyle="Large" />
+                        <dxb:BarButtonItem x:Name="GALicRevokeBtn" Content="Revoke"
+                                           Glyph="{dx:DXImage 'SvgImages/Actions/Delete.svg'}"
+                                           RibbonStyle="SmallWithText" />
+                    </dxr:RibbonPageGroup>
+                    <dxr:RibbonPageGroup Caption="Data">
+                        <dxb:BarButtonItem x:Name="GALicRefreshBtn" Content="Refresh"
+                                           Glyph="{dx:DXImage 'SvgImages/Actions/Refresh.svg'}"
+                                           RibbonStyle="SmallWithText" />
+                        <dxb:BarButtonItem x:Name="GALicExportBtn" Content="Export"
+                                           Glyph="{dx:DXImage 'SvgImages/Export/ExportToXLS.svg'}"
+                                           RibbonStyle="SmallWithText" />
+                    </dxr:RibbonPageGroup>
+                </dxr:RibbonPage>
+
+            </dxr:RibbonPageCategory>
         </dxr:RibbonControl>
 
         <!-- ═══════════════════════════════════════════════ DOCK LAYOUT ═══ -->
@@ -1660,6 +1777,13 @@
                                         AllowClose="True"
                                         ClosingBehavior="HideToClosedPanelsCollection">
                         <gaViews:PlatformDashboardPanel x:Name="PlatformDashPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <dxdo:DocumentPanel x:Name="GlobalAdminAuditPanel"
+                                        Caption="Admin Audit Log"
+                                        AllowClose="True"
+                                        ClosingBehavior="HideToClosedPanelsCollection">
+                        <gaViews:GlobalAdminAuditPanel x:Name="AuditGridPanel" />
                     </dxdo:DocumentPanel>
 
                 </dxdo:DocumentGroup>

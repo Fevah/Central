@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Reflection;
 using System.Text;
 using System.Windows;
+using System.Windows.Input;
 using Central.Core.Auth;
 using Central.Core.Commands;
 using Central.Core.Models;
@@ -25,7 +26,7 @@ namespace Central.Core.Widgets;
 /// Adapted for Npgsql (no XPO, no facades). Engine-first: every grid gets
 /// enterprise features for free.
 /// </summary>
-public abstract class ListViewModelBase<T> : WidgetViewModelBase where T : class, new()
+public abstract class ListViewModelBase<T> : WidgetViewModelBase, IActionTarget where T : class, new()
 {
     // ── Collections ──
 
@@ -89,6 +90,18 @@ public abstract class ListViewModelBase<T> : WidgetViewModelBase where T : class
 
     [WidgetCommand("Export {TypePlural}", "Data", "Export to clipboard/CSV")]
     public AsyncRelayCommand ExportCommand { get; }
+
+    // ── IActionTarget ──
+
+    ICommand? IActionTarget.GetActionCommand(string actionKey) => actionKey switch
+    {
+        GlobalActionService.ActionAdd       => AddCommand,
+        GlobalActionService.ActionDelete    => DeleteCommand,
+        GlobalActionService.ActionDuplicate => DuplicateCommand,
+        GlobalActionService.ActionRefresh   => RefreshCommand,
+        GlobalActionService.ActionExport    => ExportCommand,
+        _ => null
+    };
 
     // ── Constructor ──
 

@@ -5,7 +5,11 @@ namespace Central.Module.GlobalAdmin;
 /// <summary>
 /// Global Admin module — platform-level management above per-tenant Admin.
 /// Manages: tenants, global users, subscriptions, module licenses, platform health.
-/// Only visible to users with is_global_admin = true.
+/// Only visible to users with global_admin:read permission.
+///
+/// Action buttons live in XAML context tabs (GlobalAdminContextCategory in MainWindow.xaml)
+/// that appear/disappear based on which panel is active. This static page provides only
+/// the panel toggle buttons and a Refresh All.
 /// </summary>
 public class GlobalAdminModule : IModule, IModuleRibbon, IModulePanels
 {
@@ -15,31 +19,8 @@ public class GlobalAdminModule : IModule, IModuleRibbon, IModulePanels
 
     public void RegisterRibbon(IRibbonBuilder ribbon)
     {
-        ribbon.AddPage("Global Admin", SortOrder, page =>
+        ribbon.AddPage("Global Admin", SortOrder, "global_admin:read", page =>
         {
-            page.AddGroup("Tenants", group =>
-            {
-                group.AddButton("New Tenant", null, null, () => { });
-                group.AddButton("Suspend", null, null, () => { });
-                group.AddButton("Activate", null, null, () => { });
-                group.AddSeparator();
-                group.AddButton("Provision Schema", null, null, () => { });
-            });
-
-            page.AddGroup("Users", group =>
-            {
-                group.AddButton("Reset Password", null, null, () => { });
-                group.AddButton("Toggle Admin", null, null, () => { });
-            });
-
-            page.AddGroup("Licensing", group =>
-            {
-                group.AddButton("Grant Module", null, null, () => { });
-                group.AddButton("Revoke Module", null, null, () => { });
-                group.AddSeparator();
-                group.AddButton("Change Plan", null, null, () => { });
-            });
-
             page.AddGroup("Panels", group =>
             {
                 group.AddCheckButton("Tenants", panelId: "GlobalTenantsPanel");
@@ -47,17 +28,18 @@ public class GlobalAdminModule : IModule, IModuleRibbon, IModulePanels
                 group.AddCheckButton("Subscriptions", panelId: "GlobalSubscriptionsPanel");
                 group.AddCheckButton("Module Licenses", panelId: "GlobalLicensesPanel");
                 group.AddCheckButton("Platform Dashboard", panelId: "PlatformDashboardPanel");
+                group.AddCheckButton("Audit Log", panelId: "GlobalAdminAuditPanel");
             });
 
             page.AddGroup("Data", group =>
             {
-                group.AddButton("Refresh", null, null, () => { });
+                group.AddButton("Refresh All", null, null, () => { });
             });
         });
     }
 
     public void RegisterPanels(IPanelBuilder panels)
     {
-        // Panels are created by MainWindow based on panelId check buttons
+        // Panels are defined in MainWindow.xaml and bound to ViewModels in code-behind
     }
 }

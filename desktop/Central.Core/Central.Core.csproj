@@ -23,6 +23,7 @@
     <Compile Remove="Commands\**" />
     <Compile Remove="Shell\RibbonCategoryTemplateSelector.cs" />
     <Compile Remove="Widgets\ListViewModelBase.cs" />
+    <Compile Remove="Widgets\IActionTarget.cs" />
     <Compile Remove="Widgets\WidgetViewModelBase.cs" />
     <Compile Remove="Widgets\RibbonItemModel.cs" />
     <Compile Remove="Widgets\KpiCardBuilder.cs" />
@@ -32,6 +33,12 @@
   <ItemGroup>
     <PackageReference Include="Otp.NET" Version="1.4.0" />
     <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
+  </ItemGroup>
+
+  <!-- Exclude files that depend on WPF-only types when building for plain net10.0 -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <Compile Remove="Services\GlobalActionService.cs" />
   </ItemGroup>
 
 </Project>

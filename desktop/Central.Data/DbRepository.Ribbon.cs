@@ -327,4 +327,24 @@ public partial class DbRepository
         cmd.Parameters.AddWithValue("link", (object?)linkTarget ?? DBNull.Value);
         await cmd.ExecuteNonQueryAsync();
     }
+
+    /// <summary>Load admin ribbon defaults + user overrides for global action icons/visibility.</summary>
+    public async Task<Dictionary<(string Module, string Action), (string? Icon, bool? IsVisible)>> GetGlobalActionOverrideMapAsync(int? userId)
+    {
+        var map = new Dictionary<(string, string), (string?, bool?)>();
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            "SELECT item_key, custom_icon, is_hidden FROM admin_ribbon_defaults WHERE item_key LIKE '%/%'", conn);
+        await using var reader = await cmd.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var key = reader.GetString(0);
+            var parts = key.Split('/', 2);
+            if (parts.Length != 2) continue;
+            var icon = reader.IsDBNull(1) ? null : reader.GetString(1);
+            var hidden = !reader.IsDBNull(2) && reader.GetBoolean(2);
+            map[(parts[0], parts[1])] = (icon, hidden ? false : null);
+        }
+        return map;
+    }
 }

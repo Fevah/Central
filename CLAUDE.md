@@ -4,16 +4,24 @@ Enterprise infrastructure platform — network config, service desk, IT operatio
 Desktop app builds as `Central.exe`. All namespaces are `Central.*`.
 Switches run **PicOS 4.6** (FS brand). Config format is set-style CLI.
 
-## DevExpress API Reference
+## DevExpress Development Instructions
 
-When working with DevExpress WPF 25.2 components, **always use the `dxdocs` MCP server**
-to verify class names, property names, and enum values before using them in code.
-This prevents build errors from incorrect API names (e.g., wrong series type names,
-non-existent properties, incorrect enum values). Query `dxdocs` for:
+When working with DevExpress components:
+- Always use the **`dxdocs` MCP server** to search DevExpress documentation
+- Reference specific DevExpress control names
+- Verify class names, property names, and enum values before using them in code
+- This prevents build errors from incorrect API names (e.g., wrong series type names,
+  non-existent properties, incorrect enum values)
+
+Query `dxdocs` for:
 - Chart series types and their properties
 - Grid column/view settings
 - Ribbon control types
 - Any DX API you're unsure about
+
+**MCP server URL**: `https://api.devexpress.com/mcp/docs`
+**NuGet feed**: `https://nuget.devexpress.com/WfTygbMUTRRTBswwwjXlZCPghcbel7RNgz797YAfgXQJG2FIAR/api/v3/index.json`
+**Current version**: 25.2.6
 
 ## Architecture & Build Plan
 
@@ -28,6 +36,7 @@ project structure without updating the architecture doc first.
 | [docs/SERVER_ARCHITECTURE.md](docs/SERVER_ARCHITECTURE.md) | Multi-user server — API, gRPC, SignalR, K8s deployment, background services |
 | [docs/TOTALLINK_PATTERNS.md](docs/TOTALLINK_PATTERNS.md) | TotalLink source patterns — reference implementations for module system, ribbon, CRUD, undo |
 | [docs/FEATURE_TEST_CHECKLIST.md](docs/FEATURE_TEST_CHECKLIST.md) | 1,400+ testable items across 180 sections — every feature manually verifiable |
+| [docs/GLOBALADMIN_BUILDOUT.md](docs/GLOBALADMIN_BUILDOUT.md) | Global Admin 5-phase buildout — tenant CRUD, licensing, subscriptions, setup wizard, audit |
 | [docs/TASKS_BUILDOUT.md](docs/TASKS_BUILDOUT.md) | Task module 11-phase buildout plan (Hansoft/P4 Plan clone) — all phases complete |
 | [docs/MERGE_PLAN.md](docs/MERGE_PLAN.md) | Central + Secure merge — 10 phases, unified auth, API gateway, K8s elastic scaling |
 | [docs/CREDENTIALS.md](docs/CREDENTIALS.md) | All login credentials, DSNs, SSH info, service URLs, K8s access |

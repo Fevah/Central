@@ -13,8 +13,8 @@
     <ProjectReference Include="..\Central.Data\Central.Data.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="DevExpress.Wpf.Grid" Version="25.2.5" />
-    <PackageReference Include="DevExpress.Wpf.Core" Version="25.2.5" />
-    <PackageReference Include="DevExpress.Wpf.Diagram" Version="25.2.5" />
+    <PackageReference Include="DevExpress.Wpf.Grid" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Core" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Diagram" Version="25.2.6" />
   </ItemGroup>
 </Project>
