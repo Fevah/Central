@@ -1,0 +1,56 @@
+{
+  // ── Remote Development: Auto-forwarded ports ──
+  // When connecting via VS Code Remote Tunnel, these ports are automatically
+  // forwarded through the encrypted tunnel to your local machine.
+  //
+  // Access remotely as localhost:<port> on your connecting machine.
+  "remote.autoForwardPorts": true,
+  "remote.autoForwardPortsSource": "process",
+
+  // Ports that should always be forwarded when tunnel is active
+  "remote.portsAttributes": {
+    // PostgreSQL — connect from remote as localhost:5432
+    "5432": {
+      "label": "PostgreSQL (central)",
+      "onAutoForward": "silent",
+      "requireLocalPort": true,
+      "protocol": "tcp"
+    },
+    // Redis
+    "6379": {
+      "label": "Redis",
+      "onAutoForward": "silent",
+      "protocol": "tcp"
+    },
+    // Central API
+    "5000": {
+      "label": "Central API",
+      "onAutoForward": "silent",
+      "protocol": "http"
+    },
+    // FastAPI web app
+    "8080": {
+      "label": "FastAPI Web App",
+      "onAutoForward": "notify",
+      "protocol": "http"
+    },
+    // Auth service
+    "8081": {
+      "label": "Auth Service",
+      "onAutoForward": "silent",
+      "protocol": "http"
+    },
+    // Angular dev server
+    "4200": {
+      "label": "Angular Dev Server",
+      "onAutoForward": "notify",
+      "protocol": "http"
+    }
+  },
+
+  // Don't auto-forward noisy system ports
+  "remote.autoForwardPortsFallback": 0,
+  "remote.otherPortsAttributes": {
+    "onAutoForward": "ignore"
+  }
+}

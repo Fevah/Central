@@ -1,6 +1,21 @@
 # Central Platform — Credentials & Access
 
-Last updated: 2026-03-30
+Last updated: 2026-04-16
+
+---
+
+## Security Model
+
+**Credentials are stored in environment variables, NOT in source code.**
+
+On the host machine (UK-Fevah), credentials are set as persistent user-level env vars:
+- `CENTRAL_DSN` — PostgreSQL connection string
+- `AUTH_DSN` — Auth database connection string
+- `REDIS_PASSWORD` — Redis auth password
+- `CENTRAL_PG_PASSWORD` — Raw PG password for setup.sh
+
+**Remote access** is via VS Code Remote Tunnels (encrypted, Microsoft-authenticated).
+DB/API ports are forwarded through the tunnel — never exposed directly to the network.
 
 ---
 
@@ -8,12 +23,41 @@ Last updated: 2026-03-30
 
 | What | User/Email | Password | URL/Host |
 |------|-----------|----------|----------|
-| **WPF Desktop** | (Windows auto-login) | (none needed) | DSN below |
+| **WPF Desktop** | (Windows auto-login) | (none needed) | `$CENTRAL_DSN` |
 | **Angular Web** | centraladmin@central.local | Central-Adm1n-2026! | http://localhost:4200 |
 | **FastAPI Web** | admin | admin | http://localhost:8080 |
-| **API Swagger** | (no auth for /swagger) | — | http://192.168.56.200:5000/swagger |
-| **PostgreSQL** | central | central | 192.168.56.10:30432 |
+| **API Swagger** | (no auth for /swagger) | — | http://localhost:5000/swagger |
+| **PostgreSQL** | central | `$CENTRAL_PG_PASSWORD` | localhost:5432 (tunnel) |
+| **Redis** | — | `$REDIS_PASSWORD` | localhost:6379 |
 | **Switch SSH** | root | admin123 | management IPs below |
+
+---
+
+## Remote Development Access
+
+**Method: VS Code Remote Tunnels (recommended)**
+
+The host machine runs a VS Code tunnel service named `uk-fevah`.
+Connect from any machine:
+
+1. VS Code Desktop → "Remote Tunnels: Connect to Tunnel" → `uk-fevah`
+2. Browser → https://vscode.dev → "Remote Tunnels: Connect to Tunnel" → `uk-fevah`
+
+Once connected, these ports are auto-forwarded to your local machine:
+| Port | Service | Auto-Forward |
+|------|---------|-------------|
+| 5432 | PostgreSQL | Silent |
+| 6379 | Redis | Silent |
+| 5000 | Central API | Silent |
+| 8080 | FastAPI | Notify |
+| 8081 | Auth Service | Silent |
+| 4200 | Angular Dev | Notify |
+
+**Connect to PG from remote machine** (after tunnel):
+```
+psql -h localhost -p 5432 -U central -d central
+# Password: from $CENTRAL_PG_PASSWORD env var on host
+```
 
 ---
 
@@ -21,7 +65,7 @@ Last updated: 2026-03-30
 
 **Launch:**
 ```powershell
-$env:CENTRAL_DSN = "Host=192.168.56.10;Port=30432;Database=central;Username=central;Password=central"
+# CENTRAL_DSN is already set as a persistent env var
 desktop\Central.Desktop\bin\x64\Release\net10.0-windows\Central.exe
 ```
 

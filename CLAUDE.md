@@ -333,7 +333,7 @@ infra/
 **Write DSN**: `postgresql://central:central@192.168.56.201:5432/central`
 **Read DSN**: `postgresql://central:central@192.168.56.202:5432/central`
 **Auth DSN**: `postgresql://central:central@192.168.56.201:5432/secure_auth`
-**Desktop DSN**: `Host=192.168.56.201;Port=5432;Database=central;Username=central;Password=central`
+**Desktop DSN**: Set via `CENTRAL_DSN` environment variable (see docs/CREDENTIALS.md)
 
 Schema file: [db/schema.sql](db/schema.sql)
 
