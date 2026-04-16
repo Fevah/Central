@@ -125,11 +125,12 @@ public partial class App : System.Windows.Application
 
             // ── Infrastructure ──
             splash.UpdateStatus("Connecting to database...", 10);
+            // Read DSN from env var (set as persistent user env var on host)
+            // Falls back to reading the password from CENTRAL_PG_PASSWORD env var
             Dsn = Environment.GetEnvironmentVariable("CENTRAL_DSN")
-                ?? Environment.GetEnvironmentVariable("CENTRAL_DSN")
-                ?? "Host=127.0.0.1;Port=5432;Database=central;Username=central;Password=central";
-            if (Environment.GetEnvironmentVariable("CENTRAL_DSN") == null && Environment.GetEnvironmentVariable("CENTRAL_DSN") == null)
-                Log("WARNING: No CENTRAL_DSN or CENTRAL_DSN env var set — using localhost default");
+                ?? $"Host=127.0.0.1;Port=5432;Database=central;Username=central;Password={Environment.GetEnvironmentVariable("CENTRAL_PG_PASSWORD") ?? "central"};Timeout=5";
+            if (Environment.GetEnvironmentVariable("CENTRAL_DSN") == null)
+                Log("WARNING: No CENTRAL_DSN env var set — using localhost default with CENTRAL_PG_PASSWORD");
             Connectivity = new ConnectivityManager(Dsn, connectTimeoutSeconds: 5);
             var repo = new DbRepository(Dsn);
             AppLogger.Init(repo);

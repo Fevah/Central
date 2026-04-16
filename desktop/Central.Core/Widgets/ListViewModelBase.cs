@@ -185,11 +185,30 @@ public abstract class ListViewModelBase<T> : WidgetViewModelBase, IActionTarget 
         IsLoading = true;
         try
         {
-            var data = await LoadItemsAsync();
-            Items.Clear();
-            foreach (var item in data) Items.Add(item);
-            ItemCount = Items.Count;
-            StatusText = $"{Items.Count} {TypeNamePlural} loaded";
+            var data = await Task.Run(() => LoadItemsAsync());
+            // Dispatch collection updates to UI thread
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.Invoke(() =>
+                {
+                    Items.Clear();
+                    foreach (var item in data) Items.Add(item);
+                    ItemCount = Items.Count;
+                    StatusText = $"{Items.Count} {TypeNamePlural} loaded";
+                });
+            }
+            else
+            {
+                Items.Clear();
+                foreach (var item in data) Items.Add(item);
+                ItemCount = Items.Count;
+                StatusText = $"{Items.Count} {TypeNamePlural} loaded";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusText = $"Refresh failed: {ex.Message}";
         }
         finally
         {
