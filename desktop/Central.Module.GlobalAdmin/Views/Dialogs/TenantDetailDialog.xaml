@@ -71,6 +71,38 @@
                     </dxg:GridControl.Columns>
                 </dxg:GridControl>
             </dxc:DXTabItem>
+            <dxc:DXTabItem Header="Addresses">
+                <dxg:GridControl x:Name="AddressesGrid" AutoGenerateColumns="None">
+                    <dxg:GridControl.View>
+                        <dxg:TableView ShowGroupPanel="False" AllowEditing="True" ShowAutoFilterRow="False"
+                                       NewItemRowPosition="Top" />
+                    </dxg:GridControl.View>
+                    <dxg:GridControl.Columns>
+                        <dxg:GridColumn FieldName="AddressType" Header="Type" Width="90" />
+                        <dxg:GridColumn FieldName="Label" Header="Label" Width="100" />
+                        <dxg:GridColumn FieldName="Line1" Header="Line 1" Width="180" />
+                        <dxg:GridColumn FieldName="Line2" Header="Line 2" Width="120" />
+                        <dxg:GridColumn FieldName="City" Header="City" Width="120" />
+                        <dxg:GridColumn FieldName="State" Header="State" Width="80" />
+                        <dxg:GridColumn FieldName="PostalCode" Header="Postal" Width="80" />
+                        <dxg:GridColumn FieldName="Country" Header="Country" Width="80" />
+                        <dxg:GridColumn FieldName="IsPrimary" Header="Primary" Width="60" />
+                    </dxg:GridControl.Columns>
+                </dxg:GridControl>
+            </dxc:DXTabItem>
+            <dxc:DXTabItem Header="Contacts">
+                <dxg:GridControl x:Name="ContactsGrid" AutoGenerateColumns="None">
+                    <dxg:GridControl.View>
+                        <dxg:TableView ShowGroupPanel="False" AllowEditing="False" ShowAutoFilterRow="False" />
+                    </dxg:GridControl.View>
+                    <dxg:GridControl.Columns>
+                        <dxg:GridColumn FieldName="ContactName" Header="Name" Width="160" />
+                        <dxg:GridColumn FieldName="ContactEmail" Header="Email" Width="180" />
+                        <dxg:GridColumn FieldName="Role" Header="Role" Width="100" />
+                        <dxg:GridColumn FieldName="IsPrimary" Header="Primary" Width="60" />
+                    </dxg:GridControl.Columns>
+                </dxg:GridControl>
+            </dxc:DXTabItem>
         </dxc:DXTabControl>
 
     </dxlc:LayoutControl>

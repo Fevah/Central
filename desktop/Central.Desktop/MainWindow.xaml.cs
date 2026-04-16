@@ -7772,7 +7772,9 @@ public partial class MainWindow
             var subs = await VM.Repo.GetTenantSubscriptionsAsync(id);
             var lics = await VM.Repo.GetTenantModulesAsync(id);
             var members = await VM.Repo.GetTenantMembersAsync(id);
-            return (subs, lics, members);
+            var addresses = await VM.Repo.GetTenantAddressesAsync(id);
+            var contacts = await VM.Repo.GetTenantContactsAsync(id);
+            return (subs, lics, members, addresses, contacts);
         };
 
         if (dlg.ShowDialogWindow()?.IsDefault == true)

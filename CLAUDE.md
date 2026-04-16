@@ -831,6 +831,9 @@ desktop/Central.Module.Admin/Views/
 | 065_custom_columns.sql | `custom_columns`, `custom_column_permissions`, `task_custom_values` |
 | 066_reports_dashboards.sql | `saved_reports`, `dashboards`, `dashboard_snapshots` |
 | 067_time_activity.sql | `time_entries`, `activity_feed`, `task_views` + `log_task_activity()` auto-trigger |
+| 032_global_admin_audit.sql | `central_platform.global_admin_audit_log` — platform-level audit trail |
+| 033_global_admin_permissions.sql | `global_admin:read/write/delete/provision` permissions |
+| 034_tenant_addresses_contacts.sql | `tenant_addresses` (many-to-one), `contacts` + `tenant_contacts` (many-to-many) |
 
 ## Development Notes
 

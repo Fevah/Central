@@ -11,7 +11,8 @@ public partial class TenantDetailDialog : DXDialogWindow
     public bool IsEditMode { get; }
 
     /// <summary>Delegate to load per-tenant sub-grid data.</summary>
-    public Func<Guid, Task<(List<SubscriptionRecord> Subs, List<ModuleLicenseRecord> Licenses, List<TenantMemberRecord> Members)>>?
+    public Func<Guid, Task<(List<SubscriptionRecord> Subs, List<ModuleLicenseRecord> Licenses,
+        List<TenantMemberRecord> Members, List<TenantAddressRecord> Addresses, List<TenantContactRecord> Contacts)>>?
         LoadTenantDetails { get; set; }
 
     public TenantDetailDialog(TenantRecord tenant, bool isEdit = false)
@@ -42,10 +43,12 @@ public partial class TenantDetailDialog : DXDialogWindow
         if (LoadTenantDetails == null || Tenant.Id == Guid.Empty) return;
         try
         {
-            var (subs, licenses, members) = await LoadTenantDetails(Tenant.Id);
+            var (subs, licenses, members, addresses, contacts) = await LoadTenantDetails(Tenant.Id);
             SubsGrid.ItemsSource = subs;
             LicensesGrid.ItemsSource = licenses;
             MembersGrid.ItemsSource = members;
+            AddressesGrid.ItemsSource = addresses;
+            ContactsGrid.ItemsSource = contacts;
         }
         catch { /* sub-grids are informational — don't block the dialog */ }
     }

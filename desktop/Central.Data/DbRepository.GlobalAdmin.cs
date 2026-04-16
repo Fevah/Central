@@ -546,6 +546,216 @@ public partial class DbRepository
         return list;
     }
 
+    // ── Tenant Addresses (many-to-one) ─────────────────────────────────
+
+    public async Task<List<TenantAddressRecord>> GetTenantAddressesAsync(Guid tenantId)
+    {
+        var list = new List<TenantAddressRecord>();
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            @"SELECT id, tenant_id, address_type, label, line1, line2, city, state, postal_code, country, is_primary
+              FROM central_platform.tenant_addresses WHERE tenant_id=@tid ORDER BY is_primary DESC, address_type", conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        await using var r = await cmd.ExecuteReaderAsync();
+        while (await r.ReadAsync())
+            list.Add(new TenantAddressRecord
+            {
+                Id = r.GetInt32(0), TenantId = r.GetGuid(1), AddressType = r.GetString(2),
+                Label = r.IsDBNull(3) ? null : r.GetString(3), Line1 = r.GetString(4),
+                Line2 = r.IsDBNull(5) ? null : r.GetString(5), City = r.GetString(6),
+                State = r.IsDBNull(7) ? null : r.GetString(7),
+                PostalCode = r.IsDBNull(8) ? null : r.GetString(8),
+                Country = r.GetString(9), IsPrimary = r.GetBoolean(10)
+            });
+        return list;
+    }
+
+    public async Task<int> InsertTenantAddressAsync(TenantAddressRecord addr)
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            @"INSERT INTO central_platform.tenant_addresses (tenant_id, address_type, label, line1, line2, city, state, postal_code, country, is_primary)
+              VALUES (@tid, @type, @label, @l1, @l2, @city, @state, @zip, @country, @primary) RETURNING id", conn);
+        cmd.Parameters.AddWithValue("tid", addr.TenantId);
+        cmd.Parameters.AddWithValue("type", addr.AddressType);
+        cmd.Parameters.AddWithValue("label", (object?)addr.Label ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("l1", addr.Line1);
+        cmd.Parameters.AddWithValue("l2", (object?)addr.Line2 ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("city", addr.City);
+        cmd.Parameters.AddWithValue("state", (object?)addr.State ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("zip", (object?)addr.PostalCode ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("country", addr.Country);
+        cmd.Parameters.AddWithValue("primary", addr.IsPrimary);
+        return (int)(await cmd.ExecuteScalarAsync())!;
+    }
+
+    public async Task UpdateTenantAddressAsync(TenantAddressRecord addr)
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            @"UPDATE central_platform.tenant_addresses
+              SET address_type=@type, label=@label, line1=@l1, line2=@l2, city=@city,
+                  state=@state, postal_code=@zip, country=@country, is_primary=@primary, updated_at=now()
+              WHERE id=@id", conn);
+        cmd.Parameters.AddWithValue("id", addr.Id);
+        cmd.Parameters.AddWithValue("type", addr.AddressType);
+        cmd.Parameters.AddWithValue("label", (object?)addr.Label ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("l1", addr.Line1);
+        cmd.Parameters.AddWithValue("l2", (object?)addr.Line2 ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("city", addr.City);
+        cmd.Parameters.AddWithValue("state", (object?)addr.State ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("zip", (object?)addr.PostalCode ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("country", addr.Country);
+        cmd.Parameters.AddWithValue("primary", addr.IsPrimary);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task DeleteTenantAddressAsync(int addressId)
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("DELETE FROM central_platform.tenant_addresses WHERE id=@id", conn);
+        cmd.Parameters.AddWithValue("id", addressId);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    // ── Contacts (many-to-many via tenant_contacts) ──────────────────────
+
+    public async Task<List<ContactRecord>> GetAllContactsAsync()
+    {
+        var list = new List<ContactRecord>();
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            "SELECT id, first_name, last_name, email, phone, mobile, job_title, company, notes FROM central_platform.contacts ORDER BY last_name, first_name", conn);
+        await using var r = await cmd.ExecuteReaderAsync();
+        while (await r.ReadAsync())
+            list.Add(new ContactRecord
+            {
+                Id = r.GetInt32(0), FirstName = r.GetString(1), LastName = r.GetString(2),
+                Email = r.IsDBNull(3) ? null : r.GetString(3), Phone = r.IsDBNull(4) ? null : r.GetString(4),
+                Mobile = r.IsDBNull(5) ? null : r.GetString(5), JobTitle = r.IsDBNull(6) ? null : r.GetString(6),
+                Company = r.IsDBNull(7) ? null : r.GetString(7), Notes = r.IsDBNull(8) ? null : r.GetString(8)
+            });
+        return list;
+    }
+
+    public async Task<int> InsertContactAsync(ContactRecord contact)
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            @"INSERT INTO central_platform.contacts (first_name, last_name, email, phone, mobile, job_title, company, notes)
+              VALUES (@fn, @ln, @email, @phone, @mobile, @title, @company, @notes) RETURNING id", conn);
+        cmd.Parameters.AddWithValue("fn", contact.FirstName);
+        cmd.Parameters.AddWithValue("ln", contact.LastName);
+        cmd.Parameters.AddWithValue("email", (object?)contact.Email ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("phone", (object?)contact.Phone ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("mobile", (object?)contact.Mobile ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("title", (object?)contact.JobTitle ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("company", (object?)contact.Company ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("notes", (object?)contact.Notes ?? DBNull.Value);
+        return (int)(await cmd.ExecuteScalarAsync())!;
+    }
+
+    public async Task UpdateContactAsync(ContactRecord contact)
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            @"UPDATE central_platform.contacts
+              SET first_name=@fn, last_name=@ln, email=@email, phone=@phone, mobile=@mobile,
+                  job_title=@title, company=@company, notes=@notes, updated_at=now()
+              WHERE id=@id", conn);
+        cmd.Parameters.AddWithValue("id", contact.Id);
+        cmd.Parameters.AddWithValue("fn", contact.FirstName);
+        cmd.Parameters.AddWithValue("ln", contact.LastName);
+        cmd.Parameters.AddWithValue("email", (object?)contact.Email ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("phone", (object?)contact.Phone ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("mobile", (object?)contact.Mobile ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("title", (object?)contact.JobTitle ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("company", (object?)contact.Company ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("notes", (object?)contact.Notes ?? DBNull.Value);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task DeleteContactAsync(int contactId)
+    {
+        await using var conn = await OpenConnectionAsync();
+        // Junction rows cascade-deleted by FK
+        await using var cmd = new NpgsqlCommand("DELETE FROM central_platform.contacts WHERE id=@id", conn);
+        cmd.Parameters.AddWithValue("id", contactId);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    // ── Tenant-Contact junction ──────────────────────────────────────────
+
+    public async Task<List<TenantContactRecord>> GetTenantContactsAsync(Guid tenantId)
+    {
+        var list = new List<TenantContactRecord>();
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            @"SELECT tc.id, tc.tenant_id, tc.contact_id, tc.role, tc.is_primary,
+                     t.slug, c.first_name || ' ' || c.last_name, c.email
+              FROM central_platform.tenant_contacts tc
+              JOIN central_platform.tenants t ON t.id = tc.tenant_id
+              JOIN central_platform.contacts c ON c.id = tc.contact_id
+              WHERE tc.tenant_id = @tid ORDER BY tc.is_primary DESC, tc.role", conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        await using var r = await cmd.ExecuteReaderAsync();
+        while (await r.ReadAsync())
+            list.Add(new TenantContactRecord
+            {
+                Id = r.GetInt32(0), TenantId = r.GetGuid(1), ContactId = r.GetInt32(2),
+                Role = r.GetString(3), IsPrimary = r.GetBoolean(4),
+                TenantSlug = r.GetString(5), ContactName = r.GetString(6),
+                ContactEmail = r.IsDBNull(7) ? null : r.GetString(7)
+            });
+        return list;
+    }
+
+    public async Task<int> AssignContactToTenantAsync(Guid tenantId, int contactId, string role, bool isPrimary = false)
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            @"INSERT INTO central_platform.tenant_contacts (tenant_id, contact_id, role, is_primary)
+              VALUES (@tid, @cid, @role, @primary) ON CONFLICT (tenant_id, contact_id) DO UPDATE SET role=@role, is_primary=@primary
+              RETURNING id", conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        cmd.Parameters.AddWithValue("cid", contactId);
+        cmd.Parameters.AddWithValue("role", role);
+        cmd.Parameters.AddWithValue("primary", isPrimary);
+        return (int)(await cmd.ExecuteScalarAsync())!;
+    }
+
+    public async Task UnassignContactFromTenantAsync(int junctionId)
+    {
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand("DELETE FROM central_platform.tenant_contacts WHERE id=@id", conn);
+        cmd.Parameters.AddWithValue("id", junctionId);
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    public async Task<List<TenantContactRecord>> GetContactTenantsAsync(int contactId)
+    {
+        var list = new List<TenantContactRecord>();
+        await using var conn = await OpenConnectionAsync();
+        await using var cmd = new NpgsqlCommand(
+            @"SELECT tc.id, tc.tenant_id, tc.contact_id, tc.role, tc.is_primary,
+                     t.slug, c.first_name || ' ' || c.last_name, c.email
+              FROM central_platform.tenant_contacts tc
+              JOIN central_platform.tenants t ON t.id = tc.tenant_id
+              JOIN central_platform.contacts c ON c.id = tc.contact_id
+              WHERE tc.contact_id = @cid ORDER BY t.slug", conn);
+        cmd.Parameters.AddWithValue("cid", contactId);
+        await using var r = await cmd.ExecuteReaderAsync();
+        while (await r.ReadAsync())
+            list.Add(new TenantContactRecord
+            {
+                Id = r.GetInt32(0), TenantId = r.GetGuid(1), ContactId = r.GetInt32(2),
+                Role = r.GetString(3), IsPrimary = r.GetBoolean(4),
+                TenantSlug = r.GetString(5), ContactName = r.GetString(6),
+                ContactEmail = r.IsDBNull(7) ? null : r.GetString(7)
+            });
+        return list;
+    }
+
     // ── Global Admin — Legacy Dictionary queries (kept for backward compat) ──
 
     public async Task<List<Dictionary<string, object?>>> GetGlobalTenantsAsync()
