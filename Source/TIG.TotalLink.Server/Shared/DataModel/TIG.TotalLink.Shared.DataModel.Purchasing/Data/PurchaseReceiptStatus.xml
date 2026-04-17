@@ -1,5 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
-<PurchaseReceiptStatuses>
-  <PurchaseReceiptStatus Name="Awaiting QA" IsCompleted="False" />
-  <PurchaseReceiptStatus Name="Completed" IsCompleted="True" />
-</PurchaseReceiptStatuses>

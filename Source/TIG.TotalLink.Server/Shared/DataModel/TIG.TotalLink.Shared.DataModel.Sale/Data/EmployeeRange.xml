@@ -1,7 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
-<EmployeeRanges>
-  <EmployeeRange Name="1-30" />
-  <EmployeeRange Name="31-100" />
-  <EmployeeRange Name="101-500" />
-  <EmployeeRange Name="501+" />
-</EmployeeRanges>

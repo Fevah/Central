@@ -1,9 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
-<Sequences>
-
-  <Sequence Name="Chain" Code="20" NextNumber="1" />
-  <Sequence Name="Company" Code="21" NextNumber="1" />
-  <Sequence Name="Branch" Code="22" NextNumber="1" />
-  <Sequence Name="Person" Code="23" NextNumber="1" />
-
-</Sequences>

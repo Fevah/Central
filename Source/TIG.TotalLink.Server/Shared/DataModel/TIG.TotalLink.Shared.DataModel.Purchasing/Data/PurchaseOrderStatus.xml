@@ -1,9 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
-<PurchaseOrderStatuses>
-  <PurchaseOrderStatus Name="Awaiting Authorization" InTransit="False" IsCompleted="False" />
-  <PurchaseOrderStatus Name="On Order" InTransit="False" IsCompleted="False" />
-  <PurchaseOrderStatus Name="Awaiting Delivery" InTransit="True" IsCompleted="False" />
-  <PurchaseOrderStatus Name="Part Delivered" InTransit="True" IsCompleted="False" />
-  <PurchaseOrderStatus Name="Delivered" InTransit="False" IsCompleted="False" />
-  <PurchaseOrderStatus Name="Completed" InTransit="False" IsCompleted="True" />
-</PurchaseOrderStatuses>

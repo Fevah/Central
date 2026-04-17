@@ -1,7 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
-<SalesOrderStatuses>
-  <SalesOrderStatus Name="Awaiting Release" IsReleased="False" IsCompleted="False" />
-  <SalesOrderStatus Name="Part Released" IsReleased="True" IsCompleted="False" />
-  <SalesOrderStatus Name="Released" IsReleased="True" IsCompleted="False" />
-  <SalesOrderStatus Name="Completed" IsReleased="True" IsCompleted="True" />
-</SalesOrderStatuses>

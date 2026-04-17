@@ -295,24 +295,26 @@ SecureAPP/                              # Rust / Axum / Cargo workspace (7 servi
 web-client/                             # Angular 21 + DevExtreme 25.2 — 6 modules, SSE, auth (COMPLETE)
 ```
 
-### TotalLink Source Reference
+### Legacy TotalLink Source — Removed
 
-The `source/` folder contains the TotalLink WPF client — a mature 20-project DevExpress
-app with Autofac DI, dynamic ribbon, modular architecture. **Read-only reference — do
-not modify.**
+The `source/` folder (TotalLink WPF client + IntegrationServer + TotalLink server,
+97 projects, 1,650 .cs files) was removed on 2026-04-17. Patterns that were borrowed
+into Central are documented in [docs/TOTALLINK_PATTERNS.md](docs/TOTALLINK_PATTERNS.md)
+(module registration, dynamic ribbon, `ListViewModelBase<T>`, detail dialogs,
+entity-VM sync, app context, facade pattern, startup pipeline).
 
-When building new modules, ribbon features, CRUD grids, or dialog patterns, read
-[docs/TOTALLINK_PATTERNS.md](docs/TOTALLINK_PATTERNS.md) first — it documents the
-proven implementations to follow:
-- **Module registration**: `Autofac.Module` + `IModule` scan (AdminModule.cs)
-- **Dynamic ribbon**: `CategoriesSource` binding + `RibbonCategoryTemplateSelector`
-- **Grid CRUD**: `ListViewModelBase<T>` with `[WidgetCommand]` auto-ribbon
-- **Detail dialogs**: `IDetailDialogService.ShowDialog(EditMode, entity)`
-- **Entity-VM sync**: `EntityViewModelBase<T>` + `[SyncFromDataObject]`
-- **App context**: `AppContextViewModel` singleton (auth state, theme, window bounds)
-- **Server facades**: `FacadeBase` dual Data+Method service connection
-- **Change tracking**: `ChangeFactoryEx` + MonitoredUndo
-- **Startup pipeline**: `StartupWorkerManager` → `InitModulesStartupWorker`
+Business logic preserved for future modules lives in:
+- [docs/LEGACY_MIGRATION.md](docs/LEGACY_MIGRATION.md) — tree-by-tree audit + what
+  was discarded and why
+- [docs/REFERENCE_SALES_ORDER_RELEASE.md](docs/REFERENCE_SALES_ORDER_RELEASE.md) —
+  atomic release, partial delivery, bin allocation, locking/retry (for a future
+  Fulfilment module)
+- [docs/REFERENCE_INVENTORY_STOCK_MODEL.md](docs/REFERENCE_INVENTORY_STOCK_MODEL.md) —
+  SKU / PhysicalStock / BinLocation data model (for a future Inventory module)
+- [docs/REFERENCE_WAREHOUSING.md](docs/REFERENCE_WAREHOUSING.md) — warehouse + bin
+  hierarchy, WMS features the legacy lacks, PG schema sketch
+- [docs/REFERENCE_SEQUENCE_GENERATION.md](docs/REFERENCE_SEQUENCE_GENERATION.md) —
+  app-level lock-safe sequence pattern for formatted codes (e.g. `SO-2026-00012`)
 
 ## Project Purpose
 

@@ -1,7 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
-<EnquiryTypes>
-  <EnquiryType Name="I am enquiring for myself only" />
-  <EnquiryType Name="I would like a quote for my team" />
-  <EnquiryType Name="I would like to know more about custom design" />
-  <EnquiryType Name="I am following up an order" />
-</EnquiryTypes>

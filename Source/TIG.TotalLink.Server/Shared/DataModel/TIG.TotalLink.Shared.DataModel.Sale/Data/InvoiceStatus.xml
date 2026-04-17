@@ -1,7 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
-<InvoiceStatuses>
-  <InvoiceStatus Name="Awaiting Dispatch" />
-  <InvoiceStatus Name="Awaiting Payment" />
-  <InvoiceStatus Name="Awaiting Received" />
-  <InvoiceStatus Name="Cancelled" />
-</InvoiceStatuses>

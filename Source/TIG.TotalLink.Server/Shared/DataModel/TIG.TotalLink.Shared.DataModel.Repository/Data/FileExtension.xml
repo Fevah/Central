@@ -1,9 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
-<FileExtensions>
-  <FileExtension Name="doc" />
-  <FileExtension Name="docx" />
-  <FileExtension Name="xls" />
-  <FileExtension Name="xlsx" />
-  <FileExtension Name="jpg" />
-  <FileExtension Name="png" />
-</FileExtensions>

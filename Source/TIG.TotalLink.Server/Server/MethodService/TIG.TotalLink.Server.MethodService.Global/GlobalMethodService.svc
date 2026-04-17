@@ -1,1 +1,0 @@
-﻿<%@ ServiceHost Language="C#" Debug="true" Service="TIG.TotalLink.Server.MethodService.Global.GlobalMethodService" CodeBehind="GlobalMethodService.svc.cs" %>

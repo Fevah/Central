@@ -1,6 +1,0 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
-<PhysicalStockTypes>
-  <PhysicalStockType Name="General" />
-  <PhysicalStockType Name="Seasonal Stock" />
-  <PhysicalStockType Name="Promotional Stock" />
-</PhysicalStockTypes>

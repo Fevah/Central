@@ -1,1 +1,0 @@
-﻿<%@ ServiceHost Language="C#" Debug="true" Service="TIG.TotalLink.Server.MethodService.Repository.RepositoryMethodService" CodeBehind="RepositoryMethodService.svc.cs" %>
