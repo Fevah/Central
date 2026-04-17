@@ -842,7 +842,8 @@ public partial class MainWindow
         {
             HierarchyTreePanel.SetContext(App.Dsn, App.CurrentTenantId,
                 AuthContext.Instance.CurrentUser?.Id);
-            PoolsTreePanel.SetContext(App.Dsn, App.CurrentTenantId);
+            PoolsTreePanel.SetContext(App.Dsn, App.CurrentTenantId,
+                AuthContext.Instance.CurrentUser?.Id);
         }
         await Task.Yield(); // Let splash repaint
         UpdateSplash("Loading ribbon icons...", 95);

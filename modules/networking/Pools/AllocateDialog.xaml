@@ -1,0 +1,106 @@
+<dx:DXWindow x:Class="Central.Module.Networking.Pools.AllocateDialog"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             Title="Allocate"
+             Width="520" Height="520"
+             WindowStartupLocation="CenterOwner"
+             ShowInTaskbar="False">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,12">
+            <TextBlock x:Name="TitleLabel" FontSize="16" FontWeight="SemiBold"/>
+            <TextBlock x:Name="SubtitleLabel" FontSize="11" Foreground="#808080" Margin="0,2,0,0"/>
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- Container picker (block for ASN/VLAN, pool for MLAG, subnet for IP, pool for subnet-carve) -->
+                <TextBlock x:Name="ContainerLabel" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                <dxe:ComboBoxEdit x:Name="ContainerCombo" IsTextEditable="False"
+                                  DisplayMember="DisplayText" ValueMember="Id"
+                                  Margin="0,0,0,8"/>
+
+                <!-- ASN-specific: allocated-to type + id -->
+                <StackPanel x:Name="AsnSection" Visibility="Collapsed">
+                    <TextBlock Text="Allocate to (type)" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <dxe:ComboBoxEdit x:Name="AsnConsumerTypeCombo" IsTextEditable="True"
+                                      Margin="0,0,0,8"/>
+                    <TextBlock Text="Allocate to (entity ID)" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <dxe:TextEdit x:Name="AsnConsumerIdBox" Margin="0,0,0,8"/>
+                </StackPanel>
+
+                <!-- Name / description sections for VLAN + MLAG -->
+                <StackPanel x:Name="NameSection" Visibility="Collapsed">
+                    <TextBlock Text="Display name" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <dxe:TextEdit x:Name="NameBox" Margin="0,0,0,8"/>
+                </StackPanel>
+                <StackPanel x:Name="VlanSection" Visibility="Collapsed">
+                    <TextBlock Text="Description" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <dxe:TextEdit x:Name="DescriptionBox" Margin="0,0,0,8"/>
+                    <TextBlock Text="Template (optional)" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <dxe:ComboBoxEdit x:Name="VlanTemplateCombo" IsTextEditable="False"
+                                      DisplayMember="DisplayText" ValueMember="Id"
+                                      Margin="0,0,0,8"/>
+                </StackPanel>
+                <StackPanel x:Name="ScopeSection" Visibility="Collapsed">
+                    <TextBlock Text="Scope level" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <dxe:ComboBoxEdit x:Name="ScopeLevelCombo" IsTextEditable="False" Margin="0,0,0,8"/>
+                </StackPanel>
+
+                <!-- IP-specific: optional assigned-to -->
+                <StackPanel x:Name="IpSection" Visibility="Collapsed">
+                    <TextBlock Text="Assigned to (type, optional)" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <dxe:ComboBoxEdit x:Name="IpAssignedTypeCombo" IsTextEditable="True"
+                                      Margin="0,0,0,8"/>
+                    <TextBlock Text="Assigned to (entity ID, optional)" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <dxe:TextEdit x:Name="IpAssignedIdBox" Margin="0,0,0,8"/>
+                </StackPanel>
+
+                <!-- Subnet-carve-specific: code + name + prefix length -->
+                <StackPanel x:Name="SubnetCarveSection" Visibility="Collapsed">
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Subnet code" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <dxe:TextEdit x:Name="SubnetCodeBox"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Prefix /N" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <dxe:SpinEdit x:Name="PrefixBox" MinValue="1" MaxValue="32"
+                                          IsFloatValue="False" Width="80"/>
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Text="Display name" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <dxe:TextEdit x:Name="SubnetNameBox" Margin="0,0,0,8"/>
+                </StackPanel>
+
+                <!-- Preview of what will happen -->
+                <Border Background="#1E1E1E" Padding="10" Margin="0,8,0,0" CornerRadius="4">
+                    <StackPanel>
+                        <TextBlock Text="Next free value will be chosen at save." Foreground="#909090"
+                                   FontSize="11"/>
+                        <TextBlock x:Name="HintLabel" Foreground="#707070" FontSize="11"
+                                   Margin="0,2,0,0" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="Cancel" Width="90" Click="Cancel_Click" Margin="0,0,8,0"/>
+            <Button x:Name="AllocateButton" Content="Allocate" Width="100" Click="Allocate_Click"
+                    IsDefault="True"/>
+        </StackPanel>
+    </Grid>
+</dx:DXWindow>

@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using Central.Engine.Net.Pools;
 using Central.Persistence.Net;
+using DevExpress.Xpf.Bars;
+using DevExpress.Xpf.Grid;
 using UserControl = System.Windows.Controls.UserControl;
 
 namespace Central.Module.Networking.Pools;
@@ -29,6 +31,7 @@ public partial class PoolsTreePanel : UserControl
 {
     private string? _dsn;
     private Guid _tenantId;
+    private int? _userId;
     private CancellationTokenSource? _cts;
 
     public PoolsTreePanel()
@@ -36,12 +39,14 @@ public partial class PoolsTreePanel : UserControl
         InitializeComponent();
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
+        TreeView.ShowGridMenu += OnShowGridMenu;
     }
 
-    public void SetContext(string dsn, Guid tenantId)
+    public void SetContext(string dsn, Guid tenantId, int? userId = null)
     {
         _dsn = dsn;
         _tenantId = tenantId;
+        _userId = userId;
         if (IsLoaded) _ = ReloadAsync();
     }
 
@@ -285,5 +290,200 @@ public partial class PoolsTreePanel : UserControl
             list.Add(item);
         }
         return d;
+    }
+
+    // ── Context menu ────────────────────────────────────────────────────
+
+    private void OnShowGridMenu(object? sender, GridMenuEventArgs e)
+    {
+        if (e.MenuType != GridMenuType.RowCell) return;
+        var selected = TreeView.FocusedRow as PoolTreeNode;
+
+        // Root-level actions — always available.
+        e.Customizations.Add(MakeButton("New ASN pool…",  () => _ = OpenNewPoolAsync("AsnPool")));
+        e.Customizations.Add(MakeButton("New IP pool…",   () => _ = OpenNewPoolAsync("IpPool")));
+        e.Customizations.Add(MakeButton("New VLAN pool…", () => _ = OpenNewPoolAsync("VlanPool")));
+        e.Customizations.Add(MakeButton("New MLAG pool…", () => _ = OpenNewPoolAsync("MlagPool")));
+        e.Customizations.Add(MakeButton("New VLAN template…", () => _ = OpenNewPoolAsync("VlanTemplate")));
+
+        if (selected is not null)
+        {
+            e.Customizations.Add(new BarItemLinkSeparator());
+            switch (selected.NodeType)
+            {
+                case "AsnPool":
+                    e.Customizations.Add(MakeButton("New ASN block in this pool…",
+                        () => _ = OpenNewBlockAsync("AsnBlock", selected.EntityId)));
+                    e.Customizations.Add(MakeButton("Edit ASN pool…",
+                        () => _ = OpenEditAsync("AsnPool", selected.EntityId)));
+                    break;
+                case "AsnBlock":
+                    e.Customizations.Add(MakeButton("Allocate ASN from this block…",
+                        () => _ = OpenAllocateAsync(AllocateDialog.AllocKind.Asn, selected.EntityId)));
+                    e.Customizations.Add(MakeButton("Edit ASN block…",
+                        () => _ = OpenEditAsync("AsnBlock", selected.EntityId)));
+                    break;
+                case "IpPool":
+                    e.Customizations.Add(MakeButton("Carve subnet from this pool…",
+                        () => _ = OpenAllocateAsync(AllocateDialog.AllocKind.SubnetCarve, selected.EntityId)));
+                    e.Customizations.Add(MakeButton("Edit IP pool…",
+                        () => _ = OpenEditAsync("IpPool", selected.EntityId)));
+                    break;
+                case "Subnet":
+                    e.Customizations.Add(MakeButton("Allocate IP from this subnet…",
+                        () => _ = OpenAllocateAsync(AllocateDialog.AllocKind.Ip, selected.EntityId)));
+                    break;
+                case "VlanPool":
+                    e.Customizations.Add(MakeButton("New VLAN block in this pool…",
+                        () => _ = OpenNewBlockAsync("VlanBlock", selected.EntityId)));
+                    e.Customizations.Add(MakeButton("Edit VLAN pool…",
+                        () => _ = OpenEditAsync("VlanPool", selected.EntityId)));
+                    break;
+                case "VlanBlock":
+                    e.Customizations.Add(MakeButton("Allocate VLAN from this block…",
+                        () => _ = OpenAllocateAsync(AllocateDialog.AllocKind.Vlan, selected.EntityId)));
+                    break;
+                case "MlagPool":
+                    e.Customizations.Add(MakeButton("Allocate MLAG domain from this pool…",
+                        () => _ = OpenAllocateAsync(AllocateDialog.AllocKind.Mlag, selected.EntityId)));
+                    e.Customizations.Add(MakeButton("Edit MLAG pool…",
+                        () => _ = OpenEditAsync("MlagPool", selected.EntityId)));
+                    break;
+            }
+
+            // Delete for every CRUD-able tier.
+            var deletable = selected.NodeType is "AsnPool" or "AsnBlock" or "IpPool" or "Subnet"
+                or "VlanPool" or "VlanBlock" or "VlanTemplate" or "MlagPool";
+            if (deletable)
+            {
+                e.Customizations.Add(new BarItemLinkSeparator());
+                e.Customizations.Add(MakeButton($"Delete {selected.NodeType.ToLower()}",
+                    () => _ = DeleteAsync(selected)));
+            }
+        }
+    }
+
+    private static BarButtonItem MakeButton(string text, Action onClick)
+    {
+        var btn = new BarButtonItem { Content = text };
+        btn.ItemClick += (_, _) => onClick();
+        return btn;
+    }
+
+    private async Task OpenNewPoolAsync(string nodeType)
+    {
+        if (!EnsureContext()) return;
+        var dlg = nodeType switch
+        {
+            "AsnPool"      => PoolDetailDialog.ForNewAsnPool(_dsn!, _tenantId, _userId),
+            "IpPool"       => PoolDetailDialog.ForNewIpPool(_dsn!, _tenantId, _userId),
+            "VlanPool"     => PoolDetailDialog.ForNewVlanPool(_dsn!, _tenantId, _userId),
+            "MlagPool"     => PoolDetailDialog.ForNewMlagPool(_dsn!, _tenantId, _userId),
+            "VlanTemplate" => PoolDetailDialog.ForNewVlanTemplate(_dsn!, _tenantId, _userId),
+            _              => throw new ArgumentException(nodeType)
+        };
+        dlg.Owner = Window.GetWindow(this);
+        if (dlg.ShowDialog() == true) await ReloadAsync();
+    }
+
+    private async Task OpenNewBlockAsync(string nodeType, Guid parentPoolId)
+    {
+        if (!EnsureContext()) return;
+        PoolDetailDialog dlg = nodeType switch
+        {
+            "AsnBlock"  => await PoolDetailDialog.ForNewAsnBlockAsync(_dsn!, _tenantId, _userId, parentPoolId),
+            "VlanBlock" => await PoolDetailDialog.ForNewVlanBlockAsync(_dsn!, _tenantId, _userId, parentPoolId),
+            _           => throw new ArgumentException(nodeType)
+        };
+        dlg.Owner = Window.GetWindow(this);
+        if (dlg.ShowDialog() == true) await ReloadAsync();
+    }
+
+    private async Task OpenEditAsync(string nodeType, Guid entityId)
+    {
+        if (!EnsureContext()) return;
+        try
+        {
+            var dlg = await PoolDetailDialog.ForEditAsync(_dsn!, _tenantId, _userId, nodeType, entityId);
+            dlg.Owner = Window.GetWindow(this);
+            if (dlg.ShowDialog() == true) await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            DevExpress.Xpf.Core.DXMessageBox.Show(Window.GetWindow(this),
+                ex.Message, "Load failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async Task OpenAllocateAsync(AllocateDialog.AllocKind kind, Guid containerId)
+    {
+        if (!EnsureContext()) return;
+        try
+        {
+            AllocateDialog dlg = kind switch
+            {
+                AllocateDialog.AllocKind.Asn         => await AllocateDialog.ForAsnAsync(_dsn!, _tenantId, _userId, containerId),
+                AllocateDialog.AllocKind.Vlan        => await AllocateDialog.ForVlanAsync(_dsn!, _tenantId, _userId, containerId),
+                AllocateDialog.AllocKind.Mlag        => await AllocateDialog.ForMlagAsync(_dsn!, _tenantId, _userId, containerId),
+                AllocateDialog.AllocKind.Ip          => await AllocateDialog.ForIpAsync(_dsn!, _tenantId, _userId, containerId),
+                AllocateDialog.AllocKind.SubnetCarve => await AllocateDialog.ForSubnetCarveAsync(_dsn!, _tenantId, _userId, containerId),
+                _ => throw new ArgumentException(kind.ToString())
+            };
+            dlg.Owner = Window.GetWindow(this);
+            if (dlg.ShowDialog() == true)
+            {
+                await ReloadAsync();
+                if (!string.IsNullOrEmpty(dlg.AllocatedDisplay))
+                    StatusLabel.Text = $"Allocated {dlg.AllocatedDisplay}";
+            }
+        }
+        catch (Exception ex)
+        {
+            DevExpress.Xpf.Core.DXMessageBox.Show(Window.GetWindow(this),
+                ex.Message, "Allocate failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async Task DeleteAsync(PoolTreeNode node)
+    {
+        if (!EnsureContext()) return;
+
+        var confirm = DevExpress.Xpf.Core.DXMessageBox.Show(
+            Window.GetWindow(this),
+            $"Delete {node.NodeType.ToLower()} '{node.Code}'?\n\n" +
+            "Soft delete — the row is kept in the DB with deleted_at set.",
+            $"Delete {node.NodeType.ToLower()}?",
+            MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.OK) return;
+
+        try
+        {
+            var repo = new PoolsRepository(_dsn!);
+            var ok = node.NodeType switch
+            {
+                "AsnPool"  => await repo.SoftDeleteAsnPoolAsync(node.EntityId, _tenantId, _userId),
+                "AsnBlock" => await repo.SoftDeleteAsnBlockAsync(node.EntityId, _tenantId, _userId),
+                "IpPool"   => await repo.SoftDeleteIpPoolAsync(node.EntityId, _tenantId, _userId),
+                "Subnet"   => await repo.SoftDeleteSubnetAsync(node.EntityId, _tenantId, _userId),
+                _ => throw new NotSupportedException(
+                    $"Delete for {node.NodeType} routes through REST — repo write not shipped yet.")
+            };
+            if (ok) await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            DevExpress.Xpf.Core.DXMessageBox.Show(Window.GetWindow(this),
+                ex.Message, "Delete failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private bool EnsureContext()
+    {
+        if (string.IsNullOrEmpty(_dsn) || _tenantId == Guid.Empty)
+        {
+            StatusLabel.Text = "No tenant context";
+            return false;
+        }
+        return true;
     }
 }
