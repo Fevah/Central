@@ -34,6 +34,9 @@ public partial class HierarchyDetailDialog : DXWindow
     private Region? _region;
     private Site? _site;
     private Building? _building;
+    private Floor? _floor;
+    private Room? _room;
+    private Rack? _rack;
 
     public Guid? SavedId { get; private set; }
 
@@ -93,6 +96,51 @@ public partial class HierarchyDetailDialog : DXWindow
         return dlg;
     }
 
+    public static async Task<HierarchyDetailDialog> ForNewFloorAsync(string dsn, Guid tenantId, int? userId,
+        Guid? presetBuildingId = null)
+    {
+        var dlg = new HierarchyDetailDialog(dsn, tenantId, userId, Mode.New, "Floor");
+        dlg.TitleLabel.Text = "New floor";
+        dlg.SubtitleLabel.Text = "A floor sits inside a building. Use negative numbers for basements.";
+        dlg.FloorSection.Visibility = Visibility.Visible;
+        dlg.ParentLabel.Text = "Building";
+        dlg.ParentSection.Visibility = Visibility.Visible;
+        await dlg.LoadParentBuildingsAsync(presetBuildingId);
+        dlg._floor = new Floor { OrganizationId = tenantId, BuildingId = presetBuildingId ?? Guid.Empty };
+        dlg.LoadFromFloor();
+        return dlg;
+    }
+
+    public static async Task<HierarchyDetailDialog> ForNewRoomAsync(string dsn, Guid tenantId, int? userId,
+        Guid? presetFloorId = null)
+    {
+        var dlg = new HierarchyDetailDialog(dsn, tenantId, userId, Mode.New, "Room");
+        dlg.TitleLabel.Text = "New room";
+        dlg.SubtitleLabel.Text = "A room sits on a floor and holds racks.";
+        dlg.RoomSection.Visibility = Visibility.Visible;
+        dlg.ParentLabel.Text = "Floor";
+        dlg.ParentSection.Visibility = Visibility.Visible;
+        await dlg.LoadParentFloorsAsync(presetFloorId);
+        dlg._room = new Room { OrganizationId = tenantId, FloorId = presetFloorId ?? Guid.Empty };
+        dlg.LoadFromRoom();
+        return dlg;
+    }
+
+    public static async Task<HierarchyDetailDialog> ForNewRackAsync(string dsn, Guid tenantId, int? userId,
+        Guid? presetRoomId = null)
+    {
+        var dlg = new HierarchyDetailDialog(dsn, tenantId, userId, Mode.New, "Rack");
+        dlg.TitleLabel.Text = "New rack";
+        dlg.SubtitleLabel.Text = "A rack sits in a room and holds devices.";
+        dlg.RackSection.Visibility = Visibility.Visible;
+        dlg.ParentLabel.Text = "Room";
+        dlg.ParentSection.Visibility = Visibility.Visible;
+        await dlg.LoadParentRoomsAsync(presetRoomId);
+        dlg._rack = new Rack { OrganizationId = tenantId, RoomId = presetRoomId ?? Guid.Empty };
+        dlg.LoadFromRack();
+        return dlg;
+    }
+
     public static async Task<HierarchyDetailDialog> ForEditAsync(string dsn, Guid tenantId, int? userId,
         string nodeType, Guid entityId)
     {
@@ -123,6 +171,27 @@ public partial class HierarchyDetailDialog : DXWindow
                 dlg.SubtitleLabel.Text = $"Building · v{dlg._building.Version}";
                 dlg.LoadFromBuilding();
                 break;
+            case "Floor":
+                dlg._floor = await repo.GetFloorAsync(entityId, tenantId);
+                if (dlg._floor is null) throw new InvalidOperationException($"Floor {entityId} not found");
+                dlg.FloorSection.Visibility = Visibility.Visible;
+                dlg.SubtitleLabel.Text = $"Floor · v{dlg._floor.Version}";
+                dlg.LoadFromFloor();
+                break;
+            case "Room":
+                dlg._room = await repo.GetRoomAsync(entityId, tenantId);
+                if (dlg._room is null) throw new InvalidOperationException($"Room {entityId} not found");
+                dlg.RoomSection.Visibility = Visibility.Visible;
+                dlg.SubtitleLabel.Text = $"Room · v{dlg._room.Version}";
+                dlg.LoadFromRoom();
+                break;
+            case "Rack":
+                dlg._rack = await repo.GetRackAsync(entityId, tenantId);
+                if (dlg._rack is null) throw new InvalidOperationException($"Rack {entityId} not found");
+                dlg.RackSection.Visibility = Visibility.Visible;
+                dlg.SubtitleLabel.Text = $"Rack · v{dlg._rack.Version}";
+                dlg.LoadFromRack();
+                break;
             default:
                 throw new NotSupportedException($"Editing {nodeType} is not yet supported.");
         }
@@ -139,6 +208,12 @@ public partial class HierarchyDetailDialog : DXWindow
         StatusCombo.ItemsSource = Enum.GetNames<EntityStatus>();
         LockCombo.ItemsSource = Enum.GetNames<LockState>();
         B2bPolicyCombo.ItemsSource = new[] { "None", "FullMesh", "HubAndSpoke" };
+        // Room types are a soft list — operators can type anything, but we
+        // seed the common values so IDF / MDF / DataHall are one click away.
+        RoomTypeCombo.ItemsSource = new[]
+        {
+            "DataHall", "MDF", "IDF", "Office", "Comms", "Plant", "Custom"
+        };
     }
 
     private async Task LoadParentRegionsAsync(Guid? preset)
@@ -157,6 +232,36 @@ public partial class HierarchyDetailDialog : DXWindow
         var sites = await repo.ListSitesAsync(_tenantId, null);
         ParentCombo.ItemsSource = sites
             .Select(s => new ParentOption(s.Id, $"{s.SiteCode} — {s.DisplayName}"))
+            .ToList();
+        if (preset.HasValue) ParentCombo.EditValue = preset.Value;
+    }
+
+    private async Task LoadParentBuildingsAsync(Guid? preset)
+    {
+        var repo = new HierarchyRepository(_dsn);
+        var buildings = await repo.ListBuildingsAsync(_tenantId, null);
+        ParentCombo.ItemsSource = buildings
+            .Select(b => new ParentOption(b.Id, $"{b.BuildingCode} — {b.DisplayName}"))
+            .ToList();
+        if (preset.HasValue) ParentCombo.EditValue = preset.Value;
+    }
+
+    private async Task LoadParentFloorsAsync(Guid? preset)
+    {
+        var repo = new HierarchyRepository(_dsn);
+        var floors = await repo.ListFloorsAsync(_tenantId, null);
+        ParentCombo.ItemsSource = floors
+            .Select(f => new ParentOption(f.Id, $"{f.FloorCode}{(string.IsNullOrEmpty(f.DisplayName) ? "" : " — " + f.DisplayName)}"))
+            .ToList();
+        if (preset.HasValue) ParentCombo.EditValue = preset.Value;
+    }
+
+    private async Task LoadParentRoomsAsync(Guid? preset)
+    {
+        var repo = new HierarchyRepository(_dsn);
+        var rooms = await repo.ListRoomsAsync(_tenantId, null);
+        ParentCombo.ItemsSource = rooms
+            .Select(rm => new ParentOption(rm.Id, $"{rm.RoomCode} ({rm.RoomType})"))
             .ToList();
         if (preset.HasValue) ParentCombo.EditValue = preset.Value;
     }
@@ -202,6 +307,50 @@ public partial class HierarchyDetailDialog : DXWindow
         NotesBox.Text = b.Notes ?? "";
     }
 
+    private void LoadFromFloor()
+    {
+        var f = _floor!;
+        CodeBox.Text = f.FloorCode;
+        NameBox.Text = f.DisplayName ?? "";
+        StatusCombo.EditValue = f.Status.ToString();
+        LockCombo.EditValue = f.LockState.ToString();
+        FloorNumberBox.EditValue = f.FloorNumber ?? 0;
+        FloorMaxRooms.EditValue = f.MaxRooms ?? 0;
+        NotesBox.Text = f.Notes ?? "";
+    }
+
+    private void LoadFromRoom()
+    {
+        var r = _room!;
+        CodeBox.Text = r.RoomCode;
+        // Room has no separate DisplayName — the grid just shows RoomCode.
+        // Repurpose the name box to keep UX consistent (label says "Display name"
+        // but for rooms we treat it as the room type label).
+        NameBox.Text = r.RoomCode;
+        NameBox.IsEnabled = false;
+        StatusCombo.EditValue = r.Status.ToString();
+        LockCombo.EditValue = r.LockState.ToString();
+        RoomTypeCombo.EditValue = r.RoomType;
+        RoomMaxRacks.EditValue = r.MaxRacks ?? 0;
+        RoomEnvNotesBox.Text = r.EnvironmentalNotes ?? "";
+        NotesBox.Text = r.Notes ?? "";
+    }
+
+    private void LoadFromRack()
+    {
+        var k = _rack!;
+        CodeBox.Text = k.RackCode;
+        NameBox.Text = k.RackCode;
+        NameBox.IsEnabled = false;
+        StatusCombo.EditValue = k.Status.ToString();
+        LockCombo.EditValue = k.LockState.ToString();
+        RackUHeightBox.EditValue = k.UHeight;
+        RackRowBox.Text = k.Row ?? "";
+        RackPositionBox.EditValue = k.Position ?? 0;
+        RackMaxDevices.EditValue = k.MaxDevices ?? 0;
+        NotesBox.Text = k.Notes ?? "";
+    }
+
     // ── Save ─────────────────────────────────────────────────────────────
 
     private async void Save_Click(object sender, RoutedEventArgs e)
@@ -213,9 +362,12 @@ public partial class HierarchyDetailDialog : DXWindow
 
             switch (_nodeType)
             {
-                case "Region": await SaveRegionAsync(repo); break;
-                case "Site":   await SaveSiteAsync(repo); break;
+                case "Region":   await SaveRegionAsync(repo); break;
+                case "Site":     await SaveSiteAsync(repo); break;
                 case "Building": await SaveBuildingAsync(repo); break;
+                case "Floor":    await SaveFloorAsync(repo); break;
+                case "Room":     await SaveRoomAsync(repo); break;
+                case "Rack":     await SaveRackAsync(repo); break;
             }
 
             DialogResult = true;
@@ -331,6 +483,112 @@ public partial class HierarchyDetailDialog : DXWindow
         }
     }
 
+    private async Task SaveFloorAsync(HierarchyRepository repo)
+    {
+        var f = _floor!;
+        f.FloorCode = CodeBox.Text.Trim();
+        f.DisplayName = NullableText(NameBox.Text);
+        f.Status = ParseStatus();
+        f.LockState = ParseLock();
+        f.FloorNumber = IntOrNull(FloorNumberBox.EditValue, treatZeroAsNull: false);
+        f.MaxRooms = IntOrNull(FloorMaxRooms.EditValue);
+        f.Notes = NullableText(NotesBox.Text);
+
+        if (_mode == Mode.New)
+        {
+            if (ParentCombo.EditValue is Guid buildingId && buildingId != Guid.Empty)
+                f.BuildingId = buildingId;
+            else
+                throw new InvalidOperationException("Building is required.");
+        }
+
+        if (string.IsNullOrEmpty(f.FloorCode))
+            throw new InvalidOperationException("Code is required.");
+
+        if (_mode == Mode.New)
+        {
+            f.Tags ??= new JsonObject();
+            f.ExternalRefs ??= new JsonArray();
+            SavedId = await repo.CreateFloorAsync(f, _userId);
+        }
+        else
+        {
+            await repo.UpdateFloorAsync(f, _userId);
+            SavedId = f.Id;
+        }
+    }
+
+    private async Task SaveRoomAsync(HierarchyRepository repo)
+    {
+        var r = _room!;
+        r.RoomCode = CodeBox.Text.Trim();
+        r.RoomType = RoomTypeCombo.EditValue as string ?? r.RoomType;
+        r.Status = ParseStatus();
+        r.LockState = ParseLock();
+        r.MaxRacks = IntOrNull(RoomMaxRacks.EditValue);
+        r.EnvironmentalNotes = NullableText(RoomEnvNotesBox.Text);
+        r.Notes = NullableText(NotesBox.Text);
+
+        if (_mode == Mode.New)
+        {
+            if (ParentCombo.EditValue is Guid floorId && floorId != Guid.Empty)
+                r.FloorId = floorId;
+            else
+                throw new InvalidOperationException("Floor is required.");
+        }
+
+        if (string.IsNullOrEmpty(r.RoomCode))
+            throw new InvalidOperationException("Code is required.");
+
+        if (_mode == Mode.New)
+        {
+            r.Tags ??= new JsonObject();
+            r.ExternalRefs ??= new JsonArray();
+            SavedId = await repo.CreateRoomAsync(r, _userId);
+        }
+        else
+        {
+            await repo.UpdateRoomAsync(r, _userId);
+            SavedId = r.Id;
+        }
+    }
+
+    private async Task SaveRackAsync(HierarchyRepository repo)
+    {
+        var k = _rack!;
+        k.RackCode = CodeBox.Text.Trim();
+        k.Status = ParseStatus();
+        k.LockState = ParseLock();
+        k.UHeight = IntOrNull(RackUHeightBox.EditValue) ?? 42;
+        k.Row = NullableText(RackRowBox.Text);
+        k.Position = IntOrNull(RackPositionBox.EditValue);
+        k.MaxDevices = IntOrNull(RackMaxDevices.EditValue);
+        k.Notes = NullableText(NotesBox.Text);
+
+        if (_mode == Mode.New)
+        {
+            if (ParentCombo.EditValue is Guid roomId && roomId != Guid.Empty)
+                k.RoomId = roomId;
+            else
+                throw new InvalidOperationException("Room is required.");
+        }
+
+        if (string.IsNullOrEmpty(k.RackCode))
+            throw new InvalidOperationException("Code is required.");
+
+        if (_mode == Mode.New)
+        {
+            k.Tags ??= new JsonObject();
+            k.ExternalRefs ??= new JsonArray();
+            SavedId = await repo.CreateRackAsync(k, _userId);
+        }
+        else
+        {
+            await repo.UpdateRackAsync(k, _userId);
+            SavedId = k.Id;
+        }
+    }
+
     private EntityStatus ParseStatus()
         => Enum.TryParse<EntityStatus>(StatusCombo.EditValue as string, out var s) ? s : EntityStatus.Planned;
 
@@ -340,17 +598,27 @@ public partial class HierarchyDetailDialog : DXWindow
     private static string? NullableText(string? s)
         => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
-    private static int? IntOrNull(object? v)
+    private static int? IntOrNull(object? v, bool treatZeroAsNull = true)
     {
         if (v is null) return null;
-        if (v is int i) return i == 0 ? null : i;
-        if (v is decimal d) return d == 0 ? null : (int)d;
-        return int.TryParse(v.ToString(), out var n) ? (n == 0 ? null : n) : null;
+        int? parsed = v switch
+        {
+            int i => i,
+            decimal d => (int)d,
+            _ => int.TryParse(v.ToString(), out var n) ? n : null
+        };
+        if (parsed is null) return null;
+        return (treatZeroAsNull && parsed == 0) ? null : parsed;
     }
 
     private string BuildMetaString()
     {
-        EntityBase? e = _region as EntityBase ?? _site as EntityBase ?? _building;
+        EntityBase? e = _region as EntityBase
+                         ?? _site as EntityBase
+                         ?? _building as EntityBase
+                         ?? _floor as EntityBase
+                         ?? _room as EntityBase
+                         ?? _rack;
         if (e is null) return "";
         var parts = new List<string> { $"v{e.Version}" };
         parts.Add($"created {e.CreatedAt:yyyy-MM-dd HH:mm}");

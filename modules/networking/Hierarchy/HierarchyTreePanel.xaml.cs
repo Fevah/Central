@@ -222,21 +222,27 @@ public partial class HierarchyTreePanel : UserControl
                     e.Customizations.Add(MakeButton("New building in this site…",
                         () => _ = OpenNewBuildingAsync(selected.EntityId)));
                     break;
+                case "Building":
+                    e.Customizations.Add(MakeButton("New floor in this building…",
+                        () => _ = OpenNewFloorAsync(selected.EntityId)));
+                    break;
+                case "Floor":
+                    e.Customizations.Add(MakeButton("New room on this floor…",
+                        () => _ = OpenNewRoomAsync(selected.EntityId)));
+                    break;
+                case "Room":
+                    e.Customizations.Add(MakeButton("New rack in this room…",
+                        () => _ = OpenNewRackAsync(selected.EntityId)));
+                    break;
             }
 
             e.Customizations.Add(new BarItemLinkSeparator());
 
-            // Edit + delete apply to the selected node — only wired for the
-            // three levels whose writes land in Phase 2d.
-            var editable = selected.NodeType is "Region" or "Site" or "Building";
-            var edit = MakeButton($"Edit {selected.NodeType.ToLower()}…",
-                () => _ = OpenEditAsync(selected));
-            var delete = MakeButton($"Delete {selected.NodeType.ToLower()}",
-                () => _ = DeleteAsync(selected));
-            edit.IsEnabled = editable;
-            delete.IsEnabled = editable;
-            e.Customizations.Add(edit);
-            e.Customizations.Add(delete);
+            // All six levels are now editable + soft-deletable (Phase 2e).
+            e.Customizations.Add(MakeButton($"Edit {selected.NodeType.ToLower()}…",
+                () => _ = OpenEditAsync(selected)));
+            e.Customizations.Add(MakeButton($"Delete {selected.NodeType.ToLower()}",
+                () => _ = DeleteAsync(selected)));
         }
     }
 
@@ -267,6 +273,30 @@ public partial class HierarchyTreePanel : UserControl
     {
         if (string.IsNullOrEmpty(_dsn) || _tenantId == Guid.Empty) return;
         var dlg = (await HierarchyDetailDialog.ForNewBuildingAsync(_dsn, _tenantId, _userId, siteId))
+            .With(Window.GetWindow(this));
+        if (dlg.ShowDialog() == true) await ReloadAsync();
+    }
+
+    private async Task OpenNewFloorAsync(Guid buildingId)
+    {
+        if (string.IsNullOrEmpty(_dsn) || _tenantId == Guid.Empty) return;
+        var dlg = (await HierarchyDetailDialog.ForNewFloorAsync(_dsn, _tenantId, _userId, buildingId))
+            .With(Window.GetWindow(this));
+        if (dlg.ShowDialog() == true) await ReloadAsync();
+    }
+
+    private async Task OpenNewRoomAsync(Guid floorId)
+    {
+        if (string.IsNullOrEmpty(_dsn) || _tenantId == Guid.Empty) return;
+        var dlg = (await HierarchyDetailDialog.ForNewRoomAsync(_dsn, _tenantId, _userId, floorId))
+            .With(Window.GetWindow(this));
+        if (dlg.ShowDialog() == true) await ReloadAsync();
+    }
+
+    private async Task OpenNewRackAsync(Guid roomId)
+    {
+        if (string.IsNullOrEmpty(_dsn) || _tenantId == Guid.Empty) return;
+        var dlg = (await HierarchyDetailDialog.ForNewRackAsync(_dsn, _tenantId, _userId, roomId))
             .With(Window.GetWindow(this));
         if (dlg.ShowDialog() == true) await ReloadAsync();
     }
@@ -308,6 +338,9 @@ public partial class HierarchyTreePanel : UserControl
                 "Region"   => await repo.SoftDeleteRegionAsync(node.EntityId, _tenantId, _userId),
                 "Site"     => await repo.SoftDeleteSiteAsync(node.EntityId, _tenantId, _userId),
                 "Building" => await repo.SoftDeleteBuildingAsync(node.EntityId, _tenantId, _userId),
+                "Floor"    => await repo.SoftDeleteFloorAsync(node.EntityId, _tenantId, _userId),
+                "Room"     => await repo.SoftDeleteRoomAsync(node.EntityId, _tenantId, _userId),
+                "Rack"     => await repo.SoftDeleteRackAsync(node.EntityId, _tenantId, _userId),
                 _ => false
             };
             if (deleted) await ReloadAsync();

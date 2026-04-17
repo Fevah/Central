@@ -121,6 +121,80 @@
                               Margin="0,0,0,8"/>
                 </StackPanel>
 
+                <!-- Floor-specific -->
+                <StackPanel x:Name="FloorSection" Visibility="Collapsed">
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Floor # (signed — negatives for basements)"
+                                       FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <dxe:SpinEdit x:Name="FloorNumberBox" MinValue="-50" MaxValue="500" IsFloatValue="False"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Max rooms" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <dxe:SpinEdit x:Name="FloorMaxRooms" MinValue="0" MaxValue="500" IsFloatValue="False"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+
+                <!-- Room-specific -->
+                <StackPanel x:Name="RoomSection" Visibility="Collapsed">
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Room type" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <dxe:ComboBoxEdit x:Name="RoomTypeCombo" IsTextEditable="True"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Max racks" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <dxe:SpinEdit x:Name="RoomMaxRacks" MinValue="0" MaxValue="1000" IsFloatValue="False"/>
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Text="Environmental notes" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <dxe:TextEdit x:Name="RoomEnvNotesBox" Height="60"
+                                  TextWrapping="Wrap" AcceptsReturn="True"
+                                  VerticalContentAlignment="Top" Margin="0,0,0,8"/>
+                </StackPanel>
+
+                <!-- Rack-specific -->
+                <StackPanel x:Name="RackSection" Visibility="Collapsed">
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="8"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="U height" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <dxe:SpinEdit x:Name="RackUHeightBox" MinValue="1" MaxValue="100" IsFloatValue="False"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Row" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <dxe:TextEdit x:Name="RackRowBox"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="4">
+                            <TextBlock Text="Position" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <dxe:SpinEdit x:Name="RackPositionBox" MinValue="0" MaxValue="1000" IsFloatValue="False"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="6">
+                            <TextBlock Text="Max devices" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            <dxe:SpinEdit x:Name="RackMaxDevices" MinValue="0" MaxValue="1000" IsFloatValue="False"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+
                 <!-- Notes -->
                 <TextBlock Text="Notes" FontWeight="SemiBold" Margin="0,0,0,4"/>
                 <dxe:TextEdit x:Name="NotesBox" Height="80"

@@ -194,7 +194,7 @@ public static class HierarchyEndpoints
             return deleted ? Results.NoContent() : ApiProblem.NotFound($"Building {id} not found");
         }).RequireAuthorization(P.NetHierarchyDelete);
 
-        // ── Floors ─────────────────────────────────────────────────────
+        // ── Floor ──────────────────────────────────────────────────────
         g.MapGet("/floors", async (Guid? buildingId, ITenantContext tenant, DbConnectionFactory db) =>
         {
             if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
@@ -210,7 +210,48 @@ public static class HierarchyEndpoints
             return e is null ? ApiProblem.NotFound($"Floor {id} not found") : Results.Ok(e);
         }).RequireAuthorization();
 
-        // ── Rooms ──────────────────────────────────────────────────────
+        g.MapPost("/floors", async (Floor body, ITenantContext tenant, DbConnectionFactory db, HttpContext ctx) =>
+        {
+            if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
+            body.OrganizationId = tenant.TenantId;
+            var repo = new HierarchyRepository(db.ConnectionString);
+            try
+            {
+                var id = await repo.CreateFloorAsync(body, UserIdOrNull(ctx));
+                return Results.Created($"/api/net/floors/{id}", new { id });
+            }
+            catch (Npgsql.PostgresException ex) when (ex.SqlState == "23505")
+            {
+                return ApiProblem.Conflict($"Floor code '{body.FloorCode}' already exists in this building.");
+            }
+        }).RequireAuthorization(P.NetHierarchyWrite);
+
+        g.MapPut("/floors/{id:guid}", async (Guid id, Floor body, ITenantContext tenant, DbConnectionFactory db, HttpContext ctx) =>
+        {
+            if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
+            body.Id = id;
+            body.OrganizationId = tenant.TenantId;
+            var repo = new HierarchyRepository(db.ConnectionString);
+            try
+            {
+                var newVersion = await repo.UpdateFloorAsync(body, UserIdOrNull(ctx));
+                return Results.Ok(new { id, version = newVersion });
+            }
+            catch (ConcurrencyException ex)
+            {
+                return ApiProblem.Conflict(ex.Message);
+            }
+        }).RequireAuthorization(P.NetHierarchyWrite);
+
+        g.MapDelete("/floors/{id:guid}", async (Guid id, ITenantContext tenant, DbConnectionFactory db, HttpContext ctx) =>
+        {
+            if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
+            var repo = new HierarchyRepository(db.ConnectionString);
+            var deleted = await repo.SoftDeleteFloorAsync(id, tenant.TenantId, UserIdOrNull(ctx));
+            return deleted ? Results.NoContent() : ApiProblem.NotFound($"Floor {id} not found");
+        }).RequireAuthorization(P.NetHierarchyDelete);
+
+        // ── Room ───────────────────────────────────────────────────────
         g.MapGet("/rooms", async (Guid? floorId, ITenantContext tenant, DbConnectionFactory db) =>
         {
             if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
@@ -226,7 +267,48 @@ public static class HierarchyEndpoints
             return e is null ? ApiProblem.NotFound($"Room {id} not found") : Results.Ok(e);
         }).RequireAuthorization();
 
-        // ── Racks ──────────────────────────────────────────────────────
+        g.MapPost("/rooms", async (Room body, ITenantContext tenant, DbConnectionFactory db, HttpContext ctx) =>
+        {
+            if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
+            body.OrganizationId = tenant.TenantId;
+            var repo = new HierarchyRepository(db.ConnectionString);
+            try
+            {
+                var id = await repo.CreateRoomAsync(body, UserIdOrNull(ctx));
+                return Results.Created($"/api/net/rooms/{id}", new { id });
+            }
+            catch (Npgsql.PostgresException ex) when (ex.SqlState == "23505")
+            {
+                return ApiProblem.Conflict($"Room code '{body.RoomCode}' already exists on this floor.");
+            }
+        }).RequireAuthorization(P.NetHierarchyWrite);
+
+        g.MapPut("/rooms/{id:guid}", async (Guid id, Room body, ITenantContext tenant, DbConnectionFactory db, HttpContext ctx) =>
+        {
+            if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
+            body.Id = id;
+            body.OrganizationId = tenant.TenantId;
+            var repo = new HierarchyRepository(db.ConnectionString);
+            try
+            {
+                var newVersion = await repo.UpdateRoomAsync(body, UserIdOrNull(ctx));
+                return Results.Ok(new { id, version = newVersion });
+            }
+            catch (ConcurrencyException ex)
+            {
+                return ApiProblem.Conflict(ex.Message);
+            }
+        }).RequireAuthorization(P.NetHierarchyWrite);
+
+        g.MapDelete("/rooms/{id:guid}", async (Guid id, ITenantContext tenant, DbConnectionFactory db, HttpContext ctx) =>
+        {
+            if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
+            var repo = new HierarchyRepository(db.ConnectionString);
+            var deleted = await repo.SoftDeleteRoomAsync(id, tenant.TenantId, UserIdOrNull(ctx));
+            return deleted ? Results.NoContent() : ApiProblem.NotFound($"Room {id} not found");
+        }).RequireAuthorization(P.NetHierarchyDelete);
+
+        // ── Rack ───────────────────────────────────────────────────────
         g.MapGet("/racks", async (Guid? roomId, ITenantContext tenant, DbConnectionFactory db) =>
         {
             if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
@@ -241,6 +323,47 @@ public static class HierarchyEndpoints
             var e = await repo.GetRackAsync(id, tenant.TenantId);
             return e is null ? ApiProblem.NotFound($"Rack {id} not found") : Results.Ok(e);
         }).RequireAuthorization();
+
+        g.MapPost("/racks", async (Rack body, ITenantContext tenant, DbConnectionFactory db, HttpContext ctx) =>
+        {
+            if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
+            body.OrganizationId = tenant.TenantId;
+            var repo = new HierarchyRepository(db.ConnectionString);
+            try
+            {
+                var id = await repo.CreateRackAsync(body, UserIdOrNull(ctx));
+                return Results.Created($"/api/net/racks/{id}", new { id });
+            }
+            catch (Npgsql.PostgresException ex) when (ex.SqlState == "23505")
+            {
+                return ApiProblem.Conflict($"Rack code '{body.RackCode}' already exists in this room.");
+            }
+        }).RequireAuthorization(P.NetHierarchyWrite);
+
+        g.MapPut("/racks/{id:guid}", async (Guid id, Rack body, ITenantContext tenant, DbConnectionFactory db, HttpContext ctx) =>
+        {
+            if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
+            body.Id = id;
+            body.OrganizationId = tenant.TenantId;
+            var repo = new HierarchyRepository(db.ConnectionString);
+            try
+            {
+                var newVersion = await repo.UpdateRackAsync(body, UserIdOrNull(ctx));
+                return Results.Ok(new { id, version = newVersion });
+            }
+            catch (ConcurrencyException ex)
+            {
+                return ApiProblem.Conflict(ex.Message);
+            }
+        }).RequireAuthorization(P.NetHierarchyWrite);
+
+        g.MapDelete("/racks/{id:guid}", async (Guid id, ITenantContext tenant, DbConnectionFactory db, HttpContext ctx) =>
+        {
+            if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
+            var repo = new HierarchyRepository(db.ConnectionString);
+            var deleted = await repo.SoftDeleteRackAsync(id, tenant.TenantId, UserIdOrNull(ctx));
+            return deleted ? Results.NoContent() : ApiProblem.NotFound($"Rack {id} not found");
+        }).RequireAuthorization(P.NetHierarchyDelete);
 
         // ── Profiles (list + get only in 2b) ───────────────────────────
         g.MapGet("/site-profiles", async (ITenantContext tenant, DbConnectionFactory db) =>

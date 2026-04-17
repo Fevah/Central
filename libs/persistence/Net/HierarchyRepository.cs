@@ -596,6 +596,74 @@ public class HierarchyRepository
         return await GetOneAsync(sql, id, orgId, ReadFloor, ct);
     }
 
+    public async Task<Guid> CreateFloorAsync(Floor e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO net.floor (organization_id, building_id, floor_profile_id,
+                                   floor_code, floor_number, display_name, max_rooms,
+                                   status, lock_state, notes, tags, external_refs,
+                                   created_by, updated_by)
+            VALUES (@org, @bld, @profile, @code, @num, @name, @maxr,
+                    @status::net.entity_status, @lock::net.lock_state,
+                    @notes, @tags::jsonb, @refs::jsonb, @uid, @uid)
+            RETURNING id";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        BindFloorWriteParams(cmd, e, userId);
+        return (Guid)(await cmd.ExecuteScalarAsync(ct))!;
+    }
+
+    public async Task<int> UpdateFloorAsync(Floor e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE net.floor SET
+                building_id       = @bld,
+                floor_profile_id  = @profile,
+                floor_code        = @code,
+                floor_number      = @num,
+                display_name      = @name,
+                max_rooms         = @maxr,
+                status            = @status::net.entity_status,
+                lock_state        = @lock::net.lock_state,
+                lock_reason       = @lreason,
+                notes             = @notes,
+                tags              = @tags::jsonb,
+                external_refs     = @refs::jsonb,
+                updated_at        = now(),
+                updated_by        = @uid,
+                version           = version + 1
+            WHERE id = @id AND organization_id = @org AND version = @ver AND deleted_at IS NULL
+            RETURNING version";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", e.Id);
+        cmd.Parameters.AddWithValue("ver", e.Version);
+        cmd.Parameters.AddWithValue("lreason", (object?)e.LockReason ?? DBNull.Value);
+        BindFloorWriteParams(cmd, e, userId);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int v ? v : throw new ConcurrencyException(e.Id, e.Version);
+    }
+
+    public Task<bool> SoftDeleteFloorAsync(Guid id, Guid orgId, int? userId, CancellationToken ct = default)
+        => SoftDeleteAsync("net.floor", id, orgId, userId, ct);
+
+    private static void BindFloorWriteParams(NpgsqlCommand cmd, Floor e, int? userId)
+    {
+        cmd.Parameters.AddWithValue("org", e.OrganizationId);
+        cmd.Parameters.AddWithValue("bld", e.BuildingId);
+        cmd.Parameters.AddWithValue("profile", (object?)e.FloorProfileId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("code", e.FloorCode);
+        cmd.Parameters.AddWithValue("num", (object?)e.FloorNumber ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("name", (object?)e.DisplayName ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("maxr", (object?)e.MaxRooms ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("status", e.Status.ToString());
+        cmd.Parameters.AddWithValue("lock", e.LockState.ToString());
+        cmd.Parameters.AddWithValue("notes", (object?)e.Notes ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("tags", e.Tags.ToJsonString());
+        cmd.Parameters.AddWithValue("refs", e.ExternalRefs.ToJsonString());
+        cmd.Parameters.AddWithValue("uid", (object?)userId ?? DBNull.Value);
+    }
+
     private static Floor ReadFloor(NpgsqlDataReader r)
     {
         var e = new Floor
@@ -682,6 +750,73 @@ public class HierarchyRepository
         return await GetOneAsync(sql, id, orgId, ReadRoom, ct);
     }
 
+    public async Task<Guid> CreateRoomAsync(Room e, int? userId = null, CancellationToken ct = default)
+    {
+        // power_feed_a/b_id land in Phase 13 (environmental / PDU); skip them here.
+        const string sql = @"
+            INSERT INTO net.room (organization_id, floor_id, room_code, room_type,
+                                  max_racks, environmental_notes,
+                                  status, lock_state, notes, tags, external_refs,
+                                  created_by, updated_by)
+            VALUES (@org, @floor, @code, @type, @maxr, @envnotes,
+                    @status::net.entity_status, @lock::net.lock_state,
+                    @notes, @tags::jsonb, @refs::jsonb, @uid, @uid)
+            RETURNING id";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        BindRoomWriteParams(cmd, e, userId);
+        return (Guid)(await cmd.ExecuteScalarAsync(ct))!;
+    }
+
+    public async Task<int> UpdateRoomAsync(Room e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE net.room SET
+                floor_id            = @floor,
+                room_code           = @code,
+                room_type           = @type,
+                max_racks           = @maxr,
+                environmental_notes = @envnotes,
+                status              = @status::net.entity_status,
+                lock_state          = @lock::net.lock_state,
+                lock_reason         = @lreason,
+                notes               = @notes,
+                tags                = @tags::jsonb,
+                external_refs       = @refs::jsonb,
+                updated_at          = now(),
+                updated_by          = @uid,
+                version             = version + 1
+            WHERE id = @id AND organization_id = @org AND version = @ver AND deleted_at IS NULL
+            RETURNING version";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", e.Id);
+        cmd.Parameters.AddWithValue("ver", e.Version);
+        cmd.Parameters.AddWithValue("lreason", (object?)e.LockReason ?? DBNull.Value);
+        BindRoomWriteParams(cmd, e, userId);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int v ? v : throw new ConcurrencyException(e.Id, e.Version);
+    }
+
+    public Task<bool> SoftDeleteRoomAsync(Guid id, Guid orgId, int? userId, CancellationToken ct = default)
+        => SoftDeleteAsync("net.room", id, orgId, userId, ct);
+
+    private static void BindRoomWriteParams(NpgsqlCommand cmd, Room e, int? userId)
+    {
+        cmd.Parameters.AddWithValue("org", e.OrganizationId);
+        cmd.Parameters.AddWithValue("floor", e.FloorId);
+        cmd.Parameters.AddWithValue("code", e.RoomCode);
+        cmd.Parameters.AddWithValue("type", e.RoomType);
+        cmd.Parameters.AddWithValue("maxr", (object?)e.MaxRacks ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("envnotes", (object?)e.EnvironmentalNotes ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("status", e.Status.ToString());
+        cmd.Parameters.AddWithValue("lock", e.LockState.ToString());
+        cmd.Parameters.AddWithValue("notes", (object?)e.Notes ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("tags", e.Tags.ToJsonString());
+        cmd.Parameters.AddWithValue("refs", e.ExternalRefs.ToJsonString());
+        cmd.Parameters.AddWithValue("uid", (object?)userId ?? DBNull.Value);
+    }
+
     private static Room ReadRoom(NpgsqlDataReader r)
     {
         var e = new Room
@@ -729,6 +864,75 @@ public class HierarchyRepository
             FROM net.rack
             WHERE id = @id AND organization_id = @org AND deleted_at IS NULL";
         return await GetOneAsync(sql, id, orgId, ReadRack, ct);
+    }
+
+    public async Task<Guid> CreateRackAsync(Rack e, int? userId = null, CancellationToken ct = default)
+    {
+        // PDU FKs (pdu_a_id / pdu_b_id) land with the power model in Phase 13.
+        const string sql = @"
+            INSERT INTO net.rack (organization_id, room_id, rack_code, u_height,
+                                  row, position, max_devices,
+                                  status, lock_state, notes, tags, external_refs,
+                                  created_by, updated_by)
+            VALUES (@org, @room, @code, @uheight, @row, @pos, @maxd,
+                    @status::net.entity_status, @lock::net.lock_state,
+                    @notes, @tags::jsonb, @refs::jsonb, @uid, @uid)
+            RETURNING id";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        BindRackWriteParams(cmd, e, userId);
+        return (Guid)(await cmd.ExecuteScalarAsync(ct))!;
+    }
+
+    public async Task<int> UpdateRackAsync(Rack e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE net.rack SET
+                room_id           = @room,
+                rack_code         = @code,
+                u_height          = @uheight,
+                row               = @row,
+                position          = @pos,
+                max_devices       = @maxd,
+                status            = @status::net.entity_status,
+                lock_state        = @lock::net.lock_state,
+                lock_reason       = @lreason,
+                notes             = @notes,
+                tags              = @tags::jsonb,
+                external_refs     = @refs::jsonb,
+                updated_at        = now(),
+                updated_by        = @uid,
+                version           = version + 1
+            WHERE id = @id AND organization_id = @org AND version = @ver AND deleted_at IS NULL
+            RETURNING version";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", e.Id);
+        cmd.Parameters.AddWithValue("ver", e.Version);
+        cmd.Parameters.AddWithValue("lreason", (object?)e.LockReason ?? DBNull.Value);
+        BindRackWriteParams(cmd, e, userId);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int v ? v : throw new ConcurrencyException(e.Id, e.Version);
+    }
+
+    public Task<bool> SoftDeleteRackAsync(Guid id, Guid orgId, int? userId, CancellationToken ct = default)
+        => SoftDeleteAsync("net.rack", id, orgId, userId, ct);
+
+    private static void BindRackWriteParams(NpgsqlCommand cmd, Rack e, int? userId)
+    {
+        cmd.Parameters.AddWithValue("org", e.OrganizationId);
+        cmd.Parameters.AddWithValue("room", e.RoomId);
+        cmd.Parameters.AddWithValue("code", e.RackCode);
+        cmd.Parameters.AddWithValue("uheight", e.UHeight);
+        cmd.Parameters.AddWithValue("row", (object?)e.Row ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("pos", (object?)e.Position ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("maxd", (object?)e.MaxDevices ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("status", e.Status.ToString());
+        cmd.Parameters.AddWithValue("lock", e.LockState.ToString());
+        cmd.Parameters.AddWithValue("notes", (object?)e.Notes ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("tags", e.Tags.ToJsonString());
+        cmd.Parameters.AddWithValue("refs", e.ExternalRefs.ToJsonString());
+        cmd.Parameters.AddWithValue("uid", (object?)userId ?? DBNull.Value);
     }
 
     private static Rack ReadRack(NpgsqlDataReader r)
