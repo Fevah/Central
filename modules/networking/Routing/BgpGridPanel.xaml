@@ -1,0 +1,80 @@
+﻿<UserControl x:Class="Central.Module.Networking.Routing.BgpGridPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors">
+
+    <!-- Master: BGP config per switch with inline detail expansion -->
+    <dxg:GridControl x:Name="BgpGrid"
+                     ItemsSource="{Binding BgpRecords}" AutoGenerateColumns="None"
+                     CurrentItemChanged="BgpGrid_CurrentItemChanged">
+        <dxg:GridControl.View>
+            <dxg:TableView x:Name="BgpView" ShowGroupPanel="True" AllowColumnFiltering="True"
+                           ShowFilterPanelMode="ShowAlways" NavigationStyle="Row"
+                           AllowEditing="False" ShowTotalSummary="False"
+                           UseEvenRowBackground="True"
+                           ShowAutoFilterRow="True" SearchPanelNullText="Search..." />
+        </dxg:GridControl.View>
+        <dxg:GridControl.Columns>
+            <dxg:GridColumn FieldName="Building"              Header="Site"         Width="100" AllowGrouping="True" />
+            <dxg:GridColumn FieldName="Hostname"              Header="Switch"       Width="180" Fixed="Left" />
+            <dxg:GridColumn FieldName="LocalAs"               Header="Local AS"     Width="80" />
+            <dxg:GridColumn FieldName="RouterId"              Header="Router ID"    Width="120" />
+            <dxg:GridColumn FieldName="FastExternalFailover"  Header="Fast Failover" Width="90" />
+            <dxg:GridColumn FieldName="EbgpRequiresPolicy"    Header="Require Policy" Width="95" />
+            <dxg:GridColumn FieldName="BestpathMultipathRelax" Header="Multipath Relax" Width="100" />
+            <dxg:GridColumn FieldName="RedistributeConnected" Header="Redist Connected" Width="105" />
+            <dxg:GridColumn FieldName="MaxPaths"              Header="Max Paths"    Width="70" />
+            <dxg:GridColumn FieldName="NeighborCount"         Header="Neighbors"    Width="75" />
+            <dxg:GridColumn FieldName="NetworkCount"          Header="Networks"     Width="70" />
+            <dxg:GridColumn FieldName="LastSynced"            Header="Last Synced"  Width="140" />
+        </dxg:GridControl.Columns>
+        <dxg:GridControl.TotalSummary>
+            <dxg:GridSummaryItem SummaryType="Count" FieldName="Hostname" DisplayFormat="{}Total: {0}" />
+        </dxg:GridControl.TotalSummary>
+
+        <!-- Master-detail: expand → Neighbors + Networks tabs (same engine pattern as Switches) -->
+        <dxg:GridControl.DetailDescriptor>
+            <dxg:TabViewDetailDescriptor>
+                <!-- Tab 1: BGP Neighbors -->
+                <dxg:DataControlDetailDescriptor ItemsSourcePath="DetailNeighbors" >
+                    <dxg:GridControl AutoGenerateColumns="None">
+                        <dxg:GridControl.View>
+                            <dxg:TableView ShowGroupPanel="False" ShowColumnHeaders="True"
+                                           AllowEditing="False" NavigationStyle="Row"
+                                           ShowTotalSummary="True" />
+                        </dxg:GridControl.View>
+                        <dxg:GridControl.Columns>
+                            <dxg:GridColumn FieldName="NeighborIp"  Header="Neighbor IP" Width="140" />
+                            <dxg:GridColumn FieldName="RemoteAs"    Header="Remote AS"   Width="90" />
+                            <dxg:GridColumn FieldName="BfdEnabled"  Header="BFD"         Width="60" />
+                            <dxg:GridColumn FieldName="Description" Header="Description" Width="250" />
+                            <dxg:GridColumn FieldName="Ipv4Unicast" Header="IPv4 Unicast" Width="80" />
+                        </dxg:GridControl.Columns>
+                        <dxg:GridControl.TotalSummary>
+                            <dxg:GridSummaryItem SummaryType="Count" FieldName="NeighborIp" DisplayFormat="{}Peers: {0}" />
+                        </dxg:GridControl.TotalSummary>
+                    </dxg:GridControl>
+                </dxg:DataControlDetailDescriptor>
+
+                <!-- Tab 2: Advertised Networks -->
+                <dxg:DataControlDetailDescriptor ItemsSourcePath="DetailNetworks" >
+                    <dxg:GridControl AutoGenerateColumns="None">
+                        <dxg:GridControl.View>
+                            <dxg:TableView ShowGroupPanel="False" ShowColumnHeaders="True"
+                                           AllowEditing="False" NavigationStyle="Row"
+                                           ShowTotalSummary="True" />
+                        </dxg:GridControl.View>
+                        <dxg:GridControl.Columns>
+                            <dxg:GridColumn FieldName="NetworkPrefix" Header="Network Prefix" Width="200" />
+                        </dxg:GridControl.Columns>
+                        <dxg:GridControl.TotalSummary>
+                            <dxg:GridSummaryItem SummaryType="Count" FieldName="NetworkPrefix" DisplayFormat="{}Networks: {0}" />
+                        </dxg:GridControl.TotalSummary>
+                    </dxg:GridControl>
+                </dxg:DataControlDetailDescriptor>
+            </dxg:TabViewDetailDescriptor>
+        </dxg:GridControl.DetailDescriptor>
+    </dxg:GridControl>
+</UserControl>

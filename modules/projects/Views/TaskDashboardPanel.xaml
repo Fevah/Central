@@ -1,0 +1,97 @@
+﻿<UserControl x:Class="Central.Module.Projects.TaskDashboardPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dxc="http://schemas.devexpress.com/winfx/2008/xaml/charts"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Toolbar -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="8,6">
+            <TextBlock Text="Dashboard:" VerticalAlignment="Center" Foreground="#9CA3AF" Margin="0,0,4,0" />
+            <dxe:ComboBoxEdit x:Name="DashboardSelector" Width="200" Height="24" NullText="Select Dashboard"
+                               IsTextEditable="False" EditValueChanged="DashboardSelector_Changed"
+                               DisplayMember="Name" ValueMember="Id" />
+            <TextBlock Text="  " />
+            <TextBlock Text="Project:" VerticalAlignment="Center" Foreground="#9CA3AF" Margin="0,0,4,0" />
+            <dxe:ComboBoxEdit x:Name="ProjectSelector" Width="180" Height="24" NullText="All Projects"
+                               IsTextEditable="False" EditValueChanged="ProjectSelector_Changed"
+                               DisplayMember="Name" ValueMember="Id" />
+            <Button x:Name="RefreshButton" Content="Refresh" Padding="10,4" Margin="8,0,0,0" Click="Refresh_Click" />
+        </StackPanel>
+
+        <!-- 2x2 Chart Grid (default template — Sprint Health) -->
+        <Grid Grid.Row="1" Margin="8,0,8,8">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Task status distribution (pie) -->
+            <dxc:ChartControl x:Name="StatusPieChart" Grid.Row="0" Grid.Column="0" Margin="0,0,4,4">
+                <dxc:ChartControl.Titles>
+                    <dxc:Title Content="Tasks by Status" HorizontalAlignment="Center" />
+                </dxc:ChartControl.Titles>
+                <dxc:SimpleDiagram2D>
+                    <dxc:PieSeries2D x:Name="StatusPieSeries"
+                                      ArgumentDataMember="Label" ValueDataMember="Count"
+                                      LabelsVisibility="True" />
+                </dxc:SimpleDiagram2D>
+            </dxc:ChartControl>
+
+            <!-- Points by type (bar) -->
+            <dxc:ChartControl x:Name="TypeBarChart" Grid.Row="0" Grid.Column="1" Margin="4,0,0,4">
+                <dxc:ChartControl.Titles>
+                    <dxc:Title Content="Points by Type" HorizontalAlignment="Center" />
+                </dxc:ChartControl.Titles>
+                <dxc:XYDiagram2D>
+                    <dxc:BarSideBySideSeries2D x:Name="TypeBarSeries"
+                                                 ArgumentDataMember="Label" ValueDataMember="Count">
+                        <dxc:BarSideBySideSeries2D.Brush>
+                            <SolidColorBrush Color="#3B82F6" />
+                        </dxc:BarSideBySideSeries2D.Brush>
+                    </dxc:BarSideBySideSeries2D>
+                </dxc:XYDiagram2D>
+            </dxc:ChartControl>
+
+            <!-- Tasks created over time (line) -->
+            <dxc:ChartControl x:Name="CreatedLineChart" Grid.Row="1" Grid.Column="0" Margin="0,4,4,0">
+                <dxc:ChartControl.Titles>
+                    <dxc:Title Content="Tasks Created (30 days)" HorizontalAlignment="Center" />
+                </dxc:ChartControl.Titles>
+                <dxc:XYDiagram2D>
+                    <dxc:LineSeries2D x:Name="CreatedLineSeries"
+                                       ArgumentDataMember="Date" ValueDataMember="Count"
+                                       MarkerVisible="True">
+                        <dxc:LineSeries2D.Brush>
+                            <SolidColorBrush Color="#22C55E" />
+                        </dxc:LineSeries2D.Brush>
+                    </dxc:LineSeries2D>
+                </dxc:XYDiagram2D>
+            </dxc:ChartControl>
+
+            <!-- Velocity / completion (bar) -->
+            <dxc:ChartControl x:Name="VelocityChart" Grid.Row="1" Grid.Column="1" Margin="4,4,0,0">
+                <dxc:ChartControl.Titles>
+                    <dxc:Title Content="Sprint Velocity" HorizontalAlignment="Center" />
+                </dxc:ChartControl.Titles>
+                <dxc:XYDiagram2D>
+                    <dxc:BarSideBySideSeries2D x:Name="VelocitySeries"
+                                                 ArgumentDataMember="Label" ValueDataMember="Count">
+                        <dxc:BarSideBySideSeries2D.Brush>
+                            <SolidColorBrush Color="#F59E0B" />
+                        </dxc:BarSideBySideSeries2D.Brush>
+                    </dxc:BarSideBySideSeries2D>
+                </dxc:XYDiagram2D>
+            </dxc:ChartControl>
+        </Grid>
+    </Grid>
+</UserControl>

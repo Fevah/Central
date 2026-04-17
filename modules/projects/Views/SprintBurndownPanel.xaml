@@ -1,0 +1,87 @@
+﻿<UserControl x:Class="Central.Module.Projects.SprintBurndownPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dxc="http://schemas.devexpress.com/winfx/2008/xaml/charts"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Toolbar -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="8,6">
+            <TextBlock Text="Sprint:" VerticalAlignment="Center" Foreground="#9CA3AF" Margin="0,0,4,0" />
+            <dxe:ComboBoxEdit x:Name="SprintSelector" Width="200" Height="24" NullText="Select Sprint"
+                               IsTextEditable="False" EditValueChanged="SprintSelector_Changed"
+                               DisplayMember="DisplayName" ValueMember="Id" />
+            <TextBlock Text="  " />
+            <Button x:Name="SnapshotButton" Content="Snapshot Now" Padding="10,4" Margin="0,0,4,0"
+                    Click="Snapshot_Click" />
+            <TextBlock Text="  " />
+            <dxe:ComboBoxEdit x:Name="MetricSelector" Width="120" Height="24" NullText="Points"
+                               IsTextEditable="False" EditValueChanged="MetricSelector_Changed" />
+        </StackPanel>
+
+        <!-- Burndown Chart -->
+        <dxc:ChartControl x:Name="BurndownChart" Grid.Row="1" Margin="8,0,8,4">
+            <dxc:ChartControl.CrosshairOptions>
+                <dxc:CrosshairOptions ShowArgumentLabels="True" ShowValueLabels="True" />
+            </dxc:ChartControl.CrosshairOptions>
+            <dxc:XYDiagram2D>
+                <dxc:XYDiagram2D.AxisX>
+                    <dxc:AxisX2D>
+                        <dxc:AxisX2D.DateTimeScaleOptions>
+                            <dxc:ManualDateTimeScaleOptions MeasureUnit="Day" />
+                        </dxc:AxisX2D.DateTimeScaleOptions>
+                    </dxc:AxisX2D>
+                </dxc:XYDiagram2D.AxisX>
+                <dxc:XYDiagram2D.AxisY>
+                    <dxc:AxisY2D>
+                        <dxc:AxisY2D.Title>
+                            <dxc:AxisTitle Content="Remaining" />
+                        </dxc:AxisY2D.Title>
+                    </dxc:AxisY2D>
+                </dxc:XYDiagram2D.AxisY>
+
+                <!-- Actual burndown line -->
+                <dxc:LineSeries2D x:Name="ActualSeries" DisplayName="Actual"
+                                   ArgumentDataMember="SnapshotDate"
+                                   ValueDataMember="PointsRemaining"
+                                   MarkerVisible="True">
+                    <dxc:LineSeries2D.Brush>
+                        <SolidColorBrush Color="#3B82F6" />
+                    </dxc:LineSeries2D.Brush>
+                </dxc:LineSeries2D>
+
+                <!-- Ideal burndown line -->
+                <dxc:LineSeries2D x:Name="IdealSeries" DisplayName="Ideal"
+                                   ArgumentDataMember="SnapshotDate"
+                                   ValueDataMember="IdealPoints"
+                                   ShowInLegend="True">
+                    <dxc:LineSeries2D.Brush>
+                        <SolidColorBrush Color="#6B7280" />
+                    </dxc:LineSeries2D.Brush>
+                    <dxc:LineSeries2D.LineStyle>
+                        <dxc:LineStyle Thickness="1" />
+                    </dxc:LineSeries2D.LineStyle>
+                </dxc:LineSeries2D>
+            </dxc:XYDiagram2D>
+
+            <dxc:ChartControl.Legend>
+                <dxc:Legend HorizontalPosition="Right" VerticalPosition="Top" />
+            </dxc:ChartControl.Legend>
+        </dxc:ChartControl>
+
+        <!-- Velocity summary -->
+        <Border Grid.Row="2" Background="#1E293B" Margin="8,0,8,4" CornerRadius="4" Padding="12,6">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock x:Name="VelocityText" Text="Velocity: —" Foreground="#9CA3AF" FontSize="12" />
+                <TextBlock x:Name="CompletedText" Text="" Foreground="#22C55E" FontSize="12" Margin="24,0,0,0" />
+                <TextBlock x:Name="RemainingText" Text="" Foreground="#F59E0B" FontSize="12" Margin="24,0,0,0" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

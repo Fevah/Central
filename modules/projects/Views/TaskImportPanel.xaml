@@ -1,0 +1,91 @@
+﻿<UserControl x:Class="Central.Module.Projects.TaskImportPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Step 1: File selection -->
+        <Border Grid.Row="0" Background="#1E293B" Margin="8,6,8,0" CornerRadius="4" Padding="12,8">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="1. Select File" FontWeight="SemiBold" Foreground="White" FontSize="13" VerticalAlignment="Center" />
+                <Button x:Name="BrowseButton" Content="Browse..." Padding="12,4" Margin="16,0,0,0" Click="Browse_Click" />
+                <TextBlock x:Name="FilePathText" Text="No file selected" Foreground="#9CA3AF" FontSize="11"
+                           VerticalAlignment="Center" Margin="12,0,0,0" MaxWidth="400" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="  " />
+                <TextBlock Text="Format:" VerticalAlignment="Center" Foreground="#9CA3AF" Margin="0,0,4,0" />
+                <dxe:ComboBoxEdit x:Name="FormatSelector" Width="140" Height="24" IsTextEditable="False"
+                                   EditValue="Excel (.xlsx)" />
+                <TextBlock Text="  " />
+                <TextBlock Text="Project:" VerticalAlignment="Center" Foreground="#9CA3AF" Margin="0,0,4,0" />
+                <dxe:ComboBoxEdit x:Name="ProjectSelector" Width="160" Height="24" NullText="Select Project"
+                                   IsTextEditable="False" DisplayMember="Name" ValueMember="Id" />
+            </StackPanel>
+        </Border>
+
+        <!-- Step 2: Column mapping -->
+        <Border Grid.Row="1" Background="#1E293B" Margin="8,4,8,0" CornerRadius="4" Padding="12,8">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <StackPanel Grid.Row="0" Orientation="Horizontal">
+                    <TextBlock Text="2. Map Columns" FontWeight="SemiBold" Foreground="White" FontSize="13" VerticalAlignment="Center" />
+                    <Button x:Name="AutoMapButton" Content="Auto-Detect" Padding="10,4" Margin="16,0,0,0" Click="AutoMap_Click" />
+                    <TextBlock x:Name="MappingStatusText" Text="" Foreground="#9CA3AF" FontSize="11"
+                               VerticalAlignment="Center" Margin="12,0,0,0" />
+                </StackPanel>
+                <dxg:GridControl x:Name="MappingGrid" Grid.Row="1" AutoGenerateColumns="None" MaxHeight="160" Margin="0,4,0,0">
+                    <dxg:GridControl.View>
+                        <dxg:TableView AllowEditing="True" NavigationStyle="Cell" ShowGroupPanel="False" />
+                    </dxg:GridControl.View>
+                    <dxg:GridControl.Columns>
+                        <dxg:GridColumn FieldName="SourceColumn" Header="Source Column" Width="180" ReadOnly="True" />
+                        <dxg:GridColumn FieldName="TargetField" Header="Map To" Width="160">
+                            <dxg:GridColumn.EditSettings>
+                                <dxe:ComboBoxEditSettings x:Name="TargetFieldCombo" IsTextEditable="False" />
+                            </dxg:GridColumn.EditSettings>
+                        </dxg:GridColumn>
+                        <dxg:GridColumn FieldName="SampleValue" Header="Sample" Width="200" ReadOnly="True" />
+                        <dxg:GridColumn FieldName="IsMapped" Header="Mapped" Width="60" ReadOnly="True" />
+                    </dxg:GridControl.Columns>
+                </dxg:GridControl>
+            </Grid>
+        </Border>
+
+        <!-- Step 3: Preview + Import -->
+        <Border Grid.Row="2" Background="#1E293B" Margin="8,4,8,0" CornerRadius="4" Padding="12,8">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="3. Preview &amp; Import" FontWeight="SemiBold" Foreground="White" FontSize="13" VerticalAlignment="Center" />
+                <Button x:Name="PreviewButton" Content="Preview" Padding="10,4" Margin="16,0,4,0" Click="Preview_Click" />
+                <Button x:Name="ImportButton" Content="Import" Padding="14,4" Margin="4,0,0,0"
+                        Click="Import_Click" FontWeight="SemiBold" />
+                <dxe:CheckEdit x:Name="UpdateExistingCheck" Content="Update existing (match by Title)" Margin="12,0,0,0" />
+                <TextBlock x:Name="ImportStatusText" Text="" Foreground="#22C55E" FontSize="11"
+                           VerticalAlignment="Center" Margin="12,0,0,0" />
+            </StackPanel>
+        </Border>
+
+        <!-- Preview grid -->
+        <dxg:GridControl x:Name="PreviewGrid" Grid.Row="3" AutoGenerateColumns="AddNew" Margin="8,4,8,4">
+            <dxg:GridControl.View>
+                <dxg:TableView AllowEditing="False" ShowAutoFilterRow="True" UseEvenRowBackground="True"
+                                ShowTotalSummary="True" SearchPanelNullText="Search preview..." />
+            </dxg:GridControl.View>
+        </dxg:GridControl>
+
+        <!-- Progress bar -->
+        <ProgressBar x:Name="ImportProgress" Grid.Row="4" Height="4" Margin="8,0,8,4"
+                     Minimum="0" Maximum="100" Value="0" Background="#374151" Foreground="#3B82F6" />
+    </Grid>
+</UserControl>

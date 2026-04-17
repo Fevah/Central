@@ -57,12 +57,7 @@
     <ProjectReference Include="..\..\modules\dashboard\Central.Module.Dashboard.csproj" />
     <ProjectReference Include="..\..\modules\crm\Central.Module.CRM.csproj" />
     <ProjectReference Include="..\..\modules\devices\Central.Module.Devices.csproj" />
-    <ProjectReference Include="..\..\modules\switches\Central.Module.Switches.csproj" />
-    <ProjectReference Include="..\..\modules\links\Central.Module.Links.csproj" />
-    <ProjectReference Include="..\..\modules\routing\Central.Module.Routing.csproj" />
-    <ProjectReference Include="..\..\modules\vlans\Central.Module.VLANs.csproj" />
     <ProjectReference Include="..\..\modules\admin\Central.Module.Admin.csproj" />
-    <ProjectReference Include="..\..\modules\tasks\Central.Module.Tasks.csproj" />
     <ProjectReference Include="..\..\modules\service-desk\Central.Module.ServiceDesk.csproj" />
 
     <ProjectReference Include="..\..\modules\global-admin\Central.Module.GlobalAdmin.csproj" />
@@ -71,6 +66,8 @@
     <ProjectReference Include="..\..\libs\protection\Central.Protection.csproj" />
     <ProjectReference Include="..\..\libs\collaboration\Central.Collaboration.csproj" />
     <ProjectReference Include="..\..\libs\observability\Central.Observability.csproj" />
+    <ProjectReference Include="..\..\modules\networking\Central.Module.Networking.csproj" />
+    <ProjectReference Include="..\..\modules\projects\Central.Module.Projects.csproj" />
   </ItemGroup>
 
 </Project>

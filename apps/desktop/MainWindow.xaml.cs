@@ -3807,9 +3807,9 @@ public partial class MainWindow
         catch (Exception ex) { AppLogger.LogException("Ribbon", ex, "ReloadRibbonTreesAsync"); }
     }
 
-    private async Task<List<Central.Module.Tasks.Views.PortfolioTreeNode>> BuildPortfolioTreeAsync()
+    private async Task<List<Central.Module.Projects.PortfolioTreeNode>> BuildPortfolioTreeAsync()
     {
-        var nodes = new List<Central.Module.Tasks.Views.PortfolioTreeNode>();
+        var nodes = new List<Central.Module.Projects.PortfolioTreeNode>();
         var portfolios = await VM.Repo.GetPortfoliosAsync();
         var programmes = await VM.Repo.GetProgrammesAsync();
         var projects = await VM.Repo.GetTaskProjectsAsync();
@@ -3819,7 +3819,7 @@ public partial class MainWindow
         foreach (var pf in portfolios)
         {
             var pfTasks = allTasks; // Portfolio spans all
-            nodes.Add(new Central.Module.Tasks.Views.PortfolioTreeNode
+            nodes.Add(new Central.Module.Projects.PortfolioTreeNode
             {
                 TreeId = $"pf_{pf.Id}", Name = pf.Name, Level = "Portfolio",
                 TaskCount = pfTasks.Count,
@@ -3831,7 +3831,7 @@ public partial class MainWindow
 
         foreach (var pg in programmes)
         {
-            nodes.Add(new Central.Module.Tasks.Views.PortfolioTreeNode
+            nodes.Add(new Central.Module.Projects.PortfolioTreeNode
             {
                 TreeId = $"pg_{pg.Id}", TreeParentId = pg.PortfolioId.HasValue ? $"pf_{pg.PortfolioId}" : null,
                 Name = pg.Name, Level = "Programme"
@@ -3842,7 +3842,7 @@ public partial class MainWindow
         {
             var prTasks = allTasks.Where(t => t.ProjectId == pr.Id).ToList();
             var prSprints = sprints.Where(s => s.ProjectId == pr.Id && s.Status == "Active").Count();
-            nodes.Add(new Central.Module.Tasks.Views.PortfolioTreeNode
+            nodes.Add(new Central.Module.Projects.PortfolioTreeNode
             {
                 TreeId = $"pr_{pr.Id}", TreeParentId = pr.ProgrammeId.HasValue ? $"pg_{pr.ProgrammeId}" : null,
                 Name = pr.Name, Level = "Project",

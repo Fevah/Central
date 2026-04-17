@@ -61,12 +61,11 @@ DSN / credentials / API URLs: [docs/CREDENTIALS.md](docs/CREDENTIALS.md).
 │   ├── dashboard/            KPI cards, notification center
 │   ├── devices/              IPAM
 │   ├── global-admin/         Tenant / licensing / audit
-│   ├── links/                P2P / B2B / FW link builder
-│   ├── routing/              BGP
+│   ├── networking/           Switches, routing, VLANs, links — one self-contained
+│   │                         tenant-togglable module
+│   ├── projects/             Project + task management (portfolios, programmes,
+│   │                         sprints, Kanban, Gantt — 16 panels)
 │   ├── service-desk/         ManageEngine integration
-│   ├── switches/             Switch config + deploy
-│   ├── tasks/                Task management (16 panels)
-│   └── vlans/                VLAN inventory
 │
 ├── tests/
 │   └── dotnet/               Central.Tests — 2,382 tests

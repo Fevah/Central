@@ -286,12 +286,13 @@ Restructured 2026-04-17 — see [docs/REPO_STRUCTURE_PLAN.md](docs/REPO_STRUCTUR
 │   ├── dashboard/            KPI cards, notification center
 │   ├── devices/              IPAM (8 grid panels + ASN + servers)
 │   ├── global-admin/         Platform-level tenant / licensing / audit
-│   ├── links/                P2P, B2B, FW link builder
-│   ├── routing/              BGP + diagram
+│   ├── networking/           Switches + routing + VLANs + links — merged
+│   │                         2026-04-17 into one self-contained, tenant-
+│   │                         togglable module with internal subfolders
+│   │                         (Switches/, Routing/, Vlans/, Links/)
+│   ├── projects/             Project + task management (portfolios,
+│   │                         programmes, sprints, Kanban, Gantt — 16 panels)
 │   ├── service-desk/         ManageEngine sync, dashboards, teams
-│   ├── switches/             Switches + detail + deploy
-│   ├── tasks/                16-panel task management (Hansoft/P4 Plan clone)
-│   └── vlans/                VLAN inventory
 │
 ├── tests/
 │   └── dotnet/               Central.Tests — 2,382 unit + integration tests

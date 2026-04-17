@@ -9,15 +9,12 @@ WPF feature modules. Each registers a ribbon tab plus a set of docked panels int
 | [admin/](admin/) | `Central.Module.Admin` | Users, roles, lookups, AD browser, jobs, ribbon config, migrations, backups, purge, locations, references, Podman, scheduler. |
 | [audit/](audit/) | `Central.Module.Audit` | Audit log viewer (before/after JSONB diffs, real-time via SignalR). |
 | [crm/](crm/) | `Central.Module.CRM` | Accounts, deals, pipeline Kanban, CRM dashboard. |
-| [dashboard/](dashboard/) | `Central.Module.Dashboard` | Landing-page KPI cards + notification center. |
+| [dashboard/](dashboard/) | `Central.Module.Dashboard` | Landing-page KPI cards + notification center. (Note: dashboard currently *aggregates* data from other modules — planned refactor to be a shell that feature modules register KPI cards into, so disabling a feature module automatically removes its cards.) |
 | [devices/](devices/) | `Central.Module.Devices` | IPAM — 8 grid panels, ASN, servers. |
 | [global-admin/](global-admin/) | `Central.Module.GlobalAdmin` | Platform-level tenant / licensing / audit (GlobalAdmin-only). |
-| [links/](links/) | `Central.Module.Links` | P2P / B2B / FW link inventory + builder. |
-| [routing/](routing/) | `Central.Module.Routing` | BGP + topology diagram. |
+| [networking/](networking/) | `Central.Module.Networking` | Switches, routing (BGP), VLANs, and links (P2P/B2B/FW) — one self-contained tenant-togglable module. Internal subfolders (Switches/, Routing/, Vlans/, Links/) keep the code organised. Merged 2026-04-17 from four separate modules. |
+| [projects/](projects/) | `Central.Module.Projects` | 16-panel project + task management (Hansoft/P4 Plan clone): tree, backlog, sprint, burndown, Kanban, Gantt, QA, reports, timesheet, activity, portfolio, programmes, import. Renamed from `tasks/` 2026-04-17 to reflect the broader scope. |
 | [service-desk/](service-desk/) | `Central.Module.ServiceDesk` | ManageEngine sync, dashboards, teams, group categories, write-back. |
-| [switches/](switches/) | `Central.Module.Switches` | Switches, detail view, deploy. |
-| [tasks/](tasks/) | `Central.Module.Tasks` | 16-panel task management — tree, backlog, sprint, burndown, Kanban, Gantt, QA, reports, timesheet, activity, portfolio, import. |
-| [vlans/](vlans/) | `Central.Module.VLANs` | VLAN inventory. |
 
 ## What makes something a module (vs a lib)
 

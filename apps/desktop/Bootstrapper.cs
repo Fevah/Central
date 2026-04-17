@@ -38,23 +38,22 @@ public static class Bootstrapper
         catch { }
     }
 
+    // Module registry. Each entry is a tenant-togglable unit — disabling one
+    // here removes its ribbon tab, panels, and commands in one switch.
     private static readonly Type[] _moduleTypes =
     {
-        // Dashboard (first tab — landing page)
+        // Landing page
         typeof(Central.Module.Dashboard.DashboardModule),
 
-        // Devices parent + sub-modules (all merge into Devices ribbon tab)
+        // Infrastructure
         typeof(Central.Module.Devices.DevicesModule),
-        typeof(Central.Module.Switches.SwitchesModule),
-        typeof(Central.Module.Links.LinksModule),
-        typeof(Central.Module.Routing.RoutingModule),
-        typeof(Central.Module.VLANs.VlansModule),
+        typeof(Central.Module.Networking.NetworkingModule),  // switches + routing + vlans + links
 
-        // Core (always loaded)
+        // Platform admin
         typeof(Central.Module.Admin.AdminModule),
 
-        // Standalone module DLLs (expandable)
-        typeof(Central.Module.Tasks.TasksModule),
+        // Business modules (tenant-togglable)
+        typeof(Central.Module.Projects.ProjectsModule),       // was Tasks — expanding to cover portfolios + programmes
         typeof(Central.Module.ServiceDesk.ServiceDeskModule),
         typeof(Central.Module.CRM.CrmModule),
 

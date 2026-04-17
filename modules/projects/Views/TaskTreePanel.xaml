@@ -1,0 +1,238 @@
+﻿<UserControl x:Class="Central.Module.Projects.TaskTreePanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             xmlns:conv="clr-namespace:Central.Engine.Converters;assembly=Central.Engine">
+    <UserControl.Resources>
+        <conv:StringToBrushConverter x:Key="StringToBrush" />
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Toolbar -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="8,6" >
+            <!-- Project selector -->
+            <TextBlock Text="Project:" VerticalAlignment="Center" Foreground="#9CA3AF" Margin="0,0,4,0" />
+            <dxe:ComboBoxEdit x:Name="ProjectFilter" Width="180" Height="24" NullText="All Projects"
+                               IsTextEditable="False" EditValueChanged="ProjectFilter_Changed"
+                               DisplayMember="Name" ValueMember="Id" />
+            <TextBlock Text="  " />
+
+            <!-- Sprint selector -->
+            <TextBlock Text="Sprint:" VerticalAlignment="Center" Foreground="#9CA3AF" Margin="0,0,4,0" />
+            <dxe:ComboBoxEdit x:Name="SprintFilter" Width="150" Height="24" NullText="All Sprints"
+                               IsTextEditable="False" EditValueChanged="Filter_Changed"
+                               DisplayMember="Name" ValueMember="Id" />
+            <TextBlock Text="  " />
+
+            <!-- Action buttons -->
+            <Button x:Name="AddTaskButton" Content="+ Task" Padding="10,4" Margin="0,0,4,0"
+                    Click="AddTask_Click" FontWeight="SemiBold" />
+            <Button x:Name="AddSubTaskButton" Content="+ Sub-Task" Padding="10,4" Margin="0,0,4,0"
+                    Click="AddSubTask_Click" />
+            <TextBlock Text="  " />
+
+            <!-- Filters -->
+            <dxe:ComboBoxEdit x:Name="StatusFilter" Width="110" Height="24" NullText="All Status"
+                               IsTextEditable="False" EditValueChanged="Filter_Changed" />
+            <dxe:ComboBoxEdit x:Name="PriorityFilter" Width="100" Height="24" NullText="All Priority"
+                               IsTextEditable="False" Margin="4,0,0,0" EditValueChanged="Filter_Changed" />
+            <dxe:ComboBoxEdit x:Name="TypeFilter" Width="100" Height="24" NullText="All Types"
+                               IsTextEditable="False" Margin="4,0,0,0" EditValueChanged="Filter_Changed" />
+            <TextBlock x:Name="TaskCountText" VerticalAlignment="Center" Foreground="#9CA3AF"
+                       FontSize="11" Margin="12,0,0,0" />
+        </StackPanel>
+
+        <!-- Tree Grid -->
+        <dxg:TreeListControl x:Name="TaskTree" Grid.Row="1"
+                              AutoGenerateColumns="None">
+            <dxg:TreeListControl.View>
+                <dxg:TreeListView x:Name="TaskTreeView"
+                                   KeyFieldName="Id"
+                                   ParentFieldName="ParentId"
+                                   ShowColumnHeaders="True"
+                                   ShowIndicator="False"
+                                   AutoExpandAllNodes="True"
+                                   AllowEditing="True"
+                                   NavigationStyle="Cell"
+                                   ShowAutoFilterRow="True"
+                                   ShowTotalSummary="True"
+                                   ShowFilterPanelMode="ShowAlways"
+                                   AllowColumnFiltering="True"
+                                   UseEvenRowBackground="True"
+                                   SearchPanelNullText="Search tasks..."
+                                   ValidateNode="TaskTreeView_ValidateNode"
+                                   InvalidNodeException="TaskTreeView_InvalidNodeException" />
+            </dxg:TreeListControl.View>
+            <dxg:TreeListControl.Columns>
+                <!-- Status icon -->
+                <dxg:TreeListColumn FieldName="StatusIcon" Header="" Width="30" AllowEditing="False" Fixed="Left">
+                    <dxg:TreeListColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding RowData.Row.StatusIcon}"
+                                       Foreground="{Binding RowData.Row.StatusColor, Converter={StaticResource StringToBrush}}"
+                                       FontSize="14" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       ToolTip="{Binding RowData.Row.Status}" />
+                        </DataTemplate>
+                    </dxg:TreeListColumn.CellTemplate>
+                </dxg:TreeListColumn>
+                <!-- Priority icon -->
+                <dxg:TreeListColumn FieldName="PriorityIcon" Header="!" Width="30" AllowEditing="False">
+                    <dxg:TreeListColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding RowData.Row.PriorityIcon}"
+                                       Foreground="{Binding RowData.Row.PriorityColor, Converter={StaticResource StringToBrush}}"
+                                       FontSize="11" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       ToolTip="{Binding RowData.Row.Priority}" />
+                        </DataTemplate>
+                    </dxg:TreeListColumn.CellTemplate>
+                </dxg:TreeListColumn>
+                <!-- Color stripe -->
+                <dxg:TreeListColumn FieldName="Color" Header="" Width="6" AllowEditing="False">
+                    <dxg:TreeListColumn.CellTemplate>
+                        <DataTemplate>
+                            <Border Background="{Binding RowData.Row.Color, Converter={StaticResource StringToBrush}}"
+                                    Width="4" HorizontalAlignment="Center" CornerRadius="2" />
+                        </DataTemplate>
+                    </dxg:TreeListColumn.CellTemplate>
+                </dxg:TreeListColumn>
+                <!-- Title -->
+                <dxg:TreeListColumn FieldName="Title" Header="Task" Width="280" Fixed="Left" />
+                <!-- WBS -->
+                <dxg:TreeListColumn FieldName="Wbs" Header="WBS" Width="70" ReadOnly="True" />
+                <!-- Status -->
+                <dxg:TreeListColumn FieldName="Status" Header="Status" Width="90">
+                    <dxg:TreeListColumn.EditSettings>
+                        <dxe:ComboBoxEditSettings IsTextEditable="False">
+                            <dxe:ComboBoxEditSettings.ItemsSource>
+                                <x:Array Type="sys:String">
+                                    <sys:String>Open</sys:String>
+                                    <sys:String>InProgress</sys:String>
+                                    <sys:String>Review</sys:String>
+                                    <sys:String>Done</sys:String>
+                                    <sys:String>Blocked</sys:String>
+                                </x:Array>
+                            </dxe:ComboBoxEditSettings.ItemsSource>
+                        </dxe:ComboBoxEditSettings>
+                    </dxg:TreeListColumn.EditSettings>
+                </dxg:TreeListColumn>
+                <!-- Priority -->
+                <dxg:TreeListColumn FieldName="Priority" Header="Priority" Width="80">
+                    <dxg:TreeListColumn.EditSettings>
+                        <dxe:ComboBoxEditSettings IsTextEditable="False">
+                            <dxe:ComboBoxEditSettings.ItemsSource>
+                                <x:Array Type="sys:String">
+                                    <sys:String>Critical</sys:String>
+                                    <sys:String>High</sys:String>
+                                    <sys:String>Medium</sys:String>
+                                    <sys:String>Low</sys:String>
+                                </x:Array>
+                            </dxe:ComboBoxEditSettings.ItemsSource>
+                        </dxe:ComboBoxEditSettings>
+                    </dxg:TreeListColumn.EditSettings>
+                </dxg:TreeListColumn>
+                <!-- Type -->
+                <dxg:TreeListColumn FieldName="TaskType" Header="Type" Width="80">
+                    <dxg:TreeListColumn.EditSettings>
+                        <dxe:ComboBoxEditSettings IsTextEditable="False">
+                            <dxe:ComboBoxEditSettings.ItemsSource>
+                                <x:Array Type="sys:String">
+                                    <sys:String>Epic</sys:String>
+                                    <sys:String>Story</sys:String>
+                                    <sys:String>Task</sys:String>
+                                    <sys:String>Bug</sys:String>
+                                    <sys:String>SubTask</sys:String>
+                                    <sys:String>Milestone</sys:String>
+                                </x:Array>
+                            </dxe:ComboBoxEditSettings.ItemsSource>
+                        </dxe:ComboBoxEditSettings>
+                    </dxg:TreeListColumn.EditSettings>
+                </dxg:TreeListColumn>
+                <!-- Points -->
+                <dxg:TreeListColumn FieldName="Points" Header="Points" Width="60">
+                    <dxg:TreeListColumn.EditSettings>
+                        <dxe:SpinEditSettings MinValue="0" MaxValue="999" IsFloatValue="True" />
+                    </dxg:TreeListColumn.EditSettings>
+                </dxg:TreeListColumn>
+                <!-- Work Remaining -->
+                <dxg:TreeListColumn FieldName="WorkRemaining" Header="Remaining" Width="75">
+                    <dxg:TreeListColumn.EditSettings>
+                        <dxe:SpinEditSettings MinValue="0" MaxValue="9999" IsFloatValue="True" Mask="n1" />
+                    </dxg:TreeListColumn.EditSettings>
+                </dxg:TreeListColumn>
+                <!-- Assigned -->
+                <dxg:TreeListColumn FieldName="AssignedToName" Header="Assigned" Width="120" ReadOnly="True" />
+                <!-- Sprint -->
+                <dxg:TreeListColumn FieldName="SprintName" Header="Sprint" Width="110" ReadOnly="True" />
+                <!-- Category -->
+                <dxg:TreeListColumn FieldName="Category" Header="Category" Width="90">
+                    <dxg:TreeListColumn.EditSettings>
+                        <dxe:ComboBoxEditSettings IsTextEditable="False">
+                            <dxe:ComboBoxEditSettings.ItemsSource>
+                                <x:Array Type="sys:String">
+                                    <sys:String>Feature</sys:String>
+                                    <sys:String>Enhancement</sys:String>
+                                    <sys:String>TechDebt</sys:String>
+                                    <sys:String>Bug</sys:String>
+                                    <sys:String>Ops</sys:String>
+                                </x:Array>
+                            </dxe:ComboBoxEditSettings.ItemsSource>
+                        </dxe:ComboBoxEditSettings>
+                    </dxg:TreeListColumn.EditSettings>
+                </dxg:TreeListColumn>
+                <!-- Risk -->
+                <dxg:TreeListColumn FieldName="Risk" Header="Risk" Width="70">
+                    <dxg:TreeListColumn.EditSettings>
+                        <dxe:ComboBoxEditSettings IsTextEditable="False">
+                            <dxe:ComboBoxEditSettings.ItemsSource>
+                                <x:Array Type="sys:String">
+                                    <sys:String>None</sys:String>
+                                    <sys:String>Low</sys:String>
+                                    <sys:String>Medium</sys:String>
+                                    <sys:String>High</sys:String>
+                                    <sys:String>Critical</sys:String>
+                                </x:Array>
+                            </dxe:ComboBoxEditSettings.ItemsSource>
+                        </dxe:ComboBoxEditSettings>
+                    </dxg:TreeListColumn.EditSettings>
+                </dxg:TreeListColumn>
+                <!-- Start / Finish -->
+                <dxg:TreeListColumn FieldName="StartDate" Header="Start" Width="90">
+                    <dxg:TreeListColumn.EditSettings>
+                        <dxe:DateEditSettings DisplayFormat="yyyy-MM-dd" Mask="yyyy-MM-dd" />
+                    </dxg:TreeListColumn.EditSettings>
+                </dxg:TreeListColumn>
+                <dxg:TreeListColumn FieldName="FinishDate" Header="Finish" Width="90">
+                    <dxg:TreeListColumn.EditSettings>
+                        <dxe:DateEditSettings DisplayFormat="yyyy-MM-dd" Mask="yyyy-MM-dd" />
+                    </dxg:TreeListColumn.EditSettings>
+                </dxg:TreeListColumn>
+                <!-- Building -->
+                <dxg:TreeListColumn FieldName="Building" Header="Building" Width="90" />
+                <!-- Due Date -->
+                <dxg:TreeListColumn FieldName="DueDate" Header="Due" Width="90">
+                    <dxg:TreeListColumn.EditSettings>
+                        <dxe:DateEditSettings DisplayFormat="yyyy-MM-dd" Mask="yyyy-MM-dd" />
+                    </dxg:TreeListColumn.EditSettings>
+                </dxg:TreeListColumn>
+                <!-- Hours progress -->
+                <dxg:TreeListColumn FieldName="ProgressDisplay" Header="Hours" Width="70" ReadOnly="True" />
+                <!-- Tags -->
+                <dxg:TreeListColumn FieldName="Tags" Header="Tags" Width="120" />
+            </dxg:TreeListControl.Columns>
+            <dxg:TreeListControl.TotalSummary>
+                <dxg:TreeListSummaryItem SummaryType="Count" FieldName="Title" DisplayFormat="{}Tasks: {0}" />
+                <dxg:TreeListSummaryItem SummaryType="Sum" FieldName="Points" DisplayFormat="{}Points: {0:n1}" />
+                <dxg:TreeListSummaryItem SummaryType="Sum" FieldName="WorkRemaining" DisplayFormat="{}Remaining: {0:n1}h" />
+            </dxg:TreeListControl.TotalSummary>
+        </dxg:TreeListControl>
+    </Grid>
+</UserControl>
