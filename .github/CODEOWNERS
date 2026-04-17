@@ -36,18 +36,19 @@
 
 # ── Modules (WPF feature modules) ────────────────────────────────────────
 /modules/                       @cory-sharplin
-/modules/admin/                 @cory-sharplin
+
+# Always-on core (Admin + Dashboard + Platform-admin) — any change here
+# ships to every tenant. Treat as higher-risk; add a security reviewer
+# once the team grows.
+/modules/global/                @cory-sharplin
+
+# Tenant-togglable feature modules
 /modules/audit/                 @cory-sharplin
 /modules/crm/                   @cory-sharplin
-/modules/dashboard/             @cory-sharplin
 /modules/devices/               @cory-sharplin
-/modules/global-admin/          @cory-sharplin
-/modules/links/                 @cory-sharplin
-/modules/routing/               @cory-sharplin
+/modules/networking/            @cory-sharplin
+/modules/projects/              @cory-sharplin
 /modules/service-desk/          @cory-sharplin
-/modules/switches/              @cory-sharplin
-/modules/tasks/                 @cory-sharplin
-/modules/vlans/                 @cory-sharplin
 
 # ── Database (shared contract — review with care) ────────────────────────
 /db/migrations/                 @cory-sharplin

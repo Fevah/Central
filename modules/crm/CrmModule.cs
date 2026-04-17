@@ -1,6 +1,8 @@
 ﻿using Central.Engine.Auth;
 using Central.Engine.Modules;
 using Central.Engine.Shell;
+using Central.Engine.Widgets;
+using Central.Module.CRM.Dashboards;
 
 namespace Central.Module.CRM;
 
@@ -13,6 +15,11 @@ public class CrmModule : IModule, IModuleRibbon, IModulePanels
     public string Name => "CRM";
     public string PermissionCategory => "crm";
     public int SortOrder => 40;
+
+    public CrmModule()
+    {
+        DashboardContributionRegistry.Register(new CrmDashboardContribution());
+    }
 
     public void RegisterRibbon(IRibbonBuilder ribbon)
     {

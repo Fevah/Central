@@ -25,7 +25,22 @@ WPF feature modules. Each registers a ribbon tab plus a set of docked panels int
 
 ### Convention: per-module dashboards live in `Dashboards/`
 
-Feature modules that want a module-specific dashboard panel (KPI cards for just their own domain) put it in a `Dashboards/` subfolder: [crm/Dashboards/CrmDashboardPanel.xaml](crm/Dashboards/), [projects/Dashboards/TaskDashboardPanel.xaml](projects/Dashboards/), [audit/Dashboards/GdprDashboardPanel.xaml](audit/Dashboards/). The **platform-wide** landing dashboard (aggregating across modules) lives in [global/Dashboard/](global/Dashboard/). A tenant disabling a feature module loses its module-specific dashboard with it; the platform dashboard stays (because `global/` is always on).
+A module has two different dashboard concerns:
+
+1. **Its own detailed dashboard panel** — a full screen the user docks via the module's ribbon tab. Lives at `modules/<name>/Dashboards/<Name>DashboardPanel.xaml`. Examples: [crm/Dashboards/CrmDashboardPanel.xaml](crm/Dashboards/), [projects/Dashboards/TaskDashboardPanel.xaml](projects/Dashboards/), [audit/Dashboards/GdprDashboardPanel.xaml](audit/Dashboards/).
+
+2. **Its contribution to the platform landing dashboard** — a few KPI cards that show up under a section header on the landing page alongside other modules' contributions. Implement `IDashboardContribution` from [libs/engine/Widgets/IDashboardContribution.cs](../libs/engine/Widgets/IDashboardContribution.cs) and register it in the module's `IModule` constructor:
+
+```csharp
+public NetworkingModule()
+{
+    DashboardContributionRegistry.Register(new NetworkingDashboardContribution());
+}
+```
+
+The contribution class returns a list of WPF `UIElement` cards, sorted by `SortOrder`, gated by an optional `RequiredPermission`. When a tenant disables the module, its `IModule` isn't instantiated, nothing registers, and the section disappears from the landing dashboard automatically. See the pattern in `modules/*/Dashboards/*DashboardContribution.cs`.
+
+The **platform-wide** landing dashboard itself (the shell that iterates contributions) lives at [global/Dashboard/Views/DashboardPanel.xaml](global/Dashboard/). It has no knowledge of any specific module — the registry inverts the coupling.
 
 ## What makes something a module (vs a lib)
 

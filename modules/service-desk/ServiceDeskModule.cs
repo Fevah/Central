@@ -1,5 +1,7 @@
 ﻿using Central.Engine.Modules;
 using Central.Engine.Shell;
+using Central.Engine.Widgets;
+using Central.Module.ServiceDesk.Dashboards;
 
 namespace Central.Module.ServiceDesk;
 
@@ -8,6 +10,11 @@ public class ServiceDeskModule : IModule, IModuleRibbon, IModulePanels
     public string Name => "Service Desk";
     public string PermissionCategory => "servicedesk";
     public int SortOrder => 70;
+
+    public ServiceDeskModule()
+    {
+        DashboardContributionRegistry.Register(new ServiceDeskDashboardContribution());
+    }
 
     public void RegisterRibbon(IRibbonBuilder ribbon)
     {
