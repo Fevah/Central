@@ -46,6 +46,50 @@ public class DatabaseSchemaTests
         Assert.NotEmpty(result.Warnings);
     }
 
+    /// <summary>
+    /// Catches the class of drift that StartupHealthCheck misses: tables
+    /// exist but queries reference columns that were never created.
+    /// That's what caused "user corys not found" — app_users existed but
+    /// the login query referenced password_changed_at / mfa_secret_enc
+    /// which no migration defined.
+    ///
+    /// Each (table, column) pair below is read by a hot path at startup
+    /// or login. If it's missing, the query throws, the repo catches it,
+    /// and the user sees a misleading "not found" / empty state.
+    /// </summary>
+    [Theory]
+    [InlineData("app_users", "password_changed_at")]
+    [InlineData("app_users", "mfa_secret_enc")]
+    [InlineData("app_users", "mfa_enabled")]
+    [InlineData("app_users", "user_type")]
+    [InlineData("app_users", "email")]
+    [InlineData("identity_providers", "provider_type")]
+    [InlineData("identity_providers", "config_json")]
+    [InlineData("sync_configs", "agent_type")]
+    [InlineData("sync_configs", "config_json")]
+    [InlineData("sync_entity_maps", "sync_config_id")]
+    [InlineData("sync_field_maps", "entity_map_id")]
+    [InlineData("panel_customizations", "setting_json")]
+    [InlineData("auth_events", "event_type")]
+    public async Task CriticalColumn_Exists(string table, string column)
+    {
+        if (Skip) return;
+        if (!await CanReachDb()) return;
+
+        await using var conn = new NpgsqlConnection(Dsn);
+        await conn.OpenAsync();
+        await using var cmd = new NpgsqlCommand(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns " +
+            "WHERE table_schema='public' AND table_name=@t AND column_name=@c)", conn);
+        cmd.Parameters.AddWithValue("t", table);
+        cmd.Parameters.AddWithValue("c", column);
+        var exists = (bool)(await cmd.ExecuteScalarAsync())!;
+
+        Assert.True(exists,
+            $"Column drift — {table}.{column} missing. A query reads it but no " +
+            $"migration creates it. Apply the migration that defines {column}.");
+    }
+
     private static async Task<bool> CanReachDb()
     {
         try

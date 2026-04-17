@@ -51,9 +51,9 @@ public class PermissionRepository : RepositoryBase
 
             return codes;
         }
-        catch
+        catch (Exception ex)
         {
-            // Offline / DB error — return empty (AuthContext handles fallback)
+            AppLogger.LogException("auth", ex, nameof(GetPermissionCodesForRoleAsync));
             return codes;
         }
     }
@@ -138,7 +138,10 @@ public class PermissionRepository : RepositoryBase
             while (await reader.ReadAsync())
                 sites.Add(reader.GetString(0));
         }
-        catch { /* offline */ }
+        catch (Exception ex)
+        {
+            AppLogger.LogException("auth", ex, nameof(GetAllowedSitesAsync));
+        }
         return sites;
     }
 
@@ -155,7 +158,10 @@ public class PermissionRepository : RepositoryBase
                        COALESCE(u.password_hash, '') as password_hash,
                        COALESCE(u.salt, '') as salt,
                        COALESCE(u.user_type, 'ActiveDirectory') as user_type,
-                       COALESCE(u.email, '') as email
+                       COALESCE(u.email, '') as email,
+                       COALESCE(u.mfa_enabled, false) as mfa_enabled,
+                       COALESCE(u.mfa_secret_enc, '') as mfa_secret_enc,
+                       u.password_changed_at
                 FROM app_users u
                 LEFT JOIN roles r ON r.name = u.role
                 WHERE u.username = @username", conn);
@@ -176,11 +182,17 @@ public class PermissionRepository : RepositoryBase
                     PasswordHash = reader.GetString(7),
                     Salt = reader.GetString(8),
                     UserType = reader.GetString(9),
-                    Email = reader.GetString(10)
+                    Email = reader.GetString(10),
+                    MfaEnabled = reader.GetBoolean(11),
+                    MfaSecretEnc = reader.GetString(12),
+                    PasswordChangedAt = reader.IsDBNull(13) ? null : reader.GetDateTime(13)
                 };
             }
         }
-        catch { /* offline */ }
+        catch (Exception ex)
+        {
+            AppLogger.LogException("auth", ex, nameof(GetUserByUsernameAsync));
+        }
         return null;
     }
 
@@ -215,7 +227,10 @@ public class PermissionRepository : RepositoryBase
                 };
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            AppLogger.LogException("auth", ex, nameof(GetUserByIdAsync));
+        }
         return null;
     }
 
@@ -250,7 +265,10 @@ public class PermissionRepository : RepositoryBase
                 };
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            AppLogger.LogException("auth", ex, nameof(GetUserByEmailAsync));
+        }
         return null;
     }
 }
