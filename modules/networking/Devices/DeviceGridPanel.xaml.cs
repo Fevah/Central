@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using DevExpress.Xpf.Grid;
 using Central.Engine.Models;
 
-namespace Central.Module.Devices.Views;
+namespace Central.Module.Networking.Devices;
 
 /// <summary>
 /// IPAM device grid panel — extracted from MainWindow.

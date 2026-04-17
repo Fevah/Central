@@ -288,11 +288,13 @@ Restructured 2026-04-17 — see [docs/REPO_STRUCTURE_PLAN.md](docs/REPO_STRUCTUR
 │   ├── audit/                Audit log viewer (+ Dashboards/GdprDashboardPanel)
 │   ├── crm/                  Accounts, deals, pipeline Kanban
 │   │                         (+ Dashboards/CrmDashboardPanel)
-│   ├── devices/              IPAM (8 grid panels + ASN + servers)
-│   ├── networking/           Switches + routing + VLANs + links — merged
-│   │                         2026-04-17 into one self-contained, tenant-
-│   │                         togglable module with internal subfolders
-│   │                         (Switches/, Routing/, Vlans/, Links/)
+│   ├── networking/           IPAM devices + switches + routing + VLANs +
+│   │                         links — one self-contained tenant-togglable
+│   │                         module covering every networking concern.
+│   │                         Internal subfolders: Devices/, Switches/,
+│   │                         Routing/, Vlans/, Links/, Dashboards/.
+│   │                         Devices folded in 2026-04-17 after earlier
+│   │                         four-way merge.
 │   ├── projects/             Project + task management (portfolios,
 │   │                         programmes, sprints, Kanban, Gantt — 16 panels)
 │   │                         (+ Dashboards/TaskDashboardPanel + QADashboardPanel)

@@ -1,6 +1,6 @@
-using DevExpress.Xpf.Grid;
+﻿using DevExpress.Xpf.Grid;
 
-namespace Central.Module.Devices.Views;
+namespace Central.Module.Networking.Devices;
 
 /// <summary>
 /// Master device list grid panel — extracted from MainWindow.

@@ -11,7 +11,7 @@
     xmlns:dxdiag="http://schemas.devexpress.com/winfx/2008/xaml/diagram"
     xmlns:vm="clr-namespace:Central.Desktop.ViewModels"
     xmlns:conv="clr-namespace:Central.Engine.Converters;assembly=Central.Engine"
-    xmlns:devViews="clr-namespace:Central.Module.Devices.Views;assembly=Central.Module.Devices"
+    xmlns:devViews="clr-namespace:Central.Module.Networking.Devices;assembly=Central.Module.Networking"
     xmlns:linkViews="clr-namespace:Central.Module.Networking.Links;assembly=Central.Module.Networking"
     xmlns:swViews="clr-namespace:Central.Module.Networking.Switches;assembly=Central.Module.Networking"
     xmlns:rtViews="clr-namespace:Central.Module.Networking.Routing;assembly=Central.Module.Networking"

@@ -17,8 +17,7 @@ WPF feature modules. Each registers a ribbon tab plus a set of docked panels int
 | Folder | Assembly | Contents |
 |--------|----------|----------|
 | [crm/](crm/) | `Central.Module.CRM` | Accounts, deals, pipeline Kanban. Module-specific dashboard in [crm/Dashboards/](crm/Dashboards/). |
-| [devices/](devices/) | `Central.Module.Devices` | IPAM — 8 grid panels, ASN, servers. |
-| [networking/](networking/) | `Central.Module.Networking` | Switches, routing (BGP), VLANs, links (P2P/B2B/FW). Internal subfolders `Switches/`, `Routing/`, `Vlans/`, `Links/`. |
+| [networking/](networking/) | `Central.Module.Networking` | IPAM devices (grids + ASN + IP ranges + MLAG + MSTP + servers), switches, routing (BGP), VLANs, links (P2P/B2B/FW). Every networking concept in one self-contained tenant-togglable module. Internal subfolders `Devices/`, `Switches/`, `Routing/`, `Vlans/`, `Links/`, `Dashboards/`. |
 | [projects/](projects/) | `Central.Module.Projects` | 16-panel project + task management (Hansoft/P4 Plan clone): tree, backlog, sprint, burndown, Kanban, Gantt, QA, reports, timesheet, activity, portfolio, programmes, import. Module-specific dashboards in [projects/Dashboards/](projects/Dashboards/). |
 | [service-desk/](service-desk/) | `Central.Module.ServiceDesk` | ManageEngine sync, teams, group categories, write-back. |
 | [audit/](audit/) | `Central.Module.Audit` | Audit log viewer with before/after JSONB diffs, real-time via SignalR. Module-specific GDPR dashboard in [audit/Dashboards/](audit/Dashboards/). |

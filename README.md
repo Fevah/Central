@@ -60,9 +60,9 @@ DSN / credentials / API URLs: [docs/CREDENTIALS.md](docs/CREDENTIALS.md).
 │   │                         Dashboard/, Platform/.
 │   ├── audit/                Audit log viewer (+ module-specific Dashboards/)
 │   ├── crm/                  Accounts, deals, pipeline (+ module-specific Dashboards/)
-│   ├── devices/              IPAM
-│   ├── networking/           Switches, routing, VLANs, links — one self-contained
-│   │                         tenant-togglable module
+│   ├── networking/           IPAM devices, switches, routing (BGP), VLANs,
+│   │                         links — one self-contained tenant-togglable
+│   │                         module covering every networking concern
 │   ├── projects/             Project + task management — 16 panels
 │   │                         (+ module-specific Dashboards/)
 │   ├── service-desk/         ManageEngine integration

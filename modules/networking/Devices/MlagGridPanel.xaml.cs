@@ -1,6 +1,6 @@
-using DevExpress.Xpf.Grid;
+﻿using DevExpress.Xpf.Grid;
 
-namespace Central.Module.Devices.Views;
+namespace Central.Module.Networking.Devices;
 
 /// <summary>
 /// MLAG configuration grid panel — extracted from MainWindow.

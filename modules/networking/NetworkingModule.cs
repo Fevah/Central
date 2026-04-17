@@ -1,37 +1,40 @@
 using Central.Engine.Auth;
 using Central.Engine.Modules;
+using Central.Engine.Shell;
 using Central.Engine.Widgets;
 using Central.Module.Networking.Dashboards;
 
 namespace Central.Module.Networking;
 
 /// <summary>
-/// Networking module — one self-contained unit covering switches, routing,
-/// VLANs, and links. Disabling this module for a tenant removes every
-/// networking ribbon group, panel, and command in one switch.
+/// Networking module — one self-contained unit covering every network
+/// concept: IPAM (devices, ASNs, IP ranges, MLAG, MSTP, servers),
+/// switches, routing (BGP), VLANs, and links (P2P / B2B / FW). Disabling
+/// this module for a tenant removes every networking ribbon group,
+/// panel, and command in one switch.
 ///
-/// Merged from the former separate modules (switches, routing, vlans,
-/// links) on 2026-04-17 for tenant-level enable/disable cleanness. Each
-/// former module's code lives in its own subfolder below
-/// (Switches/, Routing/, Vlans/, Links/) so it's still organised, just
-/// not independently deployable.
+/// Merged into one assembly on 2026-04-17. Internal subfolders keep the
+/// code organised (Devices/, Switches/, Routing/, Vlans/, Links/,
+/// Dashboards/) but the assembly boundary is singular — there is no
+/// scenario where "networking minus devices" makes sense.
 /// </summary>
 public class NetworkingModule : IModule, IModuleRibbon, IModulePanels
 {
     public string Name => "Networking";
 
-    // A tenant with *any* of these permissions sees the Networking tab.
-    // The per-sub-area RequirePermission calls below control what's
-    // visible within it.
+    // A tenant with *any* networking permission sees the tab; per-group
+    // RequirePermission calls below control what's visible inside.
     public string PermissionCategory => "switches";
 
     public int SortOrder => 20;
 
     public NetworkingModule()
     {
-        // Self-register this module's dashboard cards. When the tenant
-        // disables Networking, NetworkingModule isn't instantiated and
-        // nothing is registered — the section disappears from the dashboard.
+        // Two contributions -> two sections on the landing dashboard:
+        // "Devices" (IPAM counts) and "Networking" (switch/VLAN/BGP counts).
+        // Both register from this module, so disabling Networking removes
+        // both sections in one step.
+        DashboardContributionRegistry.Register(new DevicesDashboardContribution());
         DashboardContributionRegistry.Register(new NetworkingDashboardContribution());
     }
 
@@ -39,6 +42,19 @@ public class NetworkingModule : IModule, IModuleRibbon, IModulePanels
     {
         ribbon.AddPage("Networking", SortOrder, page =>
         {
+            // ── Devices (IPAM) ─────────────────────────────────────────────
+            page.AddGroup("Devices", group =>
+            {
+                group.AddButton("New Device",    P.DevicesWrite,  "AddItem_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("devices", "action:new")));
+                group.AddButton("Delete Device", P.DevicesDelete, "Delete_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("devices", "action:delete")));
+                group.AddButton("Refresh",       P.DevicesRead,   "Refresh_16x16",
+                    () => PanelMessageBus.Publish(new RefreshPanelMessage("devices")));
+                group.AddButton("Export",        P.DevicesExport, "ExportFile_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("devices", "action:export")));
+            });
+
             // ── Switches ───────────────────────────────────────────────────
             page.AddGroup("Switches", group =>
             {
@@ -72,23 +88,24 @@ public class NetworkingModule : IModule, IModuleRibbon, IModulePanels
                 group.AddToggleButton("Show Default VLAN", P.VlansRead, isOn => { });
             });
 
-            // ── Panels (all networking panels in one group for quick toggle) ──
+            // ── Panels (everything networking exposes as a dockable panel) ──
             page.AddGroup("Panels", group =>
             {
-                group.AddCheckButton("Switches", panelId: "SwitchesPanel");
-                group.AddCheckButton("Details",  panelId: "SwitchDetailPanel");
-                group.AddCheckButton("P2P",      panelId: "P2PPanel");
-                group.AddCheckButton("B2B",      panelId: "B2BPanel");
-                group.AddCheckButton("FW",       panelId: "FWPanel");
-                group.AddCheckButton("BGP",      panelId: "BgpPanel");
-                group.AddCheckButton("VLANs",    panelId: "VlanPanel");
+                group.AddCheckButton("IPAM",        panelId: "DevicesPanel");
+                group.AddCheckButton("Device Details", panelId: "DeviceDetailPanel");
+                group.AddCheckButton("Switches",    panelId: "SwitchesPanel");
+                group.AddCheckButton("Switch Details", panelId: "SwitchDetailPanel");
+                group.AddCheckButton("P2P",         panelId: "P2PPanel");
+                group.AddCheckButton("B2B",         panelId: "B2BPanel");
+                group.AddCheckButton("FW",          panelId: "FWPanel");
+                group.AddCheckButton("BGP",         panelId: "BgpPanel");
+                group.AddCheckButton("VLANs",       panelId: "VlanPanel");
             });
         });
     }
 
     public void RegisterPanels(IPanelBuilder panels)
     {
-        // Panels are registered via MainWindow's DockLayoutManager (XAML-defined).
-        // When that moves into a pure module-registration model, re-wire here.
+        // Panels wired via apps/desktop/MainWindow.xaml (XAML-defined DockLayoutManager).
     }
 }

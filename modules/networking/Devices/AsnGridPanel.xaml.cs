@@ -1,7 +1,7 @@
 ﻿using DevExpress.Xpf.Grid;
 using Central.Engine.Models;
 
-namespace Central.Module.Devices.Views;
+namespace Central.Module.Networking.Devices;
 
 /// <summary>
 /// ASN definitions grid panel — extracted from MainWindow.

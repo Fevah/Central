@@ -1,4 +1,4 @@
-using Central.Engine.Modules;
+﻿using Central.Engine.Modules;
 
 namespace Central.Desktop;
 
@@ -61,7 +61,9 @@ public static class Bootstrapper
     private static readonly Dictionary<Type, string> _moduleCodes = new()
     {
         [typeof(Central.Module.Global.GlobalModule)]           = "global",
-        [typeof(Central.Module.Devices.DevicesModule)]         = "devices",
+        // Networking owns every network concept: switches, routing, VLANs,
+        // links, and device/IPAM inventory. One module, one ribbon tab,
+        // one tenant toggle.
         [typeof(Central.Module.Networking.NetworkingModule)]   = "networking",
         [typeof(Central.Module.Projects.ProjectsModule)]       = "projects",
         [typeof(Central.Module.ServiceDesk.ServiceDeskModule)] = "servicedesk",

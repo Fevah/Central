@@ -101,5 +101,8 @@ configMapGenerator:
       - ../../../db/migrations/078_ai_assistant.sql
       - ../../../db/migrations/079_ai_dedup_enrichment.sql
       - ../../../db/migrations/080_ai_churn_calls.sql
+      - ../../../db/migrations/081_desktop_missing_tables.sql
+      - ../../../db/migrations/082_app_users_auth_columns.sql
+      - ../../../db/migrations/083_module_catalog_reconcile.sql
     options:
       disableNameSuffixHash: true

@@ -55,7 +55,6 @@
 
     <!-- Module assemblies — referenced so they're loaded for ModuleLoader discovery -->
     <ProjectReference Include="..\..\modules\crm\Central.Module.CRM.csproj" />
-    <ProjectReference Include="..\..\modules\devices\Central.Module.Devices.csproj" />
     <ProjectReference Include="..\..\modules\service-desk\Central.Module.ServiceDesk.csproj" />
 
     <!-- Enterprise V2 -->

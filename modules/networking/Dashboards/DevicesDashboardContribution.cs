@@ -1,10 +1,10 @@
-using System.Windows;
+﻿using System.Windows;
 using Central.Engine.Auth;
 using Central.Engine.Models;
 using Central.Engine.Widgets;
 using Npgsql;
 
-namespace Central.Module.Devices.Dashboards;
+namespace Central.Module.Networking.Dashboards;
 
 /// <summary>
 /// Devices module's dashboard contribution — total / active / reserved counts.

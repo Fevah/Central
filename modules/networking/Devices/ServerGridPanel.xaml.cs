@@ -1,7 +1,7 @@
 ﻿using DevExpress.Xpf.Grid;
 using Central.Engine.Models;
 
-namespace Central.Module.Devices.Views;
+namespace Central.Module.Networking.Devices;
 
 public partial class ServerGridPanel : System.Windows.Controls.UserControl
 {
