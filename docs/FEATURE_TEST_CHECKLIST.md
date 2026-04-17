@@ -1,4 +1,4 @@
-# Central Platform — Feature Test Checklist
+﻿# Central Platform — Feature Test Checklist
 
 Last updated: 2026-04-17
 Test suite: 2,229 tests across 164 test classes. 0 failures (unit tests).
@@ -1327,7 +1327,7 @@ All endpoints return RFC 7807 problem+json on errors. All write endpoints requir
 - [ ] ModuleLicenseMiddleware maps API paths to module codes
 - [ ] Enterprise tier bypasses module license checks
 
-### API Client (Central.Api.Client)
+### API Client (Central.ApiClient)
 
 - [ ] SearchAsync, GetDashboardAsync, GetStatusAsync
 - [ ] GetActivityAsync / GetMyActivityAsync
@@ -2803,7 +2803,7 @@ All endpoints return RFC 7807 problem+json on errors. All write endpoints requir
 ## 12. Unit Test Summary
 
 Total: **2,229 tests across 164 test classes** (xUnit, .NET 10). 0 failures on unit tests.
-Tests live in `desktop/Central.Tests/`. 9 integration tests require live K8s services
+Tests live in `tests/dotnet/`. 9 integration tests require live K8s services
 (auth-service, task-service, PostgreSQL, Redis) to run — they are skipped locally.
 
 Rough breakdown by area:

@@ -1,4 +1,4 @@
-# Central Server Architecture
+﻿# Central Server Architecture
 
 Multi-user infrastructure replacing WCF (TotalLink) with modern .NET 8 services.
 gRPC for switch operations, REST for CRUD, SignalR for real-time push.
@@ -394,8 +394,8 @@ openssl rand -base64 32 | podman secret create central-jwt-secret -
 
 build-api)
     podman build -t central-api:latest \
-        -f desktop/Central.Api/Dockerfile \
-        desktop/
+        -f services/api/Dockerfile \
+        
     ;;
 
 build-web)
@@ -431,7 +431,7 @@ The WPF client must work in three modes:
 ### IDataService Abstraction
 
 ```csharp
-// Central.Core/Data/IDataService.cs
+// libs/engine/Data/IDataService.cs
 public interface IDataService
 {
     // Mirrors DbRepository methods — same signatures

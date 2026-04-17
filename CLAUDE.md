@@ -254,46 +254,72 @@ AI & Intelligence — dual-tier provider architecture (platform-level providers 
 
 ### Solution Structure
 
-```
-desktop/                                # .NET 10 / WPF / DevExpress 25.2 (17 C# projects)
-├── Central.Core/              # Engine framework — auth, models, widgets, services, RibbonConfig, TaskFileParser
-├── Central.Data/              # PostgreSQL repos + AppLogger + IconService — shared by API + Desktop
-├── Central.Api/               # REST + SignalR + SSH + Jobs + Elsa Workflows
-├── Central.Api.Client/        # Typed HTTP + SignalR client
-├── Central.Desktop/           # WPF shell — MainWindow, services, ViewModels, SvgHelper, ImagePickerWindow
-├── Central.Workflows/         # Elsa 3.5.3 workflow engine — custom activities, workflow definitions, PostgreSQL persistence
-├── Central.Module.Devices/    # IPAM: 8 grid panels + ASN + Servers
-├── Central.Module.Switches/   # Switches + detail + deploy
-├── Central.Module.Links/      # P2P, B2B, FW + builder
-├── Central.Module.Routing/    # BGP + diagram
-├── Central.Module.VLANs/      # VLAN inventory
-├── Central.Module.Admin/      # Users, roles, lookups, SSH/app logs, jobs, ribbon config, ribbon tree panels, AD browser, migrations, backups, purge, locations, references, podman, scheduler
-├── Central.Module.Tasks/      # Task management — 16 panels: tree, backlog, sprint, burndown, kanban, gantt, QA, dashboards, reports, timesheet, activity, portfolio, import
-├── Central.Module.ServiceDesk/ # ManageEngine SD — sync, dashboards, teams, group categories, write-back
-├── Central.Module.Dashboard/  # Dashboard — KPI cards, notification center, Excel/PDF/CSV export on all grids
-├── Central.Module.CRM/        # New in 2026-04-17 — CRM accounts, deals, pipeline Kanban (Phase 21), CRM dashboard
-└── Central.Tests/             # 2,220 unit + integration tests
+Restructured 2026-04-17 — see [docs/REPO_STRUCTURE_PLAN.md](docs/REPO_STRUCTURE_PLAN.md) for rationale. Root is flat; each top-level folder has one job.
 
-SecureAPP/                              # Rust / Axum / Cargo workspace (7 services + 4 tools)
-├── services/
-│   ├── auth-service/          # Enterprise auth — MFA, WebAuthn, SAML, OIDC, JWT (COMPLETE)
-│   ├── admin-service/         # Global admin — tenant management, setup wizard (COMPLETE)
-│   ├── gateway/               # API gateway — reverse proxy, rate limiting, TLS, WebSocket/SignalR (COMPLETE)
-│   ├── task-service/          # Task management — 26 endpoints, SSE, batch, search, Redis events (COMPLETE)
-│   ├── storage-service/       # CAS storage — MinIO/S3, BLAKE3 dedup, multipart upload, pre-signed URLs (COMPLETE)
-│   ├── sync-service/          # Offline sync — vector clocks, push/pull, conflict resolution (COMPLETE)
-│   └── audit-service/         # M365 forensics, GDPR scoring, investigations, evidence export (COMPLETE)
-├── tools/
-│   ├── tray-manager/          # Desktop system tray operations tool
-│   ├── backup-manager/        # Scheduled PG backup automation
-│   ├── backup-service/        # Backup REST API
-│   └── backup-app/            # Backup CLI
-└── clients/
-    ├── desktop/               # Minimal Rust desktop client
-    └── mobile/                # Flutter mobile — 4 screens, drift offline DB, sync client, FCM push, build script (COMPLETE)
-
-web-client/                             # Angular 21 + DevExtreme 25.2 — 6 modules, SSE, auth (COMPLETE)
 ```
+/
+├── apps/                     End-user apps
+│   ├── desktop/              Central.Desktop — WPF shell (DevExpress 25.2)
+│   └── web/                  Angular 21 + DevExtreme web client
+│
+├── services/                 Backend services
+│   ├── api/                  Central.Api — ASP.NET Core 10 REST + SignalR
+│   └── tenant-provisioner/   Rust — K8s-aware tenant DB provisioning
+│
+├── libs/                     Shared .NET libraries
+│   ├── engine/               Central.Engine — auth, models, widgets, services (was Core)
+│   ├── persistence/          Central.Persistence — Npgsql repositories + AppLogger (was Data)
+│   ├── api-client/           Central.ApiClient — typed HTTP + SignalR client (was Api.Client)
+│   ├── workflows/            Central.Workflows — Elsa 3.5.3 integration
+│   ├── security/             Central.Security — ABAC policy engine
+│   ├── tenancy/              Central.Tenancy — multi-tenant connection resolution
+│   ├── licensing/            Central.Licensing — license keys, subscriptions, module grants
+│   ├── observability/        Central.Observability
+│   ├── collaboration/        Central.Collaboration — presence
+│   ├── protection/           Central.Protection
+│   └── update-client/        Central.UpdateClient
+│
+├── modules/                  WPF feature modules (pluggable into apps/desktop)
+│   ├── admin/                Users, roles, lookups, AD browser, migrations, jobs, ribbon config
+│   ├── audit/                Audit log viewer
+│   ├── crm/                  Accounts, deals, pipeline Kanban, dashboard
+│   ├── dashboard/            KPI cards, notification center
+│   ├── devices/              IPAM (8 grid panels + ASN + servers)
+│   ├── global-admin/         Platform-level tenant / licensing / audit
+│   ├── links/                P2P, B2B, FW link builder
+│   ├── routing/              BGP + diagram
+│   ├── service-desk/         ManageEngine sync, dashboards, teams
+│   ├── switches/             Switches + detail + deploy
+│   ├── tasks/                16-panel task management (Hansoft/P4 Plan clone)
+│   └── vlans/                VLAN inventory
+│
+├── tests/
+│   └── dotnet/               Central.Tests — 2,382 unit + integration tests
+│
+├── db/                       Migrations (001-082+), schema.sql, seed
+├── infra/                    Terraform, Terragrunt, K8s, Ansible, Vagrant
+├── tools/                    Dev utilities — icons, parser, scripts (not shipped)
+├── assets/                   Static assets — icon packs (OfficePro + Universal)
+├── config/                   Runtime config (auth-service.toml, gateway.env)
+├── docs/                     Architecture, buildout plans, reference docs
+├── backups/                  Local-only DB dumps (gitignored by pattern)
+├── .github/, .vscode/, .claude/
+├── CLAUDE.md                 This file
+├── NuGet.config
+└── Central.sln               References every .NET project
+```
+
+**Planned but not yet built** — these seven Rust services are referenced in architecture docs but do not exist in the current tree. When built, each lands under `services/<name>/`:
+
+| Service | Purpose |
+|---------|---------|
+| auth | MFA / WebAuthn / SAML / OIDC / JWT issuing |
+| admin | Tenant CRUD, setup wizard, license issuing |
+| gateway | Reverse proxy + TLS + rate limiting + SignalR passthrough |
+| task | Dedicated high-throughput task backend with SSE + Redis pub/sub |
+| storage | CAS with MinIO/S3, BLAKE3 dedup, multipart upload |
+| sync | Offline-first vector-clock sync for mobile/desktop clients |
+| audit | M365 forensics, GDPR scoring, investigation workflows |
 
 ### Legacy TotalLink Source — Removed
 
@@ -731,7 +757,7 @@ web/
 
 ## Desktop App (WPF)
 
-Location: `desktop/Central.sln`
+Location: `Central.sln`
 
 **Stack:** C# / .NET 10 / WPF · DevExpress 25.2 (WPF subscription) · Npgsql 10.0.2 · Svg.NET 3.4.7
 
@@ -739,12 +765,12 @@ Location: `desktop/Central.sln`
 ```powershell
 cd desktop
 dotnet build Central.sln --configuration Release -p:Platform=x64
-# Output: desktop/Central.Desktop/bin/x64/Release/net10.0-windows/Central.exe
+# Output: apps/bin/x64/Release/net10.0-windows/Central.exe
 ```
 
 **Run:**
 ```powershell
-cd desktop/Central.Desktop/bin/x64/Release/net10.0-windows
+cd apps/bin/x64/Release/net10.0-windows
 ./Central.exe
 ```
 
@@ -853,7 +879,7 @@ Quick Access Toolbar: Save/Refresh/Undo pinned, user-customizable.
 ### Desktop Files
 
 ```
-desktop/Central.Desktop/
+apps/
 ├── App.xaml.cs                     Startup, auto-login, session init
 ├── MainWindow.xaml                 Ribbon + DockLayoutManager + all grids
 ├── MainWindow.xaml.cs              Event handlers, panel routing, ping, layout, config compare, ribbon overrides
@@ -868,7 +894,7 @@ desktop/Central.Desktop/
 ├── Data/
 │   └── DbRepository.cs            All DB CRUD (devices, switches, users, roles, sites, lookups, settings, config versions)
 ├── Models/
-│   ├── (models now in Central.Core/Models/ — see below)
+│   ├── (models now in libs/engine/Models/ — see below)
 ├── Services/
 │   ├── UserSession.cs              Static singleton — CurrentUser, Permissions, AllowedSites
 │   ├── PingService.cs              Parallel ping via System.Net.NetworkInformation
@@ -892,7 +918,7 @@ desktop/Central.Desktop/
 │   └── RelayCommand.cs             ICommand implementation
 └── NuGet.config                    Licensed DevExpress feed
 
-desktop/Central.Core/Models/
+libs/engine/Models/
 ├── AppUser.cs, DeviceRecord.cs, SwitchRecord.cs  — INotifyPropertyChanged
 ├── P2PLink.cs, B2BLink.cs, FWLink.cs             — Network link models
 ├── BgpRecord.cs, BgpNeighborRecord.cs, BgpNetworkRecord.cs
@@ -902,13 +928,13 @@ desktop/Central.Core/Models/
 ├── TaskItem.cs                    — Task model with tree hierarchy
 ├── (+ 20 more: VlanEntry, Server, RoleRecord, LookupItem, MlagConfig, MstpConfig, etc.)
 
-desktop/Central.Data/
+libs/persistence/
 ├── DbRepository.cs                — Main DB repo (partial class)
 ├── DbRepository.Ribbon.cs         — Ribbon CRUD: pages, groups, items, user overrides, admin defaults, saved filters
 ├── IconService.cs                 — Singleton: metadata cache, admin/user icon resolution, search, bulk SVG import
 ├── AppLogger.cs                   — Application logging to DB
 
-desktop/Central.Module.Admin/Views/
+modules/admin/Views/
 ├── RibbonConfigPanel.xaml/.cs     — Ribbon config grid panel (flat list)
 ├── RibbonTreePanel.xaml/.cs       — User ribbon customizer tree (icon picker, hide/show, reorder, apply/reset)
 ├── RibbonAdminTreePanel.xaml/.cs  — Admin ribbon customizer tree (push defaults, display style, link targets)
