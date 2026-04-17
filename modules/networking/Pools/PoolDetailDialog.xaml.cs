@@ -344,10 +344,8 @@ public partial class PoolDetailDialog : DXWindow
                 case "IpPool":       await SaveIpPoolAsync(repo); break;
                 case "VlanPool":     await SaveVlanPoolAsync(repo); break;
                 case "VlanBlock":    await SaveVlanBlockAsync(repo); break;
-                case "VlanTemplate": throw new NotImplementedException(
-                    "VLAN template CRUD routes through REST in Phase 3e; repo write lands later.");
-                case "MlagPool":     throw new NotImplementedException(
-                    "MLAG pool write routes through REST in Phase 3e; repo write lands later.");
+                case "VlanTemplate": await SaveVlanTemplateAsync(repo); break;
+                case "MlagPool":     await SaveMlagPoolAsync(repo); break;
             }
             DialogResult = true;
             Close();
@@ -437,19 +435,101 @@ public partial class PoolDetailDialog : DXWindow
         if (SavedId is null) throw new InvalidOperationException("Update affected no rows.");
     }
 
-    private Task SaveVlanPoolAsync(PoolsRepository repo)
+    private async Task SaveVlanPoolAsync(PoolsRepository repo)
     {
-        // VLAN pool repo writes aren't on PoolsRepository yet — Phase 3b
-        // only shipped reads for the VLAN pool tier. Surface this cleanly
-        // instead of pretending to succeed.
-        throw new NotImplementedException(
-            "VLAN pool CRUD routes through REST (Phase 3e). Repository writes land with the VLAN editor.");
+        var p = _vlanPool!;
+        p.PoolCode = CodeBox.Text.Trim();
+        p.DisplayName = NameBox.Text.Trim();
+        p.Status = ParseStatus();
+        p.LockState = ParseLock();
+        p.VlanFirst = (int)ToInt64(VlanFirstBox.EditValue);
+        p.VlanLast = (int)ToInt64(VlanLastBox.EditValue);
+        p.Notes = Nullable(NotesBox.Text);
+        if (string.IsNullOrEmpty(p.PoolCode) || string.IsNullOrEmpty(p.DisplayName))
+            throw new InvalidOperationException("Code and display name are required.");
+        if (p.VlanFirst > p.VlanLast)
+            throw new InvalidOperationException("First VLAN must be <= last VLAN.");
+
+        SeedBase(p);
+        SavedId = _mode == Mode.New
+            ? await repo.CreateVlanPoolAsync(p, _userId)
+            : (await repo.UpdateVlanPoolAsync(p, _userId) > 0 ? (Guid?)p.Id : null);
+        if (SavedId is null) throw new InvalidOperationException("Update affected no rows (version conflict).");
     }
 
-    private Task SaveVlanBlockAsync(PoolsRepository repo)
+    private async Task SaveVlanBlockAsync(PoolsRepository repo)
     {
-        throw new NotImplementedException(
-            "VLAN block CRUD routes through REST (Phase 3e). Repository writes land with the VLAN editor.");
+        var b = _vlanBlock!;
+        b.BlockCode = CodeBox.Text.Trim();
+        b.DisplayName = NameBox.Text.Trim();
+        b.Status = ParseStatus();
+        b.LockState = ParseLock();
+        b.VlanFirst = (int)ToInt64(VlanFirstBox.EditValue);
+        b.VlanLast = (int)ToInt64(VlanLastBox.EditValue);
+        b.ScopeLevel = Enum.TryParse<PoolScopeLevel>(ScopeLevelCombo.EditValue as string, out var s)
+            ? s : PoolScopeLevel.Free;
+        b.Notes = Nullable(NotesBox.Text);
+        if (_mode == Mode.New)
+        {
+            if (ParentCombo.EditValue is not Guid poolId || poolId == Guid.Empty)
+                throw new InvalidOperationException("VLAN pool is required.");
+            b.PoolId = poolId;
+        }
+        if (string.IsNullOrEmpty(b.BlockCode))
+            throw new InvalidOperationException("Code is required.");
+        if (b.VlanFirst > b.VlanLast)
+            throw new InvalidOperationException("First VLAN must be <= last VLAN.");
+
+        SeedBase(b);
+        SavedId = _mode == Mode.New
+            ? await repo.CreateVlanBlockAsync(b, _userId)
+            : (await repo.UpdateVlanBlockAsync(b, _userId) > 0 ? (Guid?)b.Id : null);
+        if (SavedId is null) throw new InvalidOperationException("Update affected no rows (version conflict).");
+    }
+
+    private async Task SaveVlanTemplateAsync(PoolsRepository repo)
+    {
+        var t = _vlanTemplate!;
+        t.TemplateCode = CodeBox.Text.Trim();
+        t.DisplayName = NameBox.Text.Trim();
+        t.Status = ParseStatus();
+        t.LockState = ParseLock();
+        t.VlanRole = (VlanRoleCombo.EditValue as string)?.Trim() ?? "";
+        t.Description = Nullable(VlanTemplateDescBox.Text);
+        t.IsDefault = VlanTemplateDefaultCheck.IsChecked == true;
+        t.Notes = Nullable(NotesBox.Text);
+        if (string.IsNullOrEmpty(t.TemplateCode) || string.IsNullOrEmpty(t.DisplayName))
+            throw new InvalidOperationException("Code and display name are required.");
+        if (string.IsNullOrEmpty(t.VlanRole))
+            throw new InvalidOperationException("VLAN role is required (drives config generation).");
+
+        SeedBase(t);
+        SavedId = _mode == Mode.New
+            ? await repo.CreateVlanTemplateAsync(t, _userId)
+            : (await repo.UpdateVlanTemplateAsync(t, _userId) > 0 ? (Guid?)t.Id : null);
+        if (SavedId is null) throw new InvalidOperationException("Update affected no rows (version conflict).");
+    }
+
+    private async Task SaveMlagPoolAsync(PoolsRepository repo)
+    {
+        var p = _mlagPool!;
+        p.PoolCode = CodeBox.Text.Trim();
+        p.DisplayName = NameBox.Text.Trim();
+        p.Status = ParseStatus();
+        p.LockState = ParseLock();
+        p.DomainFirst = (int)ToInt64(MlagFirstBox.EditValue);
+        p.DomainLast = (int)ToInt64(MlagLastBox.EditValue);
+        p.Notes = Nullable(NotesBox.Text);
+        if (string.IsNullOrEmpty(p.PoolCode) || string.IsNullOrEmpty(p.DisplayName))
+            throw new InvalidOperationException("Code and display name are required.");
+        if (p.DomainFirst > p.DomainLast)
+            throw new InvalidOperationException("First domain must be <= last domain.");
+
+        SeedBase(p);
+        SavedId = _mode == Mode.New
+            ? await repo.CreateMlagPoolAsync(p, _userId)
+            : (await repo.UpdateMlagPoolAsync(p, _userId) > 0 ? (Guid?)p.Id : null);
+        if (SavedId is null) throw new InvalidOperationException("Update affected no rows (version conflict).");
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────

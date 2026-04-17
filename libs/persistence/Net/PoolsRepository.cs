@@ -633,6 +633,72 @@ public class PoolsRepository
         return await GetOneAsync(sql, id, orgId, ReadVlanTemplate, ct);
     }
 
+    public async Task<Guid> CreateVlanTemplateAsync(VlanTemplate e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO net.vlan_template (organization_id, template_code, display_name,
+                                           vlan_role, description, is_default,
+                                           status, lock_state, notes, tags, external_refs,
+                                           created_by, updated_by)
+            VALUES (@org, @code, @name, @role, @desc, @def,
+                    @status::net.entity_status, @lock::net.lock_state,
+                    @notes, @tags::jsonb, @refs::jsonb, @uid, @uid)
+            RETURNING id";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        BindVlanTemplateWrite(cmd, e, userId);
+        return (Guid)(await cmd.ExecuteScalarAsync(ct))!;
+    }
+
+    public async Task<int> UpdateVlanTemplateAsync(VlanTemplate e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE net.vlan_template SET
+                template_code = @code,
+                display_name  = @name,
+                vlan_role     = @role,
+                description   = @desc,
+                is_default    = @def,
+                status        = @status::net.entity_status,
+                lock_state    = @lock::net.lock_state,
+                lock_reason   = @lreason,
+                notes         = @notes,
+                tags          = @tags::jsonb,
+                external_refs = @refs::jsonb,
+                updated_at    = now(),
+                updated_by    = @uid,
+                version       = version + 1
+            WHERE id = @id AND organization_id = @org AND version = @ver AND deleted_at IS NULL
+            RETURNING version";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", e.Id);
+        cmd.Parameters.AddWithValue("ver", e.Version);
+        cmd.Parameters.AddWithValue("lreason", (object?)e.LockReason ?? DBNull.Value);
+        BindVlanTemplateWrite(cmd, e, userId);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int v ? v : throw new ConcurrencyException(e.Id, e.Version);
+    }
+
+    public Task<bool> SoftDeleteVlanTemplateAsync(Guid id, Guid orgId, int? userId, CancellationToken ct = default)
+        => SoftDeleteAsync("net.vlan_template", id, orgId, userId, ct);
+
+    private static void BindVlanTemplateWrite(NpgsqlCommand cmd, VlanTemplate e, int? userId)
+    {
+        cmd.Parameters.AddWithValue("org", e.OrganizationId);
+        cmd.Parameters.AddWithValue("code", e.TemplateCode);
+        cmd.Parameters.AddWithValue("name", e.DisplayName);
+        cmd.Parameters.AddWithValue("role", e.VlanRole);
+        cmd.Parameters.AddWithValue("desc", (object?)e.Description ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("def", e.IsDefault);
+        cmd.Parameters.AddWithValue("status", e.Status.ToString());
+        cmd.Parameters.AddWithValue("lock", e.LockState.ToString());
+        cmd.Parameters.AddWithValue("notes", (object?)e.Notes ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("tags", e.Tags.ToJsonString());
+        cmd.Parameters.AddWithValue("refs", e.ExternalRefs.ToJsonString());
+        cmd.Parameters.AddWithValue("uid", (object?)userId ?? DBNull.Value);
+    }
+
     private static VlanTemplate ReadVlanTemplate(NpgsqlDataReader r)
     {
         var e = new VlanTemplate
@@ -672,6 +738,70 @@ public class PoolsRepository
         return await GetOneAsync(sql, id, orgId, ReadVlanPool, ct);
     }
 
+    public async Task<Guid> CreateVlanPoolAsync(VlanPool e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO net.vlan_pool (organization_id, pool_code, display_name,
+                                       vlan_first, vlan_last,
+                                       status, lock_state, notes, tags, external_refs,
+                                       created_by, updated_by)
+            VALUES (@org, @code, @name, @first, @last,
+                    @status::net.entity_status, @lock::net.lock_state,
+                    @notes, @tags::jsonb, @refs::jsonb, @uid, @uid)
+            RETURNING id";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        BindVlanPoolWrite(cmd, e, userId);
+        return (Guid)(await cmd.ExecuteScalarAsync(ct))!;
+    }
+
+    public async Task<int> UpdateVlanPoolAsync(VlanPool e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE net.vlan_pool SET
+                pool_code     = @code,
+                display_name  = @name,
+                vlan_first    = @first,
+                vlan_last     = @last,
+                status        = @status::net.entity_status,
+                lock_state    = @lock::net.lock_state,
+                lock_reason   = @lreason,
+                notes         = @notes,
+                tags          = @tags::jsonb,
+                external_refs = @refs::jsonb,
+                updated_at    = now(),
+                updated_by    = @uid,
+                version       = version + 1
+            WHERE id = @id AND organization_id = @org AND version = @ver AND deleted_at IS NULL
+            RETURNING version";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", e.Id);
+        cmd.Parameters.AddWithValue("ver", e.Version);
+        cmd.Parameters.AddWithValue("lreason", (object?)e.LockReason ?? DBNull.Value);
+        BindVlanPoolWrite(cmd, e, userId);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int v ? v : throw new ConcurrencyException(e.Id, e.Version);
+    }
+
+    public Task<bool> SoftDeleteVlanPoolAsync(Guid id, Guid orgId, int? userId, CancellationToken ct = default)
+        => SoftDeleteAsync("net.vlan_pool", id, orgId, userId, ct);
+
+    private static void BindVlanPoolWrite(NpgsqlCommand cmd, VlanPool e, int? userId)
+    {
+        cmd.Parameters.AddWithValue("org", e.OrganizationId);
+        cmd.Parameters.AddWithValue("code", e.PoolCode);
+        cmd.Parameters.AddWithValue("name", e.DisplayName);
+        cmd.Parameters.AddWithValue("first", e.VlanFirst);
+        cmd.Parameters.AddWithValue("last", e.VlanLast);
+        cmd.Parameters.AddWithValue("status", e.Status.ToString());
+        cmd.Parameters.AddWithValue("lock", e.LockState.ToString());
+        cmd.Parameters.AddWithValue("notes", (object?)e.Notes ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("tags", e.Tags.ToJsonString());
+        cmd.Parameters.AddWithValue("refs", e.ExternalRefs.ToJsonString());
+        cmd.Parameters.AddWithValue("uid", (object?)userId ?? DBNull.Value);
+    }
+
     private static VlanPool ReadVlanPool(NpgsqlDataReader r)
     {
         var e = new VlanPool
@@ -706,6 +836,86 @@ public class PoolsRepository
         var list = new List<VlanBlock>();
         while (await r.ReadAsync(ct)) list.Add(ReadVlanBlock(r));
         return list;
+    }
+
+    public async Task<VlanBlock?> GetVlanBlockAsync(Guid id, Guid orgId, CancellationToken ct = default)
+    {
+        const string sql = @"
+            SELECT id, organization_id, pool_id, block_code, display_name,
+                   vlan_first, vlan_last, scope_level::text, scope_entity_id, " + BaseColumns + @"
+            FROM net.vlan_block
+            WHERE id = @id AND organization_id = @org AND deleted_at IS NULL";
+        return await GetOneAsync(sql, id, orgId, ReadVlanBlock, ct);
+    }
+
+    public async Task<Guid> CreateVlanBlockAsync(VlanBlock e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO net.vlan_block (organization_id, pool_id, block_code, display_name,
+                                        vlan_first, vlan_last, scope_level, scope_entity_id,
+                                        status, lock_state, notes, tags, external_refs,
+                                        created_by, updated_by)
+            VALUES (@org, @pool, @code, @name, @first, @last, @scope, @sid,
+                    @status::net.entity_status, @lock::net.lock_state,
+                    @notes, @tags::jsonb, @refs::jsonb, @uid, @uid)
+            RETURNING id";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        BindVlanBlockWrite(cmd, e, userId);
+        return (Guid)(await cmd.ExecuteScalarAsync(ct))!;
+    }
+
+    public async Task<int> UpdateVlanBlockAsync(VlanBlock e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE net.vlan_block SET
+                pool_id         = @pool,
+                block_code      = @code,
+                display_name    = @name,
+                vlan_first      = @first,
+                vlan_last       = @last,
+                scope_level     = @scope,
+                scope_entity_id = @sid,
+                status          = @status::net.entity_status,
+                lock_state      = @lock::net.lock_state,
+                lock_reason     = @lreason,
+                notes           = @notes,
+                tags            = @tags::jsonb,
+                external_refs   = @refs::jsonb,
+                updated_at      = now(),
+                updated_by      = @uid,
+                version         = version + 1
+            WHERE id = @id AND organization_id = @org AND version = @ver AND deleted_at IS NULL
+            RETURNING version";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", e.Id);
+        cmd.Parameters.AddWithValue("ver", e.Version);
+        cmd.Parameters.AddWithValue("lreason", (object?)e.LockReason ?? DBNull.Value);
+        BindVlanBlockWrite(cmd, e, userId);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int v ? v : throw new ConcurrencyException(e.Id, e.Version);
+    }
+
+    public Task<bool> SoftDeleteVlanBlockAsync(Guid id, Guid orgId, int? userId, CancellationToken ct = default)
+        => SoftDeleteAsync("net.vlan_block", id, orgId, userId, ct);
+
+    private static void BindVlanBlockWrite(NpgsqlCommand cmd, VlanBlock e, int? userId)
+    {
+        cmd.Parameters.AddWithValue("org", e.OrganizationId);
+        cmd.Parameters.AddWithValue("pool", e.PoolId);
+        cmd.Parameters.AddWithValue("code", e.BlockCode);
+        cmd.Parameters.AddWithValue("name", e.DisplayName);
+        cmd.Parameters.AddWithValue("first", e.VlanFirst);
+        cmd.Parameters.AddWithValue("last", e.VlanLast);
+        cmd.Parameters.AddWithValue("scope", e.ScopeLevel.ToString());
+        cmd.Parameters.AddWithValue("sid", (object?)e.ScopeEntityId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("status", e.Status.ToString());
+        cmd.Parameters.AddWithValue("lock", e.LockState.ToString());
+        cmd.Parameters.AddWithValue("notes", (object?)e.Notes ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("tags", e.Tags.ToJsonString());
+        cmd.Parameters.AddWithValue("refs", e.ExternalRefs.ToJsonString());
+        cmd.Parameters.AddWithValue("uid", (object?)userId ?? DBNull.Value);
     }
 
     private static VlanBlock ReadVlanBlock(NpgsqlDataReader r)
@@ -788,6 +998,70 @@ public class PoolsRepository
             FROM net.mlag_domain_pool
             WHERE id = @id AND organization_id = @org AND deleted_at IS NULL";
         return await GetOneAsync(sql, id, orgId, ReadMlagPool, ct);
+    }
+
+    public async Task<Guid> CreateMlagPoolAsync(MlagDomainPool e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO net.mlag_domain_pool (organization_id, pool_code, display_name,
+                                              domain_first, domain_last,
+                                              status, lock_state, notes, tags, external_refs,
+                                              created_by, updated_by)
+            VALUES (@org, @code, @name, @first, @last,
+                    @status::net.entity_status, @lock::net.lock_state,
+                    @notes, @tags::jsonb, @refs::jsonb, @uid, @uid)
+            RETURNING id";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        BindMlagPoolWrite(cmd, e, userId);
+        return (Guid)(await cmd.ExecuteScalarAsync(ct))!;
+    }
+
+    public async Task<int> UpdateMlagPoolAsync(MlagDomainPool e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE net.mlag_domain_pool SET
+                pool_code     = @code,
+                display_name  = @name,
+                domain_first  = @first,
+                domain_last   = @last,
+                status        = @status::net.entity_status,
+                lock_state    = @lock::net.lock_state,
+                lock_reason   = @lreason,
+                notes         = @notes,
+                tags          = @tags::jsonb,
+                external_refs = @refs::jsonb,
+                updated_at    = now(),
+                updated_by    = @uid,
+                version       = version + 1
+            WHERE id = @id AND organization_id = @org AND version = @ver AND deleted_at IS NULL
+            RETURNING version";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", e.Id);
+        cmd.Parameters.AddWithValue("ver", e.Version);
+        cmd.Parameters.AddWithValue("lreason", (object?)e.LockReason ?? DBNull.Value);
+        BindMlagPoolWrite(cmd, e, userId);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int v ? v : throw new ConcurrencyException(e.Id, e.Version);
+    }
+
+    public Task<bool> SoftDeleteMlagPoolAsync(Guid id, Guid orgId, int? userId, CancellationToken ct = default)
+        => SoftDeleteAsync("net.mlag_domain_pool", id, orgId, userId, ct);
+
+    private static void BindMlagPoolWrite(NpgsqlCommand cmd, MlagDomainPool e, int? userId)
+    {
+        cmd.Parameters.AddWithValue("org", e.OrganizationId);
+        cmd.Parameters.AddWithValue("code", e.PoolCode);
+        cmd.Parameters.AddWithValue("name", e.DisplayName);
+        cmd.Parameters.AddWithValue("first", e.DomainFirst);
+        cmd.Parameters.AddWithValue("last", e.DomainLast);
+        cmd.Parameters.AddWithValue("status", e.Status.ToString());
+        cmd.Parameters.AddWithValue("lock", e.LockState.ToString());
+        cmd.Parameters.AddWithValue("notes", (object?)e.Notes ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("tags", e.Tags.ToJsonString());
+        cmd.Parameters.AddWithValue("refs", e.ExternalRefs.ToJsonString());
+        cmd.Parameters.AddWithValue("uid", (object?)userId ?? DBNull.Value);
     }
 
     private static MlagDomainPool ReadMlagPool(NpgsqlDataReader r)

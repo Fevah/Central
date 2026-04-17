@@ -461,10 +461,14 @@ public partial class PoolsTreePanel : UserControl
             var repo = new PoolsRepository(_dsn!);
             var ok = node.NodeType switch
             {
-                "AsnPool"  => await repo.SoftDeleteAsnPoolAsync(node.EntityId, _tenantId, _userId),
-                "AsnBlock" => await repo.SoftDeleteAsnBlockAsync(node.EntityId, _tenantId, _userId),
-                "IpPool"   => await repo.SoftDeleteIpPoolAsync(node.EntityId, _tenantId, _userId),
-                "Subnet"   => await repo.SoftDeleteSubnetAsync(node.EntityId, _tenantId, _userId),
+                "AsnPool"      => await repo.SoftDeleteAsnPoolAsync(node.EntityId, _tenantId, _userId),
+                "AsnBlock"     => await repo.SoftDeleteAsnBlockAsync(node.EntityId, _tenantId, _userId),
+                "IpPool"       => await repo.SoftDeleteIpPoolAsync(node.EntityId, _tenantId, _userId),
+                "Subnet"       => await repo.SoftDeleteSubnetAsync(node.EntityId, _tenantId, _userId),
+                "VlanPool"     => await repo.SoftDeleteVlanPoolAsync(node.EntityId, _tenantId, _userId),
+                "VlanBlock"    => await repo.SoftDeleteVlanBlockAsync(node.EntityId, _tenantId, _userId),
+                "VlanTemplate" => await repo.SoftDeleteVlanTemplateAsync(node.EntityId, _tenantId, _userId),
+                "MlagPool"     => await repo.SoftDeleteMlagPoolAsync(node.EntityId, _tenantId, _userId),
                 _ => throw new NotSupportedException(
                     $"Delete for {node.NodeType} routes through REST — repo write not shipped yet.")
             };
