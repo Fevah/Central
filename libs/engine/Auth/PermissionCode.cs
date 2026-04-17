@@ -193,4 +193,9 @@ public static class P
     public const string AiCallsRead         = "ai:calls:read";
     public const string AiCallsAdmin        = "ai:calls:admin";
     public const string AiUsageRead         = "ai:usage:read";
+
+    // Networking engine — hierarchy (Phase 2b+)
+    public const string NetHierarchyRead    = "net:hierarchy:read";
+    public const string NetHierarchyWrite   = "net:hierarchy:write";
+    public const string NetHierarchyDelete  = "net:hierarchy:delete";
 }

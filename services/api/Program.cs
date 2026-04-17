@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Central.Api.Auth;
 using Central.Api.Endpoints;
+using Central.Api.Endpoints.Net;
 using Central.Api.Hubs;
 using Central.Api.Services;
 using Central.Workflows;
@@ -315,6 +316,9 @@ app.MapGroup("/api/global-admin/ai").WithTags("AI Admin").MapAiProviderAdminEndp
 app.MapGroup("/api/ai/tenant").WithTags("AI Tenant").MapTenantAiConfigEndpoints().RequireAuthorization();
 app.MapGroup("/api/ai/assistant").WithTags("AI Assistant").MapAiAssistantEndpoints().RequireAuthorization();
 app.MapGroup("/api/ai").WithTags("AI Insights").MapAiInsightsEndpoints().RequireAuthorization();
+
+// Networking engine — geographic hierarchy (Phase 2b)
+app.MapGroup("/api/net").WithTags("Net Hierarchy").MapNetHierarchyEndpoints();
 
 // Email integration (Phase 20)
 app.MapGroup("/api/email").WithTags("Email").MapEmailEndpoints();  // Tracking endpoints are anonymous
