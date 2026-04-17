@@ -68,6 +68,7 @@ public static class Bootstrapper
         [typeof(Central.Module.Projects.ProjectsModule)]       = "projects",
         [typeof(Central.Module.ServiceDesk.ServiceDeskModule)] = "servicedesk",
         [typeof(Central.Module.CRM.CrmModule)]                 = "crm",
+        [typeof(Central.Module.Audit.AuditModule)]             = "audit",
     };
 
     // Always loaded regardless of the gate. Disabling Global leaves the app

@@ -8,7 +8,7 @@ namespace Central.Module.Projects;
 
 public class ProjectsModule : IModule, IModuleRibbon, IModulePanels
 {
-    public string Name => "Tasks";
+    public string Name => "Projects";
     public string PermissionCategory => "tasks";
     public int SortOrder => 60;
 
@@ -19,7 +19,7 @@ public class ProjectsModule : IModule, IModuleRibbon, IModulePanels
 
     public void RegisterRibbon(IRibbonBuilder ribbon)
     {
-        ribbon.AddPage("Tasks", SortOrder, page =>
+        ribbon.AddPage("Projects", SortOrder, page =>
         {
             page.AddGroup("Actions", group =>
             {
