@@ -65,6 +65,7 @@
     <ProjectReference Include="..\..\modules\networking\Central.Module.Networking.csproj" />
     <ProjectReference Include="..\..\modules\projects\Central.Module.Projects.csproj" />
     <ProjectReference Include="..\..\modules\global\Central.Module.Global.csproj" />
+    <ProjectReference Include="..\..\libs\licensing\Central.Licensing.csproj" />
   </ItemGroup>
 
 </Project>

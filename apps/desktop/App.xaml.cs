@@ -144,10 +144,13 @@ public partial class App : System.Windows.Application
                 "Central", "file_storage");
             Central.Engine.Services.FileManagementService.Instance.Configure(fileStoragePath);
 
-            // ── Module discovery ──
-            splash.UpdateStatus("Discovering modules...", 20);
-            Bootstrapper.Initialize();
-            Log($"Bootstrapper found {Modules.Count} modules");
+            // ── Module discovery deferred ──
+            // We used to call Bootstrapper.Initialize() here pre-login, but that
+            // meant every tenant saw every module regardless of licence. The
+            // bootstrap is now run after login so we can pass a tenant-aware
+            // IModuleLicenseGate — disabled modules never instantiate, so their
+            // ribbon tabs / panels / dashboard contributions never appear.
+            splash.UpdateStatus("Preparing shell...", 20);
 
             // ── Database connectivity ──
             splash.UpdateStatus("Testing database...", 35);
@@ -251,6 +254,36 @@ public partial class App : System.Windows.Application
                 splash.Show();
                 splash.UpdateStatus($"Welcome, {AuthContext.Instance.CurrentUser?.DisplayName ?? "User"}", 60);
             }
+
+            // ── Module gate + bootstrap (tenant-aware) ──
+            splash.UpdateStatus("Loading modules...", 65);
+            IModuleLicenseGate gate;
+            try
+            {
+                if (IsDbOnline)
+                {
+                    var userId2 = AuthContext.Instance.CurrentUser?.Id ?? 0;
+                    var tenantId = userId2 > 0 ? await LookupUserTenantIdAsync(Dsn, userId2) : Guid.Empty;
+                    gate = tenantId != Guid.Empty
+                        ? await Central.Desktop.Auth.DbModuleLicenseGate.CreateForTenantAsync(Dsn, tenantId)
+                        : new AllowAllModuleGate();
+                    Log($"Module gate: {(tenantId != Guid.Empty ? $"tenant={tenantId:N}" : "allow-all (no tenant)")}");
+                }
+                else
+                {
+                    gate = new AllowAllModuleGate();
+                    Log("Module gate: allow-all (offline)");
+                }
+            }
+            catch (Exception ex)
+            {
+                // Don't block startup on gate failure — fall back to allow-all
+                // so the user still gets a working UI; log for investigation.
+                gate = new AllowAllModuleGate();
+                Log($"Module gate fell back to allow-all: {ex.Message}");
+            }
+            Bootstrapper.Initialize(gate);
+            Log($"Bootstrapper loaded {Modules.Count} modules");
 
             // ── Module settings ──
             splash.UpdateStatus("Loading settings...", 70);
@@ -478,5 +511,21 @@ public partial class App : System.Windows.Application
         settings.Register("security.lockout_duration", "Lockout Duration (minutes)", 30, Central.Engine.Services.SettingType.Integer, "Security");
         settings.Register("security.password_expiry_days", "Password Expiry (days, 0=never)", 90, Central.Engine.Services.SettingType.Integer, "Security");
         settings.Register("security.require_mfa", "Require MFA for all users", false, Central.Engine.Services.SettingType.Boolean, "Security");
+    }
+
+    /// <summary>
+    /// Look up the current user's tenant. Returns Guid.Empty if the user has
+    /// no tenant mapping (legacy single-tenant installs) — the module gate
+    /// falls back to allow-all in that case.
+    /// </summary>
+    private static async Task<Guid> LookupUserTenantIdAsync(string dsn, int userId)
+    {
+        await using var conn = new Npgsql.NpgsqlConnection(dsn);
+        await conn.OpenAsync();
+        await using var cmd = new Npgsql.NpgsqlCommand(
+            "SELECT tenant_id FROM app_users WHERE id = @uid", conn);
+        cmd.Parameters.AddWithValue("uid", userId);
+        var result = await cmd.ExecuteScalarAsync();
+        return result is Guid g ? g : Guid.Empty;
     }
 }
