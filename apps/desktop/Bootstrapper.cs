@@ -1,30 +1,43 @@
-﻿using Central.Engine.Modules;
+using Central.Engine.Modules;
 
 namespace Central.Desktop;
 
 /// <summary>
-/// Application bootstrapper — discovers modules, builds DI container.
-/// Based on TotalLink's Bootstrapper + InitModulesStartupWorker pattern.
+/// Application bootstrapper — decides which modules load for the current
+/// tenant, instantiates them, and lets each register its ribbon / panels /
+/// dashboard contributions.
 ///
-/// Phase 2: Simple module discovery + registration collection.
-/// Phase 3: Full Autofac container with per-module service registration.
+/// The tenant-toggle story hinges on this file: an <see cref="IModuleLicenseGate"/>
+/// is consulted for every module except <see cref="_alwaysRequired"/>. When a
+/// module is gated off, its type is never instantiated — no ribbon tab, no
+/// panels, no dashboard cards, no DB queries. Exactly the "disable and it's
+/// gone" semantics.
 /// </summary>
 public static class Bootstrapper
 {
     /// <summary>
-    /// Discover all IModule implementations and register their ribbon/panel contributions.
-    /// Called from App.OnStartup before MainWindow is created.
+    /// Instantiate the licensed module types, register their ribbon pages
+    /// and panels. Call with <see cref="AllowAllModuleGate"/> during dev /
+    /// pre-login; replace with a tenant-aware gate (e.g. one backed by
+    /// <c>Central.Licensing.ModuleLicenseService</c>) once the tenant ID is
+    /// known. Calling again is safe — ribbon/panel builders accumulate.
     /// </summary>
-    public static void Initialize()
+    public static void Initialize(IModuleLicenseGate? gate = null)
     {
-        // Directly instantiate all known modules (discovery scan unreliable in Release builds)
-        App.Modules = _moduleTypes.Select(t =>
+        gate ??= new AllowAllModuleGate();
+
+        // Filter the type list by the gate. Required modules (Global today)
+        // bypass the check — the shell has no coherent state without them.
+        var toLoad = _moduleTypes
+            .Where(t => _alwaysRequired.Contains(t) || gate.IsEnabled(_moduleCodes[t]))
+            .ToList();
+
+        App.Modules = toLoad.Select(t =>
         {
             try { return (IModule)Activator.CreateInstance(t)!; }
             catch { return null; }
         }).Where(m => m != null).Cast<IModule>().OrderBy(m => m.SortOrder).ToList();
 
-        // Each module registers its ribbon pages and panels
         foreach (var mod in App.Modules.OfType<IModuleRibbon>())
             mod.RegisterRibbon(App.RibbonBuilder);
         foreach (var mod in App.Modules.OfType<IModulePanels>())
@@ -32,33 +45,42 @@ public static class Bootstrapper
 
         var moduleList = string.Join(", ", App.Modules.Select(m => m.Name));
         System.Diagnostics.Debug.WriteLine($"[Bootstrapper] {App.Modules.Count} modules: {moduleList}");
-        try { System.IO.File.WriteAllText(
-            System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "modules.log"),
-            $"{DateTime.Now}: {App.Modules.Count} modules: {moduleList}\nPages: {App.RibbonBuilder.Pages.Count}: {string.Join(", ", App.RibbonBuilder.Pages.Select(p => p.Header))}"); }
+        try
+        {
+            System.IO.File.WriteAllText(
+                System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "modules.log"),
+                $"{DateTime.Now}: {App.Modules.Count} modules: {moduleList}\nPages: {App.RibbonBuilder.Pages.Count}: {string.Join(", ", App.RibbonBuilder.Pages.Select(p => p.Header))}");
+        }
         catch { }
     }
 
-    // Module registry. Each entry is a tenant-togglable unit — disabling one
-    // here removes its ribbon tab, panels, and commands in one switch. The
-    // Global module (landing dashboard + admin + platform-admin) is the one
-    // exception: always loaded because a tenant without it has no UI.
-    private static readonly Type[] _moduleTypes =
+    // Module registry. Each entry is a tenant-togglable unit — the gate
+    // controls whether it loads. The module code is the string the gate
+    // sees (and the one that lives in central_platform.module_catalog.code
+    // when licensing becomes DB-backed).
+    private static readonly Dictionary<Type, string> _moduleCodes = new()
     {
-        // Always-on core (dashboard + per-tenant admin + platform admin all
-        // under one assembly — ribbon tabs appear based on permission claims)
-        typeof(Central.Module.Global.GlobalModule),
-
-        // Tenant-togglable feature modules
-        typeof(Central.Module.Devices.DevicesModule),
-        typeof(Central.Module.Networking.NetworkingModule),   // switches + routing + vlans + links
-        typeof(Central.Module.Projects.ProjectsModule),       // tasks + portfolios + programmes
-        typeof(Central.Module.ServiceDesk.ServiceDeskModule),
-        typeof(Central.Module.CRM.CrmModule),
+        [typeof(Central.Module.Global.GlobalModule)]           = "global",
+        [typeof(Central.Module.Devices.DevicesModule)]         = "devices",
+        [typeof(Central.Module.Networking.NetworkingModule)]   = "networking",
+        [typeof(Central.Module.Projects.ProjectsModule)]       = "projects",
+        [typeof(Central.Module.ServiceDesk.ServiceDeskModule)] = "servicedesk",
+        [typeof(Central.Module.CRM.CrmModule)]                 = "crm",
     };
+
+    // Always loaded regardless of the gate. Disabling Global leaves the app
+    // with no dashboard, no admin, no platform ops — there is no scenario
+    // where that makes sense.
+    private static readonly HashSet<Type> _alwaysRequired = new()
+    {
+        typeof(Central.Module.Global.GlobalModule),
+    };
+
+    // Preserved for ordering / iteration.
+    private static readonly Type[] _moduleTypes = _moduleCodes.Keys.ToArray();
 
     private static void ForceLoadModuleAssemblies()
     {
-        // Force-load each module assembly so DiscoverModules can scan them
         foreach (var type in _moduleTypes)
             System.Runtime.CompilerServices.RuntimeHelpers.RunClassConstructor(type.TypeHandle);
     }
