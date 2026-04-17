@@ -833,7 +833,8 @@ public partial class MainWindow
         // Seed tenant context on panels that query the net.* schema directly.
         // Tenant ID is cached on App after login; no-op in offline mode.
         if (App.CurrentTenantId != Guid.Empty)
-            HierarchyTreePanel.SetContext(App.Dsn, App.CurrentTenantId);
+            HierarchyTreePanel.SetContext(App.Dsn, App.CurrentTenantId,
+                AuthContext.Instance.CurrentUser?.Id);
         await Task.Yield(); // Let splash repaint
         UpdateSplash("Loading ribbon icons...", 95);
         await PreloadIconOverridesAsync();

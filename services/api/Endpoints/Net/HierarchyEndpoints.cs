@@ -80,7 +80,7 @@ public static class HierarchyEndpoints
             return deleted ? Results.NoContent() : ApiProblem.NotFound($"Region {id} not found");
         }).RequireAuthorization(P.NetHierarchyDelete);
 
-        // ── Sites (list + get) ──────────────────────────────────────────
+        // ── Site ────────────────────────────────────────────────────────
         g.MapGet("/sites", async (Guid? regionId, ITenantContext tenant, DbConnectionFactory db) =>
         {
             if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
@@ -96,7 +96,48 @@ public static class HierarchyEndpoints
             return e is null ? ApiProblem.NotFound($"Site {id} not found") : Results.Ok(e);
         }).RequireAuthorization();
 
-        // ── Buildings (list + get) ─────────────────────────────────────
+        g.MapPost("/sites", async (Site body, ITenantContext tenant, DbConnectionFactory db, HttpContext ctx) =>
+        {
+            if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
+            body.OrganizationId = tenant.TenantId;
+            var repo = new HierarchyRepository(db.ConnectionString);
+            try
+            {
+                var id = await repo.CreateSiteAsync(body, UserIdOrNull(ctx));
+                return Results.Created($"/api/net/sites/{id}", new { id });
+            }
+            catch (Npgsql.PostgresException ex) when (ex.SqlState == "23505")
+            {
+                return ApiProblem.Conflict($"Site code '{body.SiteCode}' already exists in this region.");
+            }
+        }).RequireAuthorization(P.NetHierarchyWrite);
+
+        g.MapPut("/sites/{id:guid}", async (Guid id, Site body, ITenantContext tenant, DbConnectionFactory db, HttpContext ctx) =>
+        {
+            if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
+            body.Id = id;
+            body.OrganizationId = tenant.TenantId;
+            var repo = new HierarchyRepository(db.ConnectionString);
+            try
+            {
+                var newVersion = await repo.UpdateSiteAsync(body, UserIdOrNull(ctx));
+                return Results.Ok(new { id, version = newVersion });
+            }
+            catch (ConcurrencyException ex)
+            {
+                return ApiProblem.Conflict(ex.Message);
+            }
+        }).RequireAuthorization(P.NetHierarchyWrite);
+
+        g.MapDelete("/sites/{id:guid}", async (Guid id, ITenantContext tenant, DbConnectionFactory db, HttpContext ctx) =>
+        {
+            if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
+            var repo = new HierarchyRepository(db.ConnectionString);
+            var deleted = await repo.SoftDeleteSiteAsync(id, tenant.TenantId, UserIdOrNull(ctx));
+            return deleted ? Results.NoContent() : ApiProblem.NotFound($"Site {id} not found");
+        }).RequireAuthorization(P.NetHierarchyDelete);
+
+        // ── Building ───────────────────────────────────────────────────
         g.MapGet("/buildings", async (Guid? siteId, ITenantContext tenant, DbConnectionFactory db) =>
         {
             if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
@@ -111,6 +152,47 @@ public static class HierarchyEndpoints
             var e = await repo.GetBuildingAsync(id, tenant.TenantId);
             return e is null ? ApiProblem.NotFound($"Building {id} not found") : Results.Ok(e);
         }).RequireAuthorization();
+
+        g.MapPost("/buildings", async (Building body, ITenantContext tenant, DbConnectionFactory db, HttpContext ctx) =>
+        {
+            if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
+            body.OrganizationId = tenant.TenantId;
+            var repo = new HierarchyRepository(db.ConnectionString);
+            try
+            {
+                var id = await repo.CreateBuildingAsync(body, UserIdOrNull(ctx));
+                return Results.Created($"/api/net/buildings/{id}", new { id });
+            }
+            catch (Npgsql.PostgresException ex) when (ex.SqlState == "23505")
+            {
+                return ApiProblem.Conflict($"Building code '{body.BuildingCode}' already exists in this site.");
+            }
+        }).RequireAuthorization(P.NetHierarchyWrite);
+
+        g.MapPut("/buildings/{id:guid}", async (Guid id, Building body, ITenantContext tenant, DbConnectionFactory db, HttpContext ctx) =>
+        {
+            if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
+            body.Id = id;
+            body.OrganizationId = tenant.TenantId;
+            var repo = new HierarchyRepository(db.ConnectionString);
+            try
+            {
+                var newVersion = await repo.UpdateBuildingAsync(body, UserIdOrNull(ctx));
+                return Results.Ok(new { id, version = newVersion });
+            }
+            catch (ConcurrencyException ex)
+            {
+                return ApiProblem.Conflict(ex.Message);
+            }
+        }).RequireAuthorization(P.NetHierarchyWrite);
+
+        g.MapDelete("/buildings/{id:guid}", async (Guid id, ITenantContext tenant, DbConnectionFactory db, HttpContext ctx) =>
+        {
+            if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
+            var repo = new HierarchyRepository(db.ConnectionString);
+            var deleted = await repo.SoftDeleteBuildingAsync(id, tenant.TenantId, UserIdOrNull(ctx));
+            return deleted ? Results.NoContent() : ApiProblem.NotFound($"Building {id} not found");
+        }).RequireAuthorization(P.NetHierarchyDelete);
 
         // ── Floors ─────────────────────────────────────────────────────
         g.MapGet("/floors", async (Guid? buildingId, ITenantContext tenant, DbConnectionFactory db) =>

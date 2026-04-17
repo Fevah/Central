@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using Central.Engine.Net.Hierarchy;
 using Central.Persistence.Net;
+using DevExpress.Xpf.Bars;
+using DevExpress.Xpf.Grid;
 using Region = Central.Engine.Net.Hierarchy.Region;
 using UserControl = System.Windows.Controls.UserControl;
 
@@ -28,6 +30,7 @@ public partial class HierarchyTreePanel : UserControl
 {
     private string? _dsn;
     private Guid _tenantId;
+    private int? _userId;
     private CancellationTokenSource? _cts;
 
     public HierarchyTreePanel()
@@ -35,6 +38,7 @@ public partial class HierarchyTreePanel : UserControl
         InitializeComponent();
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
+        TreeView.ShowGridMenu += OnShowGridMenu;
     }
 
     /// <summary>
@@ -42,10 +46,11 @@ public partial class HierarchyTreePanel : UserControl
     /// knows which DSN + tenant to query. Safe to call multiple times —
     /// the most recent call wins and triggers a reload.
     /// </summary>
-    public void SetContext(string dsn, Guid tenantId)
+    public void SetContext(string dsn, Guid tenantId, int? userId = null)
     {
         _dsn = dsn;
         _tenantId = tenantId;
+        _userId = userId;
         if (IsLoaded) _ = ReloadAsync();
     }
 
@@ -192,5 +197,134 @@ public partial class HierarchyTreePanel : UserControl
             });
 
         return nodes;
+    }
+
+    // ── Context menu ────────────────────────────────────────────────────
+
+    private void OnShowGridMenu(object? sender, GridMenuEventArgs e)
+    {
+        if (e.MenuType != GridMenuType.RowCell) return;
+        var selected = TreeView.FocusedRow as HierarchyNode;
+
+        // Always available: create a new Region at the root.
+        e.Customizations.Add(MakeButton("New region…", () => _ = OpenNewRegionAsync()));
+
+        // New child — contextual, scopes under the selected node.
+        if (selected is not null)
+        {
+            switch (selected.NodeType)
+            {
+                case "Region":
+                    e.Customizations.Add(MakeButton("New site in this region…",
+                        () => _ = OpenNewSiteAsync(selected.EntityId)));
+                    break;
+                case "Site":
+                    e.Customizations.Add(MakeButton("New building in this site…",
+                        () => _ = OpenNewBuildingAsync(selected.EntityId)));
+                    break;
+            }
+
+            e.Customizations.Add(new BarItemLinkSeparator());
+
+            // Edit + delete apply to the selected node — only wired for the
+            // three levels whose writes land in Phase 2d.
+            var editable = selected.NodeType is "Region" or "Site" or "Building";
+            var edit = MakeButton($"Edit {selected.NodeType.ToLower()}…",
+                () => _ = OpenEditAsync(selected));
+            var delete = MakeButton($"Delete {selected.NodeType.ToLower()}",
+                () => _ = DeleteAsync(selected));
+            edit.IsEnabled = editable;
+            delete.IsEnabled = editable;
+            e.Customizations.Add(edit);
+            e.Customizations.Add(delete);
+        }
+    }
+
+    private static BarButtonItem MakeButton(string text, Action onClick)
+    {
+        var btn = new BarButtonItem { Content = text };
+        btn.ItemClick += (_, _) => onClick();
+        return btn;
+    }
+
+    private async Task OpenNewRegionAsync()
+    {
+        if (string.IsNullOrEmpty(_dsn) || _tenantId == Guid.Empty) return;
+        var dlg = HierarchyDetailDialog.ForNewRegion(_dsn, _tenantId, _userId)
+            .With(Window.GetWindow(this));
+        if (dlg.ShowDialog() == true) await ReloadAsync();
+    }
+
+    private async Task OpenNewSiteAsync(Guid regionId)
+    {
+        if (string.IsNullOrEmpty(_dsn) || _tenantId == Guid.Empty) return;
+        var dlg = (await HierarchyDetailDialog.ForNewSiteAsync(_dsn, _tenantId, _userId, regionId))
+            .With(Window.GetWindow(this));
+        if (dlg.ShowDialog() == true) await ReloadAsync();
+    }
+
+    private async Task OpenNewBuildingAsync(Guid siteId)
+    {
+        if (string.IsNullOrEmpty(_dsn) || _tenantId == Guid.Empty) return;
+        var dlg = (await HierarchyDetailDialog.ForNewBuildingAsync(_dsn, _tenantId, _userId, siteId))
+            .With(Window.GetWindow(this));
+        if (dlg.ShowDialog() == true) await ReloadAsync();
+    }
+
+    private async Task OpenEditAsync(HierarchyNode node)
+    {
+        if (string.IsNullOrEmpty(_dsn) || _tenantId == Guid.Empty) return;
+        try
+        {
+            var dlg = (await HierarchyDetailDialog.ForEditAsync(_dsn, _tenantId, _userId,
+                    node.NodeType, node.EntityId))
+                .With(Window.GetWindow(this));
+            if (dlg.ShowDialog() == true) await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            DevExpress.Xpf.Core.DXMessageBox.Show(Window.GetWindow(this),
+                ex.Message, "Load failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async Task DeleteAsync(HierarchyNode node)
+    {
+        if (string.IsNullOrEmpty(_dsn) || _tenantId == Guid.Empty) return;
+
+        var confirm = DevExpress.Xpf.Core.DXMessageBox.Show(
+            Window.GetWindow(this),
+            $"Delete {node.NodeType.ToLower()} '{node.Code}'?\n\n" +
+            "This is a soft delete — the entity is marked deleted but remains in the database.",
+            $"Delete {node.NodeType.ToLower()}?",
+            MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.OK) return;
+
+        try
+        {
+            var repo = new HierarchyRepository(_dsn);
+            var deleted = node.NodeType switch
+            {
+                "Region"   => await repo.SoftDeleteRegionAsync(node.EntityId, _tenantId, _userId),
+                "Site"     => await repo.SoftDeleteSiteAsync(node.EntityId, _tenantId, _userId),
+                "Building" => await repo.SoftDeleteBuildingAsync(node.EntityId, _tenantId, _userId),
+                _ => false
+            };
+            if (deleted) await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            DevExpress.Xpf.Core.DXMessageBox.Show(Window.GetWindow(this),
+                ex.Message, "Delete failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+}
+
+internal static class DialogExtensions
+{
+    public static T With<T>(this T dlg, Window? owner) where T : Window
+    {
+        if (owner is not null) dlg.Owner = owner;
+        return dlg;
     }
 }

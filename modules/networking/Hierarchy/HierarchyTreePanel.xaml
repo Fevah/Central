@@ -23,7 +23,7 @@
                              SelectionMode="Row"
                              ShowBorder="False">
             <dxg:TreeListControl.View>
-                <dxg:TreeListView AutoWidth="True"
+                <dxg:TreeListView x:Name="TreeView" AutoWidth="True"
                                   ShowHorizontalLines="False"
                                   ShowVerticalLines="False"
                                   ShowIndicator="False"

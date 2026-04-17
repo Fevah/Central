@@ -264,6 +264,98 @@ public class HierarchyRepository
         return await GetOneAsync(sql, id, orgId, ReadSite, ct);
     }
 
+    public async Task<Guid> CreateSiteAsync(Site e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO net.site (organization_id, region_id, site_profile_id, site_code,
+                                  display_name, address_line1, address_line2, address_line3,
+                                  city, state_or_county, postcode, country, latitude, longitude,
+                                  timezone, primary_contact_user_id, max_buildings,
+                                  status, lock_state, notes, tags, external_refs,
+                                  created_by, updated_by)
+            VALUES (@org, @region, @profile, @code, @name,
+                    @a1, @a2, @a3, @city, @state, @post, @country, @lat, @lng,
+                    @tz, @contact, @maxb,
+                    @status::net.entity_status, @lock::net.lock_state,
+                    @notes, @tags::jsonb, @refs::jsonb, @uid, @uid)
+            RETURNING id";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        BindSiteWriteParams(cmd, e, userId);
+        return (Guid)(await cmd.ExecuteScalarAsync(ct))!;
+    }
+
+    public async Task<int> UpdateSiteAsync(Site e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE net.site SET
+                region_id            = @region,
+                site_profile_id      = @profile,
+                site_code            = @code,
+                display_name         = @name,
+                address_line1        = @a1,
+                address_line2        = @a2,
+                address_line3        = @a3,
+                city                 = @city,
+                state_or_county      = @state,
+                postcode             = @post,
+                country              = @country,
+                latitude             = @lat,
+                longitude            = @lng,
+                timezone             = @tz,
+                primary_contact_user_id = @contact,
+                max_buildings        = @maxb,
+                status               = @status::net.entity_status,
+                lock_state           = @lock::net.lock_state,
+                lock_reason          = @lreason,
+                notes                = @notes,
+                tags                 = @tags::jsonb,
+                external_refs        = @refs::jsonb,
+                updated_at           = now(),
+                updated_by           = @uid,
+                version              = version + 1
+            WHERE id = @id AND organization_id = @org AND version = @ver AND deleted_at IS NULL
+            RETURNING version";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", e.Id);
+        cmd.Parameters.AddWithValue("ver", e.Version);
+        cmd.Parameters.AddWithValue("lreason", (object?)e.LockReason ?? DBNull.Value);
+        BindSiteWriteParams(cmd, e, userId);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int v ? v : throw new ConcurrencyException(e.Id, e.Version);
+    }
+
+    public Task<bool> SoftDeleteSiteAsync(Guid id, Guid orgId, int? userId, CancellationToken ct = default)
+        => SoftDeleteAsync("net.site", id, orgId, userId, ct);
+
+    private static void BindSiteWriteParams(NpgsqlCommand cmd, Site e, int? userId)
+    {
+        cmd.Parameters.AddWithValue("org", e.OrganizationId);
+        cmd.Parameters.AddWithValue("region", e.RegionId);
+        cmd.Parameters.AddWithValue("profile", (object?)e.SiteProfileId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("code", e.SiteCode);
+        cmd.Parameters.AddWithValue("name", e.DisplayName);
+        cmd.Parameters.AddWithValue("a1", (object?)e.AddressLine1 ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("a2", (object?)e.AddressLine2 ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("a3", (object?)e.AddressLine3 ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("city", (object?)e.City ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("state", (object?)e.StateOrCounty ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("post", (object?)e.Postcode ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("country", (object?)e.Country ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("lat", (object?)e.Latitude ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("lng", (object?)e.Longitude ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("tz", (object?)e.Timezone ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("contact", (object?)e.PrimaryContactUserId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("maxb", (object?)e.MaxBuildings ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("status", e.Status.ToString());
+        cmd.Parameters.AddWithValue("lock", e.LockState.ToString());
+        cmd.Parameters.AddWithValue("notes", (object?)e.Notes ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("tags", e.Tags.ToJsonString());
+        cmd.Parameters.AddWithValue("refs", e.ExternalRefs.ToJsonString());
+        cmd.Parameters.AddWithValue("uid", (object?)userId ?? DBNull.Value);
+    }
+
     private static Site ReadSite(NpgsqlDataReader r)
     {
         var e = new Site
@@ -363,6 +455,89 @@ public class HierarchyRepository
             FROM net.building
             WHERE id = @id AND organization_id = @org AND deleted_at IS NULL";
         return await GetOneAsync(sql, id, orgId, ReadBuilding, ct);
+    }
+
+    public async Task<Guid> CreateBuildingAsync(Building e, int? userId = null, CancellationToken ct = default)
+    {
+        // Phase-3 pool FKs (subnet, ASN block, loopback blocks, server ASN)
+        // are not writable yet — they're assigned by the allocation service
+        // when Phase 3 lands. We only persist the hierarchy + cardinality
+        // fields that the operator can set today.
+        const string sql = @"
+            INSERT INTO net.building (organization_id, site_id, building_profile_id,
+                                      building_code, display_name, building_number,
+                                      is_reserved, max_floors, max_devices_total,
+                                      b2b_partners, status, lock_state, notes,
+                                      tags, external_refs, created_by, updated_by)
+            VALUES (@org, @site, @profile, @code, @name, @num, @reserved,
+                    @maxf, @maxd, @partners,
+                    @status::net.entity_status, @lock::net.lock_state,
+                    @notes, @tags::jsonb, @refs::jsonb, @uid, @uid)
+            RETURNING id";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        BindBuildingWriteParams(cmd, e, userId);
+        return (Guid)(await cmd.ExecuteScalarAsync(ct))!;
+    }
+
+    public async Task<int> UpdateBuildingAsync(Building e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE net.building SET
+                site_id             = @site,
+                building_profile_id = @profile,
+                building_code       = @code,
+                display_name        = @name,
+                building_number     = @num,
+                is_reserved         = @reserved,
+                max_floors          = @maxf,
+                max_devices_total   = @maxd,
+                b2b_partners        = @partners,
+                status              = @status::net.entity_status,
+                lock_state          = @lock::net.lock_state,
+                lock_reason         = @lreason,
+                notes               = @notes,
+                tags                = @tags::jsonb,
+                external_refs       = @refs::jsonb,
+                updated_at          = now(),
+                updated_by          = @uid,
+                version             = version + 1
+            WHERE id = @id AND organization_id = @org AND version = @ver AND deleted_at IS NULL
+            RETURNING version";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", e.Id);
+        cmd.Parameters.AddWithValue("ver", e.Version);
+        cmd.Parameters.AddWithValue("lreason", (object?)e.LockReason ?? DBNull.Value);
+        BindBuildingWriteParams(cmd, e, userId);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int v ? v : throw new ConcurrencyException(e.Id, e.Version);
+    }
+
+    public Task<bool> SoftDeleteBuildingAsync(Guid id, Guid orgId, int? userId, CancellationToken ct = default)
+        => SoftDeleteAsync("net.building", id, orgId, userId, ct);
+
+    private static void BindBuildingWriteParams(NpgsqlCommand cmd, Building e, int? userId)
+    {
+        cmd.Parameters.AddWithValue("org", e.OrganizationId);
+        cmd.Parameters.AddWithValue("site", e.SiteId);
+        cmd.Parameters.AddWithValue("profile", (object?)e.BuildingProfileId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("code", e.BuildingCode);
+        cmd.Parameters.AddWithValue("name", e.DisplayName);
+        cmd.Parameters.AddWithValue("num", (object?)e.BuildingNumber ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("reserved", e.IsReserved);
+        cmd.Parameters.AddWithValue("maxf", (object?)e.MaxFloors ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("maxd", (object?)e.MaxDevicesTotal ?? DBNull.Value);
+        cmd.Parameters.Add(new NpgsqlParameter("partners", NpgsqlDbType.Array | NpgsqlDbType.Uuid)
+        {
+            Value = e.B2bPartners ?? Array.Empty<Guid>()
+        });
+        cmd.Parameters.AddWithValue("status", e.Status.ToString());
+        cmd.Parameters.AddWithValue("lock", e.LockState.ToString());
+        cmd.Parameters.AddWithValue("notes", (object?)e.Notes ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("tags", e.Tags.ToJsonString());
+        cmd.Parameters.AddWithValue("refs", e.ExternalRefs.ToJsonString());
+        cmd.Parameters.AddWithValue("uid", (object?)userId ?? DBNull.Value);
     }
 
     private static Building ReadBuilding(NpgsqlDataReader r)
