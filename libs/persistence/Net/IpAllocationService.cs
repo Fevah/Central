@@ -49,24 +49,10 @@ public class IpAllocationService
         await using var tx = await conn.BeginTransactionAsync(ct);
         await AcquireLockAsync(conn, tx, subnetId, ct);
 
-        var (network, broadcast, prefix) = await FetchSubnetCidrAsync(conn, tx, subnetId, orgId, ct);
-        var (first, last) = IpMath.HostRange(network, broadcast, prefix);
-
-        var used = await FetchUsedIpsAsync(conn, tx, subnetId, ct);
-        var shelved = await FetchShelvedIpsAsync(conn, tx, orgId, ct);
-
-        long? next = null;
-        for (var candidate = first; candidate <= last; candidate++)
-        {
-            if (used.Contains(candidate)) continue;
-            if (shelved.Contains(candidate)) continue;
-            next = candidate;
-            break;
-        }
-        if (next is null)
-            throw new PoolExhaustedException("IP address", subnetId);
-
-        var addrStr = IpMath.ToIp(next.Value);
+        var cidr = await FetchSubnetCidrStringAsync(conn, tx, subnetId, orgId, ct);
+        var addrStr = IsV6(cidr)
+            ? await PickNextIpV6Async(conn, tx, subnetId, orgId, cidr, ct)
+            : await PickNextIpV4Async(conn, tx, subnetId, orgId, cidr, ct);
         const string sql = @"
             INSERT INTO net.ip_address
                 (organization_id, subnet_id, address, assigned_to_type, assigned_to_id,
@@ -101,7 +87,7 @@ public class IpAllocationService
         return result;
     }
 
-    private static async Task<(long network, long broadcast, int prefix)> FetchSubnetCidrAsync(
+    private static async Task<string> FetchSubnetCidrStringAsync(
         NpgsqlConnection conn, NpgsqlTransaction tx, Guid subnetId, Guid orgId, CancellationToken ct)
     {
         const string sql = @"
@@ -113,10 +99,63 @@ public class IpAllocationService
         cmd.Parameters.AddWithValue("org", orgId);
         var raw = await cmd.ExecuteScalarAsync(ct) as string
             ?? throw new AllocationContainerNotFoundException("subnet", subnetId);
-        return IpMath.ParseV4(raw);
+        return raw;
     }
 
-    private static async Task<HashSet<long>> FetchUsedIpsAsync(
+    private static bool IsV6(string cidr) => cidr.Contains(':');
+
+    private static async Task<string> PickNextIpV4Async(
+        NpgsqlConnection conn, NpgsqlTransaction tx, Guid subnetId, Guid orgId,
+        string cidr, CancellationToken ct)
+    {
+        var (network, broadcast, prefix) = IpMath.ParseV4(cidr);
+        var (first, last) = IpMath.HostRange(network, broadcast, prefix);
+
+        var used = await FetchUsedIpsV4Async(conn, tx, subnetId, ct);
+        var shelved = await FetchShelvedIpsV4Async(conn, tx, orgId, ct);
+
+        for (var candidate = first; candidate <= last; candidate++)
+        {
+            if (used.Contains(candidate)) continue;
+            if (shelved.Contains(candidate)) continue;
+            return IpMath.ToIp(candidate);
+        }
+        throw new PoolExhaustedException("IP address", subnetId);
+    }
+
+    private static async Task<string> PickNextIpV6Async(
+        NpgsqlConnection conn, NpgsqlTransaction tx, Guid subnetId, Guid orgId,
+        string cidr, CancellationToken ct)
+    {
+        var (network, last, _) = IpMath6.ParseV6(cidr);
+        var (first, endUsable) = IpMath6.HostRange(network, last);
+
+        var used = await FetchUsedIpsV6Async(conn, tx, subnetId, ct);
+        var shelved = await FetchShelvedIpsV6Async(conn, tx, orgId, ct);
+
+        // IPv6 subnets are enormous (/64 == 2^64 addresses), so a naive
+        // "walk from first to last" would churn forever. In practice the
+        // used + shelved sets for a fresh subnet are tiny, so we sort
+        // them and pick the first gap starting at `first`.
+        var blocked = new SortedSet<UInt128>(used);
+        foreach (var s in shelved) blocked.Add(s);
+
+        var candidate = first;
+        foreach (var b in blocked)
+        {
+            if (b < candidate) continue;
+            if (b > candidate) return IpMath6.ToIp(candidate);
+            // b == candidate — bump past and keep scanning.
+            if (candidate == endUsable)
+                throw new PoolExhaustedException("IPv6 address", subnetId);
+            candidate++;
+        }
+        if (candidate > endUsable)
+            throw new PoolExhaustedException("IPv6 address", subnetId);
+        return IpMath6.ToIp(candidate);
+    }
+
+    private static async Task<HashSet<long>> FetchUsedIpsV4Async(
         NpgsqlConnection conn, NpgsqlTransaction tx, Guid subnetId, CancellationToken ct)
     {
         const string sql = @"
@@ -128,17 +167,13 @@ public class IpAllocationService
         await using var r = await cmd.ExecuteReaderAsync(ct);
         while (await r.ReadAsync(ct))
         {
-            var s = r.GetString(0);
-            // inet literals may carry a trailing /N on net.ip_address
-            // though we insert them without one. Strip it defensively.
-            var slash = s.IndexOf('/');
-            if (slash > 0) s = s[..slash];
-            set.Add(IpToLong(s));
+            var s = StripPrefix(r.GetString(0));
+            if (!s.Contains(':')) set.Add(IpToLong(s));
         }
         return set;
     }
 
-    private static async Task<HashSet<long>> FetchShelvedIpsAsync(
+    private static async Task<HashSet<long>> FetchShelvedIpsV4Async(
         NpgsqlConnection conn, NpgsqlTransaction tx, Guid orgId, CancellationToken ct)
     {
         const string sql = @"
@@ -152,8 +187,56 @@ public class IpAllocationService
         var set = new HashSet<long>();
         await using var r = await cmd.ExecuteReaderAsync(ct);
         while (await r.ReadAsync(ct))
-            set.Add(IpToLong(r.GetString(0)));
+        {
+            var s = r.GetString(0);
+            if (!s.Contains(':')) set.Add(IpToLong(s));
+        }
         return set;
+    }
+
+    private static async Task<HashSet<UInt128>> FetchUsedIpsV6Async(
+        NpgsqlConnection conn, NpgsqlTransaction tx, Guid subnetId, CancellationToken ct)
+    {
+        const string sql = @"
+            SELECT address::text FROM net.ip_address
+            WHERE subnet_id = @id AND deleted_at IS NULL";
+        await using var cmd = new NpgsqlCommand(sql, conn, tx);
+        cmd.Parameters.AddWithValue("id", subnetId);
+        var set = new HashSet<UInt128>();
+        await using var r = await cmd.ExecuteReaderAsync(ct);
+        while (await r.ReadAsync(ct))
+        {
+            var s = StripPrefix(r.GetString(0));
+            if (s.Contains(':')) set.Add(IpMath6.IpToUInt128(s));
+        }
+        return set;
+    }
+
+    private static async Task<HashSet<UInt128>> FetchShelvedIpsV6Async(
+        NpgsqlConnection conn, NpgsqlTransaction tx, Guid orgId, CancellationToken ct)
+    {
+        const string sql = @"
+            SELECT resource_key FROM net.reservation_shelf
+            WHERE organization_id = @org
+              AND resource_type = 'ip'
+              AND available_after > now()
+              AND deleted_at IS NULL";
+        await using var cmd = new NpgsqlCommand(sql, conn, tx);
+        cmd.Parameters.AddWithValue("org", orgId);
+        var set = new HashSet<UInt128>();
+        await using var r = await cmd.ExecuteReaderAsync(ct);
+        while (await r.ReadAsync(ct))
+        {
+            var s = r.GetString(0);
+            if (s.Contains(':')) set.Add(IpMath6.IpToUInt128(s));
+        }
+        return set;
+    }
+
+    private static string StripPrefix(string s)
+    {
+        var slash = s.IndexOf('/');
+        return slash > 0 ? s[..slash] : s;
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -182,23 +265,14 @@ public class IpAllocationService
         await using var tx = await conn.BeginTransactionAsync(ct);
         await AcquireLockAsync(conn, tx, poolId, ct);
 
-        var (poolNetwork, poolBroadcast, poolPrefix) = await FetchPoolCidrAsync(conn, tx, poolId, orgId, ct);
-        if (prefixLength < poolPrefix || prefixLength > 32)
-            throw new AllocationRangeException("subnet prefix",
-                prefixLength, poolPrefix, 32);
-
-        var existing = await FetchSubnetRangesInPoolAsync(conn, tx, poolId, ct);
-        var shelved = await FetchShelvedSubnetRangesAsync(conn, tx, orgId, ct);
-        // Merge both "occupied" sets into one sorted list.
-        var blocked = new List<(long first, long last)>(existing.Count + shelved.Count);
-        blocked.AddRange(existing);
-        blocked.AddRange(shelved);
-        blocked.Sort((a, b) => a.first.CompareTo(b.first));
-
-        var candidate = FindFreeAligned(poolNetwork, poolBroadcast, prefixLength, blocked)
-            ?? throw new PoolExhaustedException($"subnet /{prefixLength}", poolId);
-
-        var cidr = IpMath.ToCidr(candidate, prefixLength);
+        var poolCidr = await FetchPoolCidrStringAsync(conn, tx, poolId, orgId, ct);
+        var cidr = IsV6(poolCidr)
+            ? CarveV6(poolCidr, prefixLength, poolId,
+                await FetchSubnetRangesInPoolV6Async(conn, tx, poolId, ct),
+                await FetchShelvedSubnetRangesV6Async(conn, tx, orgId, ct))
+            : CarveV4(poolCidr, prefixLength, poolId,
+                await FetchSubnetRangesInPoolV4Async(conn, tx, poolId, ct),
+                await FetchShelvedSubnetRangesV4Async(conn, tx, orgId, ct));
         const string sql = @"
             INSERT INTO net.subnet
                 (organization_id, pool_id, parent_subnet_id, subnet_code, display_name,
@@ -267,7 +341,7 @@ public class IpAllocationService
         return null;
     }
 
-    private static async Task<(long network, long broadcast, int prefix)> FetchPoolCidrAsync(
+    private static async Task<string> FetchPoolCidrStringAsync(
         NpgsqlConnection conn, NpgsqlTransaction tx, Guid poolId, Guid orgId, CancellationToken ct)
     {
         const string sql = @"
@@ -276,12 +350,74 @@ public class IpAllocationService
         await using var cmd = new NpgsqlCommand(sql, conn, tx);
         cmd.Parameters.AddWithValue("id", poolId);
         cmd.Parameters.AddWithValue("org", orgId);
-        var raw = await cmd.ExecuteScalarAsync(ct) as string
+        return await cmd.ExecuteScalarAsync(ct) as string
             ?? throw new AllocationContainerNotFoundException("ip_pool", poolId);
-        return IpMath.ParseV4(raw);
     }
 
-    private static async Task<List<(long first, long last)>> FetchSubnetRangesInPoolAsync(
+    private static string CarveV4(string poolCidr, int prefixLength, Guid poolId,
+        List<(long first, long last)> existing,
+        List<(long first, long last)> shelved)
+    {
+        var (poolNetwork, poolBroadcast, poolPrefix) = IpMath.ParseV4(poolCidr);
+        if (prefixLength < poolPrefix || prefixLength > 32)
+            throw new AllocationRangeException("subnet prefix", prefixLength, poolPrefix, 32);
+
+        var blocked = new List<(long first, long last)>(existing.Count + shelved.Count);
+        blocked.AddRange(existing);
+        blocked.AddRange(shelved);
+        blocked.Sort((a, b) => a.first.CompareTo(b.first));
+
+        var candidate = FindFreeAligned(poolNetwork, poolBroadcast, prefixLength, blocked)
+            ?? throw new PoolExhaustedException($"subnet /{prefixLength}", poolId);
+        return IpMath.ToCidr(candidate, prefixLength);
+    }
+
+    private static string CarveV6(string poolCidr, int prefixLength, Guid poolId,
+        List<(UInt128 first, UInt128 last)> existing,
+        List<(UInt128 first, UInt128 last)> shelved)
+    {
+        var (poolNetwork, poolLast, poolPrefix) = IpMath6.ParseV6(poolCidr);
+        if (prefixLength < poolPrefix || prefixLength > 128)
+            throw new AllocationRangeException("subnet prefix", prefixLength, poolPrefix, 128);
+
+        var blocked = new List<(UInt128 first, UInt128 last)>(existing.Count + shelved.Count);
+        blocked.AddRange(existing);
+        blocked.AddRange(shelved);
+        blocked.Sort((a, b) => a.first.CompareTo(b.first));
+
+        var candidate = FindFreeAlignedV6(poolNetwork, poolLast, prefixLength, blocked)
+            ?? throw new PoolExhaustedException($"IPv6 subnet /{prefixLength}", poolId);
+        return IpMath6.ToCidr(candidate, prefixLength);
+    }
+
+    /// <summary>
+    /// IPv6 gap-finder. Same shape as <see cref="FindFreeAligned"/> but
+    /// on <see cref="UInt128"/> — a /48 pool stride at /64 is 2^16
+    /// candidates, still fits comfortably.
+    /// </summary>
+    internal static UInt128? FindFreeAlignedV6(UInt128 poolNetwork, UInt128 poolLast,
+        int prefixLength, IReadOnlyList<(UInt128 first, UInt128 last)> blockedSorted)
+    {
+        var stride = IpMath6.BlockSize(prefixLength);
+        if (stride == UInt128.Zero) return null;           // /0 makes no sense as a sub-alloc
+        var cursor = IpMath6.AlignUp(poolNetwork, stride);
+        var bi = 0;
+
+        while (cursor + stride - UInt128.One <= poolLast)
+        {
+            var candidateLast = cursor + stride - UInt128.One;
+            while (bi < blockedSorted.Count && blockedSorted[bi].last < cursor) bi++;
+            if (bi >= blockedSorted.Count) return cursor;
+
+            var (bFirst, bLast) = blockedSorted[bi];
+            if (candidateLast < bFirst) return cursor;
+
+            cursor = IpMath6.AlignUp(bLast + UInt128.One, stride);
+        }
+        return null;
+    }
+
+    private static async Task<List<(long first, long last)>> FetchSubnetRangesInPoolV4Async(
         NpgsqlConnection conn, NpgsqlTransaction tx, Guid poolId, CancellationToken ct)
     {
         const string sql = @"
@@ -293,13 +429,17 @@ public class IpAllocationService
         await using var r = await cmd.ExecuteReaderAsync(ct);
         while (await r.ReadAsync(ct))
         {
-            var (net, bcast, _) = IpMath.ParseV4(r.GetString(0));
-            list.Add((net, bcast));
+            var cidr = r.GetString(0);
+            if (!cidr.Contains(':'))
+            {
+                var (net, bcast, _) = IpMath.ParseV4(cidr);
+                list.Add((net, bcast));
+            }
         }
         return list;
     }
 
-    private static async Task<List<(long first, long last)>> FetchShelvedSubnetRangesAsync(
+    private static async Task<List<(long first, long last)>> FetchShelvedSubnetRangesV4Async(
         NpgsqlConnection conn, NpgsqlTransaction tx, Guid orgId, CancellationToken ct)
     {
         const string sql = @"
@@ -314,16 +454,63 @@ public class IpAllocationService
         await using var r = await cmd.ExecuteReaderAsync(ct);
         while (await r.ReadAsync(ct))
         {
+            var cidr = r.GetString(0);
+            if (cidr.Contains(':')) continue;
             try
             {
-                var (net, bcast, _) = IpMath.ParseV4(r.GetString(0));
+                var (net, bcast, _) = IpMath.ParseV4(cidr);
                 list.Add((net, bcast));
             }
-            catch (FormatException)
+            catch (FormatException) { /* skip malformed */ }
+        }
+        return list;
+    }
+
+    private static async Task<List<(UInt128 first, UInt128 last)>> FetchSubnetRangesInPoolV6Async(
+        NpgsqlConnection conn, NpgsqlTransaction tx, Guid poolId, CancellationToken ct)
+    {
+        const string sql = @"
+            SELECT network::text FROM net.subnet
+            WHERE pool_id = @id AND deleted_at IS NULL";
+        await using var cmd = new NpgsqlCommand(sql, conn, tx);
+        cmd.Parameters.AddWithValue("id", poolId);
+        var list = new List<(UInt128 first, UInt128 last)>();
+        await using var r = await cmd.ExecuteReaderAsync(ct);
+        while (await r.ReadAsync(ct))
+        {
+            var cidr = r.GetString(0);
+            if (cidr.Contains(':'))
             {
-                // Malformed shelf entries are skipped defensively rather
-                // than aborting the whole allocation.
+                var (net, last, _) = IpMath6.ParseV6(cidr);
+                list.Add((net, last));
             }
+        }
+        return list;
+    }
+
+    private static async Task<List<(UInt128 first, UInt128 last)>> FetchShelvedSubnetRangesV6Async(
+        NpgsqlConnection conn, NpgsqlTransaction tx, Guid orgId, CancellationToken ct)
+    {
+        const string sql = @"
+            SELECT resource_key FROM net.reservation_shelf
+            WHERE organization_id = @org
+              AND resource_type = 'subnet'
+              AND available_after > now()
+              AND deleted_at IS NULL";
+        await using var cmd = new NpgsqlCommand(sql, conn, tx);
+        cmd.Parameters.AddWithValue("org", orgId);
+        var list = new List<(UInt128 first, UInt128 last)>();
+        await using var r = await cmd.ExecuteReaderAsync(ct);
+        while (await r.ReadAsync(ct))
+        {
+            var cidr = r.GetString(0);
+            if (!cidr.Contains(':')) continue;
+            try
+            {
+                var (net, last, _) = IpMath6.ParseV6(cidr);
+                list.Add((net, last));
+            }
+            catch (FormatException) { /* skip malformed */ }
         }
         return list;
     }

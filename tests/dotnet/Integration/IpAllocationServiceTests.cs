@@ -11,6 +11,7 @@ namespace Central.Tests.Integration;
 ///
 /// Skip via env: SKIP_HEALTH_TESTS=1
 /// </summary>
+[Collection("NetAllocations")]
 public class IpAllocationServiceTests
 {
     private static readonly bool Skip = Environment.GetEnvironmentVariable("SKIP_HEALTH_TESTS") == "1";
