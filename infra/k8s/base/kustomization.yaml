@@ -105,5 +105,6 @@ configMapGenerator:
       - ../../../db/migrations/082_app_users_auth_columns.sql
       - ../../../db/migrations/083_module_catalog_reconcile.sql
       - ../../../db/migrations/084_net_schema_foundation.sql
+      - ../../../db/migrations/085_net_hierarchy.sql
     options:
       disableNameSuffixHash: true
