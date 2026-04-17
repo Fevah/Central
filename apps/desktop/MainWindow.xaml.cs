@@ -140,6 +140,7 @@ public partial class MainWindow
             if (e.Item == LookupsPanel) VM.IsLookupsPanelOpen = false;
             if (e.Item == AsnPanel) VM.IsAsnPanelOpen = false;
             if (e.Item == MasterPanel) VM.IsMasterPanelOpen = false;
+            if (e.Item == HierarchyPanel) VM.IsHierarchyPanelOpen = false;
             if (e.Item == P2PPanel) VM.IsP2PPanelOpen = false;
             if (e.Item == B2BPanel) VM.IsB2BPanelOpen = false;
             if (e.Item == FWPanel) VM.IsFWPanelOpen = false;
@@ -376,6 +377,11 @@ public partial class MainWindow
                 ToggleDockPanel(FWPanel, VM.IsFWPanelOpen);
             if (e.PropertyName == nameof(MainViewModel.IsVlansPanelOpen))
                 ToggleDockPanel(VlansPanel, VM.IsVlansPanelOpen);
+            if (e.PropertyName == nameof(MainViewModel.IsHierarchyPanelOpen))
+            {
+                ToggleDockPanel(HierarchyPanel, VM.IsHierarchyPanelOpen);
+                if (VM.IsHierarchyPanelOpen) _ = HierarchyTreePanel.ReloadAsync();
+            }
             if (e.PropertyName == nameof(MainViewModel.IsMlagPanelOpen))
                 ToggleDockPanel(MlagPanel, VM.IsMlagPanelOpen);
             if (e.PropertyName == nameof(MainViewModel.IsMstpPanelOpen))
@@ -823,6 +829,11 @@ public partial class MainWindow
         }
         UpdateSplash("Binding controls...", 94);
         BindComboSources();
+
+        // Seed tenant context on panels that query the net.* schema directly.
+        // Tenant ID is cached on App after login; no-op in offline mode.
+        if (App.CurrentTenantId != Guid.Empty)
+            HierarchyTreePanel.SetContext(App.Dsn, App.CurrentTenantId);
         await Task.Yield(); // Let splash repaint
         UpdateSplash("Loading ribbon icons...", 95);
         await PreloadIconOverridesAsync();
@@ -858,6 +869,7 @@ public partial class MainWindow
         DockManager.DockController.Close(LookupsPanel);
         DockManager.DockController.Close(SettingsPanel);
         DockManager.DockController.Close(MasterPanel);
+        DockManager.DockController.Close(HierarchyPanel);
         DockManager.DockController.Close(AsnPanel);
         DockManager.DockController.Close(P2PPanel);
         DockManager.DockController.Close(B2BPanel);

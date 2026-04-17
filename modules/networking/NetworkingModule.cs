@@ -91,6 +91,7 @@ public class NetworkingModule : IModule, IModuleRibbon, IModulePanels
             // ── Panels (everything networking exposes as a dockable panel) ──
             page.AddGroup("Panels", group =>
             {
+                group.AddCheckButton("Hierarchy",   panelId: "HierarchyPanel");
                 group.AddCheckButton("IPAM",        panelId: "DevicesPanel");
                 group.AddCheckButton("Device Details", panelId: "DeviceDetailPanel");
                 group.AddCheckButton("Switches",    panelId: "SwitchesPanel");

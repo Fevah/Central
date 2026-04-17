@@ -19,6 +19,14 @@ public partial class App : System.Windows.Application
     internal static bool IsDbOnline { get; set; }
     internal static ConnectivityManager? Connectivity { get; private set; }
     internal static string Dsn { get; private set; } = "";
+
+    /// <summary>
+    /// Tenant ID for the signed-in user. Cached on login so panels
+    /// that query the net.* schema don't have to re-lookup per call.
+    /// <see cref="Guid.Empty"/> in offline mode or for legacy
+    /// single-tenant installs with no app_users.tenant_id mapping.
+    /// </summary>
+    internal static Guid CurrentTenantId { get; private set; } = Guid.Empty;
     internal static List<IModule> Modules { get; set; } = new();
     internal static RibbonBuilder RibbonBuilder { get; } = new();
     internal static PanelBuilder PanelBuilder { get; } = new();
@@ -264,6 +272,7 @@ public partial class App : System.Windows.Application
                 {
                     var userId2 = AuthContext.Instance.CurrentUser?.Id ?? 0;
                     var tenantId = userId2 > 0 ? await LookupUserTenantIdAsync(Dsn, userId2) : Guid.Empty;
+                    CurrentTenantId = tenantId;
                     gate = tenantId != Guid.Empty
                         ? await Central.Desktop.Auth.DbModuleLicenseGate.CreateForTenantAsync(Dsn, tenantId)
                         : new AllowAllModuleGate();

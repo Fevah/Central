@@ -1,0 +1,46 @@
+<UserControl x:Class="Central.Module.Networking.Hierarchy.HierarchyTreePanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             Background="Transparent">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Small header: tenant + last-refresh timestamp -->
+        <Border Grid.Row="0" BorderBrush="#333" BorderThickness="0,0,0,1" Padding="8,4">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Networking hierarchy" FontWeight="SemiBold" Foreground="#D0D0D0"/>
+                <TextBlock Text=" · " Foreground="#707070"/>
+                <TextBlock x:Name="StatusLabel" Foreground="#909090"/>
+            </StackPanel>
+        </Border>
+
+        <dxg:TreeListControl x:Name="Tree" Grid.Row="1"
+                             AutoGenerateColumns="None"
+                             SelectionMode="Row"
+                             ShowBorder="False">
+            <dxg:TreeListControl.View>
+                <dxg:TreeListView AutoWidth="True"
+                                  ShowHorizontalLines="False"
+                                  ShowVerticalLines="False"
+                                  ShowIndicator="False"
+                                  ExpandStateFieldName="IsExpanded"
+                                  TreeDerivationMode="Selfreference"
+                                  KeyFieldName="Id"
+                                  ParentFieldName="ParentId"
+                                  AllowEditing="False"/>
+            </dxg:TreeListControl.View>
+            <dxg:TreeListControl.Columns>
+                <dxg:TreeListColumn FieldName="NodeType" Header="Type"   Width="110"/>
+                <dxg:TreeListColumn FieldName="Code"     Header="Code"   Width="160"/>
+                <dxg:TreeListColumn FieldName="Name"     Header="Name"   Width="260"/>
+                <dxg:TreeListColumn FieldName="Status"   Header="Status" Width="100"/>
+                <dxg:TreeListColumn FieldName="Lock"     Header="Lock"   Width="90"/>
+                <dxg:TreeListColumn FieldName="Version"  Header="v"      Width="50"/>
+            </dxg:TreeListControl.Columns>
+        </dxg:TreeListControl>
+    </Grid>
+</UserControl>

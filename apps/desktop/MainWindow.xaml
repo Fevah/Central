@@ -16,6 +16,7 @@
     xmlns:swViews="clr-namespace:Central.Module.Networking.Switches;assembly=Central.Module.Networking"
     xmlns:rtViews="clr-namespace:Central.Module.Networking.Routing;assembly=Central.Module.Networking"
     xmlns:vlViews="clr-namespace:Central.Module.Networking.Vlans;assembly=Central.Module.Networking"
+    xmlns:hierViews="clr-namespace:Central.Module.Networking.Hierarchy;assembly=Central.Module.Networking"
     xmlns:admViews="clr-namespace:Central.Module.Global.Admin;assembly=Central.Module.Global"
     xmlns:sdViews="clr-namespace:Central.Module.ServiceDesk.Views;assembly=Central.Module.ServiceDesk"
     xmlns:taskViews="clr-namespace:Central.Module.Projects;assembly=Central.Module.Projects"
@@ -574,6 +575,10 @@
                                            ItemClick="SyncAllBgpButton_ItemClick" />
                     </dxr:RibbonPageGroup>
                     <dxr:RibbonPageGroup Caption="Panels">
+                        <dxb:BarCheckItem  Content="Hierarchy"
+                                           Glyph="{dx:DXImage Image=TreeView_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsHierarchyPanelOpen, Mode=TwoWay}" />
                         <dxb:BarCheckItem  Content="Devices"
                                            Glyph="{dx:DXImage Image=Grid_16x16}"
                                            RibbonStyle="SmallWithText"
@@ -1171,6 +1176,13 @@
                                         Caption="Dashboard"
                                         AllowClose="True">
                         <local:DashboardPanel x:Name="DashboardGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- Hierarchy Panel (Region → Site → Building → Floor → Room → Rack) -->
+                    <dxdo:DocumentPanel x:Name="HierarchyPanel"
+                                        Caption="Hierarchy"
+                                        AllowClose="True">
+                        <hierViews:HierarchyTreePanel x:Name="HierarchyTreePanel" />
                     </dxdo:DocumentPanel>
 
                     <!-- Devices Panel (extracted to Module.Devices) -->
