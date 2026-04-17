@@ -211,4 +211,9 @@ public static class P
     public const string NetPoolsWrite       = "net:pools:write";
     public const string NetPoolsDelete      = "net:pools:delete";
     public const string NetPoolsAllocate    = "net:pools:allocate";
+
+    // Networking engine — devices + ports (Phase 4c+)
+    public const string NetDevicesRead      = "net:devices:read";
+    public const string NetDevicesWrite     = "net:devices:write";
+    public const string NetDevicesDelete    = "net:devices:delete";
 }
