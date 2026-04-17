@@ -1,9 +1,30 @@
-# Build outputs
+# Build outputs (pre-restructure paths + post-restructure paths — both
+# kept active while the restructure is in progress)
 desktop/**/bin/
 desktop/**/obj/
 web-client/node_modules/
 web-client/dist/
 web-client/.angular/
+apps/**/bin/
+apps/**/obj/
+libs/**/bin/
+libs/**/obj/
+modules/**/bin/
+modules/**/obj/
+services/**/bin/
+services/**/obj/
+tests/**/bin/
+tests/**/obj/
+apps/web/node_modules/
+apps/web/dist/
+apps/web/.angular/
+
+# Rust build artefacts
+services/**/target/
+
+# Offline NuGet / DX package caches
+packages-offline/
+**/packages-offline/
 
 # IDE
 .vs/
