@@ -1139,6 +1139,141 @@ public class PoolsRepository
         return await GetOneAsync(sql, id, orgId, ReadMstpRule, ct);
     }
 
+    public async Task<Guid> CreateMstpRuleAsync(MstpPriorityRule e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO net.mstp_priority_rule (organization_id, rule_code, display_name,
+                                                scope_level, scope_entity_id,
+                                                status, lock_state, notes, tags, external_refs,
+                                                created_by, updated_by)
+            VALUES (@org, @code, @name, @scope, @sid,
+                    @status::net.entity_status, @lock::net.lock_state,
+                    @notes, @tags::jsonb, @refs::jsonb, @uid, @uid)
+            RETURNING id";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        BindMstpRuleWrite(cmd, e, userId);
+        return (Guid)(await cmd.ExecuteScalarAsync(ct))!;
+    }
+
+    public async Task<int> UpdateMstpRuleAsync(MstpPriorityRule e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE net.mstp_priority_rule SET
+                rule_code       = @code,
+                display_name    = @name,
+                scope_level     = @scope,
+                scope_entity_id = @sid,
+                status          = @status::net.entity_status,
+                lock_state      = @lock::net.lock_state,
+                lock_reason     = @lreason,
+                notes           = @notes,
+                tags            = @tags::jsonb,
+                external_refs   = @refs::jsonb,
+                updated_at      = now(),
+                updated_by      = @uid,
+                version         = version + 1
+            WHERE id = @id AND organization_id = @org AND version = @ver AND deleted_at IS NULL
+            RETURNING version";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", e.Id);
+        cmd.Parameters.AddWithValue("ver", e.Version);
+        cmd.Parameters.AddWithValue("lreason", (object?)e.LockReason ?? DBNull.Value);
+        BindMstpRuleWrite(cmd, e, userId);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int v ? v : throw new ConcurrencyException(e.Id, e.Version);
+    }
+
+    public Task<bool> SoftDeleteMstpRuleAsync(Guid id, Guid orgId, int? userId, CancellationToken ct = default)
+        => SoftDeleteAsync("net.mstp_priority_rule", id, orgId, userId, ct);
+
+    private static void BindMstpRuleWrite(NpgsqlCommand cmd, MstpPriorityRule e, int? userId)
+    {
+        cmd.Parameters.AddWithValue("org", e.OrganizationId);
+        cmd.Parameters.AddWithValue("code", e.RuleCode);
+        cmd.Parameters.AddWithValue("name", e.DisplayName);
+        cmd.Parameters.AddWithValue("scope", e.ScopeLevel.ToString());
+        cmd.Parameters.AddWithValue("sid", (object?)e.ScopeEntityId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("status", e.Status.ToString());
+        cmd.Parameters.AddWithValue("lock", e.LockState.ToString());
+        cmd.Parameters.AddWithValue("notes", (object?)e.Notes ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("tags", e.Tags.ToJsonString());
+        cmd.Parameters.AddWithValue("refs", e.ExternalRefs.ToJsonString());
+        cmd.Parameters.AddWithValue("uid", (object?)userId ?? DBNull.Value);
+    }
+
+    // ── MstpPriorityRuleStep writes ─────────────────────────────────────
+    //
+    // Steps are UNIQUE (rule_id, step_order). Callers that want to
+    // reorder a rule's steps should delete-then-reinsert under a
+    // transaction — doing it here via a "ReplaceSteps" method would be
+    // another layer of atomicity pressure we don't need yet.
+
+    public async Task<Guid> CreateMstpStepAsync(MstpPriorityRuleStep e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO net.mstp_priority_rule_step (organization_id, rule_id, step_order,
+                                                     match_expression, priority,
+                                                     status, lock_state, notes, tags, external_refs,
+                                                     created_by, updated_by)
+            VALUES (@org, @rule, @ord, @expr::jsonb, @prio,
+                    @status::net.entity_status, @lock::net.lock_state,
+                    @notes, @tags::jsonb, @refs::jsonb, @uid, @uid)
+            RETURNING id";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        BindMstpStepWrite(cmd, e, userId);
+        return (Guid)(await cmd.ExecuteScalarAsync(ct))!;
+    }
+
+    public async Task<int> UpdateMstpStepAsync(MstpPriorityRuleStep e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE net.mstp_priority_rule_step SET
+                rule_id          = @rule,
+                step_order       = @ord,
+                match_expression = @expr::jsonb,
+                priority         = @prio,
+                status           = @status::net.entity_status,
+                lock_state       = @lock::net.lock_state,
+                lock_reason      = @lreason,
+                notes            = @notes,
+                tags             = @tags::jsonb,
+                external_refs    = @refs::jsonb,
+                updated_at       = now(),
+                updated_by       = @uid,
+                version          = version + 1
+            WHERE id = @id AND organization_id = @org AND version = @ver AND deleted_at IS NULL
+            RETURNING version";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", e.Id);
+        cmd.Parameters.AddWithValue("ver", e.Version);
+        cmd.Parameters.AddWithValue("lreason", (object?)e.LockReason ?? DBNull.Value);
+        BindMstpStepWrite(cmd, e, userId);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int v ? v : throw new ConcurrencyException(e.Id, e.Version);
+    }
+
+    public Task<bool> SoftDeleteMstpStepAsync(Guid id, Guid orgId, int? userId, CancellationToken ct = default)
+        => SoftDeleteAsync("net.mstp_priority_rule_step", id, orgId, userId, ct);
+
+    private static void BindMstpStepWrite(NpgsqlCommand cmd, MstpPriorityRuleStep e, int? userId)
+    {
+        cmd.Parameters.AddWithValue("org", e.OrganizationId);
+        cmd.Parameters.AddWithValue("rule", e.RuleId);
+        cmd.Parameters.AddWithValue("ord", e.StepOrder);
+        cmd.Parameters.AddWithValue("expr", e.MatchExpression.ToJsonString());
+        cmd.Parameters.AddWithValue("prio", e.Priority);
+        cmd.Parameters.AddWithValue("status", e.Status.ToString());
+        cmd.Parameters.AddWithValue("lock", e.LockState.ToString());
+        cmd.Parameters.AddWithValue("notes", (object?)e.Notes ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("tags", e.Tags.ToJsonString());
+        cmd.Parameters.AddWithValue("refs", e.ExternalRefs.ToJsonString());
+        cmd.Parameters.AddWithValue("uid", (object?)userId ?? DBNull.Value);
+    }
+
     private static MstpPriorityRule ReadMstpRule(NpgsqlDataReader r)
     {
         var e = new MstpPriorityRule

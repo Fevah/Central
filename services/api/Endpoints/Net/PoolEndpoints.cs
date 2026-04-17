@@ -454,12 +454,97 @@ public static class PoolEndpoints
             return e is null ? ApiProblem.NotFound($"MSTP rule {id} not found") : Results.Ok(e);
         }).RequireAuthorization(P.NetPoolsRead);
 
+        g.MapPost("/mstp-rules", async (MstpPriorityRule body, ITenantContext tenant, DbConnectionFactory db, HttpContext ctx) =>
+        {
+            if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
+            body.OrganizationId = tenant.TenantId;
+            var repo = new PoolsRepository(db.ConnectionString);
+            try
+            {
+                var id = await repo.CreateMstpRuleAsync(body, UserIdOrNull(ctx));
+                return Results.Created($"/api/net/mstp-rules/{id}", new { id });
+            }
+            catch (Npgsql.PostgresException ex) when (ex.SqlState == "23505")
+            {
+                return ApiProblem.Conflict($"MSTP rule code '{body.RuleCode}' already exists.");
+            }
+        }).RequireAuthorization(P.NetPoolsWrite);
+
+        g.MapPut("/mstp-rules/{id:guid}", async (Guid id, MstpPriorityRule body, ITenantContext tenant, DbConnectionFactory db, HttpContext ctx) =>
+        {
+            if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
+            body.Id = id;
+            body.OrganizationId = tenant.TenantId;
+            var repo = new PoolsRepository(db.ConnectionString);
+            try
+            {
+                var v = await repo.UpdateMstpRuleAsync(body, UserIdOrNull(ctx));
+                return Results.Ok(new { id, version = v });
+            }
+            catch (ConcurrencyException ex) { return ApiProblem.Conflict(ex.Message); }
+        }).RequireAuthorization(P.NetPoolsWrite);
+
+        g.MapDelete("/mstp-rules/{id:guid}", async (Guid id, ITenantContext tenant, DbConnectionFactory db, HttpContext ctx) =>
+        {
+            if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
+            var repo = new PoolsRepository(db.ConnectionString);
+            var deleted = await repo.SoftDeleteMstpRuleAsync(id, tenant.TenantId, UserIdOrNull(ctx));
+            return deleted ? Results.NoContent() : ApiProblem.NotFound($"MSTP rule {id} not found");
+        }).RequireAuthorization(P.NetPoolsDelete);
+
         g.MapGet("/mstp-rules/{ruleId:guid}/steps", async (Guid ruleId, ITenantContext tenant, DbConnectionFactory db) =>
         {
             if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
             var repo = new PoolsRepository(db.ConnectionString);
             return Results.Ok(await repo.ListMstpStepsAsync(tenant.TenantId, ruleId));
         }).RequireAuthorization(P.NetPoolsRead);
+
+        g.MapPost("/mstp-rules/{ruleId:guid}/steps", async (Guid ruleId, MstpPriorityRuleStep body,
+            ITenantContext tenant, DbConnectionFactory db, HttpContext ctx) =>
+        {
+            if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
+            body.OrganizationId = tenant.TenantId;
+            body.RuleId = ruleId;
+            if (body.Priority % 4096 != 0 || body.Priority is < 0 or > 61440)
+                return ApiProblem.ValidationError("Priority must be 0..61440 and divisible by 4096.");
+
+            var repo = new PoolsRepository(db.ConnectionString);
+            try
+            {
+                var id = await repo.CreateMstpStepAsync(body, UserIdOrNull(ctx));
+                return Results.Created($"/api/net/mstp-steps/{id}", new { id });
+            }
+            catch (Npgsql.PostgresException ex) when (ex.SqlState == "23505")
+            {
+                return ApiProblem.Conflict($"Step order {body.StepOrder} already exists for this rule.");
+            }
+        }).RequireAuthorization(P.NetPoolsWrite);
+
+        g.MapPut("/mstp-steps/{id:guid}", async (Guid id, MstpPriorityRuleStep body,
+            ITenantContext tenant, DbConnectionFactory db, HttpContext ctx) =>
+        {
+            if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
+            body.Id = id;
+            body.OrganizationId = tenant.TenantId;
+            if (body.Priority % 4096 != 0 || body.Priority is < 0 or > 61440)
+                return ApiProblem.ValidationError("Priority must be 0..61440 and divisible by 4096.");
+
+            var repo = new PoolsRepository(db.ConnectionString);
+            try
+            {
+                var v = await repo.UpdateMstpStepAsync(body, UserIdOrNull(ctx));
+                return Results.Ok(new { id, version = v });
+            }
+            catch (ConcurrencyException ex) { return ApiProblem.Conflict(ex.Message); }
+        }).RequireAuthorization(P.NetPoolsWrite);
+
+        g.MapDelete("/mstp-steps/{id:guid}", async (Guid id, ITenantContext tenant, DbConnectionFactory db, HttpContext ctx) =>
+        {
+            if (!tenant.IsResolved) return ApiProblem.ValidationError("No tenant context.");
+            var repo = new PoolsRepository(db.ConnectionString);
+            var deleted = await repo.SoftDeleteMstpStepAsync(id, tenant.TenantId, UserIdOrNull(ctx));
+            return deleted ? Results.NoContent() : ApiProblem.NotFound($"MSTP step {id} not found");
+        }).RequireAuthorization(P.NetPoolsDelete);
 
         g.MapGet("/mstp-allocations", async (Guid? ruleId, ITenantContext tenant, DbConnectionFactory db) =>
         {
