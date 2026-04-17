@@ -320,6 +320,9 @@ app.MapGroup("/api/ai").WithTags("AI Insights").MapAiInsightsEndpoints().Require
 // Networking engine — geographic hierarchy (Phase 2b)
 app.MapGroup("/api/net").WithTags("Net Hierarchy").MapNetHierarchyEndpoints();
 
+// Networking engine — numbering pools (Phase 3e)
+app.MapGroup("/api/net").WithTags("Net Pools").MapNetPoolEndpoints();
+
 // Email integration (Phase 20)
 app.MapGroup("/api/email").WithTags("Email").MapEmailEndpoints();  // Tracking endpoints are anonymous
 

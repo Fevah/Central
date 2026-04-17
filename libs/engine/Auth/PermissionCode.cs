@@ -198,4 +198,17 @@ public static class P
     public const string NetHierarchyRead    = "net:hierarchy:read";
     public const string NetHierarchyWrite   = "net:hierarchy:write";
     public const string NetHierarchyDelete  = "net:hierarchy:delete";
+
+    // Networking engine — numbering pools (Phase 3e+)
+    //   Read     — list / get pools, blocks, allocations, shelf
+    //   Write    — CRUD on pools, blocks, subnets, VLAN templates, MSTP rules
+    //   Delete   — soft-delete a pool or block (tenant-wide retirement)
+    //   Allocate — hand out a new ASN / VLAN / MLAG / IP / subnet, or
+    //              push a value onto the reservation shelf. Kept distinct
+    //              from Write because "can create a pool" and "can issue
+    //              numbers from a pool" are different trust levels.
+    public const string NetPoolsRead        = "net:pools:read";
+    public const string NetPoolsWrite       = "net:pools:write";
+    public const string NetPoolsDelete      = "net:pools:delete";
+    public const string NetPoolsAllocate    = "net:pools:allocate";
 }
