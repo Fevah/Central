@@ -29,6 +29,7 @@ packages-offline/
 # IDE
 .vs/
 .vscode/
+.claude/
 *.suo
 *.user
 
