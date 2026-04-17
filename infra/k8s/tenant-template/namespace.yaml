@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: central-__TENANT_SLUG__
+  labels:
+    app.kubernetes.io/part-of: central-platform
+    central.io/tenant: __TENANT_SLUG__
+    central.io/sizing: dedicated
+    central.io/tier: enterprise
+  annotations:
+    central.io/tenant-id: __TENANT_ID__
+    central.io/database: __DATABASE_NAME__
+    central.io/provisioned-at: __PROVISIONED_AT__

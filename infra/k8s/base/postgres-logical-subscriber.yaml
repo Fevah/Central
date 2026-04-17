@@ -1,0 +1,108 @@
+---
+# ═══════════════════════════════════════════════════════════════════════
+# Logical Replication Subscriber (Multi-Region Read Replica)
+# ═══════════════════════════════════════════════════════════════════════
+# Deploy this overlay into a secondary region to receive logical-replication
+# streams from the primary publication `central_replication_data`.
+#
+# Requires the primary cluster to have:
+#   - wal_level = logical
+#   - max_replication_slots >= 5
+#   - max_wal_senders >= 5
+#   - Publication `central_replication_data` (created in migration 053)
+#
+# This manifest creates a read-only PostgreSQL that subscribes to the primary.
+# Apps route read-only queries to this subscriber via the `read_replica_host`
+# column in tenant_connection_map.
+# ═══════════════════════════════════════════════════════════════════════
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-subscriber-init
+  namespace: central
+data:
+  init.sql: |
+    \c central
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;
+    CREATE EXTENSION IF NOT EXISTS pg_trgm;
+    CREATE EXTENSION IF NOT EXISTS citext;
+
+    -- Subscription is created by operator after primary is reachable
+    -- See infra/scripts/create-logical-subscription.sh
+---
+# Only deployed when REGION != primary (use per-region overlay to enable)
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-subscriber
+  namespace: central
+  labels:
+    app: postgres-subscriber
+    role: read-replica-region
+spec:
+  serviceName: postgres-subscriber
+  replicas: 0    # Set to 1 in the per-region overlay that enables it
+  selector:
+    matchLabels:
+      app: postgres-subscriber
+  template:
+    metadata:
+      labels:
+        app: postgres-subscriber
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:18
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              valueFrom: { secretKeyRef: { name: postgres-credentials, key: POSTGRES_USER } }
+            - name: POSTGRES_PASSWORD
+              valueFrom: { secretKeyRef: { name: postgres-credentials, key: POSTGRES_PASSWORD } }
+            - name: POSTGRES_DB
+              valueFrom: { secretKeyRef: { name: postgres-credentials, key: POSTGRES_DB } }
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          args:
+            - "-c"
+            - "wal_level=logical"
+            - "-c"
+            - "max_replication_slots=5"
+            - "-c"
+            - "max_logical_replication_workers=4"
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: init
+              mountPath: /docker-entrypoint-initdb.d
+          resources:
+            requests: { cpu: "1", memory: 2Gi }
+            limits:   { cpu: "2", memory: 4Gi }
+      volumes:
+        - name: init
+          configMap:
+            name: postgres-subscriber-init
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 200Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-subscriber
+  namespace: central
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: postgres-subscriber

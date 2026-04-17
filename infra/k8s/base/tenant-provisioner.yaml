@@ -1,0 +1,151 @@
+---
+# ═══════════════════════════════════════════════════════════════════════
+# Tenant Provisioner Service
+# ═══════════════════════════════════════════════════════════════════════
+# Polls central_platform.provisioning_jobs and provisions/decommissions
+# dedicated databases + K8s namespaces for enterprise tenants.
+# ═══════════════════════════════════════════════════════════════════════
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tenant-provisioner
+  namespace: central
+
+---
+# Needs to create namespaces, NetworkPolicies, ConfigMaps platform-wide
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: tenant-provisioner
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces", "configmaps", "secrets", "resourcequotas"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+  - apiGroups: [""]
+    resources: ["limitranges"]
+    verbs: ["get", "list", "create", "update", "patch", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tenant-provisioner
+subjects:
+  - kind: ServiceAccount
+    name: tenant-provisioner
+    namespace: central
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tenant-provisioner
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tenant-provisioner
+  namespace: central
+  labels:
+    app: tenant-provisioner
+spec:
+  replicas: 1   # Singleton — only one worker at a time, provisioning is not idempotent-safe across replicas
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: tenant-provisioner
+  template:
+    metadata:
+      labels:
+        app: tenant-provisioner
+    spec:
+      serviceAccountName: tenant-provisioner
+      containers:
+        - name: provisioner
+          image: 192.168.56.10:30500/central/tenant-provisioner:latest
+          ports:
+            - containerPort: 8090
+              name: http
+          env:
+            # DATABASE_URL — platform DB (reads job queue)
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: tenant-provisioner-secrets
+                  key: DATABASE_URL
+            # PG_ADMIN_URL — superuser connection for CREATE DATABASE / pg_dump / pg_restore
+            - name: PG_ADMIN_URL
+              valueFrom:
+                secretKeyRef:
+                  name: tenant-provisioner-secrets
+                  key: PG_ADMIN_URL
+            - name: BIND_ADDR
+              value: "0.0.0.0:8090"
+            - name: RUST_LOG
+              value: "tenant_provisioner=info,sqlx=warn"
+          livenessProbe:
+            httpGet: { path: /health, port: 8090 }
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet: { path: /health, port: 8090 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          volumeMounts:
+            - name: migrations
+              mountPath: /migrations
+            - name: tenant-template
+              mountPath: /tenant-template
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 1Gi }
+      volumes:
+        - name: migrations
+          configMap:
+            name: db-migrations
+        - name: tenant-template
+          configMap:
+            name: tenant-template
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tenant-provisioner
+  namespace: central
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8090
+      targetPort: 8090
+      name: http
+  selector:
+    app: tenant-provisioner
+
+---
+# Placeholder — real values stored as SealedSecret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tenant-provisioner-secrets
+  namespace: central
+type: Opaque
+stringData:
+  DATABASE_URL: "postgres://central:central@postgres:5432/central"
+  PG_ADMIN_URL: "postgres://central:central@postgres:5432/postgres"
+
+---
+# ConfigMap with the tenant namespace template (consumed by the provisioner at runtime)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tenant-template
+  namespace: central
+data:
+  README.md: |
+    Replaced at build time with the contents of infra/k8s/tenant-template/
+    by the kustomize configMapGenerator below.

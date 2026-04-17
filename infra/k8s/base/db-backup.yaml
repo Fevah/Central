@@ -1,0 +1,192 @@
+---
+# ═══════════════════════════════════════════════════════════════════════
+# Database Backup CronJob
+# ═══════════════════════════════════════════════════════════════════════
+# Daily pg_dump → MinIO/S3 with 90-day retention.
+# PITR via WAL archiving configured in postgres.yaml.
+# ═══════════════════════════════════════════════════════════════════════
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: db-backup-pvc
+  namespace: central
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 100Gi
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-backup-scripts
+  namespace: central
+data:
+  backup.sh: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    export PGPASSWORD="$POSTGRES_PASSWORD"
+    DATE=$(date -u +%Y%m%d_%H%M%S)
+    BACKUP_DIR="/backups"
+    BACKUP_FILE="$BACKUP_DIR/central-$DATE.dump"
+    RETENTION_DAYS=${RETENTION_DAYS:-90}
+
+    echo "==> Starting backup at $DATE"
+    mkdir -p "$BACKUP_DIR"
+
+    # Dump all databases (central + secure_auth)
+    for db in central secure_auth; do
+        OUT="$BACKUP_DIR/$db-$DATE.dump"
+        echo "  Dumping $db → $OUT"
+        pg_dump -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$db" -Fc -Z9 -f "$OUT"
+        SIZE=$(du -h "$OUT" | awk '{print $1}')
+        echo "  $db backup: $SIZE"
+    done
+
+    # Upload to MinIO if configured
+    if [ -n "${MINIO_ENDPOINT:-}" ]; then
+        echo "==> Uploading to MinIO $MINIO_ENDPOINT"
+        mc alias set backup "$MINIO_ENDPOINT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY" 2>/dev/null
+        mc cp "$BACKUP_DIR"/*-$DATE.dump backup/central-backups/
+        echo "==> Upload complete"
+    fi
+
+    # Enforce retention
+    echo "==> Removing backups older than $RETENTION_DAYS days"
+    find "$BACKUP_DIR" -name "*.dump" -type f -mtime +$RETENTION_DAYS -delete
+
+    # Record in backup_history table
+    psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d central -c "
+        INSERT INTO backup_history (started_at, completed_at, file_path, size_bytes, status, type)
+        VALUES (NOW() - INTERVAL '5 minutes', NOW(), '$BACKUP_FILE',
+                $(stat -c%s $BACKUP_DIR/central-$DATE.dump 2>/dev/null || echo 0),
+                'completed', 'full')
+    " 2>/dev/null || true
+
+    echo "==> Backup complete"
+
+  restore.sh: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # Usage: ./restore.sh <backup-file.dump> [database-name]
+    BACKUP_FILE="${1:?Usage: restore.sh <backup-file> [db-name]}"
+    DB_NAME="${2:-central}"
+    export PGPASSWORD="$POSTGRES_PASSWORD"
+
+    echo "==> Restoring $BACKUP_FILE → $DB_NAME"
+    echo "==> WARNING: This will OVERWRITE the current database"
+    read -t 10 -p "Continue? (yes/no, auto-no in 10s) " confirm || confirm="no"
+    [ "$confirm" = "yes" ] || { echo "Aborted"; exit 1; }
+
+    # Drop + recreate
+    psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d postgres -c "DROP DATABASE IF EXISTS ${DB_NAME}_restore"
+    psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d postgres -c "CREATE DATABASE ${DB_NAME}_restore"
+
+    pg_restore -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "${DB_NAME}_restore" \
+        --no-owner --no-privileges --verbose "$BACKUP_FILE"
+
+    echo "==> Restored to ${DB_NAME}_restore"
+    echo "==> Run manually to switch: "
+    echo "    psql -c 'ALTER DATABASE $DB_NAME RENAME TO ${DB_NAME}_old'"
+    echo "    psql -c 'ALTER DATABASE ${DB_NAME}_restore RENAME TO $DB_NAME'"
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: db-backup
+  namespace: central
+spec:
+  schedule: "0 3 * * *"    # Daily at 03:00 UTC
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: postgres:18-alpine
+              command: ["/bin/bash", "/scripts/backup.sh"]
+              env:
+                - name: POSTGRES_HOST
+                  value: "postgres"
+                - name: POSTGRES_USER
+                  valueFrom: { secretKeyRef: { name: postgres-credentials, key: POSTGRES_USER } }
+                - name: POSTGRES_PASSWORD
+                  valueFrom: { secretKeyRef: { name: postgres-credentials, key: POSTGRES_PASSWORD } }
+                - name: RETENTION_DAYS
+                  value: "90"
+                - name: MINIO_ENDPOINT
+                  value: "http://minio:9000"
+                - name: MINIO_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: minio-credentials, key: MINIO_ROOT_USER, optional: true } }
+                - name: MINIO_SECRET_KEY
+                  valueFrom: { secretKeyRef: { name: minio-credentials, key: MINIO_ROOT_PASSWORD, optional: true } }
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                - name: backups
+                  mountPath: /backups
+              resources:
+                requests: { cpu: 200m, memory: 256Mi }
+                limits: { cpu: 1, memory: 1Gi }
+          volumes:
+            - name: scripts
+              configMap:
+                name: db-backup-scripts
+                defaultMode: 0755
+            - name: backups
+              persistentVolumeClaim:
+                claimName: db-backup-pvc
+
+---
+# Weekly full backup (kept longer — 1 year)
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: db-backup-weekly
+  namespace: central
+spec:
+  schedule: "0 4 * * 0"    # Sundays at 04:00 UTC
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 12
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup-weekly
+              image: postgres:18-alpine
+              command: ["/bin/bash", "/scripts/backup.sh"]
+              env:
+                - name: POSTGRES_HOST
+                  value: "postgres"
+                - name: POSTGRES_USER
+                  valueFrom: { secretKeyRef: { name: postgres-credentials, key: POSTGRES_USER } }
+                - name: POSTGRES_PASSWORD
+                  valueFrom: { secretKeyRef: { name: postgres-credentials, key: POSTGRES_PASSWORD } }
+                - name: RETENTION_DAYS
+                  value: "365"
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                - name: backups
+                  mountPath: /backups
+          volumes:
+            - name: scripts
+              configMap:
+                name: db-backup-scripts
+                defaultMode: 0755
+            - name: backups
+              persistentVolumeClaim:
+                claimName: db-backup-pvc

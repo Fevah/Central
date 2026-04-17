@@ -1,0 +1,315 @@
+---
+# ═══════════════════════════════════════════════════════════════════════
+# Prometheus AlertManager + Alert Rules
+# ═══════════════════════════════════════════════════════════════════════
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: central
+data:
+  alert-rules.yml: |
+    groups:
+      - name: central-infrastructure
+        interval: 30s
+        rules:
+          # ── Pod Health ──
+          - alert: PodCrashLooping
+            expr: rate(kube_pod_container_status_restarts_total{namespace="central"}[15m]) > 0
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Pod {{ $labels.pod }} is crash-looping"
+              description: "Pod {{ $labels.pod }} has restarted {{ $value | humanize }} times in the last 15 minutes."
+              runbook: "Check logs: kubectl -n central logs {{ $labels.pod }} --previous"
+
+          - alert: PodNotReady
+            expr: kube_pod_status_ready{namespace="central"} == 0
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Pod {{ $labels.pod }} is not ready"
+              description: "Pod {{ $labels.pod }} has been not-ready for more than 5 minutes."
+
+          # ── API Health ──
+          - alert: CentralApiDown
+            expr: central_up == 0 or absent(central_up)
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Central API is down"
+              description: "The Central API health metric has been absent or 0 for 2+ minutes."
+              runbook: "Check pod status: kubectl -n central get pods -l app=central-api"
+
+          - alert: CentralApiHighLatency
+            expr: central_db_latency_ms > 500
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Central API database latency is high"
+              description: "Database query latency is {{ $value }}ms (threshold: 500ms) for 5+ minutes."
+
+          - alert: CentralApiHighLatencyCritical
+            expr: central_db_latency_ms > 2000
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Central API database latency is critically high"
+              description: "Database query latency is {{ $value }}ms (threshold: 2000ms) for 2+ minutes."
+
+          # ── Database ──
+          - alert: DatabaseDown
+            expr: central_db_up == 0
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "PostgreSQL database is unreachable"
+              description: "Central API cannot connect to PostgreSQL for 1+ minute."
+              runbook: "Check DB pod: kubectl -n central get pods -l app=postgresql"
+
+          # ── Memory ──
+          - alert: HighMemoryUsage
+            expr: central_memory_bytes > 1073741824
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Central API memory usage is high"
+              description: "Managed heap is {{ $value | humanize1024 }}B (threshold: 1 GiB)."
+
+          - alert: CriticalMemoryUsage
+            expr: central_memory_bytes > 2147483648
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Central API memory usage is critical"
+              description: "Managed heap is {{ $value | humanize1024 }}B (threshold: 2 GiB). OOM risk."
+
+          # ── Node Resources ──
+          - alert: NodeDiskPressure
+            expr: kube_node_status_condition{condition="DiskPressure",status="true"} == 1
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Node {{ $labels.node }} has disk pressure"
+              description: "Node is running low on disk space."
+
+          - alert: NodeMemoryPressure
+            expr: kube_node_status_condition{condition="MemoryPressure",status="true"} == 1
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Node {{ $labels.node }} has memory pressure"
+
+      - name: central-data
+        interval: 60s
+        rules:
+          - alert: NoUsersInDatabase
+            expr: central_table_rows{table="app_users"} == 0
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "No users found in app_users table"
+              description: "The app_users table has 0 rows — may indicate a migration issue."
+
+      # ═══════════════════════════════════════════════════════════════════
+      # Multi-Tenancy: PgBouncer pool depth + sharding thresholds
+      # ═══════════════════════════════════════════════════════════════════
+      - name: central-pgbouncer
+        interval: 30s
+        rules:
+          # Queue depth at 80% of max_client_conn (2000)
+          - alert: PgBouncerHighQueueDepth
+            expr: sum(pgbouncer_pools_client_waiting_connections) by (database) > (2000 * 0.8)
+            for: 2m
+            labels:
+              severity: warning
+            annotations:
+              summary: "PgBouncer queue depth above 80% on {{ $labels.database }}"
+              description: "{{ $value }} clients waiting on {{ $labels.database }}. Pool exhaustion imminent — consider scaling PgBouncer or increasing pool_size."
+              runbook: "Check: SHOW POOLS via pgbouncer admin console"
+
+          - alert: PgBouncerPoolExhausted
+            expr: sum(pgbouncer_pools_server_active_connections) by (database) >= on(database) (pgbouncer_pools_pool_size - 1)
+            for: 1m
+            labels:
+              severity: critical
+            annotations:
+              summary: "PgBouncer pool exhausted on {{ $labels.database }}"
+              description: "All server connections in use for {{ $labels.database }}. New queries will queue or fail."
+
+          - alert: PgBouncerHighLatency
+            expr: pgbouncer_pools_avg_wait_time_us > 100000
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Clients waiting > 100ms for server connections on {{ $labels.database }}"
+              description: "avg_wait_time_us = {{ $value }}us — backend is under pressure."
+
+      - name: central-sharding
+        interval: 5m
+        rules:
+          # Tenants approaching sharding threshold (50TB storage)
+          - alert: TenantApproachingStorageLimit
+            expr: max(central_tenant_storage_bytes) by (tenant_id) > (40 * 1024 * 1024 * 1024 * 1024)
+            for: 1h
+            labels:
+              severity: warning
+              category: capacity
+            annotations:
+              summary: "Tenant {{ $labels.tenant_id }} approaching 50TB storage limit"
+              description: "Current usage {{ $value | humanize1024 }}B — plan sharding before 50TB."
+
+          - alert: TenantExceededStorageThreshold
+            expr: max(central_tenant_storage_bytes) by (tenant_id) > (50 * 1024 * 1024 * 1024 * 1024)
+            for: 10m
+            labels:
+              severity: critical
+              category: capacity
+            annotations:
+              summary: "Tenant {{ $labels.tenant_id }} exceeded 50TB — sharding required"
+              description: "Storage: {{ $value | humanize1024 }}B. Trigger Citus sharding workflow."
+
+          # Tenants approaching 1M active users
+          - alert: TenantApproachingUserLimit
+            expr: max(central_tenant_active_users) by (tenant_id) > 800000
+            for: 1h
+            labels:
+              severity: warning
+              category: capacity
+            annotations:
+              summary: "Tenant {{ $labels.tenant_id }} approaching 1M active users"
+              description: "Active users: {{ $value }}. Plan sharding before 1M threshold."
+
+          - alert: TenantExceededUserThreshold
+            expr: max(central_tenant_active_users) by (tenant_id) > 1000000
+            for: 10m
+            labels:
+              severity: critical
+              category: capacity
+            annotations:
+              summary: "Tenant {{ $labels.tenant_id }} exceeded 1M active users — sharding required"
+              description: "Active users: {{ $value }}. Trigger Citus sharding."
+
+      - name: central-timescale
+        interval: 1m
+        rules:
+          - alert: TimescaleCompressionLagging
+            expr: (time() - timescale_chunk_last_compressed_time) > 86400 * 3
+            for: 1h
+            labels:
+              severity: warning
+            annotations:
+              summary: "TimescaleDB compression policy is behind"
+              description: "Uncompressed chunks older than 3 days — review compression policies."
+
+          - alert: TimescaleContinuousAggregateLag
+            expr: timescale_continuous_aggregate_lag_seconds > 7200
+            for: 30m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Continuous aggregate {{ $labels.view_name }} is >2h behind"
+              description: "Refresh policy is not keeping up — dashboards will show stale data."
+
+---
+# AlertManager Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-config
+  namespace: central
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+
+    route:
+      receiver: 'default'
+      group_by: ['alertname', 'severity']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      routes:
+        - receiver: 'critical'
+          match:
+            severity: critical
+          repeat_interval: 1h
+        - receiver: 'default'
+          match:
+            severity: warning
+
+    receivers:
+      - name: 'default'
+        # Configure webhook/email/Slack here
+        webhook_configs:
+          - url: 'http://central-api:5000/api/webhooks/alertmanager'
+            send_resolved: true
+
+      - name: 'critical'
+        webhook_configs:
+          - url: 'http://central-api:5000/api/webhooks/alertmanager'
+            send_resolved: true
+
+---
+# AlertManager Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager
+  namespace: central
+  labels:
+    app: alertmanager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+    spec:
+      containers:
+        - name: alertmanager
+          image: prom/alertmanager:v0.28.1
+          args:
+            - '--config.file=/etc/alertmanager/alertmanager.yml'
+          ports:
+            - containerPort: 9093
+          volumeMounts:
+            - name: config
+              mountPath: /etc/alertmanager/alertmanager.yml
+              subPath: alertmanager.yml
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 200m, memory: 256Mi }
+      volumes:
+        - name: config
+          configMap:
+            name: alertmanager-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager
+  namespace: central
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9093
+      targetPort: 9093
+  selector:
+    app: alertmanager

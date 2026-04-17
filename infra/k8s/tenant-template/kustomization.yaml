@@ -1,0 +1,33 @@
+# ═══════════════════════════════════════════════════════════════════════
+# Enterprise Tenant Namespace Template
+# ═══════════════════════════════════════════════════════════════════════
+# Each enterprise tenant gets a namespace `central-<slug>` containing:
+#   - Tenant-specific ConfigMap (tenant_id, database_name, slug)
+#   - NetworkPolicy (default-deny + allow from platform + allow egress to DB)
+#   - Sealed ConnectionString secret (generated per tenant)
+#   - ResourceQuota (caps per tier)
+#
+# Usage — tenant-provisioner service invokes kustomize with replacement vars:
+#   kustomize build --load-restrictor=LoadRestrictionsNone \
+#     infra/k8s/tenant-template/ \
+#     | sed "s/__TENANT_SLUG__/acme/g" \
+#     | sed "s/__TENANT_ID__/a1b2.../g" \
+#     | sed "s/__DATABASE_NAME__/central_acme/g" \
+#     | kubectl apply -f -
+# ═══════════════════════════════════════════════════════════════════════
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: central-__TENANT_SLUG__
+
+commonLabels:
+  app.kubernetes.io/part-of: central-platform
+  central.io/tenant: __TENANT_SLUG__
+  central.io/sizing: dedicated
+
+resources:
+  - namespace.yaml
+  - network-policy.yaml
+  - resource-quota.yaml
+  - tenant-config.yaml

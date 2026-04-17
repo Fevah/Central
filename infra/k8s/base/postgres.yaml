@@ -26,10 +26,29 @@ metadata:
   name: postgres-init
   namespace: central
 data:
+  00-extensions.sql: |
+    -- Install extensions needed by the Central schema.
+    -- Runs on database creation (centralised so every DB gets the same set).
+    \c central
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";     -- uuid_generate_v4()
+    CREATE EXTENSION IF NOT EXISTS "pgcrypto";      -- gen_random_uuid(), digest()
+    CREATE EXTENSION IF NOT EXISTS "pg_trgm";       -- trigram indexes for ILIKE search
+    CREATE EXTENSION IF NOT EXISTS "citext";        -- case-insensitive text type
+    CREATE EXTENSION IF NOT EXISTS "btree_gin";     -- GIN on scalar types
+    CREATE EXTENSION IF NOT EXISTS "pg_stat_statements"; -- slow query monitoring
+    \c postgres
+
   01-create-auth-db.sql: |
     -- Create secure_auth database for auth-service
     SELECT 'CREATE DATABASE secure_auth OWNER central'
     WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'secure_auth')\gexec
+
+    -- Enable extensions on secure_auth too
+    \c secure_auth
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+    CREATE EXTENSION IF NOT EXISTS "citext";
+    \c postgres
 
   02-tune.sql: |
     ALTER SYSTEM SET shared_buffers = '2GB';
@@ -39,10 +58,20 @@ data:
     ALTER SYSTEM SET max_connections = 200;
     ALTER SYSTEM SET wal_buffers = '64MB';
     ALTER SYSTEM SET checkpoint_completion_target = 0.9;
-    ALTER SYSTEM SET wal_level = 'replica';
-    ALTER SYSTEM SET max_wal_senders = 5;
-    ALTER SYSTEM SET wal_keep_size = '512MB';
+
+    -- Logical replication for multi-region read replicas
+    ALTER SYSTEM SET wal_level = 'logical';
+    ALTER SYSTEM SET max_wal_senders = 10;
+    ALTER SYSTEM SET max_replication_slots = 10;
+    ALTER SYSTEM SET max_logical_replication_workers = 4;
+    ALTER SYSTEM SET wal_keep_size = '1GB';
     ALTER SYSTEM SET hot_standby = 'on';
+
+    -- Slow query log for pg_stat_statements + TimescaleDB preload
+    ALTER SYSTEM SET shared_preload_libraries = 'pg_stat_statements, timescaledb';
+    ALTER SYSTEM SET pg_stat_statements.track = 'all';
+    ALTER SYSTEM SET log_min_duration_statement = 1000;
+
     SELECT pg_reload_conf();
 
   03-create-replication-user.sql: |
@@ -141,7 +170,9 @@ spec:
               topologyKey: kubernetes.io/hostname
       containers:
         - name: postgres
-          image: postgres:18-alpine
+          # TimescaleDB image bundles PG 18 + TimescaleDB extension
+          # Using the official timescaledb-ha image enables TimescaleDB + pg_stat_statements
+          image: timescale/timescaledb-ha:pg18
           ports:
             - containerPort: 5432
               name: postgres

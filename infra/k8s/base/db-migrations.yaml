@@ -1,0 +1,195 @@
+---
+# ═══════════════════════════════════════════════════════════════════════
+# Database Migrations Job
+# ═══════════════════════════════════════════════════════════════════════
+# Applies all SQL migrations from db/migrations/ in order.
+# Idempotent — each migration is wrapped in `IF NOT EXISTS` checks.
+# Run via:
+#   kubectl apply -k infra/k8s/base/
+#   kubectl -n central create job --from=cronjob/db-migrations db-migrate-$(date +%s)
+#
+# Tracking: schema_versions table records applied migrations.
+# ═══════════════════════════════════════════════════════════════════════
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-migration-runner
+  namespace: central
+data:
+  run-migrations.sh: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    export PGPASSWORD="$POSTGRES_PASSWORD"
+    PSQL_OPTS="-h $POSTGRES_HOST -U $POSTGRES_USER -d $POSTGRES_DB -v ON_ERROR_STOP=1"
+
+    echo "==> Waiting for PostgreSQL..."
+    until psql $PSQL_OPTS -c '\q' 2>/dev/null; do
+        echo "  Postgres not ready, sleeping 2s..."
+        sleep 2
+    done
+    echo "==> PostgreSQL is up"
+
+    echo "==> Ensuring schema_versions table exists"
+    psql $PSQL_OPTS <<'SQL'
+    CREATE TABLE IF NOT EXISTS schema_versions (
+        version_number  text PRIMARY KEY,
+        description     text,
+        installed_on    timestamptz NOT NULL DEFAULT now(),
+        installed_by    text NOT NULL DEFAULT CURRENT_USER,
+        execution_ms    int,
+        checksum        text
+    );
+    SQL
+
+    echo "==> Applying migrations from /migrations/"
+    APPLIED=0
+    SKIPPED=0
+    FAILED=0
+
+    for file in /migrations/*.sql; do
+        [ -e "$file" ] || continue
+        version=$(basename "$file" .sql)
+
+        # Skip if already applied
+        already=$(psql $PSQL_OPTS -tAc "SELECT 1 FROM schema_versions WHERE version_number = '$version'")
+        if [ "$already" = "1" ]; then
+            echo "  [SKIP] $version (already applied)"
+            SKIPPED=$((SKIPPED + 1))
+            continue
+        fi
+
+        echo "  [APPLY] $version"
+        start=$(date +%s%3N)
+        if psql $PSQL_OPTS -f "$file" > /tmp/out.log 2>&1; then
+            end=$(date +%s%3N)
+            duration=$((end - start))
+            checksum=$(sha256sum "$file" | awk '{print $1}')
+            psql $PSQL_OPTS -c "INSERT INTO schema_versions (version_number, description, execution_ms, checksum) VALUES ('$version', 'auto-applied via migration job', $duration, '$checksum')"
+            APPLIED=$((APPLIED + 1))
+        else
+            echo "  [FAIL] $version"
+            cat /tmp/out.log
+            FAILED=$((FAILED + 1))
+            exit 1
+        fi
+    done
+
+    echo ""
+    echo "==> Migration summary: $APPLIED applied, $SKIPPED skipped, $FAILED failed"
+    echo "==> All migrations applied successfully"
+
+---
+# ConfigMap with migration files — generated from db/migrations/ via kustomize
+# See kustomization.yaml: configMapGenerator with --from-file=../../../db/migrations/
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-migrations-placeholder
+  namespace: central
+data:
+  README.md: |
+    This ConfigMap is replaced at build time with the contents of db/migrations/
+    by the kustomize configMapGenerator.
+---
+# One-shot Job — applies all pending migrations
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migrate
+  namespace: central
+  annotations:
+    description: "Apply all pending DB migrations. Re-creatable — safe to re-run."
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: db-migrate
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: postgres:18-alpine
+          command: ["/bin/bash", "/scripts/run-migrations.sh"]
+          env:
+            - name: POSTGRES_HOST
+              value: "postgres"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: POSTGRES_DB
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+            - name: migrations
+              mountPath: /migrations
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+      volumes:
+        - name: scripts
+          configMap:
+            name: db-migration-runner
+            defaultMode: 0755
+        - name: migrations
+          configMap:
+            name: db-migrations
+---
+# CronJob — scheduled re-check (catches missed migrations in HA scenarios)
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: db-migrations
+  namespace: central
+spec:
+  schedule: "0 2 * * *"  # Daily at 02:00 UTC
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      ttlSecondsAfterFinished: 86400
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: migrate
+              image: postgres:18-alpine
+              command: ["/bin/bash", "/scripts/run-migrations.sh"]
+              env:
+                - name: POSTGRES_HOST
+                  value: "postgres"
+                - name: POSTGRES_USER
+                  valueFrom: { secretKeyRef: { name: postgres-credentials, key: POSTGRES_USER } }
+                - name: POSTGRES_PASSWORD
+                  valueFrom: { secretKeyRef: { name: postgres-credentials, key: POSTGRES_PASSWORD } }
+                - name: POSTGRES_DB
+                  valueFrom: { secretKeyRef: { name: postgres-credentials, key: POSTGRES_DB } }
+              volumeMounts:
+                - name: scripts
+                  mountPath: /scripts
+                - name: migrations
+                  mountPath: /migrations
+          volumes:
+            - name: scripts
+              configMap:
+                name: db-migration-runner
+                defaultMode: 0755
+            - name: migrations
+              configMap:
+                name: db-migrations

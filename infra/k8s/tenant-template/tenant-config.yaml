@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tenant-config
+  namespace: central-__TENANT_SLUG__
+data:
+  TENANT_SLUG: "__TENANT_SLUG__"
+  TENANT_ID: "__TENANT_ID__"
+  DATABASE_NAME: "__DATABASE_NAME__"
+  POSTGRES_HOST: "postgres.central.svc.cluster.local"
+  POSTGRES_PORT: "5432"
+  SIZING_MODEL: "dedicated"
+---
+# The actual CENTRAL_DSN must be created as a SealedSecret from the provisioner.
+# The provisioner generates a dedicated DB user per tenant and stores the password
+# encrypted. Example (values filled at provision time):
+#
+# apiVersion: bitnami.com/v1alpha1
+# kind: SealedSecret
+# metadata:
+#   name: tenant-db-credentials
+#   namespace: central-__TENANT_SLUG__
+# spec:
+#   encryptedData:
+#     CENTRAL_DSN: <sealed ciphertext>
