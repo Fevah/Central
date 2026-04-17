@@ -7,20 +7,36 @@ using Central.Api.Hubs;
 using Central.Api.Services;
 using Central.Workflows;
 using Elsa.Extensions;
+using Serilog;
+using Serilog.Events;
+
+// Configure Serilog structured logging (JSON to console for K8s log aggregation)
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .Enrich.WithProperty("service", "central-api")
+    .WriteTo.Console(new Serilog.Formatting.Json.JsonFormatter())
+    .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Host.UseSerilog();
 
-// Database DSN
+// Database DSN — MUST be set via config or environment variable
 var dsn = builder.Configuration.GetConnectionString("Default")
     ?? Environment.GetEnvironmentVariable("CENTRAL_DSN")
-    ?? "Host=192.168.56.10;Port=30432;Database=central;Username=central;Password=central";
+    ?? throw new InvalidOperationException(
+        "Database connection string not configured. Set ConnectionStrings:Default in appsettings.json or CENTRAL_DSN environment variable.");
 builder.Services.AddSingleton(new Central.Data.DbConnectionFactory(dsn));
 
-// JWT settings — supports both Central tokens and auth-service tokens
+// JWT settings — MUST be set via environment variables (no hardcoded fallbacks)
 var jwtSecret = Environment.GetEnvironmentVariable("CENTRAL_JWT_SECRET")
-    ?? "Central-InsecureDev-" + Environment.MachineName;
+    ?? throw new InvalidOperationException(
+        "CENTRAL_JWT_SECRET environment variable is required. Set a random 32+ byte secret.");
 var authServiceSecret = Environment.GetEnvironmentVariable("AUTH_SERVICE_JWT_SECRET")
-    ?? "Central-Auth-Shared-JWT-Key-Override-This-In-Production-32bytes!";
+    ?? throw new InvalidOperationException(
+        "AUTH_SERVICE_JWT_SECRET environment variable is required. Must match the auth-service configuration.");
 var jwtSettings = new JwtSettings { Secret = jwtSecret };
 builder.Services.AddSingleton(jwtSettings);
 builder.Services.AddSingleton<TokenService>();
@@ -33,10 +49,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         o.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
-            ValidateAudience = false,  // auth-service uses "secure", Central uses own audience
+            ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             ValidIssuers = new[] { "auth-service", jwtSettings.Issuer, "central-auth" },
+            ValidAudiences = new[] { "central-api", "secure", jwtSettings.Audience, "Central.Desktop" },
             IssuerSigningKeyResolver = (token, securityToken, kid, parameters) =>
             {
                 // Try auth-service secret first, then Central's own
@@ -113,9 +130,11 @@ builder.Services.AddSwaggerGen(o =>
     });
 });
 
-// CORS (allow WPF + web clients)
+// CORS — restrict to known origins (WPF + web clients)
+var allowedOrigins = (Environment.GetEnvironmentVariable("CENTRAL_CORS_ORIGINS") ?? "http://localhost:4200,http://localhost:7472,http://localhost:5000")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
-    p.SetIsOriginAllowed(_ => true)
+    p.WithOrigins(allowedOrigins)
      .AllowAnyMethod()
      .AllowAnyHeader()
      .AllowCredentials()));
@@ -149,6 +168,10 @@ builder.Services.AddSingleton(Central.Security.SecurityPolicyEngine.Instance);
 // Collaboration: Presence tracking (singleton, in-memory)
 builder.Services.AddSingleton(Central.Collaboration.PresenceService.Instance);
 
+// AI: Tenant provider resolver (dual-tier: tenant BYOK → platform key fallback)
+builder.Services.AddSingleton<Central.Core.Services.ITenantAiProviderResolver>(
+    _ => new Central.Data.TenantAiProviderResolver(dsn));
+
 // Elsa Workflows engine (PostgreSQL persistence, custom activities)
 builder.Services.AddCentralWorkflows(dsn);
 
@@ -157,21 +180,18 @@ var app = builder.Build();
 // Elsa workflow middleware (HTTP triggers, API endpoints)
 app.UseWorkflows();
 
-// Request logging middleware — logs method, path, status, duration
-app.Use(async (context, next) =>
+// Structured request logging via Serilog (JSON output for Loki/ELK ingestion)
+app.UseSerilogRequestLogging(opts =>
 {
-    var sw = System.Diagnostics.Stopwatch.StartNew();
-    await next();
-    sw.Stop();
-    var path = context.Request.Path;
-    if (!path.StartsWithSegments("/health") && !path.StartsWithSegments("/swagger"))
+    opts.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
     {
-        var method = context.Request.Method;
-        var status = context.Response.StatusCode;
-        var user = context.User?.Identity?.Name ?? "anonymous";
-        app.Logger.LogInformation("{Method} {Path} → {Status} ({Duration}ms) [{User}]",
-            method, path, status, sw.ElapsedMilliseconds, user);
-    }
+        diagnosticContext.Set("user", httpContext.User?.Identity?.Name ?? "anonymous");
+        diagnosticContext.Set("client_ip", httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+    };
+    opts.GetLevel = (ctx, _, _) =>
+        ctx.Request.Path.StartsWithSegments("/api/health") || ctx.Request.Path.StartsWithSegments("/swagger")
+            ? LogEventLevel.Debug
+            : LogEventLevel.Information;
 });
 
 app.UseCors();
@@ -240,12 +260,75 @@ app.MapGroup("/api/notifications").WithTags("Notifications").MapNotificationEndp
 app.MapGroup("/api/sync").WithTags("Sync").MapSyncEndpoints().RequireAuthorization();
 app.MapGroup("/api/webhooks").WithTags("Sync").MapWebhookEndpoints(); // No auth — external systems POST here
 
-// Enterprise V2
+// Enterprise V2 — Foundation entities (Phases 1-5)
+app.MapGroup("/api/companies").WithTags("Companies").MapCompanyEndpoints().RequireAuthorization();
+app.MapGroup("/api/contacts").WithTags("Contacts").MapContactEndpoints().RequireAuthorization();
+app.MapGroup("/api/teams").WithTags("Teams").MapTeamEndpoints().RequireAuthorization();
+app.MapGroup("/api/addresses").WithTags("Addresses").MapAddressEndpoints().RequireAuthorization();
+app.MapGroup("/api/profile").WithTags("Profile").MapProfileEndpoints().RequireAuthorization();
+app.MapGroup("/api/invitations").WithTags("Admin").MapInvitationEndpoints().RequireAuthorization();
+app.MapGroup("/api/role-templates").WithTags("Admin").MapRoleTemplateEndpoints().RequireAuthorization();
+
+// Enterprise V3 — Groups, feature flags, security, billing extensions
+app.MapGroup("/api/groups").WithTags("Groups").MapGroupEndpoints().RequireAuthorization();
+app.MapGroup("/api/features").WithTags("Features").MapFeatureFlagEndpoints().RequireAuthorization();
+app.MapGroup("/api/security/ip-rules").WithTags("Security").MapIpRulesEndpoints().RequireAuthorization();
+app.MapGroup("/api/security/social-providers").WithTags("Security").MapSocialProviderEndpoints().RequireAuthorization();
+app.MapGroup("/api/user-keys").WithTags("Security").MapUserKeyEndpoints().RequireAuthorization();
+app.MapGroup("/api/account").WithTags("Account").MapAccountRecoveryEndpoints();
+app.MapGroup("/api/billing").WithTags("Billing").MapBillingEndpoints().RequireAuthorization();
+
+// CRM Module (Phases 15-19 + 22-23 of the 29-phase buildout)
+app.MapGroup("/api/crm/accounts").WithTags("CRM").MapCrmAccountEndpoints().RequireAuthorization();
+app.MapGroup("/api/crm/deals").WithTags("CRM").MapCrmDealEndpoints().RequireAuthorization();
+app.MapGroup("/api/crm/leads").WithTags("CRM").MapCrmLeadEndpoints().RequireAuthorization();
+app.MapGroup("/api/crm/activities").WithTags("CRM").MapCrmActivityEndpoints().RequireAuthorization();
+app.MapGroup("/api/crm").WithTags("CRM").MapCrmProductQuoteEndpoints().RequireAuthorization();
+app.MapGroup("/api/crm/dashboard").WithTags("CRM").MapCrmDashboardEndpoints().RequireAuthorization();
+app.MapGroup("/api/crm/reports").WithTags("CRM").MapCrmReportEndpoints().RequireAuthorization();
+app.MapGroup("/api/crm/documents").WithTags("CRM").MapCrmDocumentEndpoints().RequireAuthorization();
+
+// CRM Expansion Stage 1: Marketing Automation
+app.MapGroup("/api/crm/campaigns").WithTags("CRM Marketing").MapCampaignEndpoints().RequireAuthorization();
+app.MapGroup("/api/crm/marketing").WithTags("CRM Marketing").MapSegmentSequenceEndpoints();  // Public landing + form endpoints inside
+
+// CRM Expansion Stage 2: Sales Operations
+app.MapGroup("/api/crm/salesops").WithTags("CRM Sales Ops").MapSalesOpsEndpoints().RequireAuthorization();
+
+// CRM Expansion Stage 3: CPQ + Contracts + Revenue
+app.MapGroup("/api/crm/cpq").WithTags("CRM CPQ").MapCpqEndpoints().RequireAuthorization();
+app.MapGroup("/api/approvals").WithTags("Approvals").MapApprovalEndpoints().RequireAuthorization();
+app.MapGroup("/api/crm/contracts").WithTags("CRM Contracts").MapContractEndpoints().RequireAuthorization();
+app.MapGroup("/api/crm/subscriptions").WithTags("CRM Revenue").MapSubscriptionEndpoints().RequireAuthorization();
+app.MapGroup("/api/crm/revenue").WithTags("CRM Revenue").MapRevenueEndpoints().RequireAuthorization();
+app.MapGroup("/api/crm/orders").WithTags("CRM Revenue").MapOrderEndpoints().RequireAuthorization();
+
+// CRM Expansion Stage 5: Portals + Platform + Commerce
+app.MapGroup("/api/portal").WithTags("Portal").MapPortalEndpoints();                 // Magic-link endpoints anonymous
+app.MapGroup("/api/portal").WithTags("Community").MapKbCommunityEndpoints();          // KB + community (public GETs)
+app.MapGroup("/api/rules").WithTags("Rules").MapRuleEngineEndpoints().RequireAuthorization();
+app.MapGroup("/api/custom-objects").WithTags("Custom Objects").MapCustomObjectEndpoints().RequireAuthorization();
+app.MapGroup("/api/commerce").WithTags("Commerce").MapImportCommerceEndpoints().RequireAuthorization();
+
+// CRM Expansion Stage 4: AI & Intelligence (dual-tier: platform + tenant BYOK)
+app.MapGroup("/api/global-admin/ai").WithTags("AI Admin").MapAiProviderAdminEndpoints().RequireAuthorization("GlobalAdmin");
+app.MapGroup("/api/ai/tenant").WithTags("AI Tenant").MapTenantAiConfigEndpoints().RequireAuthorization();
+app.MapGroup("/api/ai/assistant").WithTags("AI Assistant").MapAiAssistantEndpoints().RequireAuthorization();
+app.MapGroup("/api/ai").WithTags("AI Insights").MapAiInsightsEndpoints().RequireAuthorization();
+
+// Email integration (Phase 20)
+app.MapGroup("/api/email").WithTags("Email").MapEmailEndpoints();  // Tracking endpoints are anonymous
+
+// Webhook subscriptions (Phase 29)
+app.MapGroup("/api/webhooks").WithTags("Webhooks").MapWebhookSubscriptionEndpoints().RequireAuthorization();
+
+// Collaboration & Security
 app.MapGroup("/api/presence").WithTags("Collaboration").MapPresenceEndpoints().RequireAuthorization();
 app.MapGroup("/api/security/policies").WithTags("Security").MapSecurityPolicyEndpoints().RequireAuthorization();
 
 // Global Admin (platform-level — requires global_admin claim)
 app.MapGroup("/api/global-admin").WithTags("Global Admin").MapGlobalAdminEndpoints().RequireAuthorization("GlobalAdmin");
+app.MapGroup("/api/global-admin").WithTags("Tenant Provisioning").MapTenantProvisioningEndpoints().RequireAuthorization("GlobalAdmin");
 
 // Platform
 app.MapGroup("/api/dashboard").WithTags("Platform").MapDashboardEndpoints().RequireAuthorization();

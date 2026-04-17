@@ -11,7 +11,95 @@ resources:
   - rbac.yaml
   - resource-quota.yaml
   - configmap.yaml
+  - sealed-secrets.yaml
   - postgres.yaml
+  - postgres-read.yaml
+  - pgbouncer.yaml
   - redis.yaml
   - minio.yaml
   - services.yaml
+  - pdb.yaml
+  - monitoring.yaml
+  - monitoring-nodeports.yaml
+  - alertmanager.yaml
+  - db-migrations.yaml
+  - db-backup.yaml
+  - tenant-provisioner.yaml
+  - postgres-logical-subscriber.yaml
+
+# Generate ConfigMap with all migration files from db/migrations/
+configMapGenerator:
+  - name: db-migrations
+    files:
+      - ../../../db/migrations/001_initial.sql
+      - ../../../db/migrations/002_builder.sql
+      - ../../../db/migrations/003_connectivity.sql
+      - ../../../db/migrations/004_ipam_fields.sql
+      - ../../../db/migrations/005_lookup_values.sql
+      - ../../../db/migrations/006_users_roles.sql
+      - ../../../db/migrations/007_roles_table.sql
+      - ../../../db/migrations/008_role_sites.sql
+      - ../../../db/migrations/009_config_ranges.sql
+      - ../../../db/migrations/010_excel_sheets.sql
+      - ../../../db/migrations/011_view_reserved.sql
+      - ../../../db/migrations/012_config_versions.sql
+      - ../../../db/migrations/023_bgp_sync.sql
+      - ../../../db/migrations/024_permissions_v2.sql
+      - ../../../db/migrations/025_audit_log_v2.sql
+      - ../../../db/migrations/026_pg_notify.sql
+      - ../../../db/migrations/027_user_auth.sql
+      - ../../../db/migrations/028_default_settings.sql
+      - ../../../db/migrations/029_job_schedules.sql
+      - ../../../db/migrations/030_icon_library.sql
+      - ../../../db/migrations/031_tasks.sql
+      - ../../../db/migrations/032_ribbon_config.sql
+      - ../../../db/migrations/033_service_desk_incremental.sql
+      - ../../../db/migrations/034_tenant_addresses_contacts.sql
+      - ../../../db/migrations/035_api_key_salt.sql
+      - ../../../db/migrations/036_companies.sql
+      - ../../../db/migrations/037_contacts_v2.sql
+      - ../../../db/migrations/038_teams_departments.sql
+      - ../../../db/migrations/039_addresses_unified.sql
+      - ../../../db/migrations/040_user_profiles.sql
+      - ../../../db/migrations/041_global_admin_v2.sql
+      - ../../../db/migrations/042_groups.sql
+      - ../../../db/migrations/043_feature_flags.sql
+      - ../../../db/migrations/044_security_enhancements.sql
+      - ../../../db/migrations/045_team_hierarchy.sql
+      - ../../../db/migrations/046_address_history.sql
+      - ../../../db/migrations/047_permission_inheritance.sql
+      - ../../../db/migrations/048_social_providers.sql
+      - ../../../db/migrations/049_billing_extended.sql
+      - ../../../db/migrations/050_password_recovery.sql
+      - ../../../db/migrations/051_seed_data.sql
+      - ../../../db/migrations/052_tenant_sizing.sql
+      - ../../../db/migrations/053_rls_timescale_citus.sql
+      - ../../../db/migrations/054_crm_core.sql
+      - ../../../db/migrations/055_crm_quotes_products.sql
+      - ../../../db/migrations/056_email_integration.sql
+      - ../../../db/migrations/057_crm_dashboards_reports.sql
+      - ../../../db/migrations/058_crm_integrations.sql
+      - ../../../db/migrations/059_crm_webhooks_polish.sql
+      - ../../../db/migrations/060_crm_campaigns.sql
+      - ../../../db/migrations/061_crm_segments_sequences.sql
+      - ../../../db/migrations/062_crm_attribution.sql
+      - ../../../db/migrations/063_crm_territories.sql
+      - ../../../db/migrations/064_crm_quotas_commissions.sql
+      - ../../../db/migrations/065_crm_account_teams.sql
+      - ../../../db/migrations/066_crm_forecast_hierarchies.sql
+      - ../../../db/migrations/067_crm_cpq.sql
+      - ../../../db/migrations/068_approval_engine.sql
+      - ../../../db/migrations/069_crm_contracts.sql
+      - ../../../db/migrations/070_crm_subscriptions_revenue.sql
+      - ../../../db/migrations/071_crm_orders.sql
+      - ../../../db/migrations/072_portals_community.sql
+      - ../../../db/migrations/073_rule_engines.sql
+      - ../../../db/migrations/074_custom_objects_field_security.sql
+      - ../../../db/migrations/075_import_commerce.sql
+      - ../../../db/migrations/076_ai_providers.sql
+      - ../../../db/migrations/077_ai_ml_scoring.sql
+      - ../../../db/migrations/078_ai_assistant.sql
+      - ../../../db/migrations/079_ai_dedup_enrichment.sql
+      - ../../../db/migrations/080_ai_churn_calls.sql
+    options:
+      disableNameSuffixHash: true

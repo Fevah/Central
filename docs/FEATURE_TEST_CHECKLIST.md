@@ -1,18 +1,18 @@
 # Central Platform — Feature Test Checklist
 
-Last updated: 2026-03-31
+Last updated: 2026-04-17
+Test suite: 2,229 tests across 164 test classes. 0 failures (unit tests).
+Build: 0 errors.
 
-Comprehensive test checklist for the Central desktop + API platform.
-Every checkbox is a manually testable item. Items with matching unit/integration tests
-have the test class and method appended after a dash.
-
-**Test suite: 1,900 tests across 148 test classes. 0 failures.**
+Comprehensive test checklist for the Central desktop + API platform, organised by surface
+area (not build phase). Every `- [ ]` is a manually testable item. Items with matching
+unit/integration tests have the test class and method appended after a dash.
 
 ---
 
-## A. Application Lifecycle
+## 1. Platform Core
 
-### A1. Startup
+### 1.1 Application Lifecycle
 
 - [ ] App launches without crash (check crash.log)
 - [ ] Splash screen appears with progress bar
@@ -23,8 +23,7 @@ have the test class and method appended after a dash.
 - [ ] Missing resource in module panel shows warning, doesn't deadlock
 - [ ] crash.log + startup.log written on errors
 
-### A2. Startup Health Check
-
+#### Startup Health Check
 - [ ] StartupHealthCheck.CheckAsync verifies critical DB tables exist at startup
 - [ ] 25 required tables checked (app_users, roles, switches, sd_requests, sync_configs, audit_log, etc.)
 - [ ] Missing tables reported in startup.log
@@ -32,23 +31,26 @@ have the test class and method appended after a dash.
 - [ ] DB latency measured and logged
 - [ ] Results logged before auth flow begins
 
-### A3. Auto-Migration on Startup
-
+#### Auto-Migration on Startup
 - [ ] MigrationRunner checks db/migrations/ for pending .sql files on startup
 - [ ] Pending migrations applied automatically before health check
 - [ ] Count of applied migrations logged to startup.log
 - [ ] Splash shows "Applied N database migrations" when migrations run
 - [ ] No error if migrations directory doesn't exist
 
-### A4. Login Flow
+### 1.2 Login Flow
 
 - [ ] Windows auto-login succeeds (matches Windows username to app_users)
 - [ ] Windows auto-login populates UserSession.CurrentUser
 - [ ] LoginWindow appears when auto-login fails (wrong/missing username)
 - [ ] LoginWindow accepts valid username/password
 - [ ] LoginWindow rejects invalid credentials with error message
+- [ ] LoginWindow shows SSO buttons when identity_providers configured in DB
+- [ ] Email-based IdP discovery: enter email, system routes to correct provider
+- [ ] Existing Windows auto-login and manual password login still work unchanged
+- [ ] SecureString password handling in LoginWindow — `SecureStringExtensionTests.ToSecureString_NonEmpty_CorrectLength`, `SecureStringExtensionTests.ToPlainText_Roundtrips`
 
-### A5. Offline Mode
+### 1.3 Offline Mode
 
 - [ ] Offline mode activates when DB is unreachable (5s timeout)
 - [ ] Status bar shows "Offline" when DB is down
@@ -56,19 +58,19 @@ have the test class and method appended after a dash.
 - [ ] Data loads automatically after reconnect
 - [ ] ConnectivityManager fires ConnectionChanged event
 
-### A6. Command-Line Args
+### 1.4 Command-Line Args
 
 - [ ] `--dsn "Host=..."` overrides database connection string
 - [ ] `--auth-method offline` starts in offline mode without login dialog
 - [ ] `--auth-method password --user admin --password secret` auto-logs in
 - [ ] Password cleared from memory after use (ClearPassword)
-- [ ] Empty args returns all nulls -- `StartupArgsTests.EmptyArgs_ReturnsAllNulls`
-- [ ] --dsn flag parsed correctly -- `StartupArgsTests.DsnFlag_Parsed`
-- [ ] Short flags (-s, -u, -p, -a) all parsed -- `StartupArgsTests.ShortFlags_Parsed`
-- [ ] Long flags (--server, --auth-method) all parsed -- `StartupArgsTests.LongFlags_Parsed`
-- [ ] Mixed short + long flags in same invocation -- `StartupArgsTests.MixedFlags_Parsed`
+- [ ] Empty args returns all nulls — `StartupArgsTests.EmptyArgs_ReturnsAllNulls`
+- [ ] --dsn flag parsed correctly — `StartupArgsTests.DsnFlag_Parsed`
+- [ ] Short flags (-s, -u, -p, -a) all parsed — `StartupArgsTests.ShortFlags_Parsed`
+- [ ] Long flags (--server, --auth-method) all parsed — `StartupArgsTests.LongFlags_Parsed`
+- [ ] Mixed short + long flags in same invocation — `StartupArgsTests.MixedFlags_Parsed`
 
-### A7. Backstage
+### 1.5 Backstage
 
 - [ ] User Profile tab shows current user info
 - [ ] Settings tab shows DB-backed per-user settings
@@ -85,7 +87,7 @@ have the test class and method appended after a dash.
 - [ ] Security settings group: password min length, lockout threshold/duration, expiry days, require MFA
 - [ ] Settings persisted via SettingsProvider (per-user DB-backed) — `PreferenceKeysTests` (7 tests)
 
-### A8. Exception Handling
+### 1.6 Exception Handling
 
 - [ ] TaskScheduler.UnobservedTaskException: logged to AppLogger (DB) + crash.log + AuditService + toast
 - [ ] DispatcherUnhandledException: logged to AppLogger + crash.log + AuditService + toast + MessageBox for fatal
@@ -94,7 +96,7 @@ have the test class and method appended after a dash.
 - [ ] All unhandled exceptions appear in: startup.log, crash.log, app_log table, audit_log table, toast notification
 - [ ] Admin can see all errors in App Log panel + Audit Log panel
 
-### A9. DX Offline Package Cache
+### 1.7 DX Offline Package Cache
 
 - [ ] 78 DevExpress 25.2.5 NuGet packages downloaded to packages-offline/
 - [ ] NuGet.config references DevExpress-Offline as local source
@@ -102,9 +104,9 @@ have the test class and method appended after a dash.
 
 ---
 
-## B. Authentication & Security
+## 2. Authentication & Security
 
-### B1. RBAC Roles & Permissions
+### 2.1 RBAC & Permissions
 
 - [ ] Admin role sees all ribbon tabs, all panels, all grid editing
 - [ ] Operator role sees permitted tabs, can edit but not delete (where configured)
@@ -122,9 +124,12 @@ have the test class and method appended after a dash.
 - [ ] All 25 permission codes follow module:action format — `PermissionCodeTests.AllCodes_FollowModuleActionFormat`, `PermissionCodeExtendedTests.AllCodes_ContainColon`, `PermissionCodeExtendedTests.AllCodes_AreLowercase`
 - [ ] Permission codes: devices:read/write/delete, switches:read/ping/ssh, links:read, bgp:read/sync, admin:users/roles/settings/migrations/purge/backup, tasks:read/write, projects:read, sprints:write, scheduler:read, vlans:read, admin:ad/locations/references/containers — `PermissionCodeTests` (25 facts), `PermissionCodeExtendedTests` (43 tests)
 - [ ] Checkbox toggles grant/revoke permission
+- [ ] Role inheritance via parent_role_id resolves effective permissions
+- [ ] user_permission_overrides allow per-user grants/denies on top of role
+- [ ] `v_user_effective_permissions` view returns correct final permission set
+- [ ] 16 AI permission codes registered in PermissionCode.cs and seeded (AiProvidersRead/Admin, AiTenantConfig, AiUse, AiAssistantUse/Admin, AiScoringRead/Train, AiDedupRead/Merge, AiEnrichmentRead/Run, AiChurnRead, AiCallsRead/Admin, AiUsageRead)
 
-### B2. Site-Level Access
-
+#### Site-Level Access
 - [ ] role_sites controls which buildings each role sees — `RoleSiteAccessTests.Defaults_AreCorrect`, `RoleSiteAccessTests.AllProperties_FirePropertyChanged`
 - [ ] RoleSiteAccess Building/Allowed PropertyChanged — `RoleSiteAccessTests.PropertyChanged_Building_Fires`, `RoleSiteAccessTests.PropertyChanged_Allowed_Fires`
 - [ ] RoleSiteAccess Allowed default true, toggle — `RoleSiteAccessTests.SetAllowed_True_AfterFalse`, `RoleSiteAccessTests.Building_CanBeSetToEmptyString`
@@ -132,18 +137,17 @@ have the test class and method appended after a dash.
 - [ ] Switches grid only shows switches from allowed sites
 - [ ] SQL-level filtering (WHERE building = ANY(@sites)) confirmed
 
-### B3. AuthContext
-
-- [ ] Initial state: not authenticated, null user, NotAuthenticated state -- `AuthContextTests.InitialState_NotAuthenticated`
-- [ ] SetSession: sets user, permissions, sites, auth state -- `AuthContextTests.SetSession_SetsAll`
-- [ ] HasPermission: granted permissions work, ungranted denied -- `AuthContextTests.HasPermission_Granted`, `AuthContextExtendedTests.HasPermission_True_WhenGranted`, `AuthContextExtendedTests.HasPermission_False_WhenNotGranted`, `AuthContextExtendedTests.HasPermission_CaseInsensitive`
-- [ ] SuperAdmin (priority 1000): always has all permissions -- `AuthContextTests.SuperAdmin_AllPermissions`, `AuthContextExtendedTests.IsSuperAdmin_True_WhenPriorityGTE1000`, `AuthContextExtendedTests.HasPermission_True_ForSuperAdmin_EvenWithoutGrant`
-- [ ] Site access: no restrictions = all sites; restricted = only listed -- `AuthContextTests.SiteAccess_Restricted`, `AuthContextExtendedTests.HasSiteAccess_True_WhenNoRestrictions`, `AuthContextExtendedTests.HasSiteAccess_True_WhenSiteInList`, `AuthContextExtendedTests.HasSiteAccess_False_WhenSiteNotInList`, `AuthContextExtendedTests.HasSiteAccess_True_ForSuperAdmin`
-- [ ] SetOfflineAdmin: full permissions, offline state -- `AuthContextTests.SetOfflineAdmin_FullPermissions`, `AuthContextExtendedTests.SetOfflineAdmin_SetsOfflineState`
-- [ ] Logout: clears everything -- `AuthContextTests.Logout_ClearsAll`, `AuthContextExtendedTests.Logout_ResetsState`
-- [ ] UpdateAllowedSites: changes site access live -- `AuthContextTests.UpdateAllowedSites`, `AuthContextExtendedTests.UpdateAllowedSites_ChangesSiteAccess`
-- [ ] HasAnyPermission: true if any one matches -- `AuthContextTests.HasAnyPermission`, `AuthContextExtendedTests.HasAnyPermission_True_WhenOneMatches`, `AuthContextExtendedTests.HasAnyPermission_False_WhenNoneMatch`
-- [ ] PermissionCount: reflects granted count -- `AuthContextTests.PermissionCount`, `AuthContextExtendedTests.PermissionCount_ReflectsGranted`, `AuthContextExtendedTests.PermissionCount_Zero_AfterLogout`
+#### AuthContext
+- [ ] Initial state: not authenticated, null user, NotAuthenticated state — `AuthContextTests.InitialState_NotAuthenticated`
+- [ ] SetSession: sets user, permissions, sites, auth state — `AuthContextTests.SetSession_SetsAll`
+- [ ] HasPermission: granted permissions work, ungranted denied — `AuthContextTests.HasPermission_Granted`, `AuthContextExtendedTests.HasPermission_True_WhenGranted`, `AuthContextExtendedTests.HasPermission_False_WhenNotGranted`, `AuthContextExtendedTests.HasPermission_CaseInsensitive`
+- [ ] SuperAdmin (priority 1000): always has all permissions — `AuthContextTests.SuperAdmin_AllPermissions`, `AuthContextExtendedTests.IsSuperAdmin_True_WhenPriorityGTE1000`, `AuthContextExtendedTests.HasPermission_True_ForSuperAdmin_EvenWithoutGrant`
+- [ ] Site access: no restrictions = all sites; restricted = only listed — `AuthContextTests.SiteAccess_Restricted`, `AuthContextExtendedTests.HasSiteAccess_True_WhenNoRestrictions`, `AuthContextExtendedTests.HasSiteAccess_True_WhenSiteInList`, `AuthContextExtendedTests.HasSiteAccess_False_WhenSiteNotInList`, `AuthContextExtendedTests.HasSiteAccess_True_ForSuperAdmin`
+- [ ] SetOfflineAdmin: full permissions, offline state — `AuthContextTests.SetOfflineAdmin_FullPermissions`, `AuthContextExtendedTests.SetOfflineAdmin_SetsOfflineState`
+- [ ] Logout: clears everything — `AuthContextTests.Logout_ClearsAll`, `AuthContextExtendedTests.Logout_ResetsState`
+- [ ] UpdateAllowedSites: changes site access live — `AuthContextTests.UpdateAllowedSites`, `AuthContextExtendedTests.UpdateAllowedSites_ChangesSiteAccess`
+- [ ] HasAnyPermission: true if any one matches — `AuthContextTests.HasAnyPermission`, `AuthContextExtendedTests.HasAnyPermission_True_WhenOneMatches`, `AuthContextExtendedTests.HasAnyPermission_False_WhenNoneMatch`
+- [ ] PermissionCount: reflects granted count — `AuthContextTests.PermissionCount`, `AuthContextExtendedTests.PermissionCount_ReflectsGranted`, `AuthContextExtendedTests.PermissionCount_Zero_AfterLogout`
 - [ ] IsAuthenticated state tracking — `AuthContextExtendedTests.IsAuthenticated_False_WhenNotAuthenticated`, `AuthContextExtendedTests.IsAuthenticated_True_AfterSetSession`
 - [ ] IsSuperAdmin boundary (below 1000 = false) — `AuthContextExtendedTests.IsSuperAdmin_False_WhenPriorityBelow1000`
 - [ ] CanView/CanEdit/CanDelete legacy mapping — `AuthContextExtendedTests.CanView_MapsToReadPermission`, `AuthContextExtendedTests.CanEdit_MapsToWritePermission`, `AuthContextExtendedTests.CanDelete_MapsToDeletePermission`
@@ -151,12 +155,11 @@ have the test class and method appended after a dash.
 - [ ] IsAdmin (super admin or Admin role) — `AuthContextExtendedTests.IsAdmin_True_WhenSuperAdmin`, `AuthContextExtendedTests.IsAdmin_True_WhenAdminRole`, `AuthContextExtendedTests.IsAdmin_False_WhenNeitherSuperAdminNorAdminRole`
 - [ ] PermissionsChanged event fires on SetSession/Logout — `AuthContextExtendedTests.PermissionsChanged_FiresOnSetSession`, `AuthContextExtendedTests.PermissionsChanged_FiresOnLogout`
 - [ ] PropertyChanged fires on AuthState change — `AuthContextExtendedTests.PropertyChanged_FiresOnAuthStateChange`
-- [ ] All 9 AuthStates enum values present -- `AuthContextTests.AuthStates_AllValues`, `AuthStatesTests.AllStates_AreDefined`
+- [ ] All 9 AuthStates enum values present — `AuthContextTests.AuthStates_AllValues`, `AuthStatesTests.AllStates_AreDefined`
 - [ ] AuthStates ordinal values: NotAuthenticated=0, Windows=1, Offline=2, Password=3, EntraId=4, Okta=5, Saml=6, Local=7, ApiToken=8 — `AuthStatesTests` (9 facts), `AuthStatesExtendedTests` (18 tests — individual ordinal checks + AllStates_Defined + AuthenticatedStates_AreNotZero)
 
-### B4. Auth Framework Models
-
-- [ ] AuthResult, UserTypes, AuthStates, SecureString, IdentityProviderConfig, ClaimMapping, AppUser -- `AuthFrameworkTests` (24 tests), `AppUserTests` (21 tests), `AuthUserTests` (4 tests — defaults, set properties, IsActive default/deactivate)
+#### Auth Framework Models
+- [ ] AuthResult, UserTypes, AuthStates, SecureString, IdentityProviderConfig, ClaimMapping, AppUser — `AuthFrameworkTests` (24 tests), `AppUserTests` (21 tests), `AuthUserTests` (4 tests)
 - [ ] AppUser IsAdUser (ActiveDirectory=true, Manual=false) — `AppUserTests.IsAdUser_ActiveDirectory_True`, `AppUserTests.IsAdUser_Manual_False`, `AppUserExtendedTests.IsAdUser_VariousTypes`
 - [ ] AppUser IsSystemUser (System=true, Standard=false) — `AppUserTests.IsSystemUser_System_True`, `AppUserTests.IsSystemUser_Standard_False`, `AppUserExtendedTests.IsSystemUser_VariousTypes`
 - [ ] AppUser Initials from display name (first+last) — `AppUserTests.Initials_FromDisplayName_FirstAndLast`, `AppUserExtendedTests.Initials_TwoWordDisplayName`, `AppUserExtendedTests.Initials_ThreeWordDisplayName_UsesFirstAndLast`
@@ -169,17 +172,73 @@ have the test class and method appended after a dash.
 - [ ] AppUser nullable datetime fields default null — `AppUserExtendedTests.NullableDateTimes_DefaultNull`, `AppUserExtendedTests.NullableDateTimes_CanBeCleared`
 - [ ] AppUser DetailPermissions default empty — `AppUserTests.DetailPermissions_DefaultEmpty`
 
-### B5. Password Hashing
+#### User Types
+- [ ] UserTypes.All has 5 entries — `UserTypesTests.All_Has5`
+- [ ] IsProtected: System and Service only — `UserTypesTests.IsProtected_SystemService`
+- [ ] IsProtected: Standard, ActiveDirectory, Admin, null, empty = false — `UserTypesTests.IsProtected_NotProtected`
+- [ ] AppUser.Initials: two-word name = first letters — `UserTypesTests.Initials_TwoWord`
+- [ ] AppUser.Initials: single word = first 2 chars — `UserTypesTests.Initials_SingleWord`
+- [ ] AppUser.Initials: from username when DisplayName empty — `UserTypesTests.Initials_FromUsername`
+- [ ] AppUser.StatusText: Active/Inactive — `UserTypesTests.StatusText`
+- [ ] AppUser.StatusColor: green/grey — `UserTypesTests.StatusColor`
 
-- [ ] Generate salt produces unique salts -- `PasswordHasherTests.GenerateSalt_Unique`
-- [ ] Hash consistency: same input + salt = same hash -- `PasswordHasherTests.Hash_Consistency`
-- [ ] Different salts produce different hashes -- `PasswordHasherTests.DifferentSalts_DifferentHashes`
-- [ ] Verify correct password -- `PasswordHasherTests.Verify_CorrectPassword`
-- [ ] Verify wrong password -- `PasswordHasherTests.Verify_WrongPassword`
-- [ ] Empty password handled -- `PasswordHasherTests.EmptyPassword_Handled`
-- [ ] Set Password dialog (SHA256 + salt) works from backstage
+### 2.2 Password Hashing, Policy, Lockout, Expiry
 
-### B5a. Credential Encryption (AES-256)
+#### Argon2id Hashing
+- [ ] Generate salt produces unique salts — `PasswordHasherTests.GenerateSalt_Unique`
+- [ ] Hash consistency: same input + salt = same hash — `PasswordHasherTests.Hash_Consistency`
+- [ ] Different salts produce different hashes — `PasswordHasherTests.DifferentSalts_DifferentHashes`
+- [ ] Verify correct password — `PasswordHasherTests.Verify_CorrectPassword`
+- [ ] Verify wrong password — `PasswordHasherTests.Verify_WrongPassword`
+- [ ] Empty password handled — `PasswordHasherTests.EmptyPassword_Handled`
+- [ ] Set Password dialog (Argon2id + salt) works from backstage
+- [ ] Legacy SHA256 hashes auto-migrated to Argon2id on successful login
+
+#### Password Policy
+- [ ] Default policy: min 8, uppercase, lowercase, digit, special, 90-day expiry — `PasswordPolicyTests.DefaultPolicy_Reasonable`
+- [ ] Relaxed policy: min 4, no complexity, no expiry — `PasswordPolicyTests.RelaxedPolicy_Permissive`
+- [ ] Validate rejects: too short, no uppercase, no lowercase, no digit, no special — `PasswordPolicyTests.Validate_Rejects_*`
+- [ ] Validate accepts strong passwords — `PasswordPolicyTests.Validate_AcceptsStrong`
+- [ ] Validate exactly min length passes — `PasswordPolicyExtendedTests.Validate_ExactlyMinLength_Passes`
+- [ ] Validate one less than min length fails — `PasswordPolicyExtendedTests.Validate_OneLessThanMinLength_Fails`
+- [ ] Validate exactly max length passes — `PasswordPolicyExtendedTests.Validate_ExactlyMaxLength_Passes`
+- [ ] Validate over max length fails — `PasswordPolicyExtendedTests.Validate_OverMaxLength_Fails`
+- [ ] Validate various special characters — `PasswordPolicyExtendedTests.Validate_VariousSpecialChars`
+- [ ] Validate unicode password — `PasswordPolicyExtendedTests.Validate_UnicodePassword_WithAllRequirements_Passes`
+- [ ] Password history: blocks reuse of last N passwords — `PasswordPolicyTests.PasswordHistory_BlocksReuse`
+- [ ] Password history no salt skips check — `PasswordPolicyExtendedTests.Validate_PasswordHistory_NoSalt_SkipsCheck`
+- [ ] Password history zero count skips check — `PasswordPolicyExtendedTests.Validate_PasswordHistory_ZeroCount_SkipsCheck`
+- [ ] Multiple validation errors all reported in one result — `PasswordPolicyTests.MultipleErrors`
+- [ ] ErrorSummary multiple errors joined by semicolon — `PasswordPolicyExtendedTests.ErrorSummary_MultipleErrors_JoinedBySemicolon`
+- [ ] ErrorSummary no errors empty — `PasswordPolicyExtendedTests.ErrorSummary_NoErrors_Empty`
+- [ ] Description property shows human-readable policy summary — `PasswordPolicyTests.Description`
+- [ ] Description no expiry omits expiry text — `PasswordPolicyExtendedTests.Description_NoExpiry_OmitsExpiryText`
+- [ ] Description relaxed policy minimal — `PasswordPolicyExtendedTests.Description_RelaxedPolicy_Minimal`
+- [ ] Policy description shown below user label in SetPasswordWindow
+- [ ] Password validated against PasswordPolicy.Default before save
+- [ ] Validation errors shown in red (all errors at once)
+- [ ] Password history checked against last 5 hashes in password_history table
+- [ ] password_changed_at updated on app_users after password change
+- [ ] New hash saved to password_history for future reuse prevention
+- [ ] Audit log entry created on password change
+
+#### Expiry & Min-Age
+- [ ] IsExpired: returns true when password_changed_at > ExpiryDays ago — `PasswordPolicyTests.IsExpired`
+- [ ] IsExpired exactly on boundary not expired — `PasswordPolicyExtendedTests.IsExpired_ExactlyOnBoundary_NotExpired`
+- [ ] IsExpired just past boundary expired — `PasswordPolicyExtendedTests.IsExpired_JustPastBoundary_Expired`
+- [ ] IsExpired null date not expired — `PasswordPolicyExtendedTests.IsExpired_NullDate_NotExpired`
+- [ ] IsTooRecent: blocks change if password changed < MinAgeDays ago — `PasswordPolicyTests.IsTooRecent`
+- [ ] IsTooRecent exactly min age too recent — `PasswordPolicyExtendedTests.IsTooRecent_ExactlyMinAge_TooRecent`
+- [ ] IsTooRecent past min age allowed — `PasswordPolicyExtendedTests.IsTooRecent_PastMinAge_Allowed`
+- [ ] IsTooRecent zero min age never blocked — `PasswordPolicyExtendedTests.IsTooRecent_ZeroMinAge_NeverBlocked`
+- [ ] IsTooRecent null date allowed — `PasswordPolicyExtendedTests.IsTooRecent_NullDate_Allowed`
+
+#### Account Lockout
+- [ ] Account lockout activates after 5 failed attempts
+- [ ] Account lockout expires after 15 minutes
+- [ ] Brute-force lockout: 5 failed password attempts locks for 30 minutes
+
+### 2.3 Credential Encryption (AES-256)
 
 - [ ] Encrypt/Decrypt roundtrip — `CredentialEncryptorTests.Encrypt_Decrypt_Roundtrip`
 - [ ] Encrypt returns Base64 — `CredentialEncryptorTests.Encrypt_ReturnsBase64`
@@ -200,65 +259,20 @@ have the test class and method appended after a dash.
 - [ ] Initialize with different key cannot decrypt old data — `CredentialEncryptorTests.Initialize_WithDifferentKey_CannotDecryptOldData`
 - [ ] Encrypt/Decrypt long value — `CredentialEncryptorTests.Encrypt_Decrypt_LongValue`
 
-### B6. Password Policy
+### 2.4 TOTP MFA
 
-- [ ] Default policy: min 8, uppercase, lowercase, digit, special, 90-day expiry -- `PasswordPolicyTests.DefaultPolicy_Reasonable`
-- [ ] Relaxed policy: min 4, no complexity, no expiry -- `PasswordPolicyTests.RelaxedPolicy_Permissive`
-- [ ] Validate rejects: too short, no uppercase, no lowercase, no digit, no special -- `PasswordPolicyTests.Validate_Rejects_*`
-- [ ] Validate accepts strong passwords -- `PasswordPolicyTests.Validate_AcceptsStrong`
-- [ ] Validate exactly min length passes — `PasswordPolicyExtendedTests.Validate_ExactlyMinLength_Passes`
-- [ ] Validate one less than min length fails — `PasswordPolicyExtendedTests.Validate_OneLessThanMinLength_Fails`
-- [ ] Validate exactly max length passes — `PasswordPolicyExtendedTests.Validate_ExactlyMaxLength_Passes`
-- [ ] Validate over max length fails — `PasswordPolicyExtendedTests.Validate_OverMaxLength_Fails`
-- [ ] Validate various special characters — `PasswordPolicyExtendedTests.Validate_VariousSpecialChars`
-- [ ] Validate unicode password — `PasswordPolicyExtendedTests.Validate_UnicodePassword_WithAllRequirements_Passes`
-- [ ] Password history: blocks reuse of last N passwords -- `PasswordPolicyTests.PasswordHistory_BlocksReuse`
-- [ ] IsExpired: returns true when password_changed_at > ExpiryDays ago -- `PasswordPolicyTests.IsExpired`
-- [ ] IsExpired exactly on boundary not expired — `PasswordPolicyExtendedTests.IsExpired_ExactlyOnBoundary_NotExpired`
-- [ ] IsExpired just past boundary expired — `PasswordPolicyExtendedTests.IsExpired_JustPastBoundary_Expired`
-- [ ] IsExpired null date not expired — `PasswordPolicyExtendedTests.IsExpired_NullDate_NotExpired`
-- [ ] IsTooRecent: blocks change if password changed < MinAgeDays ago -- `PasswordPolicyTests.IsTooRecent`
-- [ ] IsTooRecent exactly min age too recent — `PasswordPolicyExtendedTests.IsTooRecent_ExactlyMinAge_TooRecent`
-- [ ] IsTooRecent past min age allowed — `PasswordPolicyExtendedTests.IsTooRecent_PastMinAge_Allowed`
-- [ ] IsTooRecent zero min age never blocked — `PasswordPolicyExtendedTests.IsTooRecent_ZeroMinAge_NeverBlocked`
-- [ ] IsTooRecent null date allowed — `PasswordPolicyExtendedTests.IsTooRecent_NullDate_Allowed`
-- [ ] Password history no salt skips check — `PasswordPolicyExtendedTests.Validate_PasswordHistory_NoSalt_SkipsCheck`
-- [ ] Password history zero count skips check — `PasswordPolicyExtendedTests.Validate_PasswordHistory_ZeroCount_SkipsCheck`
-- [ ] Multiple validation errors all reported in one result -- `PasswordPolicyTests.MultipleErrors`
-- [ ] ErrorSummary multiple errors joined by semicolon — `PasswordPolicyExtendedTests.ErrorSummary_MultipleErrors_JoinedBySemicolon`
-- [ ] ErrorSummary no errors empty — `PasswordPolicyExtendedTests.ErrorSummary_NoErrors_Empty`
-- [ ] Description property shows human-readable policy summary -- `PasswordPolicyTests.Description`
-- [ ] Description no expiry omits expiry text — `PasswordPolicyExtendedTests.Description_NoExpiry_OmitsExpiryText`
-- [ ] Description relaxed policy minimal — `PasswordPolicyExtendedTests.Description_RelaxedPolicy_Minimal`
-- [ ] Policy description shown below user label in SetPasswordWindow
-- [ ] Password validated against PasswordPolicy.Default before save
-- [ ] Validation errors shown in red (all errors at once)
-- [ ] Password history checked against last 5 hashes in password_history table
-- [ ] password_changed_at updated on app_users after password change
-- [ ] New hash saved to password_history for future reuse prevention
-- [ ] Audit log entry created on password change
-
-### B7. Account Lockout
-
-- [ ] Account lockout activates after 5 failed attempts
-- [ ] Account lockout expires after 15 minutes
-- [ ] Brute-force lockout: 5 failed password attempts locks for 30 minutes
-
-### B8. TOTP MFA
-
-- [ ] GenerateSecret returns valid Base32 secret -- `TotpServiceTests.GenerateSecret_Valid`
-- [ ] GenerateQrUri produces otpauth:// URI -- `TotpServiceTests.GenerateQrUri_Valid`
-- [ ] GenerateCurrentCode returns 6-digit code -- `TotpServiceTests.GenerateCurrentCode`
-- [ ] VerifyCode validates current TOTP within +/-1 time step -- `TotpServiceTests.VerifyCode_Valid`
-- [ ] VerifyCode rejects wrong codes -- `TotpServiceTests.VerifyCode_RejectsWrong`
-- [ ] GenerateRecoveryCodes returns 8 unique hyphenated hex codes -- `TotpServiceTests.GenerateRecoveryCodes`
+- [ ] GenerateSecret returns valid Base32 secret — `TotpServiceTests.GenerateSecret_Valid`
+- [ ] GenerateQrUri produces otpauth:// URI — `TotpServiceTests.GenerateQrUri_Valid`
+- [ ] GenerateCurrentCode returns 6-digit code — `TotpServiceTests.GenerateCurrentCode`
+- [ ] VerifyCode validates current TOTP within +/-1 time step — `TotpServiceTests.VerifyCode_Valid`
+- [ ] VerifyCode rejects wrong codes — `TotpServiceTests.VerifyCode_RejectsWrong`
+- [ ] GenerateRecoveryCodes returns 8 unique hyphenated hex codes — `TotpServiceTests.GenerateRecoveryCodes`
 - [ ] Recovery codes stored hashed in mfa_recovery_codes table
 - [ ] VerifyRecoveryCodeAsync marks code as used (single-use)
 - [ ] EnableMfaAsync sets mfa_enabled=true and stores encrypted secret
 - [ ] DisableMfaAsync clears secret and recovery codes
 
-### B9. MFA Enrollment Dialog
-
+#### MFA Enrollment Dialog
 - [ ] MfaEnrollmentDialog shows TOTP secret key formatted with spaces
 - [ ] QR URI displayed + copy button for authenticator app enrollment
 - [ ] 6-digit verification code input with Enter key support
@@ -272,31 +286,15 @@ have the test class and method appended after a dash.
 - [ ] Recovery codes saved hashed to mfa_recovery_codes table
 - [ ] Audit log entry created on MFA enable
 
-### B10. Identity Provider Config
+### 2.5 Identity Providers (SSO/OIDC/SAML/Entra/Okta/Duo/Social)
 
-- [ ] IdentityProviderConfig model -- `IdentityConfigTests.IdentityProviderConfig_*`
-- [ ] ClaimMapping model -- `IdentityConfigTests.ClaimMapping_*`
-- [ ] DomainMapping model -- `IdentityConfigTests.DomainMapping_*`
-- [ ] ExternalIdentity model -- `IdentityConfigTests.ExternalIdentity_*`
-- [ ] AuthEvent model -- `IdentityConfigTests.AuthEvent_*`
-- [ ] AuthResult claims -- `IdentityConfigTests.AuthResult_Claims`
-- [ ] AuthRequest model -- `IdentityConfigTests.AuthRequest_*`
-
-### B11. User Types
-
-- [ ] UserTypes.All has 5 entries -- `UserTypesTests.All_Has5`
-- [ ] IsProtected: System and Service only -- `UserTypesTests.IsProtected_SystemService`
-- [ ] IsProtected: Standard, ActiveDirectory, Admin, null, empty = false -- `UserTypesTests.IsProtected_NotProtected`
-- [ ] AppUser.Initials: two-word name = first letters -- `UserTypesTests.Initials_TwoWord`
-- [ ] AppUser.Initials: single word = first 2 chars -- `UserTypesTests.Initials_SingleWord`
-- [ ] AppUser.Initials: from username when DisplayName empty -- `UserTypesTests.Initials_FromUsername`
-- [ ] AppUser.StatusText: Active/Inactive -- `UserTypesTests.StatusText`
-- [ ] AppUser.StatusColor: green/grey -- `UserTypesTests.StatusColor`
-
-### B12. Authentication Framework (SSO/OIDC/SAML)
-
-- [ ] LoginWindow shows SSO buttons when identity_providers configured in DB
-- [ ] Email-based IdP discovery: enter email, system routes to correct provider
+- [ ] IdentityProviderConfig model — `IdentityConfigTests.IdentityProviderConfig_*`
+- [ ] ClaimMapping model — `IdentityConfigTests.ClaimMapping_*`
+- [ ] DomainMapping model — `IdentityConfigTests.DomainMapping_*`
+- [ ] ExternalIdentity model — `IdentityConfigTests.ExternalIdentity_*`
+- [ ] AuthEvent model — `IdentityConfigTests.AuthEvent_*`
+- [ ] AuthResult claims — `IdentityConfigTests.AuthResult_Claims`
+- [ ] AuthRequest model — `IdentityConfigTests.AuthRequest_*`
 - [ ] "Sign in with Microsoft" button opens system browser, OIDC+PKCE flow
 - [ ] "Sign in with Okta" button opens system browser, OIDC+PKCE flow
 - [ ] "Sign in with SSO" button triggers SAML2 SP-initiated flow
@@ -307,25 +305,26 @@ have the test class and method appended after a dash.
 - [ ] Auth state indicator in status bar: Online (green), Entra/Okta/SSO (blue), Offline (amber)
 - [ ] Auth Events panel shows all login/logout/failed events with timestamps
 - [ ] Identity Providers panel: CRUD for providers + domain mappings
-- [ ] Existing Windows auto-login and manual password login still work unchanged
-- [ ] SecureString password handling in LoginWindow — `SecureStringExtensionTests.ToSecureString_NonEmpty_CorrectLength`, `SecureStringExtensionTests.ToPlainText_Roundtrips`
 - [ ] SecureString empty string roundtrip — `SecureStringExtensionTests.ToSecureString_EmptyString_ReturnsSecureString`, `SecureStringExtensionTests.ToPlainText_Empty_ReturnsEmpty`
 - [ ] SecureString is read-only after creation — `SecureStringExtensionTests.ToSecureString_IsReadOnly`
 - [ ] SecureString password hash consistency — `SecureStringExtensionTests.ToPasswordHash_ProducesConsistentHash`
 - [ ] SecureString different salts produce different hashes — `SecureStringExtensionTests.ToPasswordHash_DifferentSalts_DifferentHashes`
 - [ ] SecureString verify hash correct/wrong — `SecureStringExtensionTests.VerifyHash_CorrectPassword_ReturnsTrue`, `SecureStringExtensionTests.VerifyHash_WrongPassword_ReturnsFalse`
 - [ ] SecureString unicode chars in hash — `SecureStringExtensionTests.ToPasswordHash_UnicodeChars`
+- [ ] Social login (Google/Microsoft/GitHub) via `social_providers` seeded + `/api/security/social-providers`
+- [ ] OAuth state parameter validated against `oauth_states` table (CSRF prevention)
+- [ ] user_social_logins binds external subject to app_users on first sign-in
 
-### B13. API Key Authentication
+### 2.6 API Key Authentication
 
 - [ ] X-API-Key header checked by middleware before JWT
-- [ ] Key validated against api_keys table (SHA256 hash -- raw key never stored)
+- [ ] Key validated against api_keys table (SHA256 hash — raw key never stored)
+- [ ] Per-key salt used (migration 035_api_key_salt)
 - [ ] Valid key sets ClaimsPrincipal with name, role, auth_method=api_key
 - [ ] last_used_at and use_count updated on each use
 - [ ] Falls through to JWT auth if no X-API-Key header
 
-### B14. API Key Management Panel
-
+#### API Key Management Panel
 - [ ] API Keys panel opens from Admin > Identity > API Keys
 - [ ] Generate Key button prompts for name, creates key, shows raw key once
 - [ ] Raw key copied to clipboard automatically
@@ -333,8 +332,9 @@ have the test class and method appended after a dash.
 - [ ] Revoke button sets is_active=false without deleting
 - [ ] Delete button removes key permanently with confirmation
 - [ ] Audit log entry on key create and revoke
+- [ ] ApiKeyRecord defaults, PropertyChanged all fields, RawKey set on create — `ApiKeyRecordTests` (3 tests)
 
-### B15. Active Sessions
+### 2.7 Active Sessions
 
 - [ ] Sessions panel opens from Admin > Identity > Sessions
 - [ ] Grid shows user, name, auth method, machine, IP, started, last activity, duration
@@ -346,17 +346,19 @@ have the test class and method appended after a dash.
 - [ ] Audit log entries for force logout actions
 - [ ] Session token (GUID) generated and stored in active_sessions table
 - [ ] Machine name recorded from Environment.MachineName
+- [ ] ActiveSession defaults, Duration formats, StatusColor, ExpiresAt nullable — `NotificationPreferenceExtendedTests.ActiveSession_*`
 
-### B16. Structured Audit Trail
+### 2.8 Audit Trail
 
+#### Structured Audit Service
 - [ ] AuditService.Instance logs all CRUD operations
-- [ ] No persist func: does not throw -- `AuditServiceTests.NoPersistFunc_NoThrow`
-- [ ] Persist func called with correct entry -- `AuditServiceTests.PersistFunc_CalledCorrectly`
-- [ ] Broadcast func called with action -- `AuditServiceTests.BroadcastFunc_Called`
-- [ ] LogCreateAsync sets Create action -- `AuditServiceTests.LogCreate_SetsAction`
-- [ ] LogDeleteAsync sets Delete action -- `AuditServiceTests.LogDelete_SetsAction`
-- [ ] Before/After JSON serialized correctly -- `AuditServiceTests.BeforeAfterJson_Serialized`
-- [ ] Persist throws: does not crash -- `AuditServiceTests.PersistThrows_NoCrash`
+- [ ] No persist func: does not throw — `AuditServiceTests.NoPersistFunc_NoThrow`
+- [ ] Persist func called with correct entry — `AuditServiceTests.PersistFunc_CalledCorrectly`
+- [ ] Broadcast func called with action — `AuditServiceTests.BroadcastFunc_Called`
+- [ ] LogCreateAsync sets Create action — `AuditServiceTests.LogCreate_SetsAction`
+- [ ] LogDeleteAsync sets Delete action — `AuditServiceTests.LogDelete_SetsAction`
+- [ ] Before/After JSON serialized correctly — `AuditServiceTests.BeforeAfterJson_Serialized`
+- [ ] Persist throws: does not crash — `AuditServiceTests.PersistThrows_NoCrash`
 - [ ] LogUpdateAsync records before/after snapshots as JSONB — `EntityBaseTests.TakeSnapshot_CapturesAllProperties`
 - [ ] LogViewAsync records data access
 - [ ] LogExportAsync records data exports
@@ -367,8 +369,7 @@ have the test class and method appended after a dash.
 - [ ] SetPersistFunc wires to DbRepository at startup
 - [ ] Audit logging never blocks the primary operation (try/catch)
 
-### B17. Audit Trail Wiring
-
+#### Wiring
 - [ ] AuditService initialized at startup with DbRepository persistence
 - [ ] Device save logs Create/Update with device name
 - [ ] Device delete logs Delete with device ID and name
@@ -376,15 +377,13 @@ have the test class and method appended after a dash.
 - [ ] CSV export logs Export with panel name and file path
 - [ ] Password change logs PasswordChange with user ID
 
-### B18. Audit Broadcasting via SignalR
-
+#### Broadcasting via SignalR
 - [ ] AuditService.SetBroadcastFunc wires SignalR broadcasting
 - [ ] Every audit log entry triggers real-time broadcast to all connected clients
 - [ ] Broadcast includes: action, entityType, entityName, username
 - [ ] Broadcasting never blocks the primary operation (try/catch)
 
-### B19. Audit Log Viewer Panel
-
+#### Audit Log Viewer Panel
 - [ ] Audit Log panel opens from Admin > Identity > Audit Log
 - [ ] Grid shows timestamp, action, entity type, entity ID/name, user, details, before/after JSON
 - [ ] Entity type dropdown filter (Device, Switch, User, Setting)
@@ -393,7 +392,7 @@ have the test class and method appended after a dash.
 - [ ] Filter change triggers auto-refresh
 - [ ] Sorted by timestamp descending (newest first)
 
-### B20. Security Headers Middleware
+### 2.9 Security Headers Middleware
 
 - [ ] X-Frame-Options: DENY (prevents clickjacking)
 - [ ] X-Content-Type-Options: nosniff (prevents MIME sniffing)
@@ -403,11 +402,20 @@ have the test class and method appended after a dash.
 - [ ] Permissions-Policy: camera=(), microphone=(), geolocation=()
 - [ ] Cache-Control: no-store, no-cache, must-revalidate (default for API)
 
+### 2.10 IP Allowlist, SSH Keys, Domain Verification, ToS
+
+- [ ] ip_access_rules table + /api/security/ip-rules CRUD (allow/deny by CIDR)
+- [ ] Denied IP returns 403 before authentication check
+- [ ] user_ssh_keys table + /api/user-keys CRUD; fingerprint auto-computed
+- [ ] domain_verifications: dns_txt / http_file / email methods
+- [ ] terms_of_service table + user_tos_acceptance tracks version accepted
+- [ ] deprovisioning_rules + deprovisioning_log auto-revoke access on conditions
+
 ---
 
-## C. Ribbon & UI Framework
+## 3. UI Framework
 
-### C1. Ribbon General
+### 3.1 Ribbon
 
 - [ ] All ribbon tabs render without errors — `RibbonBuilderTests.AddPage_CreatesPage`
 - [ ] ItemClick events fire on button click — `RibbonBuilderTests.AddButton_CreatesButton`
@@ -429,20 +437,49 @@ have the test class and method appended after a dash.
 - [ ] WidgetCommandData.Apply edge cases (empty, multiple same, partial, special chars) — `WidgetCommandTests.Apply_EmptyTemplate_ReturnsEmpty`, `WidgetCommandTests.Apply_MultipleSamePlaceholder`, `WidgetCommandTests.Apply_PartialPlaceholder_NotReplaced`, `WidgetCommandTests.Apply_EmptyValue_RemovesPlaceholder`, `WidgetCommandTests.Apply_SpecialCharacters`
 - [ ] WidgetCommandData TextReplacements default empty — `WidgetCommandTests.TextReplacements_DefaultEmpty`
 
-### C2. Context Tabs
+#### Ribbon Tabs
+- [ ] Home: Connection, Export, Web App, Layout (Save/Restore Default via cog)
+- [ ] Devices: Actions (New/Edit/Delete), Group By, Filter, Panels (IPAM/Switches/Details), Connectivity (Sync BGP/Sync All BGP)
+- [ ] Switches: Actions, Connectivity (Ping All/Ping Selected), Panels, Data
+- [ ] Admin: Actions (New/Edit/Delete — routes by active panel), Panels (Roles/Users/Lookups/Details/Ribbon Config/Ribbon Admin), Data
+- [ ] Tasks: permanent top-level ribbon tab with 15 check buttons
+- [ ] CRM: tab (SortOrder 40) with Actions + Data + Panels groups (9 panel toggles)
 
+#### Context Tabs
 - [ ] Links tab (blue) appears when Links panel is active
 - [ ] Switch tab (green) appears when Switches panel is active
 - [ ] Admin tab (amber) appears when Admin panel is active
+- [ ] Routing / VLANs / Tasks context tabs appear/disappear by active panel
 - [ ] Context tabs hide when switching to unrelated panel
 
-### C3. Quick Access Toolbar
-
+#### Quick Access Toolbar
 - [ ] Save/Refresh/Undo buttons appear in QAT
 - [ ] QAT buttons are functional
 - [ ] QAT is user-customizable (right-click add/remove)
 
-### C4. Ribbon Customization (3-layer override)
+#### Keyboard Shortcuts
+- [ ] Ctrl+R / F5 — Refresh all data
+- [ ] Ctrl+N — New record (routes by active panel)
+- [ ] Delete — Delete selected record
+- [ ] Ctrl+E — Export devices
+- [ ] Ctrl+P — Print preview
+- [ ] Ctrl+F — Toggle global search
+- [ ] Ctrl+S — Save/commit current row
+- [ ] Ctrl+D — Toggle details panel
+- [ ] Ctrl+G — Go to dialog
+- [ ] Ctrl+I — Import wizard
+- [ ] Ctrl+Z — Undo
+- [ ] Ctrl+Y — Redo
+- [ ] Ctrl+Tab — Cycle to next panel
+- [ ] F1 — Keyboard help
+
+### 3.2 Ribbon Customization (3-layer override)
+
+| Layer | Table | Priority | Who |
+|---|---|---|---|
+| 1 | `admin_ribbon_defaults` | Lowest | Admin pushes defaults for all users |
+| 2 | `ribbon_items` (DB seed) | Middle | Module registration / system defaults |
+| 3 | `user_ribbon_overrides` | Highest | Per-user icon, text, visibility |
 
 - [ ] User RibbonTreePanel opens from Admin ribbon
 - [ ] Tree shows hierarchy: pages > groups > items — `RibbonConfigTests.RibbonTreeItem_NodeIcon_ByType`, `RibbonTreeItemTests.NodeIcon_ReturnsCorrectIcon`
@@ -465,8 +502,7 @@ have the test class and method appended after a dash.
 - [ ] UserRibbonOverride defaults — `RibbonConfigTests.UserRibbonOverride_Defaults`, `RibbonConfigExtendedTests.UserRibbonOverride_Defaults`
 - [ ] UserRibbonOverride set properties — `RibbonConfigTests.UserRibbonOverride_SetProperties`, `RibbonConfigExtendedTests.UserRibbonOverride_SetProperties`
 - [ ] UserRibbonOverride IsHidden can be true — `RibbonConfigExtendedTests.UserRibbonOverride_IsHidden_True`
-- [ ] RibbonPageConfig PropertyChanged Header — `RibbonConfigTests.RibbonPageConfig_PropertyChanged_Header`
-- [ ] RibbonPageConfig PropertyChanged IsVisible — `RibbonConfigTests.RibbonPageConfig_PropertyChanged_IsVisible`
+- [ ] RibbonPageConfig PropertyChanged Header/IsVisible — `RibbonConfigTests.RibbonPageConfig_PropertyChanged_Header`, `RibbonConfigTests.RibbonPageConfig_PropertyChanged_IsVisible`
 - [ ] RibbonGroupConfig PropertyChanged Header — `RibbonConfigTests.RibbonGroupConfig_PropertyChanged_Header`
 - [ ] RibbonItemConfig PropertyChanged Content — `RibbonConfigTests.RibbonItemConfig_PropertyChanged_Content`
 - [ ] RibbonTreeItem DisplayText falls back to Text when CustomText empty — `RibbonConfigTests.RibbonTreeItem_DisplayText_EmptyCustomText_FallsBackToText`
@@ -479,8 +515,9 @@ have the test class and method appended after a dash.
 - [ ] PreloadIconOverridesAsync prevents icon flash on startup — `IconOverrideServiceTests.IsLoaded_TrueAfterLoad`
 - [ ] 3-layer resolution: user_ribbon_overrides > ribbon_items > admin_ribbon_defaults — `IconOverrideServiceTests.Resolve_UserOverride_TakesPriority`
 
-### C5. Icon System -- Icon Library
+### 3.3 Icon System
 
+#### Icon Library
 - [ ] IconService loads metadata on startup (11,676 icons)
 - [ ] IconService.AllIcons contains OfficePro + Universal packs
 - [ ] IconService.GetCategories() returns distinct category list
@@ -493,8 +530,7 @@ have the test class and method appended after a dash.
 - [ ] IconOverrideService case-insensitive lookup — `IconOverrideServiceTests.Load_CaseInsensitive`
 - [ ] IconOverrideService reload overwrites previous — `IconOverrideServiceTests.Load_OverwritesPreviousData`
 
-### C6. Icon System -- ImagePickerWindow
-
+#### ImagePickerWindow
 - [ ] Window opens as DXDialogWindow (themed)
 - [ ] Pack checkboxes show OfficePro + Universal
 - [ ] All packs selected by default
@@ -513,51 +549,38 @@ have the test class and method appended after a dash.
 - [ ] Clear button returns -1 (explicitly cleared)
 - [ ] Delete button removes icon from DB after confirmation
 
-### C7. SVG Rendering
-
+#### SVG Rendering
 - [ ] SvgHelper.RenderSvgToImageSource renders SVG to BitmapImage
 - [ ] currentColor replaced with #FFFFFF for dark theme
 - [ ] In-memory cache (hash-keyed) prevents re-rendering
 - [ ] Disk cache writes to %LocalAppData%/Central/icon_cache/
 - [ ] LoadFromDiskCache reads cached SVG files
 
-### C8. Themes
+#### DevExpress SVG Gallery
+- [ ] 34 DX categories available via `dx:DXImage` markup
+- [ ] `DxSvgGallery.GetSvgImage("Actions", "Open2")` returns SvgImage
+- [ ] Icons auto-adapt to active theme (Win11Dark, Office2019Colorful, etc.)
+
+### 3.4 Themes
 
 - [ ] Theme gallery shows 9 installed themes
 - [ ] Theme changes apply immediately
 - [ ] Theme persists across restarts
 
-### C9. Keyboard Shortcuts
-
-- [ ] Ctrl+R / F5 -- Refresh all data
-- [ ] Ctrl+N -- New record (routes by active panel)
-- [ ] Delete -- Delete selected record
-- [ ] Ctrl+E -- Export devices
-- [ ] Ctrl+P -- Print preview
-- [ ] Ctrl+F -- Toggle global search
-- [ ] Ctrl+S -- Save/commit current row
-- [ ] Ctrl+D -- Toggle details panel
-- [ ] Ctrl+G -- Go to dialog
-- [ ] Ctrl+I -- Import wizard
-- [ ] Ctrl+Z -- Undo
-- [ ] Ctrl+Y -- Redo
-- [ ] Ctrl+Tab -- Cycle to next panel
-- [ ] F1 -- Keyboard help
-
 ---
 
-## D. Grid Framework
+## 4. Grid Framework
 
-### D1. Inline Editing
+### 4.1 Inline Editing, Context Menu, Saved Filters
 
+#### Inline Editing
 - [ ] Inline editing works (NavigationStyle=Cell)
 - [ ] Dropdown columns wired via BindComboSources()
 - [ ] ValidateRow auto-saves on row commit — `GridValidationHelperTests` (14 tests)
 - [ ] ShownEditor event wired in code-behind constructor
 - [ ] Natural numeric sort on interface columns
 
-### D2. Context Menu (Global)
-
+#### Context Menu (Global)
 - [ ] Right-click shows context menu on all 22 grids
 - [ ] Customize Grid... opens GridCustomizerDialog
 - [ ] Manage Saved Filters... opens SavedFilterDialog
@@ -572,26 +595,28 @@ have the test class and method appended after a dash.
 - [ ] Quick filter presets (up to 10 saved filters inline)
 - [ ] Separator between groups for visual clarity
 
-### D3. Saved Filters
-
+#### Saved Filters
 - [ ] Save current filter with name
 - [ ] Load saved filter applies expression
 - [ ] Delete saved filter removes it
 - [ ] Filters are per-user per-panel
 - [ ] Default saved filter auto-applies on panel load
 - [ ] Quick filter presets appear in column right-click menu
+- [ ] SavedFilter IsShared, PropertyChanged — `SavedFilterTests` (3 tests)
 
-### D4. Export & Print
+### 4.2 Export & Print
 
 - [ ] Export to Clipboard works from context menu
 - [ ] Export to Clipboard works from ribbon button
 - [ ] Print Preview opens for active grid
 - [ ] Column Chooser opens for active grid
 - [ ] CSV export via DX TableView.ExportToCsv()
-- [ ] Default filename includes panel name + date (e.g. Devices_20260328.csv)
+- [ ] Excel export via DX XlsxExportOptions on all grids
+- [ ] PDF export via DX PdfExportOptions on all grids
+- [ ] Default filename includes panel name + date (e.g. Devices_20260417.csv)
 - [ ] Toast notification on successful export or error
 
-### D5. View Toggles (Home Ribbon)
+### 4.3 Home Ribbon View Toggles
 
 - [ ] Search Panel toggle shows/hides search
 - [ ] Filter Row toggle shows/hides auto-filter row
@@ -599,8 +624,9 @@ have the test class and method appended after a dash.
 - [ ] Grid Lines toggle shows/hides cell borders
 - [ ] Best Fit auto-sizes columns
 
-### D6. Undo/Redo
+### 4.4 Undo/Redo + Bulk Edit
 
+#### Undo/Redo
 - [ ] Undo button reverts last operation — `UndoServiceTests.Undo_RevertsSinglePropertyChange`
 - [ ] Redo button re-applies undone operation — `UndoServiceTests.Redo_ReappliesPropertyChange`
 - [ ] Split button dropdown shows last 10 operations — `UndoServiceTests.UndoHistory_ReturnsDescriptionsInOrder`
@@ -620,15 +646,14 @@ have the test class and method appended after a dash.
 - [ ] Undo when empty does nothing — `UndoServiceTests.Undo_WhenEmpty_DoesNothing`
 - [ ] Redo when empty does nothing — `UndoServiceTests.Redo_WhenEmpty_DoesNothing`
 
-### D7. Bulk Edit
-
+#### Bulk Edit
 - [ ] BulkEditWindow opens from context menu
 - [ ] Field picker shows all editable fields (reflection-based)
 - [ ] Preview shows changes before applying
 - [ ] Apply updates all selected rows
 - [ ] Works with any model type
 
-### D8. Toast Notifications
+### 4.5 Toast Notifications
 
 - [ ] Info toast (blue) auto-hides after 4s — `NotificationTypeTests.Notification_Color_ByType(Info, "#3B82F6")`
 - [ ] Success toast (green) auto-hides after 4s — `NotificationTypeTests.Notification_Color_ByType(Success, "#22C55E")`
@@ -636,9 +661,14 @@ have the test class and method appended after a dash.
 - [ ] Error toast (red) auto-hides after 4s — `NotificationTypeTests.Notification_Color_ByType(Error, "#EF4444")`
 - [ ] Toast appears bottom-right
 - [ ] SignalR DataChanged triggers toast for external changes
+- [ ] Notification icon per type (Info/Success/Warning/Error) — `NotificationTypeTests.Notification_Icon_*`
+- [ ] Notification timestamp is recent — `NotificationTypeTests.Notification_Timestamp_IsRecent`
+- [ ] Notification properties (type, title, message, source) — `NotificationTypeTests.Notification_Properties`
+- [ ] Notification null source handled — `NotificationTypeTests.Notification_NullSource`
 
-### D9. Layout Persistence
+### 4.6 Layout Persistence + Panel Floating
 
+#### Layout Persistence
 - [ ] Grid column widths save/restore
 - [ ] Grid column order saves/restores
 - [ ] Grid column visibility saves/restores
@@ -650,8 +680,7 @@ have the test class and method appended after a dash.
 - [ ] Grid customizations per panel per user (JSONB)
 - [ ] Link rules per panel per user
 
-### D10. Panel Floating / Multi-Monitor
-
+#### Panel Floating / Multi-Monitor
 - [ ] Any panel tab can be dragged out to a separate window
 - [ ] Floating panels are real OS windows (FloatingMode.Desktop)
 - [ ] Floating panels can be moved to second monitor and maximized
@@ -660,31 +689,28 @@ have the test class and method appended after a dash.
 - [ ] EnableGlobalFloating covers all panels including closed ones
 - [ ] Layout save/restore preserves floating panel positions
 
-### D11. Grid Customizer
+### 4.7 Grid Customizer
 
 - [ ] GridCustomizerDialog with row height, alternating rows, summary footer, group panel, auto-filter
 - [ ] panel_customizations table stores per-user per-panel settings as JSONB — `PanelCustomizationExtendedTests.PanelCustomizationRecord_SetValues`
 - [ ] Settings: grid, filter, form, link types — `PanelCustomizationExtendedTests.GridSettings_SetLists_WorkCorrectly`, `PanelCustomizationExtendedTests.FormLayout_WithGroups`, `PanelCustomizationExtendedTests.FieldGroup_Collapsed`, `PanelCustomizationExtendedTests.LinkRule_WithValues`
 - [ ] Customizer wired to all 22 grids across all modules
-
-### D12. Panel Customization Models
-
-- [ ] GridSettings defaults -- `PanelCustomizationTests.GridSettings_Defaults`, `PanelCustomizationModelsTests` (5 tests)
-- [ ] FormLayout defaults -- `PanelCustomizationTests.FormLayout_Defaults`
-- [ ] LinkRule defaults -- `PanelCustomizationTests.LinkRule_Defaults`
-- [ ] FieldGroup defaults -- `PanelCustomizationTests.FieldGroup_Defaults`
-- [ ] GridSettings serialization round-trip -- `PanelCustomizationTests.GridSettings_RoundTrip`
-- [ ] LinkRule list serialization round-trip -- `PanelCustomizationTests.LinkRule_ListRoundTrip`
+- [ ] GridSettings defaults — `PanelCustomizationTests.GridSettings_Defaults`, `PanelCustomizationModelsTests` (5 tests)
+- [ ] FormLayout defaults — `PanelCustomizationTests.FormLayout_Defaults`
+- [ ] LinkRule defaults — `PanelCustomizationTests.LinkRule_Defaults`
+- [ ] FieldGroup defaults — `PanelCustomizationTests.FieldGroup_Defaults`
+- [ ] GridSettings serialization round-trip — `PanelCustomizationTests.GridSettings_RoundTrip`
+- [ ] LinkRule list serialization round-trip — `PanelCustomizationTests.LinkRule_ListRoundTrip`
 - [ ] Panel customization extended edge cases — `PanelCustomizationTests2` (6 tests)
 
-### D13. Detail Panel (Asset Details)
+### 4.8 Detail Panel + Config Compare
 
+#### Detail Panel (Asset Details)
 - [ ] Right-docked detail panel visible
 - [ ] Updates on grid row selection (SelectionChanged)
 - [ ] Shows correct detail fields for selected entity
 
-### D14. Config Compare Panel
-
+#### Config Compare Panel
 - [ ] Side-by-side diff view with line numbers — `ConfigDiffServiceTests` (9 tests), `ConfigDiffServiceExtendedTests` (9 tests)
 - [ ] Diff identical lines no changes — `ConfigDiffServiceExtendedTests.BuildAlignedDiff_IdenticalLines_NoChanges`
 - [ ] Diff fully different all changed — `ConfigDiffServiceExtendedTests.BuildAlignedDiff_FullyDifferent_AllChanged`
@@ -702,7 +728,7 @@ have the test class and method appended after a dash.
 - [ ] ConfigVersionEntry IsSelected PropertyChanged — `ConfigVersionEntryTests.IsSelected_PropertyChanged_Fires`, `ConfigVersionEntryTests.IsSelected_PropertyChanged_FiresOnToggle`
 - [ ] ConfigVersionEntry Id assignment — `ConfigVersionEntryTests.Id_CanBeAssigned`
 
-### D15. Import Wizard
+### 4.9 Import Wizard
 
 - [ ] Ctrl+I opens Import Wizard dialog
 - [ ] Browse button opens file picker (CSV/TSV)
@@ -718,7 +744,7 @@ have the test class and method appended after a dash.
 - [ ] Notification toast on completion
 - [ ] "Import Data" button in Home > Export ribbon group
 
-### D16. Home Dashboard Panel
+### 4.10 Home Dashboard Panel
 
 - [ ] Dashboard panel is the first tab (before Devices)
 - [ ] Platform KPIs: Total Devices, Active Switches, Active Users, Total Links, VLANs, Tasks Open — `DashboardDataTests.Defaults`, `DashboardDataExtendedTests.DashboardData_AllPlatformDefaults`, `DashboardDataExtendedTests.DashboardData_SetPlatformCounts`
@@ -731,7 +757,7 @@ have the test class and method appended after a dash.
 - [ ] Last refreshed timestamp shown
 - [ ] Dashboard loads on panel activation (lazy)
 
-### D17. Cross-Panel Features
+### 4.11 Cross-Panel Features
 
 - [ ] Save device triggers links panel refresh (DataModifiedMessage)
 - [ ] Save switch triggers related panels refresh
@@ -742,9 +768,578 @@ have the test class and method appended after a dash.
 
 ---
 
-## E. Modules
+## 5. Data Layer
 
-### E1. IPAM (Devices)
+### 5.1 Database Connection + ConnectivityManager
+
+- [ ] DSN from CENTRAL_DSN env var works
+- [ ] Fallback DSN (localhost defaults) works
+- [ ] 5s connection timeout
+- [ ] 10s background retry on failure
+- [ ] pg_notify triggers fire on all 19+ tables
+- [ ] pg_notify triggers on all new tables (migration 048)
+- [ ] ConnectivityManager handles DB connection with offline mode
+- [ ] ConnectionChanged event fires on state transitions
+
+### 5.2 Migrations
+
+See the Migrations Reference table at the bottom of this document for the full list of all 80 migrations.
+
+- [ ] All migrations apply cleanly on fresh DB
+- [ ] Migrations are idempotent (re-run safe)
+- [ ] PowerShell setup script: db\setup.ps1 applies all migrations via psql
+- [ ] MigrationRunner applies pending migrations at startup (see 1.1)
+- [ ] migration_history table records applied files + timestamp + duration
+
+### 5.3 Multi-Tenancy (RLS, zoned vs dedicated, connection resolver)
+
+#### Row-Level Security
+- [x] tenant_id UUID column on ALL public-schema tables (40+ tables)
+- [x] Default tenant UUID for all existing rows
+- [x] PostgreSQL RLS policies filtering by `current_setting('app.tenant_id')` — `get_current_tenant_id()` function
+- [x] Policies enforced at DB level (FORCE ROW LEVEL SECURITY)
+- [x] Separate policies for SELECT/INSERT/UPDATE/DELETE operations
+- [x] Admin role bypass via `is_super_admin()` session variable
+- [x] set_tenant_context(uuid) function for DbRepository
+- [x] set_default_tenant() convenience function
+- [x] _add_tenant_rls() helper for future migrations
+- [x] Indexes on tenant_id columns
+
+#### Connection Pooling (PgBouncer)
+- [x] PgBouncer transaction mode — `pool_mode = transaction`
+- [x] Per-tier pool sizing: Free=2, Normal=20, Pro=50, Enterprise=100
+- [x] 30s connection/query wait timeouts
+- [x] Queue depth monitoring at 80% (PgBouncer exporter + PgBouncerHighQueueDepth alert)
+
+#### Tenant Sizing Model (Normal vs Enterprise)
+- [x] Tenant sizing column (`zoned` vs `dedicated`) in `central_platform.tenants`
+- [x] Auto-upgrade trigger on tier='enterprise' queues `provision_dedicated` job
+- [x] Rust `tenant-provisioner` service: pg_dump → CREATE DATABASE → restore → migrate → create K8s namespace
+- [x] `TenantConnectionResolver` (.NET) with 3-tier lookup (connection map → DNS → fallback)
+- [x] K8s tenant-template/ overlay for enterprise namespaces with NetworkPolicy + ResourceQuota
+
+#### Citus Sharding
+- [x] Auto-detect at 50TB / 1M users via `tenant_shard_config` + `evaluate_sharding_thresholds()` + alerts
+- [x] Shard key `tenant_id` for deterministic routing
+- [x] Citus extension (PG equivalent of Vitess) for sharding + query routing
+- [x] Online shard rebalancing (Citus native)
+- [x] Cross-shard queries via Citus router + reference tables
+
+### 5.4 Real-Time Notifications (pg_notify)
+
+- [ ] SignalR DataChanged handler covers: identity_providers, appointments, countries, regions, reference_config, backup_history, icon_defaults, sd_technicians, sd_groups, sd_teams
+- [ ] Panel loaded flags reset on DataChanged
+- [ ] Toast notifications shown for multi-user changes
+- [ ] SignalR DataChanged handlers for 13 task-related tables
+- [ ] `broadcast_record_change` trigger on 7 CRM tables publishes pg_notify events consumed by Elsa dispatcher
+
+### 5.5 TimescaleDB Hypertables + Citus Sharding
+
+- [x] TimescaleDB on audit_log, activity_feed, auth_events, team_activity, tenant_usage_metrics
+- [x] Continuous aggregates: tenant_usage_hourly, auth_events_daily, activity_feed_hourly
+- [x] Compression with tenant_id segment + 14/30/7-day policies (70% savings)
+- [x] Logical replication via `wal_level=logical` + `central_replication_data` publication
+- [x] Citus for horizontal scaling on high-cardinality tenants
+
+### 5.6 Admin Models + First-Time Setup
+
+- [ ] ReferenceConfig, ContainerInfo, MigrationRecord, BackupRecord, GridSettings, Location, Appointment — `AdminModelsTests` (20 tests) + `ReferenceConfigTests` (10 tests) + `MigrationRecordTests` (5 tests)
+- [ ] ContainerInfo StateColor, IsRunning, PropertyChanged — `ContainerInfoTests` (3 tests)
+- [ ] BackupRecord FileSizeDisplay, StatusColor — `BackupRecordTests` (2 tests)
+- [ ] Location models PropertyChanged — `LocationModelTests` (4 tests)
+- [ ] Appointment models defaults + PropertyChanged — `AppointmentModelTests` (4 tests)
+- [ ] Start pod: podman play kube infra/pod.yaml
+- [ ] Apply migrations: ./db/setup.sh or auto-apply on app startup
+- [ ] Default admin: admin/admin (System user, cannot be deleted)
+- [ ] Default roles: Admin (100), Operator (50), Viewer (10)
+- [ ] Default lookups: status, device_type, building
+- [ ] Default notification preferences seeded for admin user
+
+---
+
+## 6. API Server (Central.Api)
+
+### 6.1 REST Endpoints
+
+All endpoints return RFC 7807 problem+json on errors. All write endpoints require
+`RequireAuthorization()` (JWT Bearer) unless explicitly marked anonymous.
+
+#### ActivityEndpoints (`/api/activity`, auth required)
+- [ ] GET /api/activity/global — combined audit log + auth events (admin only)
+- [ ] GET /api/activity/me — current user's personal activity timeline
+- [ ] Activity feed combines `audit_log` + `auth_events`
+- [ ] Filterable by entity type + date range
+
+#### AdminEndpoints (`/api/admin`, auth required)
+- [ ] GET /api/admin/users returns user list
+- [ ] PUT /api/admin/users upserts a user (Argon2id hash, user_type, active flag)
+- [ ] DELETE /api/admin/users/{id} soft-deletes user (not protected system users)
+- [ ] POST /api/admin/users/{id}/reset-password invalidates and re-hashes
+- [ ] GET/PUT/DELETE /api/admin/roles CRUD
+- [ ] GET /api/admin/lookups + PUT/DELETE for lookup_values
+- [ ] Permissions CRUD (role_permission_grants)
+
+#### ApiKeyEndpoints (`/api/keys`, auth required, `admin:users`)
+- [ ] GET /api/keys — list all API keys
+- [ ] POST /api/keys/generate — create key, returns raw key ONCE (never again)
+- [ ] POST /api/keys/{id}/revoke — soft-disable key (is_active=false)
+- [ ] DELETE /api/keys/{id} — hard-delete key
+- [ ] Audit log entry on create/revoke/delete
+
+#### AppointmentEndpoints (`/api/appointments`, auth required)
+- [ ] GET /api/appointments with date range filter + resources
+- [ ] POST /api/appointments creates appointment + resources in transaction
+- [ ] PUT /api/appointments/{id}, DELETE /api/appointments/{id}
+- [ ] Links to tasks (task_id) and SD tickets (ticket_id)
+
+#### AuditEndpoints (`/api/audit`, auth required)
+- [ ] GET /api/audit returns audit entries
+- [ ] Filterable by entityType and username
+- [ ] Cursor pagination
+- [ ] Admin-only access (admin:users permission)
+
+#### BackupEndpoints (`/api/backup`, auth required, `admin:backup`)
+- [ ] POST /api/backup/run — trigger pg_dump backup
+- [ ] GET /api/backup/history — backup history list
+- [ ] GET /api/backup/tables — list all DB tables
+- [ ] GET /api/backup/migrations — migration history
+- [ ] GET /api/backup/purge-counts — soft-deleted record counts
+- [ ] DELETE /api/backup/purge/{table} — purge soft-deleted records
+
+#### BgpEndpoints (`/api/bgp`, auth required)
+- [ ] GET /api/bgp returns BGP config list
+- [ ] POST /api/bgp upsert, DELETE /api/bgp/{id}
+- [ ] GET /api/bgp/{id}/neighbors, GET /api/bgp/{id}/networks
+- [ ] Pagination + filter by switch_id
+
+#### BillingEndpoints (`/api/billing`, auth required)
+- [ ] /api/billing/addons CRUD (tenant add-ons)
+- [ ] /api/billing/discounts apply discount codes
+- [ ] /api/billing/payment-methods (card/bank/po)
+- [ ] /api/billing/quotas — usage quotas and overage actions
+- [ ] /api/billing/proration — proration events on plan change
+- [ ] /api/billing/invoices — invoice list + detail
+
+#### ClientLogEndpoints (`/api/log/client`, anonymous)
+- [ ] POST /api/log/client accepts client-side log entries
+- [ ] Sanitises/rate-limits incoming entries
+- [ ] Writes to app_log table
+
+#### CompanyEndpoints (`/api/companies`, auth required)
+- [ ] GET /api/companies (list + search + filter)
+- [ ] POST /api/companies, PUT /api/companies/{id}, DELETE /api/companies/{id}
+- [ ] GET /api/companies/{id}/contacts — sub-route
+- [ ] GET /api/companies/{id}/addresses — sub-route
+- [ ] Hierarchy: parent_id for company tree
+
+#### ContactEndpoints (`/api/contacts`, auth required)
+- [ ] GET/POST/PUT/DELETE CRUD
+- [ ] GET /api/contacts/{id}/communications (email/phone/SMS log)
+- [ ] Auto-link contact.email to sd_requesters.contact_id
+
+#### AddressEndpoints (`/api/addresses`, auth required)
+- [ ] Polymorphic by entity_type (company/contact/tenant/user)
+- [ ] Types: billing/shipping/hq/branch/site/home/work
+- [ ] is_primary toggle, is_verified flag
+- [ ] address_history audit trigger on update
+
+#### ProfileEndpoints (`/api/profile`, auth required)
+- [ ] GET /api/profile — current user's profile
+- [ ] PUT /api/profile — update avatar/contact/preferences
+- [ ] GET /api/profile/preferences, PUT /api/profile/preferences
+
+#### TeamEndpoints (`/api/teams`, auth required)
+- [ ] /api/teams/departments CRUD
+- [ ] /api/teams (hierarchy: parent_id)
+- [ ] /api/teams/{id}/members (team_members table)
+- [ ] team_resources for team-specific content
+- [ ] team_permissions for team-level RBAC
+
+#### GroupEndpoints (`/api/groups`, auth required)
+- [ ] GET/POST/PUT/DELETE CRUD
+- [ ] /api/groups/{id}/members manage membership
+- [ ] /api/groups/{id}/permissions grant/deny permissions
+- [ ] /api/groups/{id}/rules (dynamic group rules, JSONLogic)
+- [ ] /api/groups/{id}/resources — resource access
+
+#### DeviceEndpoints (`/api/devices`, auth required)
+- [ ] GET /api/devices returns device list with pagination
+- [ ] POST /api/devices creates device
+- [ ] PUT /api/devices/{id} updates device
+- [ ] DELETE /api/devices/{id} deletes device
+- [ ] POST /api/devices/batch (bulk update/delete)
+- [ ] Cursor + offset pagination, filter, search, sort
+- [ ] Column whitelist validation on sort/filter
+
+#### SwitchEndpoints (`/api/switches`, auth required)
+- [ ] GET /api/switches returns switch list
+- [ ] POST/PUT/DELETE CRUD with credentials (encrypted)
+- [ ] Filter by building/site, search by hostname
+- [ ] Pagination + sort
+
+#### LinkEndpoints (`/api/links`, auth required)
+- [ ] GET /api/links (P2P/B2B/FW)
+- [ ] POST/PUT/DELETE CRUD
+- [ ] Sub-type filtering (p2p/b2b/fw)
+- [ ] Validation: complete vs incomplete
+
+#### VlanEndpoints (`/api/vlans`, auth required)
+- [ ] GET /api/vlans returns VLAN list
+- [ ] POST/PUT/DELETE CRUD
+- [ ] Filter by site, block status
+
+#### DashboardEndpoints (`/api/dashboard`, auth required)
+- [ ] GET /api/dashboard returns full DashboardData
+- [ ] All counts query from live DB tables
+- [ ] Activity feed combines auth_events + sync_log (last 20)
+
+#### EmailEndpoints (`/api/email`, tracking endpoints anonymous)
+- [ ] /api/email/accounts CRUD (SMTP/IMAP/Exchange/Gmail w/OAuth tokens)
+- [ ] /api/email/templates CRUD (merge field extraction)
+- [ ] /api/email/messages — send + list
+- [ ] GET /api/email/track/open/{id} — 1x1 tracking pixel (anonymous)
+- [ ] GET /api/email/track/click/{id} — click redirect (anonymous)
+- [ ] Auto-link inbound to CRM via linked_account_id/contact_id/deal_id/lead_id
+
+#### EnterpriseEndpoints (invitations + role templates, auth required)
+- [ ] POST /api/invitations create, GET /api/invitations list
+- [ ] POST /api/invitations/{token}/accept
+- [ ] DELETE /api/invitations/{id} cancel
+- [ ] /api/role-templates (6 seeded templates CRUD)
+
+#### FileEndpoints (`/api/files`, auth required)
+- [ ] POST /api/files/upload (multipart, MD5 verification, inline vs filesystem routing)
+- [ ] GET /api/files/{id}/download (latest version, correct Content-Type)
+- [ ] GET /api/files/{id}/versions (version history)
+- [ ] GET /api/files?entity_type=X&entity_id=Y (list files for entity)
+- [ ] DELETE /api/files/{id} (soft delete)
+
+#### GlobalAdminEndpoints (`/api/global-admin`, GlobalAdmin policy)
+- [ ] /api/global-admin/tenants CRUD (list/create/update/deactivate)
+- [ ] /api/global-admin/subscriptions — platform subscription view
+- [ ] /api/global-admin/users — cross-tenant global users
+- [ ] /api/global-admin/licenses — per-tenant module licensing
+- [ ] Audit log entry on every write (central_platform.global_admin_audit_log)
+
+#### HealthEndpoints (`/api/health`, anonymous)
+- [ ] GET /api/health — returns status, timestamp, uptime (no auth)
+- [ ] GET /api/health/detailed — DB latency, table counts, system info, sync engine, mediator diagnostics
+- [ ] GET /api/health/ready — checks DB connectivity, returns 503 if unavailable
+- [ ] GET /api/health/live — always returns 200 (process alive check)
+- [ ] GET /api/health/metrics — Prometheus metrics endpoint
+
+#### IdentityProviderEndpoints (`/api/identity`, auth required)
+- [ ] /api/identity/providers — CRUD for identity providers
+- [ ] /api/identity/domain-mappings — email domain to provider routing
+- [ ] /api/identity/claim-mappings — claims to role mapping rules
+- [ ] /api/identity/auth-events — read-only auth audit trail
+
+#### ImportEndpoints (`/api/import`, auth required, `admin:users`)
+- [ ] POST /api/import — accepts { target_table, upsert_key, records[] }
+- [ ] Returns { imported, failed, target_table }
+- [ ] GET /api/import/tables — list available target tables
+- [ ] Table name validated against pg_tables whitelist
+
+#### JobEndpoints (`/api/jobs`, auth required, `admin:settings`)
+- [ ] GET /api/jobs — list job schedules
+- [ ] PUT /api/jobs/{id} — enable/disable/change interval/cron
+- [ ] POST /api/jobs/{id}/run — trigger immediate execution
+- [ ] GET /api/jobs/history — past executions
+- [ ] Job types: ping_scan, config_backup, bgp_sync, db_backup
+
+#### LocationEndpoints (`/api/locations`, auth required)
+- [ ] /api/locations/countries — CRUD
+- [ ] /api/locations/regions — CRUD with country filter
+- [ ] /api/locations/references — reference config list
+- [ ] /api/locations/references/next/{type} — atomic next reference number
+- [ ] /api/locations/postcodes — search by country
+
+#### NotificationEndpoints (`/api/notifications`, auth required)
+- [ ] GET /api/notifications/preferences — current user's prefs
+- [ ] PUT /api/notifications/preferences — update event type channel/enabled
+- [ ] GET /api/notifications/sessions — all active sessions (admin)
+- [ ] DELETE /api/notifications/sessions/{id} — force end session
+
+#### PresenceEndpoints (`/api/presence`, auth required)
+- [ ] POST /api/presence/join — begin editing an entity
+- [ ] POST /api/presence/leave — end editing
+- [ ] GET /api/presence/editors/{entityType}/{entityId} — list active editors
+- [ ] POST /api/presence/disconnect-all — admin disconnect
+- [ ] SignalR-backed live presence
+
+#### ProjectEndpoints (`/api/projects`, auth required)
+- [ ] GET /api/projects returns all task projects
+- [ ] POST /api/projects creates new project, DELETE /api/projects/{id}
+- [ ] GET /api/projects/portfolios / POST / PUT / DELETE
+- [ ] GET /api/projects/programmes / POST / DELETE
+- [ ] GET /api/projects/{id}/sprints, POST, DELETE /api/projects/{id}/sprints/{sprintId}
+- [ ] GET /api/projects/{id}/releases, POST
+
+#### RegistrationEndpoints (`/api/register`, anonymous)
+- [ ] POST /api/register/register — self-service registration
+- [ ] POST /api/register/verify-email — email verification
+- [ ] GET /api/register/check-slug/{slug} — slug availability
+- [ ] GET /api/register/subscription/plans — list plans
+- [ ] GET /api/register/modules — module license status
+- [ ] POST /api/register/modules/{code}/activate — activate module
+- [ ] POST /api/register/license/issue — issue signed license key
+
+#### SearchEndpoints (`/api/search`, auth required)
+- [ ] GET /api/search?q=term — searches across devices, switches, users, SD tickets, tasks
+- [ ] Returns unified results with EntityType, EntityId, Title, Subtitle, Badge
+- [ ] Case-insensitive ILIKE search
+- [ ] Minimum 2 character query, configurable limit
+
+#### SecurityPolicyEndpoints (`/api/security/policies`, auth required, admin)
+- [ ] CRUD for ABAC row/field policies (EntityType, PolicyType, Effect, Conditions, Priority)
+- [ ] GET evaluates policies for a given user + entity
+- [ ] IpRulesEndpoints (`/api/security/ip-rules`) — allowlist/denylist CIDRs
+- [ ] SocialProviderEndpoints (`/api/security/social-providers`) — Google/Microsoft/GitHub
+- [ ] UserKeyEndpoints (`/api/user-keys`) — SSH public keys with fingerprint
+
+#### SettingsEndpoints (`/api/settings`, auth required)
+- [ ] GET /api/settings/export — exports current user's settings as JSON
+- [ ] GET/PUT individual setting keys
+
+#### SshEndpoints (`/api/ssh`, auth required, `switches:ssh`)
+- [ ] POST /api/ssh/{id}/ping pings switch
+- [ ] POST /api/ssh/{id}/download-config downloads config
+- [ ] POST /api/ssh/{id}/sync-bgp syncs BGP
+- [ ] POST /api/ssh/ping-all batch pings
+- [ ] SignalR SyncProgress streaming during SSH operations
+- [ ] SSH-specific rate limiting (separate bucket)
+
+#### StatusEndpoints (`/api/status`, auth required)
+- [ ] GET /api/status — complete platform overview
+- [ ] Includes DB / API / SignalR / sync engine / jobs status
+
+#### VersionEndpoints (`/api/version`, anonymous)
+- [ ] GET /api/version — product name, version, build date, runtime, OS, architecture, endpoint list
+
+#### UpdateEndpoints (`/api/updates`, tagged Updates)
+- [ ] GET /api/updates/check — returns update info if newer version exists
+- [ ] POST /api/updates/publish — publish new version
+- [ ] GET /api/updates/versions — list all published versions
+- [ ] POST /api/updates/report — client reports update result
+
+#### SyncEndpoints (`/api/sync`, auth required, `admin:settings`)
+- [ ] GET /api/sync/configs — list all sync configurations
+- [ ] PUT /api/sync/configs — create/update sync config
+- [ ] GET /api/sync/configs/{id}/entity-maps
+- [ ] GET /api/sync/configs/{id}/log
+- [ ] POST /api/sync/configs/{id}/run — trigger sync execution
+- [ ] GET /api/sync/agent-types — list registered agent types
+- [ ] GET /api/sync/converter-types — list registered converter types
+
+#### TaskEndpoints (`/api/tasks`, auth required)
+- [ ] GET /api/tasks returns all 45 fields with project/sprint/committed joins
+- [ ] GET /api/tasks?project_id=N filters by project
+- [ ] POST /api/tasks accepts all Phase 1 fields
+- [ ] PUT /api/tasks/{id} updates all Phase 1 fields
+- [ ] POST /api/tasks/{id}/commit — commit task to sprint
+- [ ] DELETE /api/tasks/{id}/commit — uncommit from sprint
+- [ ] GET /api/tasks/{id}/links, POST /api/tasks/{id}/links
+- [ ] GET /api/tasks/{id}/dependencies — get Gantt dependencies
+- [ ] GET /api/tasks/{id}/time — time entries for a task
+- [ ] GET/POST /api/tasks/{id}/comments
+- [ ] DELETE /api/tasks/{id}
+
+#### TenantProvisioningEndpoints (`/api/global-admin`, GlobalAdmin policy)
+- [ ] GET /api/global-admin/tenants/{id}/sizing (sizing + recent provisioning jobs)
+- [ ] POST /api/global-admin/tenants/{id}/provision-dedicated — queue provision job
+- [ ] POST /api/global-admin/tenants/{id}/decommission-dedicated — queue decommission job
+- [ ] GET /api/global-admin/provisioning-jobs — platform-wide job queue
+
+#### ValidationEndpoints (`/api/validation`, auth required)
+- [ ] POST /api/validation/validate/{entityType} — validates JSON against registered rules
+- [ ] Returns { isValid, errors[], errorSummary }
+
+#### WebhookEndpoints (`/api/webhooks`)
+- [ ] POST /api/webhooks/{source} receives JSON payload — anonymous, HMAC validated
+- [ ] Payload stored in webhook_log table
+- [ ] Invalid JSON wrapped in {"raw": "..."} object
+- [ ] SignalR "WebhookReceived" event broadcast
+- [ ] Auto-marks matching sync_config as 'pending'
+- [ ] GET /api/webhooks — list recent webhooks (auth required)
+- [ ] GET /api/webhooks/{id}/payload — retrieve full payload (auth required)
+- [ ] Subscription management: /api/webhooks/event-types + /subscriptions + /deliveries
+
+#### CrmEndpoints (`/api/crm/*`, auth required)
+- [ ] /api/crm/accounts CRUD with owner/rating/stage/tags
+- [ ] /api/crm/deals CRUD + pipeline stage transitions + /pipeline summary
+- [ ] /api/crm/leads CRUD + scoring + /convert to account + contact + deal (transactional)
+- [ ] /api/crm/activities unified timeline (call/email/meeting/note/task)
+- [ ] /api/crm product + quote sub-routes (products, price books, quotes, quote_items)
+
+#### CrmDashboardEndpoints (`/api/crm/dashboard`, auth required)
+- [ ] GET /api/crm/dashboard/revenue
+- [ ] GET /api/crm/dashboard/activity
+- [ ] GET /api/crm/dashboard/leads
+- [ ] GET /api/crm/dashboard/accounts/health
+- [ ] GET /api/crm/dashboard/summary (KPI cards)
+- [ ] POST /api/crm/dashboard/refresh (refresh_crm_dashboards())
+
+#### CrmExpansionEndpoints (`/api/crm/*`, auth required)
+- [ ] /api/crm/campaigns + members + costs + influence + refresh-influence
+- [ ] /api/crm/marketing/segments (static + dynamic)
+- [ ] /api/crm/marketing/sequences + /enroll
+- [ ] GET /api/crm/marketing/landing-pages/{slug} (public)
+- [ ] POST /api/crm/marketing/forms/{slug}/submit (public)
+- [ ] /api/crm/salesops/territories + members + rules
+- [ ] /api/crm/salesops/quotas
+- [ ] /api/crm/salesops/commission-plans + /commission-payouts
+- [ ] /api/crm/salesops/deals/{id}/splits (100% validation trigger)
+- [ ] /api/crm/salesops/accounts/{id}/team + /plan
+- [ ] /api/crm/salesops/pipeline-health + /deal-insights
+- [ ] /api/crm/cpq/bundles + /pricing-rules + /discount-matrix
+- [ ] /api/approvals (generic approval engine)
+- [ ] /api/crm/contracts + /renewals + /clauses + /{id}/milestones + /{id}/sign
+- [ ] /api/crm/subscriptions + /mrr-dashboard + /{id}/cancel + /{id}/events
+- [ ] /api/crm/revenue/schedules + /entries + /schedules/{id}/generate-entries
+- [ ] /api/crm/orders + /{id}/lines
+
+#### Stage5Endpoints (portals + platform + commerce)
+- [ ] /api/portal/users + /magic-link (anonymous auth, 30-min expiry)
+- [ ] /api/portal/deal-registrations
+- [ ] /api/portal/kb/articles (public read + authenticated write)
+- [ ] /api/portal/kb/categories
+- [ ] /api/portal/community/threads + /community/threads/{id}/posts (public reads)
+- [ ] /api/rules/validation (JSONLogic validation rules)
+- [ ] /api/rules/workflow (Elsa-integrated workflow rules)
+- [ ] /api/rules/execution-log (audit debug trail)
+- [ ] /api/custom-objects/entities + /fields + /records/{entity} + /permissions (field-level security)
+- [ ] /api/commerce/import (import wizard with dedup strategies, dry_run)
+- [ ] /api/commerce/cart + /cart/{id}/checkout (cart to order transaction)
+- [ ] /api/commerce/payments (Stripe-compatible)
+
+#### AiEndpoints (AI provider + assistant + insights)
+- [ ] /api/global-admin/ai/providers — platform providers (8 seeded)
+- [ ] /api/global-admin/ai/models — 9 seeded models
+- [ ] /api/global-admin/ai/features — feature catalog
+- [ ] /api/ai/tenant/providers — tenant BYOK (AES-256 encrypted api_key_enc)
+- [ ] /api/ai/tenant/providers/{id}/test — round-trip call
+- [ ] /api/ai/tenant/features — per-feature provider mapping
+- [ ] /api/ai/tenant/resolve/{featureCode} — tenant to platform to none
+- [ ] /api/ai/tenant/usage — aggregated usage (auto-aggregation trigger)
+- [ ] /api/ai/assistant/conversations + /messages + /templates + /tools
+- [ ] /api/ai/scores?entity=lead/deal/account
+- [ ] /api/ai/ml-models + /{id}/train
+- [ ] /api/ai/next-actions
+- [ ] /api/ai/duplicates + /rules + /merge
+- [ ] /api/ai/enrichment/providers + /jobs
+- [ ] /api/ai/churn-risks, /api/ai/account-ltv
+- [ ] /api/ai/calls (upload + transcript + sentiment)
+
+#### Helpers
+- [ ] PaginationHelpers — cursor + offset pagination
+- [ ] ProblemDetails — RFC 7807 formatter
+- [ ] EndpointHelpers — shared validation + auth helpers
+
+### 6.2 JWT Authentication + Multi-Issuer
+
+- [ ] POST /api/auth/login returns JWT token
+- [ ] Bearer token required on all endpoints (except anonymous)
+- [ ] 25 permission claims in token
+- [ ] 401 on expired/invalid token
+- [ ] Auto token refresh on 401
+- [ ] Multi-issuer: Central + secure_auth auth-service tokens both accepted
+- [ ] CENTRAL_JWT_SECRET required env var (no default)
+- [ ] Token includes tenant_slug for tenant resolution
+
+### 6.3 SignalR (NotificationHub)
+
+- [ ] NotificationHub connects on startup
+- [ ] DataChanged event fires on DB changes (pg_notify)
+- [ ] PingResult event fires on ping completion
+- [ ] SyncProgress event streams during SSH operations
+- [ ] WPF grids auto-refresh on SignalR events
+- [ ] SendNotification — eventType, title, message, severity
+- [ ] SendWebhookReceived — source, webhookId
+- [ ] SendAuditEvent — action, entityType, entityName, username
+- [ ] SendSyncComplete — configName, status, recordsRead, recordsFailed
+- [ ] SendSessionEvent — eventType, username, authMethod
+- [ ] All events broadcast to all connected clients
+- [ ] NotificationHub: OnConnectedAsync joins tenant group
+- [ ] NotificationHub: OnDisconnectedAsync leaves tenant group
+- [ ] All Send* methods broadcast to tenant group (not Clients.All)
+
+### 6.4 Swagger / OpenAPI
+
+- [ ] /swagger loads OpenAPI UI
+- [ ] All endpoints documented
+- [ ] All endpoint groups have WithTags for organized Swagger UI
+- [ ] Swagger description updated for full platform scope
+- [ ] Swagger UI with security definition for Bearer JWT
+
+### 6.5 Rate Limiting
+
+- [ ] Per-user rate limiter: sliding window
+- [ ] RFC 6585 429 headers (Retry-After, X-RateLimit-Limit/Remaining/Reset)
+- [ ] Default: 200 requests per 60 seconds per IP
+- [ ] SSH-specific bucket (stricter, shared across endpoints)
+- [ ] Health checks, webhooks, and SignalR hubs excluded from rate limiting
+- [ ] Stale window cleanup when map exceeds 10,000 entries
+
+### 6.6 RFC 7807 Problem Details
+
+- [ ] All API error responses use standard problem+json ProblemDetails format
+- [ ] Fields: type, title, status, detail, instance
+- [ ] Correlation ID included on every response
+
+### 6.7 Correlation IDs + Serilog JSON Logging
+
+- [ ] CorrelationContext.AsyncLocal<string> for request correlation ID
+- [ ] StructuredLogEntry with ToCef() for SIEM integration
+- [ ] Level-to-severity mapping
+- [ ] Serilog writes to console + rolling file + Seq sink
+- [ ] All requests logged: method, path, status code, duration, user
+- [ ] Slow requests (>1000ms) logged at Warning level with [SLOW] tag
+- [ ] Error responses (4xx/5xx) logged at Warning level
+- [ ] Anonymous requests show "anonymous" as user
+
+### 6.8 Prometheus Metrics
+
+- [ ] GET /api/health/metrics returns Prometheus text format
+- [ ] Request counts per endpoint
+- [ ] Request latency histograms
+- [ ] Active SignalR connections gauge
+- [ ] GC stats for memory / pause analysis
+- [ ] Grafana dashboards read from this endpoint
+
+### 6.9 Webhook HMAC Signature Validation
+
+- [ ] Inbound webhooks validated via X-Webhook-Signature header
+- [ ] HMAC-SHA256 computed over raw body using CENTRAL_WEBHOOK_SECRET
+- [ ] Constant-time comparison (prevents timing attacks)
+- [ ] Invalid signature returns 401
+
+### 6.10 Column Whitelist (SQL Injection Prevention)
+
+- [ ] Sort/filter/search parameters validated against allowed column names
+- [ ] Unknown column returns 400 (not silently ignored)
+- [ ] Per-entity whitelist maintained with schema changes
+
+### 6.11 Middleware Pipeline Order
+
+- [ ] SecurityHeaders > RequestLogging > RateLimit > ApiKeyAuth > Authentication > Authorization > TenantResolution > ModuleLicense
+- [ ] TenantResolutionMiddleware extracts tenant_slug from JWT, falls back to X-Tenant header
+- [ ] Defaults to "default" tenant for backward compatibility
+- [ ] ModuleLicenseMiddleware maps API paths to module codes
+- [ ] Enterprise tier bypasses module license checks
+
+### API Client (Central.Api.Client)
+
+- [ ] SearchAsync, GetDashboardAsync, GetStatusAsync
+- [ ] GetActivityAsync / GetMyActivityAsync
+- [ ] GetSyncConfigsAsync / RunSyncAsync
+- [ ] GetAuditLogAsync, GetIdentityProvidersAsync
+- [ ] ImportAsync, HealthCheckAsync
+
+---
+
+## 7. Modules
+
+### 7.1 IPAM (Devices)
 
 #### Grid
 - [ ] DeviceRecord grid loads all devices from DB
@@ -802,12 +1397,13 @@ have the test class and method appended after a dash.
 - [ ] ServerAS defaults (Active status, empty building/ASN) — `ServerASTests.Defaults_AreCorrect`
 - [ ] ServerAS PropertyChanged fires on all fields (Id, Building, ServerAsn, Status) — `ServerASTests.PropertyChanged_Id_Fires`, `ServerASTests.PropertyChanged_Building_Fires`, `ServerASTests.PropertyChanged_ServerAsn_Fires`, `ServerASTests.PropertyChanged_Status_Fires`, `ServerASTests.AllProperties_FirePropertyChanged`
 - [ ] ServerAS status can be changed — `ServerASTests.Status_CanBeChanged`
+- [ ] AsnDefinition DisplayText with/without description — `AsnDefinitionTests` (6 tests)
 
 #### Master-Detail
 - [ ] Row expansion shows detail data — `MasterDeviceTests.Defaults`, `MasterDeviceTests.PropertyChanged_SelectedFields`
 - [ ] Detail grid has TotalSummary
 
-### E2. Switches
+### 7.2 Switches
 
 #### Grid
 - [ ] SwitchRecord grid loads all switches
@@ -871,11 +1467,16 @@ have the test class and method appended after a dash.
 - [ ] SwitchVersion CapturedAt is set to now — `SwitchVersionTests.Parse_CapturedAt_IsSetToNow`
 - [ ] SwitchVersion handles Windows line endings — `SwitchVersionTests.Parse_WindowsLineEndings_Works`
 
+#### Config Compare / Version History
+- [ ] Running config version history grid per switch
+- [ ] Side-by-side diff panel (see Section 4.8)
+- [ ] Compare button on Details > Config tab
+
 #### Context Menu
 - [ ] All standard context menu items present
 - [ ] Go to Device navigates to IPAM panel
 
-### E3. Links (P2P, B2B, FW)
+### 7.3 Links (P2P, B2B, FW)
 
 #### P2P Links
 - [ ] Grid loads point-to-point links
@@ -928,15 +1529,16 @@ have the test class and method appended after a dash.
 - [ ] BuilderItem PropertyChanged IsEnabled — `BuilderSectionTests.BuilderItem_PropertyChanged_IsEnabled`
 - [ ] BuilderItem PropertyChanged DisplayText — `BuilderSectionTests.BuilderItem_PropertyChanged_DisplayText`
 
-### E4. Routing (BGP)
+### 7.4 Routing (BGP)
 
 - [ ] Top grid shows BGP config per switch (AS, router-id, settings) — `BgpRecordTests.BgpRecord_Defaults`
 - [ ] Master-detail: bottom tabs show Neighbors + Advertised Networks — `BgpRecordTests.BgpNeighborRecord_Defaults`, `BgpRecordTests.BgpNetworkRecord_Defaults`
 - [ ] SSH sync downloads live BGP config
 - [ ] fast_external_failover, bestpath_multipath_relax columns editable — `BgpRecordTests.BgpRecord_PropertyChanged_AllFields`
 - [ ] last_synced timestamp updates after sync
+- [ ] BGP diagram panel renders topology graphically
 
-### E5. VLANs
+### 7.5 VLANs
 
 - [ ] VLAN grid loads all VLANs
 - [ ] Standard grid features (summary, filter, search, export)
@@ -951,10 +1553,9 @@ have the test class and method appended after a dash.
 - [ ] VLAN PropertyChanged cascades — `VlanEntryTests.Site_NotifiesSiteNetwork_SiteGateway_SitePrefix`, `VlanEntryExtendedTests.PropertyChanged_BlockLocked_NotifiesBlockLockedText_RowColor`, `VlanEntryExtendedTests.PropertyChanged_IsBlocked_NotifiesRowColor`, `VlanEntryExtendedTests.PropertyChanged_IsDefault_NotifiesRowColor`, `VlanEntryExtendedTests.PropertyChanged_Site_NotifiesSiteNetwork_SiteGateway_SitePrefix`, `VlanEntryExtendedTests.PropertyChanged_Subnet_NotifiesRowColor`
 - [ ] DetailSites default empty — `VlanEntryExtendedTests.DetailSites_DefaultEmpty`
 
-### E6. Tasks
+### 7.6 Tasks / Projects
 
-#### E6.1. Task Tree Panel
-
+#### Task Tree Panel
 - [ ] Task grid loads with tree hierarchy
 - [ ] Tree nodes expand/collapse
 - [ ] CRUD operations work
@@ -968,9 +1569,7 @@ have the test class and method appended after a dash.
 - [ ] Sprint name column (read-only)
 - [ ] Category dropdown (Feature/Enhancement/TechDebt/Bug/Ops)
 - [ ] Risk dropdown (None/Low/Medium/High/Critical)
-- [ ] Start Date column with DX DateEdit
-- [ ] Finish Date column with DX DateEdit
-- [ ] Due Date column with DX DateEdit
+- [ ] Start Date / Finish Date / Due Date columns with DX DateEdit
 - [ ] Color stripe column (4px colored bar from task.color)
 - [ ] Milestone added to TaskType dropdown
 - [ ] TotalSummary: task count, sum of points, sum of remaining hours
@@ -983,8 +1582,7 @@ have the test class and method appended after a dash.
 - [ ] New sub-tasks inherit parent's project ID
 - [ ] Tasks tab appears as permanent top-level ribbon tab (not context tab)
 
-#### E6.2. Task Hierarchy & Schema (Phase 1)
-
+#### Task Hierarchy & Schema
 - [ ] Portfolio model with INotifyPropertyChanged — `ProjectModelsTests.Portfolio_Defaults`, `ProjectModelsTests.Portfolio_PropertyChanged_Fires`
 - [ ] Programme model with INotifyPropertyChanged — `ProjectModelsTests.Programme_Defaults`, `ProjectModelsTests.Programme_PropertyChanged_Fires`
 - [ ] TaskProject model with INotifyPropertyChanged + DisplayName computed — `ProjectModelsTests.TaskProject_Defaults`, `ProjectModelsTests.TaskProject_DisplayName_Normal`, `ProjectModelsTests.TaskProject_DisplayName_Archived`, `ProjectModelsTests.TaskProject_PropertyChanged_Fires`
@@ -996,8 +1594,7 @@ have the test class and method appended after a dash.
 - [ ] TaskItem expanded: 23 new fields (ProjectId, SprintId, Wbs, IsEpic, etc.)
 - [ ] TaskItem computed: RiskColor, SeverityColor, StartDateDisplay, FinishDateDisplay, PointsDisplay — `TaskItemEdgeCaseTests` (29 tests)
 
-#### E6.3. Task Repository
-
+#### Task Repository
 - [ ] GetPortfoliosAsync, UpsertPortfolioAsync, DeletePortfolioAsync
 - [ ] GetProgrammesAsync, UpsertProgrammeAsync, DeleteProgrammeAsync
 - [ ] GetTaskProjectsAsync, UpsertTaskProjectAsync, DeleteTaskProjectAsync
@@ -1010,8 +1607,7 @@ have the test class and method appended after a dash.
 - [ ] UpsertTaskAsync persists all 23 new fields on insert and update
 - [ ] DeleteTaskAsync(id) executes DELETE FROM tasks
 
-#### E6.4. Product Backlog (Phase 2)
-
+#### Product Backlog
 - [ ] TaskBacklogPanel opens from ribbon Backlog toggle
 - [ ] Project selector dropdown filters backlog items
 - [ ] Sprint selector dropdown for commit target
@@ -1026,8 +1622,7 @@ have the test class and method appended after a dash.
 - [ ] Multi-select rows (MultiSelectMode="Row")
 - [ ] ValidateNode auto-saves on row commit
 
-#### E6.5. Sprint Planning (Phase 2)
-
+#### Sprint Planning
 - [ ] SprintPlanPanel opens from ribbon Sprint Plan toggle
 - [ ] Project selector loads sprints for project
 - [ ] Sprint selector filters grid to sprint items
@@ -1042,8 +1637,7 @@ have the test class and method appended after a dash.
 - [ ] SprintPriority column sorted ascending
 - [ ] TotalSummary: item count + sum points + sum remaining hours
 
-#### E6.6. Sprint Burndown (Phase 2)
-
+#### Sprint Burndown
 - [ ] SprintBurndownPanel opens from ribbon Burndown toggle
 - [ ] Sprint selector loads available sprints
 - [ ] Actual burndown line (blue, with markers)
@@ -1055,8 +1649,7 @@ have the test class and method appended after a dash.
 - [ ] Legend (top-right): Actual / Ideal
 - [ ] Velocity summary bar
 
-#### E6.7. Kanban Board (Phase 3)
-
+#### Kanban Board
 - [ ] KanbanBoardPanel opens from ribbon Kanban toggle
 - [ ] Project selector dropdown loads board for selected project
 - [ ] Horizontal scrolling column layout (260px per column)
@@ -1070,8 +1663,7 @@ have the test class and method appended after a dash.
 - [ ] Double-click card opens TaskDetailPanel
 - [ ] Dark theme styling
 
-#### E6.8. Gantt Chart (Phase 4)
-
+#### Gantt Chart
 - [ ] GanttPanel opens from ribbon "Gantt" toggle
 - [ ] Project selector loads tasks with start/finish dates
 - [ ] DX GanttControl with KeyFieldName=Id, ParentFieldName=ParentId
@@ -1087,8 +1679,7 @@ have the test class and method appended after a dash.
 - [ ] Auto-expand all nodes
 - [ ] Inline editing (start/finish dates, title, points)
 
-#### E6.9. QA & Bug Tracking (Phase 6)
-
+#### QA & Bug Tracking
 - [ ] QAPanel opens from ribbon "QA / Bugs" toggle
 - [ ] Project selector filters bugs by project
 - [ ] "+ New Bug" creates task with type=Bug, severity=Major, status=New
@@ -1102,8 +1693,7 @@ have the test class and method appended after a dash.
 - [ ] TotalSummary: bug count + sum of points
 - [ ] Multi-select rows for batch operations
 
-#### E6.10. QA Dashboard (Phase 6)
-
+#### QA Dashboard
 - [ ] QADashboardPanel opens from ribbon "QA Dashboard" toggle
 - [ ] Bugs by Severity chart (bar chart, red)
 - [ ] Bug Aging chart (bar chart, amber, 6 time buckets)
@@ -1111,8 +1701,7 @@ have the test class and method appended after a dash.
 - [ ] Open Bugs by Assignee chart (bar chart, blue, top 10)
 - [ ] 2x2 grid layout
 
-#### E6.11. Custom Columns (Phase 7)
-
+#### Custom Columns
 - [ ] Custom columns defined per project (Text/RichText/Number/Hours/DropList/Date/DateTime/People/Computed) — `TaskModelsTests.CustomColumn_GetDropListOptions_ParsesJson`, `TaskModelsTests.CustomColumn_GetAggregationType_ParsesJson`, `CustomColumnModelsTests.CustomColumn_Defaults`, `CustomColumnModelsTests.CustomColumn_PropertyChanged_Fires`
 - [ ] CustomColumn GetDropListOptions: empty/valid JSON/no key/invalid JSON — `CustomColumnModelsTests.GetDropListOptions_EmptyConfig_ReturnsEmpty`, `CustomColumnModelsTests.GetDropListOptions_ValidJson_ReturnsOptions`, `CustomColumnModelsTests.GetDropListOptions_NoOptionsKey_ReturnsEmpty`, `CustomColumnModelsTests.GetDropListOptions_InvalidJson_ReturnsEmpty`
 - [ ] CustomColumn GetAggregationType: empty/valid/no key/invalid — `CustomColumnModelsTests.GetAggregationType_EmptyConfig_ReturnsNull`, `CustomColumnModelsTests.GetAggregationType_ValidJson_ReturnsType`, `CustomColumnModelsTests.GetAggregationType_NoKey_ReturnsNull`, `CustomColumnModelsTests.GetAggregationType_InvalidJson_ReturnsNull`
@@ -1125,8 +1714,7 @@ have the test class and method appended after a dash.
 - [ ] Custom columns load when project changes
 - [ ] Custom values populated per task via CustomValues dictionary
 
-#### E6.12. Report Builder (Phase 8)
-
+#### Report Builder
 - [ ] ReportBuilderPanel opens from ribbon "Reports" toggle
 - [ ] Report selector dropdown loads saved reports — `ReportModelsTests.SavedReport_Defaults`, `ReportModelsTests.SavedReport_DisplayPath_NoFolder`, `ReportModelsTests.SavedReport_DisplayPath_WithFolder`, `ReportModelsTests.SavedReport_PropertyChanged_Fires`
 - [ ] ReportFilter defaults — `ReportModelsTests.ReportFilter_Defaults`
@@ -1139,17 +1727,15 @@ have the test class and method appended after a dash.
 - [ ] "Save Report" persists query as JSON
 - [ ] "Export CSV" exports result DataTable
 
-#### E6.13. Task Dashboard (Phase 8)
-
+#### Task Dashboard
 - [ ] TaskDashboardPanel opens from ribbon "Dashboard" toggle
-- [ ] Tasks by Status -- pie chart
-- [ ] Points by Type -- bar chart
-- [ ] Tasks Created (30 days) -- line chart
-- [ ] Sprint Velocity -- bar chart (last 10 closed sprints)
+- [ ] Tasks by Status — pie chart
+- [ ] Points by Type — bar chart
+- [ ] Tasks Created (30 days) — line chart
+- [ ] Sprint Velocity — bar chart (last 10 closed sprints)
 - [ ] 2x2 grid layout — `SprintAndPlanningTests.DashboardTile_Defaults`, `SprintAndPlanningTests.Dashboard_PropertyChanged`, `ReportModelsTests.Dashboard_Defaults`, `ReportModelsTests.Dashboard_PropertyChanged_Fires`, `ReportModelsTests.DashboardTile_Defaults`, `ReportModelsTests.DashboardTile_SetProperties`
 
-#### E6.14. Timesheet (Phase 9)
-
+#### Timesheet
 - [ ] TimesheetPanel opens from ribbon toggle
 - [ ] Week picker loads entries for Mon-Sun
 - [ ] Hours column (SpinEdit 0-24), Activity dropdown (5 types), Notes — `SprintAndPlanningTests.TimeEntry_PropertyChanged_Fires`, `TimeActivityModelsTests.TimeEntry_Defaults`, `TimeActivityModelsTests.TimeEntry_EntryDateDisplay`, `TimeActivityModelsTests.TimeEntry_PropertyChanged_Fires`
@@ -1157,45 +1743,39 @@ have the test class and method appended after a dash.
 - [ ] Total hours green display in toolbar
 - [ ] ValidateRow auto-saves
 
-#### E6.15. Activity Feed (Phase 9)
-
+#### Activity Feed
 - [ ] ActivityFeedPanel opens from ribbon toggle
 - [ ] Project selector + refresh
 - [ ] Card template: action icon, summary, user, time ago — `SprintAndPlanningTests.ActivityFeedItem_TimeAgo_JustNow`, `SprintAndPlanningTests.ActivityFeedItem_TimeAgo_Minutes`, `TimeActivityModelsTests.ActivityFeedItem_ActionIcon_Correct`, `TimeActivityModelsTests.ActivityFeedItem_TimeAgo_JustNow`, `TimeActivityModelsTests.ActivityFeedItem_TimeAgo_Minutes`, `TimeActivityModelsTests.ActivityFeedItem_TimeAgo_Hours`, `TimeActivityModelsTests.ActivityFeedItem_TimeAgo_Days`
 - [ ] TaskViewConfig defaults and PropertyChanged — `TimeActivityModelsTests.TaskViewConfig_Defaults`, `TimeActivityModelsTests.TaskViewConfig_PropertyChanged_Fires`
 - [ ] Auto-populated by PG trigger
 
-#### E6.16. My Tasks (Phase 10)
-
+#### My Tasks
 - [ ] Shows tasks assigned to current user across all projects
 - [ ] Group By: None/Project/Due/Priority/Status
 - [ ] Inline editing Status + WorkRemaining
 - [ ] Summary: count, points, remaining
 
-#### E6.17. Portfolio (Phase 10)
-
+#### Portfolio
 - [ ] Portfolio > Programme > Project hierarchy with roll-ups
 - [ ] Columns: Name, Level, Tasks, Points, Complete%, OpenBugs, ActiveSprints
 - [ ] BuildPortfolioTreeAsync aggregates from all data
 
-#### E6.18. Task Import (Phase 11)
-
+#### Task Import
 - [ ] TaskImportPanel opens from ribbon "Import" toggle
 - [ ] Step 1: Browse file, format auto-detect (.xlsx/.csv/.xml), project selector
 - [ ] Step 2: Column mapping grid with auto-detect, sample values
 - [ ] Step 3: Preview + Import with progress bar
 - [ ] "Update existing" checkbox matches by Title within project
 
-#### E6.19. Task File Parser
-
-- [ ] ParseFile routes by extension (.csv, .xml, .xlsx) -- `TaskFileParserTests` (10 tests)
+#### Task File Parser
+- [ ] ParseFile routes by extension (.csv, .xml, .xlsx) — `TaskFileParserTests` (10 tests)
 - [ ] CSV parser: header row + data rows
 - [ ] MS Project XML parser: XDocument, handles namespace
 - [ ] MS Project fields: Name, WBS, Start, Finish, Duration, PercentComplete, Priority, Milestone, PredecessorLink
 - [ ] Excel placeholder returns info message
 
-#### E6.20. Task Context Menus (all panels)
-
+#### Task Context Menus (all panels)
 - [ ] Task Tree: New Task, New Sub-Task, Delete Task, Export, Refresh
 - [ ] Backlog: Commit to Sprint, Uncommit, Export, Refresh
 - [ ] Sprint Plan: New Task in Sprint, Export, Refresh
@@ -1206,8 +1786,7 @@ have the test class and method appended after a dash.
 - [ ] Portfolio: Refresh
 - [ ] ExportTreeToClipboard helper: SelectAll + CopyToClipboard
 
-#### E6.21. Task Module Engine Compliance
-
+#### Task Module Engine Compliance
 - [ ] SignalR DataChanged handlers for 13 new table types
 - [ ] Task delete records UndoService.RecordRemove
 - [ ] Undo restores deleted task to collection at original index
@@ -1221,15 +1800,13 @@ have the test class and method appended after a dash.
 - [ ] All 15 task panels included in backstage close-all handler
 - [ ] Delete confirmation dialog with "will delete all sub-tasks" warning
 
-#### E6.22. Task Detail Panel
-
+#### Task Detail Panel
 - [ ] TaskDetailDocPanel wired in DockLayoutManager
 - [ ] Task tree CurrentItemChanged shows task in detail panel
 - [ ] Detail shows: status icon, title, type, priority, assigned, dates, hours, tags, description, comments
 
-#### E6.23. Task Models
-
-- [ ] TaskItem model tests -- `TaskModelsTests` (42 tests) + `TaskItemEdgeCaseTests` (29 tests) + `TaskItemTheoryTests` (22 tests)
+#### Task Models
+- [ ] TaskItem model tests — `TaskModelsTests` (42 tests) + `TaskItemEdgeCaseTests` (29 tests) + `TaskItemTheoryTests` (22 tests)
 - [ ] TaskItem StatusIcon/StatusColor exhaustive (Open/InProgress/Review/Done/Blocked/Cancelled/empty/Pending) — `TaskItemTheoryTests.StatusIcon_And_StatusColor`
 - [ ] TaskItem PriorityIcon/PriorityColor exhaustive (Critical/High/Medium/Low/None/empty/Urgent) — `TaskItemTheoryTests.PriorityIcon_And_PriorityColor`
 - [ ] TaskItem TypeIcon all types (Epic/Story/Task/Bug/SubTask/Milestone/Feature/empty) — `TaskItemTheoryTests.TypeIcon_AllTypes`
@@ -1242,13 +1819,12 @@ have the test class and method appended after a dash.
 - [ ] TaskItem PropertyChanged cascades (StartDate->StartDateDisplay, FinishDate->FinishDateDisplay) — `TaskItemTheoryTests.PropertyChanged_StartDate_NotifiesStartDateDisplay`, `TaskItemTheoryTests.PropertyChanged_FinishDate_NotifiesFinishDateDisplay`
 - [ ] TaskItem CustomValues default empty, can add — `TaskItemTheoryTests.CustomValues_DefaultEmpty`, `TaskItemTheoryTests.CustomValues_CanAdd`
 - [ ] TaskItem baseline dates default null — `TaskItemTheoryTests.BaselineDates_DefaultNull`
-- [ ] Sprint and planning model tests -- `SprintAndPlanningTests` (21 tests)
-- [ ] Task repository integration tests -- `TaskRepositoryIntegrationTests` (13 tests)
+- [ ] Sprint and planning model tests — `SprintAndPlanningTests` (21 tests)
+- [ ] Task repository integration tests — `TaskRepositoryIntegrationTests` (13 tests)
 
-### E7. Service Desk
+### 7.7 Service Desk
 
-#### E7.1. ManageEngine Sync
-
+#### ManageEngine Sync
 - [ ] Read (Sync) button pulls tickets from ManageEngine
 - [ ] Incremental sync only pulls changed records
 - [ ] Priority, urgency, impact fields populated
@@ -1257,8 +1833,7 @@ have the test class and method appended after a dash.
 - [ ] Auth failure shows error toast
 - [ ] Sync status updates in status bar during pull
 
-#### E7.2. SD Request Grid
-
+#### SD Request Grid
 - [ ] Grid loads with data, sorted by created date descending
 - [ ] Status column shows colour-coded text (Open=blue, Closed=green, etc.) — `SdRequestExtendedTests.StatusColor_Cancelled_BritishSpelling`, `SdRequestExtendedTests.StatusColor_Resolved_Green`, `SdRequestExtendedTests.StatusColor_EmptyString_Default`, `SdRequestExtendedTests2.StatusColor_AllStatuses`
 - [ ] Priority column shows colour-coded text — `SdRequestExtendedTests.PriorityColor_Unknown_Default`, `SdRequestExtendedTests.PriorityColor_Empty_Default`, `SdRequestExtendedTests2.PriorityColor_AllPriorities`
@@ -1266,9 +1841,9 @@ have the test class and method appended after a dash.
 - [ ] IsClosed by status (Resolved/Closed=true, others=false) — `SdRequestExtendedTests.IsClosed_AllStatuses`, `SdRequestExtendedTests2.IsClosed_VariousStatuses`
 - [ ] "Open" hyperlink column opens ticket in browser
 - [ ] Inline editing: Status, Priority, Group, Technician, Category dropdowns
-- [ ] Editing a field turns row amber (dirty tracking) -- `SdRequestDirtyTrackingTests` (7 tests), `SdRequestExtendedTests.DirtyTracking_GroupNameChange_MarksDirty`, `SdRequestExtendedTests.DirtyTracking_TechnicianChange_MarksDirty`, `SdRequestExtendedTests.DirtyTracking_CategoryChange_MarksDirty`, `SdRequestExtendedTests.DirtyTracking_PriorityChange_MarksDirty`, `SdRequestExtendedTests.DirtyTracking_RevertAll_ClearsDirty`, `SdRequestExtendedTests2.DirtyTracking_NotDirty_BeforeAcceptChanges`, `SdRequestExtendedTests2.DirtyTracking_Dirty_AfterStatusChange`, `SdRequestExtendedTests2.DirtyTracking_Clean_AfterRevert`, `SdRequestExtendedTests2.DirtyTracking_Dirty_AfterPriorityChange`, `SdRequestExtendedTests2.DirtyTracking_Dirty_AfterGroupChange`, `SdRequestExtendedTests2.DirtyTracking_Dirty_AfterTechnicianChange`, `SdRequestExtendedTests2.DirtyTracking_Dirty_AfterCategoryChange`
+- [ ] Editing a field turns row amber (dirty tracking) — `SdRequestDirtyTrackingTests` (7 tests), `SdRequestExtendedTests.DirtyTracking_*`, `SdRequestExtendedTests2.DirtyTracking_*`
 - [ ] RowColor amber when dirty, transparent when clean — `SdRequestExtendedTests2.RowColor_Amber_WhenDirty`, `SdRequestExtendedTests2.RowColor_Transparent_WhenClean`
-- [ ] PropertyChanged cascades: Priority->PriorityColor, DueBy->IsOverdue, IsDirty->RowColor — `SdRequestExtendedTests.PropertyChanged_Priority_AlsoNotifiesPriorityColor`, `SdRequestExtendedTests.PropertyChanged_DueBy_AlsoNotifiesIsOverdue`, `SdRequestExtendedTests.PropertyChanged_IsDirty_AlsoNotifiesRowColor`, `SdRequestExtendedTests2.PropertyChanged_Subject_Fires`, `SdRequestExtendedTests2.PropertyChanged_Status_FiresStatusColor`, `SdRequestExtendedTests2.PropertyChanged_Priority_FiresPriorityColor`, `SdRequestExtendedTests2.PropertyChanged_DueBy_FiresIsOverdue`
+- [ ] PropertyChanged cascades: Priority->PriorityColor, DueBy->IsOverdue, IsDirty->RowColor — `SdRequestExtendedTests.PropertyChanged_*`, `SdRequestExtendedTests2.PropertyChanged_*`
 - [ ] SdRequest defaults (all empty strings, nulls, false) — `SdRequestExtendedTests2.Defaults_AreCorrect`
 - [ ] "3 unsaved changes" count shows in toolbar
 - [ ] Save Changes button writes to ManageEngine API
@@ -1277,8 +1852,7 @@ have the test class and method appended after a dash.
 - [ ] Context menu: Open in Browser, Clear Filter, Export, Refresh
 - [ ] Total summary count at bottom of grid
 
-#### E7.3. SD Overview Dashboard
-
+#### SD Overview Dashboard
 - [ ] KPI cards: Incoming, Closed, Escalations, SLA Compliant, Resolution Time, Open, Tech:Ticket
 - [ ] KPI trend arrows show comparison vs previous period
 - [ ] Double-click KPI card opens drill-down grid
@@ -1288,21 +1862,18 @@ have the test class and method appended after a dash.
 - [ ] Double-click bar opens drill-down grid for that day
 - [ ] Summary text shows totals + closure rate %
 
-#### E7.4. SD Tech Closures
-
+#### SD Tech Closures
 - [ ] Bar chart shows per-tech daily closures
 - [ ] Expected target dashed line visible
 - [ ] Double-click a bar opens drill-down grid
 
-#### E7.5. SD Aging
-
+#### SD Aging
 - [ ] 5 side-by-side bars per tech (0-1d green to 7+ red)
 - [ ] Double-click a bar opens drill-down grid
 
-#### E7.6. SD Settings Panel (Global Filters)
-
+#### SD Settings Panel (Global Filters)
 - [ ] Time Range dropdown changes all chart date ranges
-- [ ] Time Scale dropdown changes bucket size (day/week/month) — `SdFilterStateExtendedTests.FormatLabel_Month_Bucket`, `SdFilterStateExtendedTests.FormatLabel_Week_Bucket`, `SdFilterStateExtendedTests.FormatLabel_Day_ShortRange_DayName`, `SdFilterStateExtendedTests.FormatLabel_Day_LongRange_MonthDay`, `SdFilterStateFormatTests.FormatLabel_DayBucket_ShortRange_ShowsDayOfWeek`, `SdFilterStateFormatTests.FormatLabel_DayBucket_LongRange_ShowsMonthDay`, `SdFilterStateFormatTests.FormatLabel_WeekBucket`, `SdFilterStateFormatTests.FormatLabel_MonthBucket`, `SdFilterStateFormatTests.FormatLabel_MonthBucket_December`
+- [ ] Time Scale dropdown changes bucket size (day/week/month) — `SdFilterStateExtendedTests.FormatLabel_*`, `SdFilterStateFormatTests.FormatLabel_*`
 - [ ] FormatLabel day bucket boundary (14 days shows DOW, 15+ shows month) — `SdFilterStateFormatTests.FormatLabel_DayBucket_Exactly14Days_ShowsDayOfWeek`, `SdFilterStateFormatTests.FormatLabel_DayBucket_15Days_ShowsMonthDay`
 - [ ] SdFilterState.Default() sets correct week range — `SdFilterStateExtendedTests.Default_SetsCorrectWeek`, `SdFilterStateFormatTests.Default_ReturnsThisWeek`, `SdFilterStateFormatTests.Default_RangeStartIsMonday`, `SdFilterStateFormatTests.Default_RangeEndIsNextMonday`
 - [ ] SdFilterState display options have correct defaults — `SdFilterStateExtendedTests.Default_AllDisplayOptions_HaveDefaults`, `SdFilterStateFormatTests.Defaults_AreCorrect`
@@ -1318,35 +1889,30 @@ have the test class and method appended after a dash.
 - [ ] Apply button triggers refresh
 - [ ] Reset button restores defaults
 
-#### E7.7. SD Groups
-
+#### SD Groups
 - [ ] Grid shows all ME groups with Active checkbox
 - [ ] Inline editing group name + sort order, auto-saves on row commit
 - [ ] Active: X / Total: Y summary at bottom
 - [ ] Disabling a group removes it from request grid dropdown
 
-#### E7.8. SD Technicians
-
+#### SD Technicians
 - [ ] Grid shows all ME technicians with Active checkbox
 - [ ] Toggle Active auto-saves to DB
 - [ ] Active: X / Total: Y summary at bottom
 - [ ] Disabling a tech removes from all dropdowns, charts, and filters
 - [ ] Cascade: disabling refreshes request grid combos + chart filter panels
 
-#### E7.9. SD Requesters
-
+#### SD Requesters
 - [ ] Grid shows all ME requesters (read-only, synced)
 - [ ] VIP: X / Total: Y summary at bottom
 
-#### E7.10. SD Teams
-
+#### SD Teams
 - [ ] Teams grid: add/edit/delete teams
 - [ ] Right panel: checked listbox of all technicians
 - [ ] Check/uncheck assigns techs to team, auto-saves
 - [ ] Team buttons appear in chart filter panels
 
-#### E7.11. Group Categories
-
+#### Group Categories
 - [ ] Tree view shows parent categories with nested ME groups
 - [ ] Drag groups under categories to nest
 - [ ] Add Category button creates new category node
@@ -1356,16 +1922,14 @@ have the test class and method appended after a dash.
 - [ ] Checking category selects all child groups in filter
 - [ ] Tooltip on category checkbox shows member list
 
-#### E7.12. Cross-Panel Linking
-
+#### Cross-Panel Linking
 - [ ] Click technician in SD Technicians > Request grid auto-filters to that tech
 - [ ] Click group in SD Groups > Request grid auto-filters to that group
 - [ ] Click requester in SD Requesters > Request grid auto-filters to that requester
 - [ ] Right-click "Clear Filter" on Request grid resets the filter
 - [ ] Service Desk panel activates when linked filter applies
 
-#### E7.13. Write-Back to ManageEngine
-
+#### Write-Back to ManageEngine
 - [ ] Update Status writes correct value to ME API
 - [ ] Update Priority writes correct value to ME API
 - [ ] Assign Technician writes correct value to ME API
@@ -1374,12 +1938,11 @@ have the test class and method appended after a dash.
 - [ ] Write-back errors show in status bar + app log
 - [ ] Integration log records sync/write actions with duration
 
-#### E7.14. SD Models
-
-- [ ] SD request model tests -- `SdRequestTests` (15 tests), `SdRequestExtendedTests` (21 tests), `SdRequestExtendedTests2` (43 tests)
-- [ ] SD filter state tests -- `SdFilterStateTests` (9 tests), `SdFilterStateExtendedTests` (7 tests), `SdFilterStateFormatTests` (12 tests)
-- [ ] SD models tests -- `SdModelsTests` (10 tests), `SdServiceModelsTests` (14 tests)
-- [ ] SD dirty tracking tests -- `SdRequestDirtyTrackingTests` (7 tests)
+#### SD Models
+- [ ] SD request model tests — `SdRequestTests` (15 tests), `SdRequestExtendedTests` (21 tests), `SdRequestExtendedTests2` (43 tests)
+- [ ] SD filter state tests — `SdFilterStateTests` (9 tests), `SdFilterStateExtendedTests` (7 tests), `SdFilterStateFormatTests` (12 tests)
+- [ ] SD models tests — `SdModelsTests` (10 tests), `SdServiceModelsTests` (14 tests)
+- [ ] SD dirty tracking tests — `SdRequestDirtyTrackingTests` (7 tests)
 - [ ] SdGroupCategory defaults, MemberCount, PropertyChanged — `SdServiceModelsTests.SdGroupCategory_Defaults`, `SdServiceModelsTests.SdGroupCategory_MemberCount`, `SdServiceModelsTests.SdGroupCategory_PropertyChanged_Fires`
 - [ ] SdGroup defaults and PropertyChanged — `SdServiceModelsTests.SdGroup_Defaults`, `SdServiceModelsTests.SdGroup_PropertyChanged_Fires`
 - [ ] SdRequester defaults — `SdServiceModelsTests.SdRequester_Defaults`
@@ -1390,13 +1953,12 @@ have the test class and method appended after a dash.
 - [ ] SdAgingBucket Total sum — `SdServiceModelsTests.SdAgingBucket_Total`, `SdServiceModelsTests.SdAgingBucket_Total_Empty`
 - [ ] SdTechDaily DayLabel — `SdServiceModelsTests.SdTechDaily_DayLabel`
 
-#### E7.15. SD Infrastructure
-
+#### SD Infrastructure
 - [ ] ManageEngine integration record exists in integrations table
 - [ ] OAuth credentials stored encrypted in integration_credentials — `IntegrationServiceTests` (8 tests), `IntegrationModelTests` (9 tests), `IntegrationModelExtendedTests` (12 tests)
-- [ ] Integration defaults, StatusIcon, StatusText, PropertyChanged — `IntegrationModelExtendedTests.Integration_Defaults`, `IntegrationModelExtendedTests.Integration_StatusIcon_Enabled`, `IntegrationModelExtendedTests.Integration_StatusIcon_Disabled`, `IntegrationModelExtendedTests.Integration_StatusText_Enabled`, `IntegrationModelExtendedTests.Integration_StatusText_Disabled`, `IntegrationModelExtendedTests.Integration_PropertyChanged_AllProperties`, `IntegrationModelExtendedTests.Integration_IsEnabled_FiresStatusIcon`
-- [ ] IntegrationCredential defaults + ExpiresAt nullable — `IntegrationModelExtendedTests.IntegrationCredential_Defaults`, `IntegrationModelExtendedTests.IntegrationCredential_ExpiresAt_CanBeSet`, `IntegrationModelExtendedTests.IntegrationCredential_ExpiresAt_CanBeNull`
-- [ ] IntegrationLogEntry defaults + set properties — `IntegrationModelExtendedTests.IntegrationLogEntry_Defaults`, `IntegrationModelExtendedTests.IntegrationLogEntry_SetProperties`
+- [ ] Integration defaults, StatusIcon, StatusText, PropertyChanged — `IntegrationModelExtendedTests.Integration_*`
+- [ ] IntegrationCredential defaults + ExpiresAt nullable — `IntegrationModelExtendedTests.IntegrationCredential_*`
+- [ ] IntegrationLogEntry defaults + set properties — `IntegrationModelExtendedTests.IntegrationLogEntry_*`
 - [ ] config_json has oauth_url + portal_url
 - [ ] sd_groups seeded from sd_requests distinct group_name
 - [ ] sd_group_categories + members tables exist
@@ -1404,78 +1966,202 @@ have the test class and method appended after a dash.
 - [ ] resolved_at + me_completed_time columns on sd_requests
 - [ ] All SD permissions granted to Admin role
 
-### E8. Admin
+### 7.8 CRM (Unified — 29-phase base + 5 expansion stages)
 
-#### E8.1. Users Panel
+#### Foundation (Phases 1-5)
+- [ ] Companies with hierarchy (parent_id) — `/api/companies` CRUD
+- [ ] Contacts with addresses + communications — `/api/contacts`
+- [ ] Teams + Departments hierarchy — `/api/teams`
+- [ ] Polymorphic Addresses (billing/shipping/hq/branch/site/home/work)
+- [ ] User profiles (avatar, preferences, invitations)
 
+#### Global Admin + Admin (Phases 6-14)
+- [ ] Tenant onboarding + billing accounts + invoices
+- [ ] Usage metrics + FTS indexes
+- [ ] Invitations + team management + role templates (6 seeded)
+- [ ] Org chart (departments + user_profiles.manager_id)
+
+#### CRM Core (Phases 15-19)
+- [ ] CRM Accounts with company linking, owner, rating, stage, tags — `/api/crm/accounts`
+- [ ] Contact to account M:N with role_in_account (decision_maker/influencer/user/billing/technical)
+- [ ] Deal pipeline with 5 seeded stages + auto stage history trigger + /pipeline summary
+- [ ] Leads with scoring rules + transactional /convert to account+contact+deal
+- [ ] Unified activity timeline (call/email/meeting/note/task) with due_at + is_completed
+
+#### Email Integration (Phase 20)
+- [ ] Email accounts (SMTP/IMAP/Exchange/Gmail with OAuth token storage)
+- [ ] 4 seeded templates with merge field extraction ({{contact.first_name}})
+- [ ] Send queue via pg_notify
+- [ ] Tracking pixel (/api/email/track/open/{id}) + click redirect
+- [ ] Auto-link inbound to CRM via linked_account_id/contact_id/deal_id/lead_id
+
+#### Pipeline Viz (Phase 21)
+- [ ] /api/crm/deals/pipeline summary
+- [ ] WPF Kanban Pipeline panel in CRM module
+
+#### Quotes + Products (Phases 22-23)
+- [ ] Quote versioning + auto-recalc totals trigger + line items
+- [ ] Products + price books + price book entries with volume tiers
+
+#### Dashboards + Reports (Phases 24-25)
+- [ ] 4 materialized views (revenue/activity/lead_source_roi/account_health)
+- [ ] KPI summary endpoint (customers, prospects, pipeline, revenue_this_month, overdue)
+- [ ] Hourly refresh job (refresh_crm_dashboards())
+- [ ] Saved reports (pipeline/sales_rep_perf/lead_source_roi/account_revenue/activity/forecast)
+- [ ] Forecast snapshots (committed/best_case/worst_case/weighted) + live forecast endpoint
+
+#### Integration + Documents (Phases 26-28)
+- [ ] 6 integration agents seeded (Salesforce, HubSpot, Dynamics, Exchange, Gmail, Pipedrive)
+- [ ] 8 sync configs for bidirectional entity sync
+- [ ] crm_external_ids + crm_sync_conflicts tables
+- [ ] Exchange Online + Gmail integration configs for auto-log to CRM
+- [ ] crm_documents + document_templates + approval workflow
+- [ ] E-signature placeholder (signature_provider + signature_envelope_id)
+
+#### Webhooks + Polish (Phase 29)
+- [ ] 28 webhook event types seeded (crm.deal.won/lost, crm.lead.converted, etc.)
+- [ ] webhook_subscriptions with HMAC secret generation
+- [ ] webhook_deliveries with retry + status tracking
+- [ ] Cross-module: CRM Deal won to auto activity + account last_activity_at update
+- [ ] Cross-module: Contact email to sd_requesters.contact_id auto-link
+- [ ] Cross-module: switch_guide.crm_account_id (infra owned by company)
+- [ ] Cross-module: task_projects.crm_deal_id (delivery project per won deal)
+
+#### Expansion Stage 1 — Marketing Automation
+- [ ] Campaigns with ROI tracking, hierarchy, source_code (UTM linking)
+- [ ] Campaign members (leads/contacts/accounts) with response tracking
+- [ ] Campaign costs auto-aggregated via trigger
+- [ ] Segments — static + dynamic (JSONLogic rule_expression)
+- [ ] Email sequences with triggers (manual/lead_created/deal_stage/form_submit)
+- [ ] Sequence steps with wait days/hours, conditions, stop-on-reply
+- [ ] Sequence enrollments with status (active/paused/completed/stopped_reply/meeting)
+- [ ] Landing pages with view_count + submission_count + conversion rate
+- [ ] Public forms with auto-lead-creation + UTM capture
+- [ ] Multi-touch attribution (5 models: first/last/linear/position/time-decay) + campaign influence materialized view
+
+#### Expansion Stage 2 — Sales Operations
+- [ ] Territories (geographic/industry/account_size/named/role) with hierarchy
+- [ ] Territory rules for auto-assignment + territory FK on accounts + leads
+- [ ] Quotas per user per period (monthly/quarterly/annual) with ramping
+- [ ] Commission plans (flat/tiered/gated) + tiers (accelerators) + user assignments
+- [ ] Commission payouts with SPIFFs + clawbacks + breakdown
+- [ ] Opportunity splits with 100% validation trigger + multi-type (revenue/overlay/quota)
+- [ ] Account teams with roles + access levels
+- [ ] Account plans with strategic goals + whitespace + stakeholder mapping + org chart edges
+- [ ] Forecast adjustments (manager commits/overrides) + pipeline health materialized view
+- [ ] Deal insights (stalled, no_activity, close_date_slipping, next_step_missing) with generator function
+
+#### Expansion Stage 3 — CPQ + Contracts + Revenue
+- [ ] Product bundles + components (optional, override prices)
+- [ ] Pricing rules (volume/customer/promo/MAP-floor/bundle) with promo_code + max_uses
+- [ ] Discount approval matrix (4 tiers seeded: Rep/Manager/VP/CEO)
+- [ ] Generic approval engine (requests + steps sequential/parallel + actions audit + auto-resolve trigger)
+- [ ] Contract clause library with versioning + legal approval flag
+- [ ] Contract templates with default_clauses
+- [ ] Contracts (msa/sow/nda/dpa/amendment/renewal) with full lifecycle + auto_renew + notice days
+- [ ] Contract versions, clause usage (modification tracking), milestones (delivery/payment), renewals view
+- [ ] Subscriptions + auto-log events on MRR changes + status transitions
+- [ ] MRR dashboard materialized view (active/trial/churned + churn rate)
+- [ ] Revenue schedules (ratable/point_in_time/milestone/percentage) + entries with GL journal reference (ASC 606)
+- [ ] Orders + order lines with auto-recalc totals + auto-subscription-creation from recurring products
+
+#### Expansion Stage 5 — Portals + Platform + Commerce
+- [ ] Customer + partner portal users separate from app_users (portal_users, portal_sessions)
+- [ ] Magic-link email login (30-min expiry, single-use tokens, SHA256-hashed storage)
+- [ ] Partner deal registration with approval workflow
+- [ ] Knowledge base with tsvector full-text search + category hierarchy + view/helpful counters
+- [ ] Community threads + nested posts + voting (app_users OR portal_users as author)
+- [ ] Validation rules (JSONLogic, pre-save, per-entity, error_field highlighting)
+- [ ] Workflow rules — integrates with existing Elsa engine (no duplicate runtime)
+- [ ] Generic broadcast_record_change trigger on 7 CRM tables
+- [ ] rule_execution_log for audit + debug (rule_type, rule_id, result, elsa_workflow_instance_id)
+- [ ] custom_entities (api_name, label, record_name_format, icon, color)
+- [ ] custom_fields (text/number/date/datetime/bool/picklist/multipick/lookup/url/email/phone/currency/percent/richtext/file)
+- [ ] custom_entity_records with jsonb values + GIN index
+- [ ] custom_field_values on built-in entities (typed columns: text_value, number_value, date_value, etc.)
+- [ ] custom_relationships (one_to_one, one_to_many, many_to_many)
+- [ ] field_permissions per role per entity per field (hidden/read/write)
+- [ ] get_field_permission() helper function with write-default fallback
+- [ ] import_jobs with dry_run + dedup_strategy (create_new/update_existing/skip_duplicates/merge)
+- [ ] import_job_rows with per-row status + errors + warnings arrays
+- [ ] pg_notify('import_queue', id) for background processing
+- [ ] shopping_carts + cart_items with auto-recalc trigger
+- [ ] Cart to Order checkout (transactional, copies items, marks cart converted)
+- [ ] payments (Stripe-compatible: stripe_payment_intent_id, stripe_charge_id, last4, brand)
+- [ ] Multi-entity linking (order/invoice/cart to payment)
+
+#### CRM WPF Module
+- [ ] Central.Module.CRM registered in Bootstrapper at SortOrder 40
+- [ ] CrmDataService with async PG queries for accounts/deals/leads/KPIs/pipeline
+- [ ] CrmAccountsPanel — DevExpress grid with filter/group/sort on 10 columns
+- [ ] CrmDealsPanel — DevExpress grid with summary text (open count, pipeline value, weighted)
+- [ ] CrmPipelinePanel — Kanban-style columns per open stage with deal cards
+- [ ] CrmDashboardPanel — KPI tiles (sales + customers) + per-stage progress bars
+- [ ] Ribbon tab "CRM" with Actions + Data + Panels groups (9 panel toggles)
+
+### 7.9 Admin
+
+#### Users Panel
 - [ ] User grid loads from app_users
 - [ ] Role dropdown bound to DB roles
 - [ ] New user creates record
 - [ ] Edit user modifies record
 - [ ] Delete user removes record
-- [ ] Extended user fields (department, title, phone, mobile, company) visible — `AppUserTests.Defaults_AreCorrect`, `AppUserTests.PropertyChanged_Fires_OnNameChange`, `AppUserExtendedTests.PropertyChanged_Department_Fires`, `AppUserExtendedTests.PropertyChanged_Title_Fires`, `AppUserExtendedTests.PropertyChanged_Phone_Fires`, `AppUserExtendedTests.PropertyChanged_Mobile_Fires`, `AppUserExtendedTests.PropertyChanged_Company_Fires`
+- [ ] Extended user fields (department, title, phone, mobile, company) visible — `AppUserTests.Defaults_AreCorrect`, `AppUserExtendedTests.PropertyChanged_*`
 - [ ] UserType dropdown shows all 5 types — `UserTypesTests.All_Has5Types`
 - [ ] Protected users (System, Service) cannot be deleted — `AppUserTests.IsProtected_System_True`, `AppUserTests.IsProtected_Service_True`, `AppUserTests.IsProtected_Standard_False`
 - [ ] Inactive users show at 0.5 opacity, protected users show bold — `AppUserTests.StatusColor_Active_Green`, `AppUserTests.StatusColor_Inactive_Grey`
 
-#### E8.2. Roles & Permissions Panel
-
+#### Roles & Permissions Panel
+(See Section 2.1 for the canonical RBAC items. Per-panel specifics below.)
 - [ ] Split view: roles grid left, permissions tree + site checkboxes right
-- [ ] RoleRecord PermissionSummary counts — `RoleRecordTests.PermissionSummary_NoPermissions`, `RoleRecordTests.PermissionSummary_AllPermissions`, `RoleRecordTests.PermissionSummary_SomePermissions`, `RoleRecordExtendedTests.PermissionSummary_VariousCounts`
+- [ ] RoleRecord PermissionSummary counts — `RoleRecordTests.PermissionSummary_*`, `RoleRecordExtendedTests.PermissionSummary_VariousCounts`
 - [ ] RoleRecord defaults (empty name, priority 0) — `RoleRecordTests.Defaults_AreCorrect`
-- [ ] RoleRecord PropertyChanged fires — `RoleRecordTests.PropertyChanged_Fires_OnNameChange`, `RoleRecordExtendedTests.PropertyChanged_Id_Fires`, `RoleRecordExtendedTests.PropertyChanged_Description_Fires`, `RoleRecordExtendedTests.PropertyChanged_Priority_Fires`, `RoleRecordExtendedTests.PropertyChanged_IsSystem_Fires`
+- [ ] RoleRecord PropertyChanged fires — `RoleRecordTests.PropertyChanged_Fires_OnNameChange`, `RoleRecordExtendedTests.PropertyChanged_*`
 - [ ] RoleRecord permission boolean PropertyChanged (DevicesView/Edit/Delete, SwitchesView, LinksView, BgpView/Sync, VlansView, TasksView, ServiceDeskView/Sync) — `RoleRecordExtendedTests` (11 permission PropertyChanged tests)
 - [ ] RoleRecord DevicesViewReserved default true — `RoleRecordExtendedTests.DevicesViewReserved_DefaultTrue`, `RoleRecordExtendedTests.DevicesViewReserved_PropertyChanged`
 - [ ] RoleRecord DetailUsers default empty — `RoleRecordTests.DetailUsers_DefaultEmpty`
 - [ ] RolePermission defaults — `RoleRecordTests.RolePermission_Defaults`
 - [ ] RoleUserDetail defaults + set properties — `RoleRecordTests.RoleUserDetail_Defaults`, `RoleRecordExtendedTests.RoleUserDetail_CanSetProperties`
 - [ ] UserPermissionDetail defaults — `RoleRecordTests.UserPermissionDetail_Defaults`
-- [ ] Permissions tree shows 25 module:action codes
-- [ ] Checkbox toggles grant/revoke permission
-- [ ] Site access checkboxes control building access
 
-#### E8.3. Lookup Values Panel
-
+#### Lookup Values Panel
 - [ ] Category/Value grid loads — `LookupItemTests.Defaults_AreCorrect`
 - [ ] CRUD works — `LookupItemTests.AllProperties_FirePropertyChanged`
 - [ ] SortOrder column respected
-- [ ] LookupItem PropertyChanged fires on all fields (Id, Category, Value, SortOrder, GridName, Module) — `LookupItemTests.PropertyChanged_Fires_OnId`, `LookupItemTests.PropertyChanged_Fires_OnCategory`, `LookupItemTests.PropertyChanged_Fires_OnValue`, `LookupItemTests.PropertyChanged_Fires_OnSortOrder`, `LookupItemTests.PropertyChanged_Fires_OnGridName`, `LookupItemTests.PropertyChanged_Fires_OnModule`
+- [ ] LookupItem PropertyChanged fires on all fields (Id, Category, Value, SortOrder, GridName, Module) — `LookupItemTests.PropertyChanged_Fires_*`
 - [ ] LookupItem ParentId always null (flat list) — `LookupItemTests.ParentId_AlwaysNull`, `LookupItemTests.ParentId_NullEvenWithAllFieldsSet`
 
-#### E8.4. SSH Logs Panel
-
+#### SSH Logs Panel
 - [ ] SSH session logs display — `SshLogEntryTests.Defaults_AreCorrect`
 - [ ] Filterable by switch/date
-- [ ] Duration computed property — `SshLogEntryTests.Duration_WithFinishedAt_CalculatesCorrectly`, `SshLogEntryTests.Duration_WithFractionalSeconds`, `SshLogEntryTests.Duration_WithoutFinishedAt_ReturnsDash`, `SshLogEntryTests.Duration_LongOperation`, `SshLogEntryTests.Duration_ZeroSeconds`
+- [ ] Duration computed property — `SshLogEntryTests.Duration_*`
 - [ ] StatusIcon success/failure — `SshLogEntryTests.StatusIcon_Success_CheckMark`, `SshLogEntryTests.StatusIcon_Failure_CrossMark`
-- [ ] SshLogEntry PropertyChanged fires on all fields — `SshLogEntryTests.PropertyChanged_Hostname_Fires`, `SshLogEntryTests.PropertyChanged_HostIp_Fires`, `SshLogEntryTests.PropertyChanged_Success_Fires`, `SshLogEntryTests.PropertyChanged_Port_Fires`, `SshLogEntryTests.PropertyChanged_Error_Fires`, `SshLogEntryTests.PropertyChanged_RawOutput_Fires`, `SshLogEntryTests.PropertyChanged_ConfigLines_Fires`, `SshLogEntryTests.PropertyChanged_SwitchId_Fires`, `SshLogEntryTests.AllProperties_FirePropertyChanged`
+- [ ] SshLogEntry PropertyChanged fires on all fields — `SshLogEntryTests.PropertyChanged_*`
 - [ ] SshLogEntry SwitchId nullable — `SshLogEntryTests.SwitchId_CanBeNull`
 
-#### E8.5. App Logs Panel
-
+#### App Logs Panel
 - [ ] Application log entries display — `AppLogEntryTests.Defaults`, `AppLogEntryTests.DisplayTime_FormatsCorrectly`, `AppLogEntryTests.PropertyChanged_AllFields`
 
-#### E8.6. Jobs Panel
-
+#### Jobs Panel
 - [ ] Job schedules grid shows 3 job types
 - [ ] Enable/Disable toggle works
 - [ ] Interval column editable
 - [ ] Run Now button triggers immediate execution
 - [ ] Job history grid shows past runs
 
-#### E8.7. Ribbon Config Panel
-
-- [ ] Ribbon pages/groups/items display in flat grid — `RibbonConfigTests.RibbonPageConfig_Defaults`, `RibbonConfigTests.RibbonGroupConfig_Defaults`, `RibbonConfigTests.RibbonItemConfig_Defaults`, `RibbonConfigExtendedTests.RibbonPageConfig_Defaults`, `RibbonConfigExtendedTests.RibbonGroupConfig_Defaults`, `RibbonConfigExtendedTests.RibbonItemConfig_Defaults`
+#### Ribbon Config Panel
+(See Section 3.2 for 3-layer override canonical items.)
+- [ ] Ribbon pages/groups/items display in flat grid — `RibbonConfigTests.RibbonPageConfig_Defaults`, `RibbonConfigTests.RibbonGroupConfig_Defaults`, `RibbonConfigTests.RibbonItemConfig_Defaults`, `RibbonConfigExtendedTests.*`
 - [ ] CRUD on ribbon items works — `RibbonConfigTests.RibbonItemConfig_PropertyChanged_AllSetters`, `RibbonConfigExtendedTests.RibbonItemConfig_PropertyChanged_AllProperties`
 - [ ] RibbonPageConfig PropertyChanged all properties — `RibbonConfigExtendedTests.RibbonPageConfig_PropertyChanged_AllProperties`
 - [ ] RibbonGroupConfig PropertyChanged all properties — `RibbonConfigExtendedTests.RibbonGroupConfig_PropertyChanged_AllProperties`
-- [ ] UserRibbonOverride defaults + set + IsHidden — `RibbonConfigExtendedTests.UserRibbonOverride_Defaults`, `RibbonConfigExtendedTests.UserRibbonOverride_SetProperties`, `RibbonConfigExtendedTests.UserRibbonOverride_IsHidden_True`
+- [ ] UserRibbonOverride defaults + set + IsHidden — `RibbonConfigExtendedTests.UserRibbonOverride_*`
 - [ ] System items cannot be deleted (is_system=TRUE)
 
-#### E8.8. Active Directory Integration
-
+#### Active Directory Integration
 - [ ] AD Browser panel opens from Admin > Panels > AD Browser
-- [ ] AdConfig IsConfigured with domain — `AdModelsTests.AdConfig_IsConfigured_WithDomain_True`, `AdModelsTests.AdConfig_IsConfigured_EmptyDomain_False`, `AdModelsTests.AdConfig_IsConfigured_WhitespaceDomain_False`, `AdModelsExtendedTests.AdConfig_IsConfigured_True_WhenDomainSet`, `AdModelsExtendedTests.AdConfig_IsConfigured_False_WhenEmptyDomain`, `AdModelsExtendedTests.AdConfig_IsConfigured_False_WhenWhitespaceDomain`
+- [ ] AdConfig IsConfigured with domain — `AdModelsTests.AdConfig_IsConfigured_*`, `AdModelsExtendedTests.AdConfig_IsConfigured_*`
 - [ ] AdConfig defaults (empty domain/ou/account/password, no SSL) — `AdModelsTests.AdConfig_Defaults`, `AdModelsExtendedTests.AdConfig_Defaults`, `AdModelsExtendedTests.AdConfig_AllProperties`
 - [ ] AdUser defaults (empty strings, disabled, not imported) — `AdModelsTests.AdUser_Defaults`, `AdModelsExtendedTests.AdUser_Defaults`, `AdModelsExtendedTests.AdUser_IsImported_DefaultFalse`, `AdModelsExtendedTests.AdUser_Enabled_DefaultFalse`
 - [ ] AdUser set all properties — `AdModelsTests.AdUser_SetAllProperties`, `AdModelsExtendedTests.AdUser_SetAllProperties`
@@ -1486,31 +2172,27 @@ have the test class and method appended after a dash.
 - [ ] Sync All updates display name, email, phone, active status from AD
 - [ ] AD config stored in integrations table
 
-#### E8.9. Schema Migration Management
-
+#### Schema Migration Management
 - [ ] Migrations panel shows all applied (green) and pending (amber) migrations
 - [ ] Applied migrations show timestamp and duration
 - [ ] Apply Pending button runs all pending .sql files in transaction
 - [ ] Migration history recorded in migration_history table
 - [ ] Refresh reloads from DB + filesystem
 
-#### E8.10. Database Backup & Restore
-
+#### Database Backup & Restore
 - [ ] Backup panel with Full Backup button and output path browser
 - [ ] pg_dump runs with connection params from DSN
 - [ ] Backup history grid shows type, file path, size, status, timestamp
 - [ ] Scheduled backup via db_backup job type in job_schedules
 - [ ] Failed backups logged with error message
 
-#### E8.11. Soft-Delete Purge
-
+#### Soft-Delete Purge
 - [ ] Purge panel shows tables with soft-deleted record counts
 - [ ] Purge Selected deletes from one table, Purge All clears all
 - [ ] Confirmation dialog before purge
 - [ ] Count refreshes after each purge operation
 
-#### E8.12. Location Management
-
+#### Location Management
 - [ ] Locations panel with Countries grid (Code, Name, SortOrder) — `LocationModelExtendedTests.Country_Defaults`, `LocationModelExtendedTests.Country_AllProperties_FirePropertyChanged`
 - [ ] Regions grid filtered by selected country — `LocationModelExtendedTests.Region_Defaults`, `LocationModelExtendedTests.Region_AllProperties_FirePropertyChanged`
 - [ ] Postcode defaults and PropertyChanged — `LocationModelExtendedTests.Postcode_Defaults`, `LocationModelExtendedTests.Postcode_AllProperties_FirePropertyChanged`
@@ -1518,16 +2200,14 @@ have the test class and method appended after a dash.
 - [ ] Add/Delete/Save for both countries and regions
 - [ ] Seed data: GBR, USA, AUS, NZL
 
-#### E8.13. Reference Number System
-
+#### Reference Number System
 - [ ] Reference Config panel shows entity types with prefix/suffix/pad/next value — `ReferenceConfigTests` (10 tests)
 - [ ] SampleOutput column shows live preview (e.g. DEV-000001)
 - [ ] Auto-save on cell edit
 - [ ] next_reference() PG function for atomic sequence generation
 - [ ] Seeded: device, ticket, asset, task
 
-#### E8.14. Podman Container Management
-
+#### Podman Container Management
 - [ ] Podman panel shows containers with Name, Image, State, Status
 - [ ] Start/Stop/Restart buttons for selected container
 - [ ] View Logs button shows last 100 lines in text area
@@ -1536,11 +2216,10 @@ have the test class and method appended after a dash.
 - [ ] ContainerInfo StateColor all states (running=green, exited=red, paused=amber, others=grey) — `ContainerInfoExtendedTests.StateColor_AllCases`
 - [ ] ContainerInfo IsRunning all states — `ContainerInfoExtendedTests.IsRunning_AllCases`
 - [ ] ContainerInfo defaults all empty — `ContainerInfoExtendedTests.Defaults_AllEmpty`
-- [ ] ContainerInfo PropertyChanged fires on Status/Created/Ports/CpuPercent/MemUsage — `ContainerInfoExtendedTests.PropertyChanged_Status_Fires`, `ContainerInfoExtendedTests.PropertyChanged_Created_Fires`, `ContainerInfoExtendedTests.PropertyChanged_Ports_Fires`, `ContainerInfoExtendedTests.PropertyChanged_CpuPercent_Fires`, `ContainerInfoExtendedTests.PropertyChanged_MemUsage_Fires`
+- [ ] ContainerInfo PropertyChanged fires on Status/Created/Ports/CpuPercent/MemUsage — `ContainerInfoExtendedTests.PropertyChanged_*`
 - [ ] ContainerInfo full scenario (postgres container) — `ContainerInfoExtendedTests.FullScenario_PostgresContainer`
 
-#### E8.15. Scheduler / Calendar
-
+#### Scheduler / Calendar
 - [ ] Scheduler panel with Day/Week/Month view navigation
 - [ ] Period label updates on view change
 - [ ] Resource dropdown filters by technician
@@ -1551,601 +2230,29 @@ have the test class and method appended after a dash.
 - [ ] Appointment PropertyChanged fires on all fields — `AppointmentExtendedTests` (14 PropertyChanged tests)
 - [ ] Appointment nullable fields (ResourceId, TaskId, TicketId, CreatedBy) — `AppointmentExtendedTests.ResourceId_CanBeNull`, `AppointmentExtendedTests.TaskId_CanBeNull`, `AppointmentExtendedTests.TicketId_CanBeNull`, `AppointmentExtendedTests.CreatedBy_CanBeNull`
 
-#### E8.16. Notification Preferences Panel
-
+#### Notification Preferences Panel
 - [ ] My Notifications panel opens from Admin > Identity > My Notifications
 - [ ] Grid shows all 8 event types with channel dropdown (toast/email/both/none) and enabled toggle
 - [ ] Missing preferences auto-filled with defaults (toast, enabled)
 - [ ] Save All saves all preferences at once
 - [ ] Auto-save on cell change
 
----
+### 7.10 Dashboard Module
 
-## F. API Server
-
-### F1. REST Endpoints -- Core
-
-- [ ] GET /api/devices returns device list
-- [ ] POST /api/devices creates device
-- [ ] PUT /api/devices/{id} updates device
-- [ ] DELETE /api/devices/{id} deletes device
-- [ ] GET /api/switches returns switch list
-- [ ] GET /api/links returns link list
-- [ ] GET /api/vlans returns VLAN list
-- [ ] GET /api/bgp returns BGP config list
-- [ ] GET /api/admin/users returns user list
-- [ ] GET /api/jobs returns job schedules
-
-### F2. SSH Endpoints
-
-- [ ] POST /api/ssh/{id}/ping pings switch
-- [ ] POST /api/ssh/{id}/download-config downloads config
-- [ ] POST /api/ssh/{id}/sync-bgp syncs BGP
-- [ ] POST /api/ssh/ping-all batch pings
-
-### F3. JWT Authentication
-
-- [ ] POST /api/auth/login returns JWT token
-- [ ] Bearer token required on all endpoints
-- [ ] 25 permission claims in token
-- [ ] 401 on expired/invalid token
-- [ ] Auto token refresh on 401
-
-### F4. SignalR
-
-- [ ] NotificationHub connects on startup
-- [ ] DataChanged event fires on DB changes (pg_notify)
-- [ ] PingResult event fires on ping completion
-- [ ] SyncProgress event streams during SSH operations
-- [ ] WPF grids auto-refresh on SignalR events
-- [ ] SendNotification -- eventType, title, message, severity
-- [ ] SendWebhookReceived -- source, webhookId
-- [ ] SendAuditEvent -- action, entityType, entityName, username
-- [ ] SendSyncComplete -- configName, status, recordsRead, recordsFailed
-- [ ] SendSessionEvent -- eventType, username, authMethod
-- [ ] All events broadcast to all connected clients
-- [ ] NotificationHub: OnConnectedAsync joins tenant group
-- [ ] NotificationHub: OnDisconnectedAsync leaves tenant group
-- [ ] All Send* methods broadcast to tenant group (not Clients.All)
-
-### F5. Swagger
-
-- [ ] /swagger loads OpenAPI UI
-- [ ] All endpoints documented
-- [ ] All endpoint groups have WithTags for organized Swagger UI
-- [ ] Swagger description updated for full platform scope
-- [ ] Swagger UI with security definition for Bearer JWT
-
-### F6. Background Jobs
-
-- [ ] JobSchedulerService checks every 30s
-- [ ] ping_scan runs every 10 minutes when enabled
-- [ ] config_backup runs every 24 hours when enabled
-- [ ] bgp_sync runs every 6 hours when enabled
-- [ ] Admin can enable/disable jobs via API
-- [ ] Admin can change job intervals
-- [ ] Admin can trigger immediate run
-- [ ] Job history records execution results
-
-### F7. Identity Endpoints
-
-- [ ] /api/identity/providers -- CRUD for identity providers
-- [ ] /api/identity/domain-mappings -- email domain to provider routing
-- [ ] /api/identity/claim-mappings -- claims to role mapping rules
-- [ ] /api/identity/auth-events -- read-only auth audit trail
-
-### F8. Location & Reference Endpoints
-
-- [ ] /api/locations/countries -- CRUD
-- [ ] /api/locations/regions -- CRUD with country filter
-- [ ] /api/locations/references -- reference config list
-- [ ] /api/locations/references/next/{type} -- atomic next reference number
-
-### F9. Backup & Migration Endpoints
-
-- [ ] /api/backup/run -- trigger pg_dump backup
-- [ ] /api/backup/history -- backup history list
-- [ ] /api/backup/tables -- list all DB tables
-- [ ] /api/backup/migrations -- migration history
-- [ ] /api/backup/purge-counts -- soft-deleted record counts
-- [ ] /api/backup/purge/{table} -- purge soft-deleted records
-
-### F10. Appointment Endpoints
-
-- [ ] /api/appointments -- CRUD with date range filter + resources
-
-### F11. Task Endpoints
-
-- [ ] GET /api/tasks returns all 45 fields with project/sprint/committed joins
-- [ ] GET /api/tasks?project_id=N filters by project
-- [ ] POST /api/tasks accepts all Phase 1 fields
-- [ ] PUT /api/tasks/{id} updates all Phase 1 fields
-- [ ] POST /api/tasks/{id}/commit -- commit task to sprint
-- [ ] DELETE /api/tasks/{id}/commit -- uncommit from sprint
-- [ ] GET /api/tasks/{id}/links -- get task links
-- [ ] POST /api/tasks/{id}/links -- create task link
-- [ ] GET /api/tasks/{id}/dependencies -- get Gantt dependencies
-- [ ] GET /api/tasks/{id}/time -- time entries for a task
-- [ ] GET /api/tasks/{id}/comments
-- [ ] POST /api/tasks/{id}/comments
-- [ ] DELETE /api/tasks/{id}
-
-### F12. Project Endpoints
-
-- [ ] GET /api/projects returns all task projects
-- [ ] POST /api/projects creates new project
-- [ ] DELETE /api/projects/{id} deletes project
-- [ ] GET /api/projects/portfolios returns all portfolios
-- [ ] POST/PUT/DELETE /api/projects/portfolios
-- [ ] GET /api/projects/programmes returns all programmes
-- [ ] POST/DELETE /api/projects/programmes
-- [ ] GET /api/projects/{id}/sprints returns sprints for project
-- [ ] POST /api/projects/{id}/sprints creates sprint
-- [ ] DELETE /api/projects/{id}/sprints/{sprintId}
-- [ ] GET /api/projects/{id}/releases
-- [ ] POST /api/projects/{id}/releases
-
-### F13. Sync Engine Endpoints
-
-- [ ] GET /api/sync/configs -- list all sync configurations
-- [ ] PUT /api/sync/configs -- create/update sync config
-- [ ] GET /api/sync/configs/{id}/entity-maps
-- [ ] GET /api/sync/configs/{id}/log
-- [ ] POST /api/sync/configs/{id}/run -- trigger sync execution
-- [ ] GET /api/sync/agent-types -- list registered agent types
-- [ ] GET /api/sync/converter-types -- list registered converter types
-
-### F14. Webhook Receiver
-
-- [ ] POST /api/webhooks/{source} receives JSON payload without auth
-- [ ] Payload stored in webhook_log table
-- [ ] Invalid JSON wrapped in {"raw": "..."} object
-- [ ] SignalR "WebhookReceived" event broadcast
-- [ ] Auto-marks matching sync_config as 'pending'
-- [ ] GET /api/webhooks -- list recent webhooks
-- [ ] GET /api/webhooks/{id}/payload -- retrieve full payload
-
-### F15. Import API
-
-- [ ] POST /api/import -- accepts { target_table, upsert_key, records[] }
-- [ ] Returns { imported, failed, target_table }
-- [ ] GET /api/import/tables -- list available target tables
-- [ ] Table name validated against pg_tables whitelist
-
-### F16. Dashboard API
-
-- [ ] GET /api/dashboard -- returns full DashboardData
-- [ ] All counts query from live DB tables
-- [ ] Activity feed combines auth_events + sync_log (last 20)
-
-### F17. Health Check Endpoints
-
-- [ ] GET /api/health -- returns status, timestamp, uptime (no auth)
-- [ ] GET /api/health/detailed -- DB latency, table counts, system info, sync engine, mediator diagnostics
-- [ ] GET /api/health/ready -- checks DB connectivity, returns 503 if unavailable
-- [ ] GET /api/health/live -- always returns 200 (process alive check)
-
-### F18. API Rate Limiting
-
-- [ ] Rate limiter middleware: 200 requests per 60 seconds per IP
-- [ ] Returns 429 Too Many Requests when exceeded with Retry-After header
-- [ ] X-RateLimit-Limit and X-RateLimit-Remaining headers on every response
-- [ ] Health checks, webhooks, and SignalR hubs excluded from rate limiting
-- [ ] Stale window cleanup when map exceeds 10,000 entries
-
-### F19. API Key Management API
-
-- [ ] GET /api/keys -- list all API keys
-- [ ] POST /api/keys/generate -- create key, returns raw key once
-- [ ] POST /api/keys/{id}/revoke -- soft-disable key
-- [ ] DELETE /api/keys/{id} -- hard-delete key
-
-### F20. Audit & Activity API
-
-- [ ] GET /api/audit returns audit entries (filterable by entityType, username)
-- [ ] GET /api/activity/global -- combined audit log + auth events (admin)
-- [ ] GET /api/activity/me -- current user's personal activity timeline
-
-### F21. Notification API
-
-- [ ] GET /api/notifications/preferences -- current user's prefs
-- [ ] PUT /api/notifications/preferences -- update event type channel/enabled
-- [ ] GET /api/notifications/sessions -- all active sessions (admin)
-- [ ] DELETE /api/notifications/sessions/{id} -- force end session
-
-### F22. Search API
-
-- [ ] GET /api/search?q=term -- searches across devices, switches, users, SD tickets, tasks
-- [ ] Returns unified results with EntityType, EntityId, Title, Subtitle, Badge
-- [ ] Case-insensitive ILIKE search
-- [ ] Minimum 2 character query, configurable limit
-
-### F23. Platform Status & Version API
-
-- [ ] GET /api/status -- complete platform overview (auth required)
-- [ ] GET /api/version -- product name, version, build date, runtime, OS, architecture, endpoint list (no auth)
-
-### F24. Settings Export API
-
-- [ ] GET /api/settings/export -- exports current user's settings as JSON
-
-### F25. Validation API
-
-- [ ] POST /api/validation/validate/{entityType} -- validates JSON against registered rules
-- [ ] Returns { isValid, errors[], errorSummary }
-
-### F26. File Management API
-
-- [ ] POST /api/files/upload (multipart, MD5 verification, inline vs filesystem routing)
-- [ ] GET /api/files/{id}/download (latest version, correct Content-Type)
-- [ ] GET /api/files/{id}/versions (version history)
-- [ ] GET /api/files?entity_type=X&entity_id=Y (list files for entity)
-- [ ] DELETE /api/files/{id} (soft delete)
-
-### F27. Registration & Licensing API
-
-- [ ] POST /api/register/register -- self-service registration
-- [ ] POST /api/register/verify-email -- email verification
-- [ ] GET /api/register/check-slug/{slug} -- slug availability
-- [ ] GET /api/register/subscription/plans -- list plans
-- [ ] GET /api/register/modules -- module license status
-- [ ] POST /api/register/modules/{code}/activate -- activate module
-- [ ] POST /api/register/license/issue -- issue signed license key
-
-### F28. Update API
-
-- [ ] GET /api/updates/check -- returns update info if newer version exists
-- [ ] POST /api/updates/publish -- publish new version
-- [ ] GET /api/updates/versions -- list all published versions
-- [ ] POST /api/updates/report -- client reports update result
-
-### F29. Request Logging Middleware
-
-- [ ] All requests logged: method, path, status code, duration, user
-- [ ] Slow requests (>1000ms) logged at Warning level with [SLOW] tag
-- [ ] Error responses (4xx/5xx) logged at Warning level
-- [ ] Anonymous requests show "anonymous" as user
-
-### F30. API Middleware Stack
-
-- [ ] SecurityHeaders > RequestLogging > RateLimit > ApiKeyAuth > Authentication > Authorization > TenantResolution > ModuleLicense
-
-### F31. API Client
-
-- [ ] SearchAsync, GetDashboardAsync, GetStatusAsync
-- [ ] GetActivityAsync / GetMyActivityAsync
-- [ ] GetSyncConfigsAsync / RunSyncAsync
-- [ ] GetAuditLogAsync, GetIdentityProvidersAsync
-- [ ] ImportAsync, HealthCheckAsync
+- [ ] KPI cards (Devices, Switches, Links, VLANs, Tasks, SD, System Health)
+- [ ] Notification center shows recent alerts + actionable items
+- [ ] Recent activity feed (last 20 auth_events + sync_log)
+- [ ] Refresh button reloads all dashboard data
+- [ ] Excel export on all grids (DX XlsxExportOptions)
+- [ ] PDF export on all grids (DX PdfExportOptions)
+- [ ] CSV export on all grids (DX TableView.ExportToCsv)
+- [ ] Dashboard panel is the first tab (before Devices) — cross-ref Section 4.10
 
 ---
 
-## G. Engine Services
+## 8. Enterprise SaaS
 
-### G1. Mediator
-
-- [ ] Mediator singleton handles all in-process panel messaging with pipeline behaviors -- `MediatorTests` (11 tests)
-- [ ] MediatorLoggingBehavior logs all messages to debug output
-- [ ] MediatorPerformanceBehavior tracks per-message-type counts and avg latency
-- [ ] Mediator.GetDiagnostics() returns subscription and message count stats
-- [ ] Filtered subscriptions: handlers only called when filter function returns true
-- [ ] PanelMessageBus.Publish bridges to Mediator automatically
-- [ ] Subscriber ID tracking -- `MediatorAdvancedTests.SubscriberId`
-- [ ] Message count tracking -- `MediatorAdvancedTests.MessageCountTracking`
-- [ ] Multiple subscribers -- `MediatorAdvancedTests.MultipleSubscribers`
-- [ ] Multiple filters -- `MediatorAdvancedTests.MultipleFilters`
-- [ ] Logging behavior -- `MediatorAdvancedTests.LoggingBehavior`
-
-### G2. PanelMessageBus
-
-- [ ] Static pub/sub with 4 message types bridged to Mediator -- `PanelMessageBusTests` (7 tests)
-- [ ] SelectionChanged, NavigateToPanel, DataModified, RefreshPanel messages
-
-### G3. Link Engine
-
-- [ ] LinkEngine manages DB-stored LinkRules -- `LinkEngineTests` (8 tests)
-- [ ] Default link rules: SD Technicians>Requests, Requesters>Requests, Groups>Requests, Devices>Switches, Users>AuthEvents
-- [ ] Right-click grid > "Configure Links..." opens LinkCustomizerDialog
-- [ ] LinkCustomizerDialog shows source/target panel dropdowns + field names + active toggle
-- [ ] Link rules persisted in panel_customizations table
-- [ ] Cross-panel filtering works: click tech in SD Technicians > Request grid auto-filters
-
-### G4. Notification Service
-
-- [ ] NotificationService.Instance singleton with Info/Success/Warning/Error -- `NotificationServiceTests` (8 tests)
-- [ ] Default toast channel
-- [ ] Suppress none channel
-- [ ] Toast channel
-- [ ] Email channel triggers EmailRequested event
-- [ ] Both channels: toast + email
-- [ ] Disabled suppression
-- [ ] Preference reload
-- [ ] Recent cap 50
-- [ ] NotificationService.NotificationReceived event for shell rendering
-- [ ] Notification icon per type (Info/Success/Warning/Error) — `NotificationTypeTests.Notification_Icon_Info`, `NotificationTypeTests.Notification_Icon_Success`, `NotificationTypeTests.Notification_Icon_Warning`, `NotificationTypeTests.Notification_Icon_Error`
-- [ ] Notification timestamp is recent — `NotificationTypeTests.Notification_Timestamp_IsRecent`
-- [ ] Notification properties (type, title, message, source) — `NotificationTypeTests.Notification_Properties`
-- [ ] Notification null source handled — `NotificationTypeTests.Notification_NullSource`
-
-### G4a. Alert Service
-
-- [ ] AlertService.PingFailed adds warning alert — `AlertServiceTests.PingFailed_AddsToRecent`
-- [ ] AlertService.PingRecovered adds info alert — `AlertServiceTests.PingRecovered_AddsInfoAlert`
-- [ ] AlertService.SshFailed adds error alert — `AlertServiceTests.SshFailed_AddsErrorAlert`
-- [ ] AlertService.ConfigDrift adds warning alert — `AlertServiceTests.ConfigDrift_AddsWarningAlert`
-- [ ] AlertService.BgpPeerDown adds error alert — `AlertServiceTests.BgpPeerDown_AddsErrorAlert`
-- [ ] AlertRaised event fires — `AlertServiceTests.AlertRaised_EventFires`
-- [ ] Alert defaults — `AlertServiceTests.Alert_Defaults`
-
-### G5. Notification Preferences
-
-- [ ] notification_preferences table stores per-user event/channel pairs
-- [ ] 8 event types: sync_failure, sync_complete, auth_lockout, backup_complete/failure, data_changed, password_expiry, webhook_received — `NotificationPreferenceExtendedTests.NotificationEventTypes_ContainsAllKnownTypes`, `NotificationPreferenceExtendedTests.NotificationEventTypes_ExactCount`
-- [ ] Channels: toast, email, both, none — `NotificationPreferenceExtendedTests.PropertyChanged_Channel_Fires`
-- [ ] UpsertNotificationPreferenceAsync for save
-- [ ] GetNotificationPreferencesAsync loads user's preferences
-- [ ] JIT-provisioned users get default notification prefs for all 8 event types
-- [ ] Auth lockout triggers NotifyEvent("auth_lockout")
-- [ ] Sync failure triggers NotifyEvent("sync_failure")
-- [ ] Sync completion triggers NotifyEvent("sync_complete")
-- [ ] Backup completion triggers NotifyEvent("backup_complete")
-
-### G6. Notification Models
-
-- [ ] NotificationPreference EventDescription for all 8 known types -- `NotificationModelTests` (14 tests), `NotificationPreferenceExtendedTests.EventDescription_AllKnownTypes`
-- [ ] Unknown event type returns raw string — `NotificationPreferenceExtendedTests.EventDescription_UnknownType_ReturnsRaw`
-- [ ] NotificationEventTypes.All has 8 entries — `NotificationPreferenceExtendedTests.NotificationEventTypes_ExactCount`, `NotificationPreferenceExtendedTests.NotificationEventTypes_ContainsAllKnownTypes`
-- [ ] NotificationPreference defaults and PropertyChanged (Id, UserId, EventType, Channel, IsEnabled) — `NotificationPreferenceExtendedTests.Defaults_AreCorrect`, `NotificationPreferenceExtendedTests.PropertyChanged_Id_Fires`, `NotificationPreferenceExtendedTests.PropertyChanged_UserId_Fires`, `NotificationPreferenceExtendedTests.PropertyChanged_EventType_Fires`, `NotificationPreferenceExtendedTests.PropertyChanged_Channel_Fires`, `NotificationPreferenceExtendedTests.PropertyChanged_IsEnabled_Fires`
-- [ ] ActiveSession defaults — `NotificationPreferenceExtendedTests.ActiveSession_Defaults`
-- [ ] ActiveSession Duration formats correctly — `NotificationPreferenceExtendedTests.ActiveSession_Duration_FormatDaysHoursMinutes`, `NotificationPreferenceExtendedTests.ActiveSession_Duration_LessThanOneDay`
-- [ ] ActiveSession StatusColor: active=green, inactive=grey — `NotificationPreferenceExtendedTests.ActiveSession_StatusColor_Active_Green`, `NotificationPreferenceExtendedTests.ActiveSession_StatusColor_Inactive_Grey`
-- [ ] ActiveSession ExpiresAt nullable — `NotificationPreferenceExtendedTests.ActiveSession_ExpiresAt_Nullable`
-- [ ] ApiKeyRecord PropertyChanged fires — `ApiKeyRecordTests.PropertyChanged_AllFields`
-- [ ] DashboardData defaults
-- [ ] ActivityItem defaults
-- [ ] SavedFilter IsShared, PropertyChanged — `SavedFilterTests` (3 tests)
-- [ ] AdUser defaults
-- [ ] AdConfig IsConfigured
-- [ ] IconOverride defaults
-
-### G7. Email Service
-
-- [ ] EmailService.Instance configurable with SMTP settings -- `EmailServiceTests` (6 tests)
-- [ ] Configure() accepts host, port, username, password, from address, SSL
-- [ ] SendAsync sends text or HTML emails
-- [ ] Predefined templates: sync failure alert, auth lockout alert, backup complete
-- [ ] SendTestEmailAsync for testing SMTP configuration
-- [ ] Non-blocking -- email failures don't crash the app
-- [ ] EmailService configured from app settings at startup
-- [ ] NotificationService.EmailRequested wired to EmailService
-
-### G8. Cron Expression Parser
-
-- [ ] CronExpression.Parse various expressions -- `CronExpressionTests` (14 tests) + `CronExpressionNextOccurrenceTests` (18 tests) + `CronExpressionExtendedTests` (16 tests)
-- [ ] Cron first and fifteenth of month — `CronExpressionExtendedTests.Parse_FirstAndFifteenth_OfMonth`
-- [ ] Cron business hours weekdays only — `CronExpressionExtendedTests.Parse_BusinessHours_WeekdaysOnly`
-- [ ] Cron multiple months (quarterly) — `CronExpressionExtendedTests.Parse_MultipleMonths`
-- [ ] Cron weekend only — `CronExpressionExtendedTests.Parse_WeekendOnly`
-- [ ] Cron every 5 minutes work hours — `CronExpressionExtendedTests.Parse_Every5Minutes_WorkHours`
-- [ ] Cron last minute of day — `CronExpressionExtendedTests.Parse_LastMinuteOfDay`
-- [ ] Cron every minute on Sunday — `CronExpressionExtendedTests.Parse_EveryMinuteOnSunday`
-- [ ] GetNextOccurrence cross year — `CronExpressionExtendedTests.GetNextOccurrence_CrossYear`
-- [ ] GetNextOccurrence weekday skips weekend — `CronExpressionExtendedTests.GetNextOccurrence_WeekdaySkipsWeekend`
-- [ ] GetNextOccurrence every hour same day — `CronExpressionExtendedTests.GetNextOccurrence_EveryHour_SameDay`
-- [ ] GetNextOccurrence midnight next day — `CronExpressionExtendedTests.GetNextOccurrence_MidnightNextDay`
-- [ ] ToString contains cron values — `CronExpressionExtendedTests.ToString_SpecificExpression_ContainsValues`
-- [ ] TryParse too many fields/empty/whitespace — `CronExpressionExtendedTests.TryParse_TooManyFields_ReturnsFalse`, `CronExpressionExtendedTests.TryParse_EmptyString_ReturnsFalse`, `CronExpressionExtendedTests.TryParse_WhitespaceOnly_ReturnsFalse`
-- [ ] TryParse valid expression returns result — `CronExpressionExtendedTests.TryParse_ValidExpression_ReturnsResult`
-- [ ] Matches(DateTime) returns true when time matches — `CronExpressionNextOccurrenceTests.Matches_SpecificDateTime`, `Matches_Wildcard`
-- [ ] GetNextOccurrence(after) returns next matching time — `CronExpressionNextOccurrenceTests.GetNextOccurrence_EveryMinute`, `GetNextOccurrence_SpecificTime`
-- [ ] TryParse returns false for invalid expressions — `CronExpressionNextOccurrenceTests.TryParse_Valid_ReturnsTrue`, `TryParse_Invalid_ReturnsFalse`
-- [ ] Supports: *, ranges (1-5), steps (*/15), lists (1,3,5) — `CronExpressionNextOccurrenceTests.Parse_CommaList`, `Parse_Range`, `Parse_Step_FromWildcard`
-- [ ] Sunday (day 0) matching -- `CronEdgeCaseTests.Sunday`
-- [ ] Multiple comma values -- `CronEdgeCaseTests.MultipleCommaValues`
-- [ ] First day of month -- `CronEdgeCaseTests.FirstDayOfMonth`
-- [ ] Specific month -- `CronEdgeCaseTests.SpecificMonth`
-- [ ] GetNextOccurrence skips non-matching months -- `CronEdgeCaseTests.SkipMonths`
-- [ ] Step from non-zero start -- `CronEdgeCaseTests.StepFromNonZero`
-- [ ] Invalid field count throws -- `CronEdgeCaseTests.InvalidFieldCount`
-
-### G9. Cron Integration in Job Scheduler
-
-- [ ] job_schedules table has schedule_cron column (migration 051)
-- [ ] Jobs with cron expression run when current minute matches cron
-- [ ] Jobs without cron use interval_minutes (backward compatible)
-- [ ] next_run_at calculated from CronExpression.GetNextOccurrence
-- [ ] Cron-based jobs filtered at check time
-- [ ] Both cron and interval jobs visible in Jobs admin panel
-
-### G10. Data Validation Service
-
-- [ ] DataValidationService.Instance singleton -- `DataValidationServiceTests` (12 tests) + `DataValidationEdgeCaseTests` (22 tests)
-- [ ] Required rule: rejects null/empty/whitespace — `DataValidationEdgeCaseTests.Validate_RequiredNull_Fails`, `Validate_RequiredWhitespace_Fails`
-- [ ] MinLength rule — `DataValidationEdgeCaseTests.Validate_MinLength_TooShort_Fails`, `Validate_MinLength_ExactLength_Passes`
-- [ ] MaxLength rule — `DataValidationEdgeCaseTests.Validate_MaxLength_TooLong_Fails`, `Validate_MaxLength_ExactLength_Passes`
-- [ ] Regex rule — `DataValidationEdgeCaseTests.Validate_Regex_Valid_Passes`, `Validate_Regex_Invalid_Fails`
-- [ ] Range rule — `DataValidationEdgeCaseTests.Validate_Range_IntInRange_Passes`, `Validate_Range_IntBelowMin_Fails`
-- [ ] Custom rule with Func<object?, bool> — `DataValidationEdgeCaseTests.Validate_Custom_PassesWhenTrue`, `Validate_Custom_FailsWhenFalse`
-- [ ] Multiple rules per entity, all errors reported — `DataValidationEdgeCaseTests.Validate_MultipleRules_AllChecked`
-- [ ] RegisterDefaults() seeds rules for Device, User, SdRequest, Appointment, Country, ReferenceConfig — `DataValidationEdgeCaseTests.RegisterDefaults_RegistersKnownTypes`
-- [ ] Registered at startup in App.OnStartup
-
-### G11. Settings Export/Import Service
-
-- [ ] ExportAsync exports user settings as JSON -- `SettingsExportTests` (3 tests), `SettingsExportExtendedTests.ExportAsync_WithMultipleSettings_ContainsAll`, `SettingsExportExtendedTests.ExportAsync_WithEmptyData_ValidJson`, `SettingsExportExtendedTests.ExportAsync_IncludesAppVersion`
-- [ ] ExportToFileAsync writes JSON to file — `SettingsExportExtendedTests.ExportImport_RoundTrip_PreservesAllData`
-- [ ] ImportFromFile parses exported settings JSON — `SettingsExportExtendedTests.ExportImport_RoundTrip_PreservesAllData`
-- [ ] ExportedSettings defaults (empty collections, version, ISO timestamp) — `SettingsExportExtendedTests.ExportedSettings_Defaults`, `SettingsExportExtendedTests.ExportedSettings_ExportedAt_IsIsoFormat`
-- [ ] ImportFromFile malformed JSON throws — `SettingsExportExtendedTests.ImportFromFile_MalformedJson_Throws`
-
-### G12. CommandGuard
-
-- [ ] TryEnter/Exit prevents concurrent execution -- `CommandGuardTests` (7 tests) + `CommandGuardEdgeCaseTests` (6 tests)
-- [ ] RunAsync wraps async actions with automatic TryEnter/Exit — `CommandGuardEdgeCaseTests.RunAsync_ExitsCleanly_AfterException`
-- [ ] Run wraps sync actions with automatic TryEnter/Exit — `CommandGuardEdgeCaseTests.Run_Sync_ExitsClearly_AfterException`
-- [ ] IsRunning tracks current state — `CommandGuardEdgeCaseTests.MultipleEnterExit_Cycles`
-- [ ] Different command names are independent — `CommandGuardEdgeCaseTests.ConcurrentAttempts_OnlyOneSucceeds`
-- [ ] Applied to: GlobalAdd, GlobalDelete, AddTask, AddSubTask, Refresh, SaveLayout
-
-### G13. SafeAsync
-
-- [ ] SafeAsync.Run wraps async void handlers with try/catch -- `SafeAsyncTests` (4 tests)
-- [ ] Exceptions routed to NotificationService.Error
-- [ ] Context string included in error messages
-- [ ] SafeAsync.RunGuarded combines CommandGuard + safe exception handling
-- [ ] RunGuarded releases guard even on exception
-
-### G14. Sync Engine
-
-- [ ] Sync Config panel opens from Admin > System > Sync Engine
-- [ ] Sync configs grid shows Name, AgentType, Enabled, Direction, Interval, Status
-- [ ] Run Sync executes SyncEngine.ExecuteSyncAsync
-- [ ] Test Connection checks agent availability
-- [ ] ManageEngine agent registered -- `SyncEngineTests` (6 tests)
-- [ ] 7 field converters registered -- `FieldConverterTests` (15 tests)
-- [ ] Entity maps / field maps define mapping per config
-- [ ] Concurrent sync throttled by SemaphoreSlim
-- [ ] Cancel sync via SyncEngine.CancelSync(configId)
-
-### G15. Sync Engine Agents
-
-- [ ] ManageEngine agent (agent_type='manage_engine') -- OAuth refresh, paged read, write-back
-- [ ] CSV Import agent -- `CsvImportAgentTests` (9 tests)
-- [ ] REST API agent -- `RestApiAgentTests` (6 tests)
-- [ ] All 3 agents registered at startup -- `AgentRegistrationTests` (3 tests)
-
-### G16. Sync Models
-
-- [ ] SyncConfig StatusColor: success/failed/running/partial/never -- `SyncModelsTests` (9 tests)
-- [ ] SyncLogEntry StatusColor
-- [ ] SyncEntityMap PropertyChanged
-- [ ] SyncFieldMap PropertyChanged
-- [ ] SyncConfig PropertyChanged
-
-### G17. Sync Pipeline Integration
-
-- [ ] Full pipeline with direct mapping -- `SyncPipelineTests.DirectMapping`
-- [ ] Full pipeline with converters -- `SyncPipelineTests.WithConverters`
-- [ ] Upsert failure counted as failed record -- `SyncPipelineTests.UpsertFailure`
-- [ ] Empty source: success with 0 records -- `SyncPipelineTests.EmptySource`
-- [ ] Multiple entity maps synced concurrently -- `SyncPipelineTests.MultipleEntityMaps`
-
-### G18. Converter Edge Cases
-
-- [ ] Direct: null, int, bool pass through -- `ConverterEdgeCaseTests` (11 tests)
-- [ ] Constant: always returns expression
-- [ ] Combine: empty expression handled
-- [ ] Split: null value, invalid expression handled
-- [ ] DateFormat: null and invalid string handled
-- [ ] Expression: empty value with $value ref
-- [ ] Lookup: null value handled
-
-### G19. Sync Engine Resilience
-
-- [ ] SyncRetry.WithRetryAsync: exponential backoff (1s, 2s, 4s), configurable max retries, 30s cap
-- [ ] SyncHashDetector: SHA-256 content hash, skip unchanged records
-- [ ] SyncFieldValidator: pre-write validation of required/key fields
-- [ ] Dead letter queue: failed records stored with error message, retry count
-- [ ] Per-record retry in SyncEngine: 2 retries with 500ms backoff
-- [ ] Hash lookup/update callbacks
-- [ ] Validation errors routed to dead letter queue (not retried)
-- [ ] RecordsSkipped counter for unchanged records
-
-### G20. File Management Service
-
-- [ ] FileManagementService singleton: Configure() sets filesystem storage path — `FileManagementServiceTests` (17 tests)
-- [ ] ComputeMd5: byte array and Stream overloads — `FileManagementServiceTests.ComputeMd5_ByteArray_ReturnsDeterministicHash`, `ComputeMd5_Stream_ReturnsSameAsBytes`
-- [ ] ShouldStoreInline: files <= 10MB stored in DB, larger on filesystem — `FileManagementServiceTests.ShouldStoreInline_SmallFile_True`, `ShouldStoreInline_LargeFile_False`
-- [ ] GetStoragePath: sharded directory structure, auto-create
-- [ ] SaveToFilesystemAsync / ReadFromFilesystemAsync / DeleteFromFilesystem
-- [ ] FileRecord model with FileSizeDisplay (B, KB, MB, GB) — `FileManagementServiceTests.FileRecord_FileSizeDisplay`
-- [ ] FileVersionRecord model
-
-### G21. Elsa Workflows Engine
-
-- [ ] Central.Workflows project with Elsa 3.5.3
-- [ ] PostgreSQL persistence for both Management and Runtime stores
-- [ ] 6 custom activities: UpdateTaskStatus, ValidateTransition, SendNotification, Approval, LogAudit, SetField -- `WorkflowActivityTests` (9 tests)
-- [ ] TaskStatusTransitionWorkflow built-in
-- [ ] Activities use workflow variables (SetVariable)
-- [ ] ApprovalActivity uses Elsa bookmarks for suspend/resume
-- [ ] Elsa management API at /elsa/api/*
-
----
-
-## H. Data Layer
-
-### H1. Database Connection
-
-- [ ] DSN from CENTRAL_DSN env var works
-- [ ] Fallback DSN (localhost defaults) works
-- [ ] 5s connection timeout
-- [ ] 10s background retry on failure
-- [ ] pg_notify triggers fire on all 19+ tables
-- [ ] pg_notify triggers on all new tables (migration 048)
-
-### H2. Migrations
-
-- [ ] All migrations apply cleanly on fresh DB
-- [ ] Migrations are idempotent (re-run safe)
-- [ ] PowerShell setup script: db\setup.ps1 applies all migrations via psql
-- [ ] Migration 050: webhook_log with pg_notify trigger
-- [ ] Migration 051: schedule_cron column on job_schedules
-- [ ] Migration 052: audit_log + password_history
-- [ ] Migration 053: api_keys with SHA256 hash
-- [ ] Migration 054: notification_preferences + active_sessions
-- [ ] Migration 055: saved_filters table
-- [ ] Migration 056: central_platform schema with cross-tenant tables
-- [ ] Migration 058: sync_failed_records + sync_record_hashes
-- [ ] Migration 059: file_store + file_versions
-- [ ] Migration 060: tasks_v2 (portfolios, programmes, projects, sprints, releases, links, dependencies)
-- [ ] Migration 061: sprint_allocations + sprint_burndown
-- [ ] Migration 062: board_columns + board_lanes
-- [ ] Migration 063: workflow_assignments + workflow_approvals + workflow_execution_log
-- [ ] Migration 064: task_baselines + save_project_baseline() function
-- [ ] Migration 065: custom_columns + custom_column_permissions + task_custom_values
-- [ ] Migration 066: saved_reports + dashboards + dashboard_snapshots
-- [ ] Migration 067: time_entries + activity_feed + task_views + log_task_activity() trigger
-
-### H3. Multi-Tenant RLS
-
-- [ ] tenant_id UUID column on ALL public-schema tables (40+ tables)
-- [ ] Default tenant UUID for all existing rows
-- [ ] RLS policies (tenant_isolation) on every table
-- [ ] set_tenant_context(uuid) function for DbRepository
-- [ ] set_default_tenant() convenience function
-- [ ] _add_tenant_rls() helper for future migrations
-- [ ] Indexes on tenant_id columns
-
-### H4. Real-Time Notifications (pg_notify)
-
-- [ ] SignalR DataChanged handler covers: identity_providers, appointments, countries, regions, reference_config, backup_history, icon_defaults, sd_technicians, sd_groups, sd_teams
-- [ ] Panel loaded flags reset on DataChanged
-- [ ] Toast notifications shown for multi-user changes
-- [ ] SignalR DataChanged handlers for 13 task-related tables
-
-### H5. Admin Models
-
-- [ ] ReferenceConfig, ContainerInfo, MigrationRecord, BackupRecord, GridSettings, Location, Appointment -- `AdminModelsTests` (20 tests) + `ReferenceConfigTests` (10 tests) + `MigrationRecordTests` (5 tests)
-- [ ] ContainerInfo StateColor, IsRunning, PropertyChanged -- `ContainerInfoTests` (3 tests)
-- [ ] BackupRecord FileSizeDisplay, StatusColor -- `BackupRecordTests` (2 tests)
-- [ ] Location models PropertyChanged -- `LocationModelTests` (4 tests)
-- [ ] Appointment models defaults + PropertyChanged -- `AppointmentModelTests` (4 tests)
-
-### H6. First-Time Setup / Seed Data
-
-- [ ] Start pod: podman play kube infra/pod.yaml
-- [ ] Apply migrations: ./db/setup.sh or auto-apply on app startup
-- [ ] Default admin: admin/admin (System user, cannot be deleted)
-- [ ] Default roles: Admin (100), Operator (50), Viewer (10)
-- [ ] Default lookups: status, device_type, building
-- [ ] Default notification preferences seeded for admin user
-
----
-
-## I. Infrastructure
-
-### I1. Enterprise V2 -- Multi-Tenancy Foundation
+### 8.1 Multi-Tenancy Foundation
 
 - [ ] Central.Tenancy project (ITenantContext, TenantConnectionFactory, TenantSchemaManager)
 - [ ] TenantContext.Default for backward-compatible single-tenant mode
@@ -2155,9 +2262,14 @@ have the test class and method appended after a dash.
 - [ ] central_platform schema tables: tenants, subscription_plans, tenant_subscriptions, module_catalog, etc.
 - [ ] Seed: 3 subscription plans, 8 module catalog entries, 3 release channels
 - [ ] Default tenant seeded for backward compatibility
-- [ ] Tenancy models -- `TenancyTests` (10 tests)
+- [ ] Tenancy models — `TenancyTests` (10 tests)
+- [ ] TenantResolutionMiddleware extracts tenant_slug from JWT
+- [ ] Falls back to X-Tenant header for API key auth
+- [ ] Defaults to "default" tenant for backward compatibility
+- [ ] ModuleLicenseMiddleware maps API paths to module codes
+- [ ] Enterprise tier bypasses module license checks
 
-### I2. Enterprise V2 -- Registration + Licensing
+### 8.2 Registration + Licensing
 
 - [ ] Central.Licensing project
 - [ ] RegistrationService: RegisterAsync creates global user + tenant + subscription — `RegistrationTests` (2 tests)
@@ -2167,153 +2279,368 @@ have the test class and method appended after a dash.
 - [ ] LicenseKeyService: RSA-4096 signed license keys — `LicenseKeyTests` (13 tests)
 - [ ] Offline validation: public key embedded, verify signature + hardware + expiry — `LicenseKeyTests.ValidateLicense_TamperedPayload_InvalidSignature`
 
-### I3. Enterprise V2 -- Multi-Tenancy Enforcement
+### 8.3 Subscription Management
 
-- [ ] TenantResolutionMiddleware extracts tenant_slug from JWT
-- [ ] Falls back to X-Tenant header for API key auth
-- [ ] Defaults to "default" tenant for backward compatibility
-- [ ] ModuleLicenseMiddleware maps API paths to module codes
-- [ ] Enterprise tier bypasses module license checks
+- [x] Multiple tiers — Free/Pro/Enterprise in `subscription_plans`
+- [x] Usage-based billing — `usage_quotas` + `overage_action`
+- [x] Upgrade/downgrade flows — `SubscriptionService.UpgradeAsync`
+- [x] Proration — `proration_events` + `/api/billing/.../proration`
+- [x] Payment method management — `payment_methods` (card/bank/po)
+- [x] Admin discount/override — `discount_codes` + `discount_redemptions` + `discount_pct`
+- [x] Invoice generation/history — `invoices` + `/api/billing/.../invoices`
+- [x] Renewal/cancellation — `cancel_at` + `cancelled_at` + `next_invoice_at`
+- [x] Grace periods — `grace_period_ends_at`
+- [x] Usage metering + quota enforcement — `usage_quotas` + `CheckLimitsAsync`
+- [x] Add-ons/upselling — `subscription_addons` (5 seeded) + `tenant_addons`
+- [x] Annual vs monthly — `billing_cycle` + `price_annual` + `annual_discount_pct`
+- [x] Corporate billing/POs — `payment_methods.method_type='po'` + `po_number` + `po_expires_at`
+- [x] Trial period management — `tenant_subscriptions.is_trial` + `trial_ends_at`
 
-### I4. Enterprise V2 -- Client Binary Protection
+### 8.4 Client Binary Protection
 
 - [ ] Central.Protection project
-- [ ] HardwareFingerprint: CPU ID + disk serial + machine name + MAC > SHA256
+- [ ] HardwareFingerprint: CPU ID + disk serial + machine name + MAC to SHA256
 - [ ] ClientLicenseValidator: RSA public key, offline validation
 - [ ] DPAPI-encrypted local cache for 7-day offline grace period
 - [ ] CertificatePinningHandler: SHA-256 public key pinning
 - [ ] IntegrityChecker: SHA-256 of Central*.dll files at runtime — `IntegrityResultTests` (7 tests)
 
-### I5. Enterprise V2 -- Auto-Update Manager
+### 8.5 Auto-Update Manager
 
 - [ ] Central.UpdateClient project
 - [ ] UpdateManager: CheckForUpdateAsync, ApplyUpdateAsync, Rollback, RestartApplication
 - [ ] SHA-256 checksum verification, backup before overwrite
 
-### I6. Enterprise V2 -- Environment Routing
+### 8.6 Environment Routing
 
 - [ ] EnvironmentService singleton manages Live/Test/Dev connection profiles — `EnvironmentServiceTests` (10 tests)
 - [ ] Profiles stored in %LocalAppData%/Central/environments.json
 - [ ] SwitchTo(name) changes active environment + fires EnvironmentChanged event
 
-### I7. Enterprise V2 -- Concurrent Editing
+### 8.7 Concurrent Editing
 
-- [ ] Central.Collaboration project -- `CollaborationTests` (10 tests)
+- [ ] Central.Collaboration project — `CollaborationTests` (10 tests)
 - [ ] PresenceService: JoinEditing, LeaveEditing, DisconnectAll, GetEditors
 - [ ] ConflictDetector: row_version comparison, three-way merge
 - [ ] Non-overlapping changes auto-merged, overlapping flagged
 
-### I8. Enterprise V2 -- Item-Level Security (ABAC)
+### 8.8 Item-Level Security (ABAC)
 
-- [ ] Central.Security project -- `SecurityTests` (6 tests)
+- [ ] Central.Security project — `SecurityTests` (6 tests)
 - [ ] SecurityPolicyEngine: CanAccessRow, GetHiddenFields, FilterFields
 - [ ] Policies: EntityType, PolicyType (row/field), Effect (allow/deny), Conditions, Priority
 
-### I9. Enterprise V2 -- Observability
+### 8.9 Observability
 
-- [ ] Central.Observability project -- `ObservabilityTests` (5 tests)
+- [ ] Central.Observability project — `ObservabilityTests` (5 tests)
 - [ ] CorrelationContext: AsyncLocal<string> for request correlation ID
 - [ ] StructuredLogEntry with ToCef() for SIEM integration
 - [ ] Level-to-severity mapping
 
-### I10. Enterprise V2 -- Solution Structure (21 projects)
+### 8.10 Global Admin Console
 
-- [ ] Central.Core, Central.Data, Central.Api, Central.Api.Client, Central.Desktop
-- [ ] 8 modules: Devices, Switches, Links, Routing, VLANs, Admin, Tasks, ServiceDesk
-- [ ] Central.Tests, Central.Workflows
-- [ ] Central.Tenancy, Central.Licensing, Central.Protection, Central.UpdateClient
-- [ ] Central.Collaboration, Central.Security, Central.Observability
+- [ ] 5-phase buildout: tenant CRUD, licensing, setup wizard, audit, addresses/contacts
+- [ ] Platform-level audit trail in `central_platform.global_admin_audit_log`
+- [ ] Permissions: global_admin:read/write/delete/provision
+- [ ] Tenant addresses (many-to-one) and tenant contacts (many-to-many)
+- [ ] Angular 5-tab admin UI (health, tenants CRUD, users, licenses, infra)
+- [ ] WPF 5-panel Global Admin module
 
-### I11. Terraform Modules (IaC)
+### Enterprise Feature Matrix Totals
 
-- [ ] VPC module -- subnets, NAT gateway, IGW, route tables
-- [ ] EKS module -- cluster + managed node groups, OIDC provider for IRSA
-- [ ] RDS module -- Aurora PostgreSQL cluster, encryption, parameter group
-- [ ] ElastiCache module -- Redis replication group, failover
-- [ ] ECR module -- container registries for all 8 services, lifecycle policies
-- [ ] S3 module -- media/backup/config buckets, versioning, encryption
-- [ ] KMS module -- customer-managed keys with rotation
-- [ ] Secrets module -- DB creds, JWT key, encryption key in Secrets Manager
-- [ ] Monitoring module -- CloudWatch log groups, alarms, dashboard
-- [ ] K8s Service module -- reusable Deployment + Service + HPA + PDB
+- [x] User Management (7/7): registration, social login, profile, password reset, MFA, sessions, activity logs
+- [x] Address Management (5/5): types, validation, defaults, geolocation, history
+- [x] Roles & Permissions (6/6): RBAC, predefined roles, custom roles, assignment levels, inheritance+override, templates
+- [x] Teams (6/6): creation, invitations, resources, hierarchy, access controls, activity dashboards
+- [x] Groups (5/5): batch permissions, dynamic rules, cross-team, resource sharing, auto-assignment
+- [x] Companies/Tenants (7/7): multi-tenant, registration, branding, settings, hierarchy, cross-company access, feature flags
+- [x] Security (10/10): encryption, API keys, IP allowlist, SSL, user keys, rate limiting, compliance, backup, SSO, auto-deprovisioning
+- [x] Registration (7/7): self-service, invitation, domain verification, trial, approval, onboarding, ToS
+- [x] Subscription Management (13/13): see 8.3
+- **Total: 66/66 enterprise spec items complete**
 
-### I12. Terragrunt Configuration
+---
 
-- [ ] Root terragrunt.hcl -- S3 backend, DynamoDB locking, provider generation
-- [ ] _envcommon/ -- DRY module configs
-- [ ] dev/env.hcl -- 2 AZs, t3.medium, single NAT, no spot
-- [ ] staging/env.hcl -- 2 AZs, t3.large, spot enabled
-- [ ] prod/env.hcl -- 3 AZs, r6g/m6i, spot, read replicas, transit encryption
-- [ ] Dependency chain: KMS > VPC > EKS > RDS/ElastiCache > ECR > Secrets
+## 9. AI & Intelligence
 
-### I13. K8s Base Manifests
+### 9.1 Platform-Level AI Providers (Global Admin Only)
 
-- [ ] Namespace, RBAC, ResourceQuota, LimitRange, ConfigMap
+- [ ] GET /api/global-admin/ai/providers returns all 8 seeded platform providers (Anthropic Claude, OpenAI, Azure OpenAI, Vertex, Bedrock, Groq, Ollama, LM Studio)
+- [ ] POST /api/global-admin/ai/providers creates a new platform provider and appears in list
+- [ ] PUT /api/global-admin/ai/providers/{id} updates provider metadata (base URL, display name, enabled flag)
+- [ ] DELETE /api/global-admin/ai/providers/{id} soft-deletes a platform provider
+- [ ] GET /api/global-admin/ai/models returns all 9 seeded models (Claude Opus 4.7, Sonnet 4.6, Haiku 4.5, GPT-5, GPT-5 Mini, Gemini 2.5 Pro, etc.)
+- [ ] POST /api/global-admin/ai/models adds a new model under an existing provider
+- [ ] Non-global_admin user receives 403 on every /api/global-admin/ai/* call
+- [ ] GET /api/global-admin/ai/features returns the feature catalog (assistant, scoring, dedup, enrichment, churn, calls, etc.)
+
+### 9.2 Tenant BYOK Configuration
+
+- [ ] POST /api/ai/tenant/providers accepts a tenant API key and stores it AES-256-encrypted in `tenant_ai_providers.api_key_enc` (plaintext never round-trips back)
+- [ ] GET /api/ai/tenant/providers returns tenant providers with `api_key_enc` redacted (only last-4 / masked form)
+- [ ] PUT /api/ai/tenant/providers/{id} updates a tenant provider's display name / enabled / default-model
+- [ ] DELETE /api/ai/tenant/providers/{id} removes a tenant-specific BYOK binding
+- [ ] POST /api/ai/tenant/providers/{id}/test performs a round-trip call with the stored key and returns success/failure + latency
+- [ ] PUT /api/ai/tenant/features maps a feature code (e.g. assistant, lead_scoring) to a specific provider for this tenant
+- [ ] GET /api/ai/tenant/features lists the tenant's per-feature provider mapping with fallbacks indicated
+
+### 9.3 Provider Resolution + Usage Logging
+
+- [ ] GET /api/ai/tenant/resolve/{featureCode} returns tenant-configured provider when a tenant mapping exists
+- [ ] Falls back to the platform default provider when no tenant mapping exists
+- [ ] Returns "none" / 404-style response when neither tenant nor platform provider is configured
+- [ ] `resolve_ai_provider()` SQL function returns the same result as the HTTP endpoint (parity check)
+- [ ] `TenantAiProviderResolver` caches resolutions for 2 minutes and invalidates on tenant provider update
+- [ ] Every AI call writes a row to `ai_usage_log` with feature, provider, model, tokens in/out, cost, latency
+- [ ] GET /api/ai/tenant/usage returns aggregated usage (by day/feature/provider) from the auto-aggregation trigger
+- [ ] Usage logging honors tenant quota; overage action (warn/block/throttle) fires per tenant config
+
+### 9.4 ML Scoring (Leads, Deals, Accounts, Churn, LTV)
+
+- [ ] GET /api/ai/scores?entity=lead returns scores for leads from `ai_model_scores`
+- [ ] GET /api/ai/scores?entity=deal returns scores joined to `crm_deals` ML score columns
+- [ ] GET /api/ai/scores?entity=account returns account health/propensity scores
+- [ ] POST /api/ai/ml-models registers a new ML model in `ai_ml_models`
+- [ ] POST /api/ai/ml-models/{id}/train enqueues a row in `ai_training_jobs` and transitions status queued to running to completed
+- [ ] GET /api/ai/next-actions returns entries from `ai_next_best_actions` for the current user's pipeline
+- [ ] Lead/deal/account detail views display the ML score column value when present
+
+### 9.5 AI Assistant (Conversations, Messages, Templates, Tools)
+
+- [ ] POST /api/ai/assistant/conversations creates a conversation and returns its id
+- [ ] GET /api/ai/assistant/conversations lists conversations for the current user (not other users')
+- [ ] POST /api/ai/assistant/conversations/{id}/messages appends a user message and returns assistant response
+- [ ] GET /api/ai/assistant/conversations/{id}/messages returns full message thread in order
+- [ ] DELETE /api/ai/assistant/conversations/{id} removes conversation + messages
+- [ ] GET /api/ai/assistant/templates returns the 4 seeded prompt templates
+- [ ] POST /api/ai/assistant/templates creates a new prompt template (admin-only)
+- [ ] GET /api/ai/assistant/tools returns the 6 seeded AI tool definitions
+- [ ] Assistant calls respect tenant provider mapping for the `assistant` feature
+
+### 9.6 Duplicate Detection + Merge
+
+- [ ] GET /api/ai/duplicates returns candidate duplicates from `v_contact_duplicate_candidates` (pg_trgm similarity)
+- [ ] POST /api/ai/duplicates/rules creates a `crm_duplicate_rules` entry (fields + threshold)
+- [ ] POST /api/ai/duplicates/merge executes a merge operation and writes to `crm_merge_operations` with before/after snapshot
+- [ ] Merge is blocked without `AiDedupMerge` permission
+
+### 9.7 Enrichment (Clearbit/Apollo/etc. + Tenant BYOK)
+
+- [ ] GET /api/ai/enrichment/providers lists the 5 seeded enrichment providers (Clearbit, Apollo, ZoomInfo, PeopleData, Hunter)
+- [ ] POST /api/ai/tenant/enrichment-providers stores tenant BYOK enrichment key (AES-256)
+- [ ] POST /api/ai/enrichment/jobs enqueues an enrichment job in `crm_enrichment_jobs`
+- [ ] GET /api/ai/enrichment/jobs/{id} shows job status + results
+- [ ] Enrichment endpoints require `AiEnrichmentRead` / `AiEnrichmentRun` permission
+
+### 9.8 Churn Risk + LTV Prediction
+
+- [ ] GET /api/ai/churn-risks returns churn risk entries from `crm_churn_risks`
+- [ ] GET /api/ai/account-ltv returns per-account LTV snapshots from `crm_account_ltv`
+
+### 9.9 Call Recording (Transcript, Sentiment, Topics, Talk Ratio)
+
+- [ ] GET /api/ai/calls returns call recordings with transcript, sentiment, topics, talk ratio
+- [ ] POST /api/ai/calls uploads a call recording (or URL) and creates the row in `crm_call_recordings`
+
+### 9.10 Activity Auto-Capture
+
+- [ ] Auto-capture rule matches activity — row inserted into `crm_auto_capture_queue`; queue processor logs the activity
+- [ ] 8 new AI-related webhook event types fire (e.g. ai.call.transcribed, ai.churn_risk.raised, ai.duplicate.merged) and appear in `webhook_deliveries`
+
+### AI Migrations + Infrastructure
+
+- [ ] Migration 076_ai_providers.sql applies cleanly; 8 providers + 9 models seeded
+- [ ] Migration 077_ai_ml_scoring.sql applies and adds ML score columns to crm_leads/crm_deals/crm_accounts
+- [ ] Migration 078_ai_assistant.sql applies; 4 prompt templates + 6 tools seeded
+- [ ] Migration 079_ai_dedup_enrichment.sql applies; 5 enrichment providers seeded; `v_contact_duplicate_candidates` view queries successfully with pg_trgm
+- [ ] Migration 080_ai_churn_calls.sql applies; 8 webhook event types registered
+- [ ] All 5 migrations listed in `infra/k8s/base/kustomization.yaml`
+
+---
+
+## 10. Integrations
+
+### 10.1 Service Desk Sync (ManageEngine)
+
+(See Section 7.7 for canonical ME sync items.)
+- [ ] Zoho EU OAuth flow, refresh token rotation, fields_required param
+- [ ] Incremental sync via completed_time not synced_at
+- [ ] Auth failure shows error toast, integration_log records with duration
+
+### 10.2 Email (Accounts, Templates, Tracking, Providers)
+
+(See Section 7.8 Phase 20 and Section 6.1 EmailEndpoints.)
+- [ ] SMTP / IMAP / Exchange / Gmail providers with OAuth token storage
+- [ ] Email templates with merge fields
+- [ ] Tracking pixel + click redirect (anonymous endpoints)
+
+### 10.3 Webhooks (Subscriptions, Event Types, Deliveries, HMAC)
+
+- [ ] 28 seeded event types (crm.deal.won/lost, crm.lead.converted, etc.) + 8 AI event types + 16 Stage 3 order/subscription events
+- [ ] webhook_subscriptions with HMAC secret generation
+- [ ] webhook_deliveries with retry + status tracking
+- [ ] X-Webhook-Signature HMAC-SHA256 validation (see Section 6.9)
+- [ ] deal_won trigger auto-dispatches crm.deal.won
+
+### 10.4 Sync Engine (Bidirectional CRM Sync)
+
+- [ ] Sync Config panel opens from Admin > System > Sync Engine
+- [ ] Sync configs grid shows Name, AgentType, Enabled, Direction, Interval, Status
+- [ ] Run Sync executes SyncEngine.ExecuteSyncAsync
+- [ ] Test Connection checks agent availability
+- [ ] ManageEngine agent registered — `SyncEngineTests` (6 tests)
+- [ ] 7 field converters registered — `FieldConverterTests` (15 tests)
+- [ ] Entity maps / field maps define mapping per config
+- [ ] Concurrent sync throttled by SemaphoreSlim
+- [ ] Cancel sync via SyncEngine.CancelSync(configId)
+- [ ] 6 seeded integration agents (Salesforce, HubSpot, Dynamics, Exchange, Gmail, Pipedrive)
+- [ ] 8 sync configs for bidirectional entity sync
+- [ ] crm_external_ids + crm_sync_conflicts tables
+
+#### Sync Engine Agents
+- [ ] ManageEngine agent (agent_type='manage_engine') — OAuth refresh, paged read, write-back
+- [ ] CSV Import agent — `CsvImportAgentTests` (9 tests)
+- [ ] REST API agent — `RestApiAgentTests` (6 tests)
+- [ ] All 3 agents registered at startup — `AgentRegistrationTests` (3 tests)
+
+#### Sync Models
+- [ ] SyncConfig StatusColor: success/failed/running/partial/never — `SyncModelsTests` (9 tests)
+- [ ] SyncLogEntry StatusColor
+- [ ] SyncEntityMap PropertyChanged
+- [ ] SyncFieldMap PropertyChanged
+- [ ] SyncConfig PropertyChanged
+
+#### Sync Pipeline Integration
+- [ ] Full pipeline with direct mapping — `SyncPipelineTests.DirectMapping`
+- [ ] Full pipeline with converters — `SyncPipelineTests.WithConverters`
+- [ ] Upsert failure counted as failed record — `SyncPipelineTests.UpsertFailure`
+- [ ] Empty source: success with 0 records — `SyncPipelineTests.EmptySource`
+- [ ] Multiple entity maps synced concurrently — `SyncPipelineTests.MultipleEntityMaps`
+
+#### Converter Edge Cases
+- [ ] Direct: null, int, bool pass through — `ConverterEdgeCaseTests` (11 tests)
+- [ ] Constant: always returns expression
+- [ ] Combine: empty expression handled
+- [ ] Split: null value, invalid expression handled
+- [ ] DateFormat: null and invalid string handled
+- [ ] Expression: empty value with $value ref
+- [ ] Lookup: null value handled
+
+#### Sync Engine Resilience
+- [ ] SyncRetry.WithRetryAsync: exponential backoff (1s, 2s, 4s), configurable max retries, 30s cap
+- [ ] SyncHashDetector: SHA-256 content hash, skip unchanged records
+- [ ] SyncFieldValidator: pre-write validation of required/key fields
+- [ ] Dead letter queue: failed records stored with error message, retry count
+- [ ] Per-record retry in SyncEngine: 2 retries with 500ms backoff
+- [ ] Hash lookup/update callbacks
+- [ ] Validation errors routed to dead letter queue (not retried)
+- [ ] RecordsSkipped counter for unchanged records
+
+### 10.5 Identity Providers (SAML/OIDC/Entra/Okta/Duo)
+
+(See Section 2.5 for canonical IdP items.)
+- [ ] Email-based IdP discovery + domain mapping
+- [ ] Claim-to-role mapping via claim_mappings table
+- [ ] JIT provisioning of first-time external users
+- [ ] auth_events records all login/logout/failed events
+
+---
+
+## 11. Infrastructure & Ops
+
+### 11.1 Kubernetes (7-Node Cluster)
+
+- [ ] Terraform module generates Vagrantfile
+- [ ] 1 master + 6 workers on VMware Workstation
+- [ ] Ansible roles: common, containerd, k8s-master, k8s-worker, metallb, registry
+- [ ] MetalLB L2 advertisement (192.168.56.200-220)
+- [ ] Local container registry (NodePort 30500)
+- [ ] Calico CNI, Kubeconfig exported
 - [ ] PostgreSQL HA StatefulSet (primary + streaming replica, WAL replication, anti-affinity)
 - [ ] Redis StatefulSet (AOF persistence, LRU eviction)
 - [ ] Central API Deployment (2 replicas, HPA 2-8, PDB)
 - [ ] Auth Service Deployment (2 replicas, HPA 2-6, PDB)
 - [ ] LoadBalancer services via MetalLB
+- [ ] Namespace, RBAC, ResourceQuota, LimitRange, ConfigMap per tenant
 
-### I14. Local K8s Cluster
+### 11.2 Rust Services (7 services)
 
-- [ ] Terraform module generates Vagrantfile
-- [ ] 1 master + 6 workers on VMware Workstation
-- [ ] Ansible roles: common, containerd, k8s-master, k8s-worker, metallb, registry
-- [ ] MetalLB L2 advertisement
-- [ ] Local container registry (NodePort 30500)
-- [ ] Calico CNI, Kubeconfig exported
+- [ ] auth-service: MFA, WebAuthn, SAML, OIDC, JWT
+- [ ] admin-service: tenant management, setup wizard
+- [ ] gateway: reverse proxy, rate limiting, TLS, WebSocket/SignalR
+- [ ] task-service: 26 endpoints, SSE stream, batch, search, Redis events
+- [ ] storage-service: MinIO/S3, BLAKE3 dedup, multipart upload, pre-signed URLs
+- [ ] sync-service: vector clocks, push/pull, conflict resolution
+- [ ] audit-service: M365 forensics, GDPR scoring, investigations, evidence export
+- [ ] All services have source and build from Cargo workspace
+- [ ] tenant-provisioner tool: pg_dump source schema > CREATE DATABASE > restore > migrate > create K8s namespace
 
-### I15. Data Migration
+### 11.3 Terraform + Terragrunt IaC
 
-- [ ] pg_dump from Podman pod or backup file
-- [ ] pg_restore into K8s PostgreSQL StatefulSet
-- [ ] Creates secure_auth database, applies auth migrations, seeds
+- [ ] VPC module — subnets, NAT gateway, IGW, route tables
+- [ ] EKS module — cluster + managed node groups, OIDC provider for IRSA
+- [ ] RDS module — Aurora PostgreSQL cluster, encryption, parameter group
+- [ ] ElastiCache module — Redis replication group, failover
+- [ ] ECR module — container registries for all 8 services, lifecycle policies
+- [ ] S3 module — media/backup/config buckets, versioning, encryption
+- [ ] KMS module — customer-managed keys with rotation
+- [ ] Secrets module — DB creds, JWT key, encryption key in Secrets Manager
+- [ ] Monitoring module — CloudWatch log groups, alarms, dashboard
+- [ ] K8s Service module — reusable Deployment + Service + HPA + PDB
+- [ ] Local cluster module — VMware VMs via Vagrant
+- [ ] Root terragrunt.hcl — S3 backend, DynamoDB locking, provider generation
+- [ ] _envcommon/ — DRY module configs
+- [ ] dev/env.hcl — 2 AZs, t3.medium, single NAT, no spot
+- [ ] staging/env.hcl — 2 AZs, t3.large, spot enabled
+- [ ] prod/env.hcl — 3 AZs, r6g/m6i, spot, read replicas, transit encryption
+- [ ] Dependency chain: KMS > VPC > EKS > RDS/ElastiCache > ECR > Secrets
 
-### I16. setup.sh K8s Commands
-
-- [ ] k8s-up, k8s-deploy, k8s-status, k8s-psql, k8s-logs, k8s-migrate, k8s-push, k8s-down
-
-### I17. CI/CD Pipeline
+### 11.4 CI/CD (4 GH Actions workflows)
 
 - [ ] GitHub Actions workflow on push to main/develop and PRs
 - [ ] Steps: checkout, setup .NET 10, restore, build (x64 Release), test
 - [ ] Test results published via dotnet-trx reporter
 - [ ] Container build job on main branch only (after tests pass)
 - [ ] Podman build + tag + health test in CI
+- [ ] Multi-arch builds
+- [ ] Backup with retention (workflow)
+- [ ] Environment promotion workflow (dev to staging to prod)
+- [ ] security-scan workflow with Trivy, Gitleaks, NuGet audit, npm audit
 
-### I18. Deployment Containers
+### 11.5 Deployment Containers (Podman builds, K8s deploys)
 
 - [ ] Dockerfile includes Api.Client project reference
 - [ ] Dockerfile copies db/migrations/ for auto-apply
 - [ ] HEALTHCHECK directive pings /api/health every 30s
 - [ ] pod.yaml has postgres + api containers with resource limits
 - [ ] pod.yaml uses PG 18 alpine with performance tuning
-
-### I19. Platform Merge -- Auth Service Integration
-
 - [ ] auth-service container in Central Podman pod (port 8081)
 - [ ] Redis container in pod (port 6379, session store)
 - [ ] secure_auth database created on same PG instance
 - [ ] Auth-service V001-V017 migrations applied
 - [ ] Seed: default tenant, admin user, roles with Central permission codes
-- [ ] setup.sh: build-auth, auth-logs, auth-psql commands
+- [ ] setup.sh: k8s-up, k8s-deploy, k8s-status, k8s-psql, k8s-logs, k8s-migrate, k8s-push, k8s-down, build-auth, auth-logs, auth-psql
 
-### I20. Platform Merge -- Planned Phases (2-10)
+### 11.6 Monitoring (Prometheus, Grafana, Jaeger, Loki, Alertmanager)
 
-- [ ] Phase 2: Rust API gateway routing
-- [ ] Phase 3: Task Service (Rust/Axum)
-- [ ] Phase 4: Storage + Sync (CAS dedup, SQLite offline)
-- [ ] Phase 5: Flutter Mobile (biometric login, tasks, push)
-- [ ] Phase 6: Angular Web Client (DevExtreme, OIDC, SSE)
-- [ ] Phase 7: M365 Audit + GDPR (investigation, forensic, document tracker)
-- [ ] Phase 8-10: K8s + IaC + Admin Console
+- [ ] Prometheus scrapes /api/health/metrics
+- [ ] Grafana dashboards for API / DB / sync engine
+- [ ] Jaeger distributed tracing via correlation IDs
+- [ ] Loki structured log aggregation
+- [ ] Alertmanager rules for high error rate, PgBouncer queue depth, auth lockouts
 
----
+### 11.7 Backup + Purge
 
-## I2. System Tray Manager (Rust)
+- [ ] pg_dump scheduled via `db_backup` job (migration 042)
+- [ ] backup_history table tracks outputs
+- [ ] Retention policies per environment
+- [ ] Rust `backup-manager` + `backup-service` + `backup-app` tools
+- [ ] Soft-delete purge panel (see 7.9)
+- [ ] Pre-destructive infra changes require manual pg_dump confirmation
 
-### Tray Icon & Status
+### 11.8 System Tray Manager (Rust)
+
+#### Tray Icon & Status
 - [ ] Tray icon appears in Windows system tray on launch
 - [ ] Green icon when all 11 services running (HEALTH_ALL)
 - [ ] Yellow icon when partial services running (HEALTH_PARTIAL)
@@ -2322,271 +2649,268 @@ have the test class and method appended after a dash.
 - [ ] Status polls K8s every 200ms via kubectl
 - [ ] Right-click opens context menu without closing immediately
 
-### Service Management (per service: central-api, auth, task, storage, sync, audit, admin, gateway)
+#### Service Management (per service: central-api, auth, task, storage, sync, audit, admin, gateway)
 - [ ] Service state shown in submenu: [UP], [STOPPED], [NOT DEPLOYED]
-- [ ] Open in Browser → opens service URL
-- [ ] [~] Restart → kubectl rollout restart
-- [ ] [x] Stop → kubectl scale --replicas=0
-- [ ] [>] Start → kubectl scale --replicas=1
-- [ ] View Logs → opens terminal with kubectl logs -f
+- [ ] Open in Browser — opens service URL
+- [ ] Restart — kubectl rollout restart
+- [ ] Stop — kubectl scale --replicas=0
+- [ ] Start — kubectl scale --replicas=1
+- [ ] View Logs — opens terminal with kubectl logs -f
 
-### Data Layer
-- [ ] psql: central DB → kubectl exec postgres-0 -- psql
-- [ ] psql: secure_auth DB → kubectl exec postgres-0 -- psql -d secure_auth
-- [ ] Backup (pg_dump) → kubectl exec pg_dump
-- [ ] Run Migrations → applies db/migrations/*.sql
-- [ ] redis-cli → kubectl exec redis-0 -- redis-cli
-- [ ] MinIO Console → opens MinIO web UI
+#### Data Layer
+- [ ] psql: central DB — kubectl exec postgres-0 -- psql
+- [ ] psql: secure_auth DB — kubectl exec postgres-0 -- psql -d secure_auth
+- [ ] Backup (pg_dump) — kubectl exec pg_dump
+- [ ] Run Migrations — applies db/migrations/*.sql
+- [ ] redis-cli — kubectl exec redis-0 -- redis-cli
+- [ ] MinIO Console — opens MinIO web UI
 
-### Global Admin
-- [ ] View Tenants → queries central_platform.tenants
-- [ ] Global Users → queries central_platform.global_users
-- [ ] Subscriptions → queries tenant_subscriptions + plans
-- [ ] Module Licenses → queries tenant_module_licenses
-- [ ] New Tenant → redirects to desktop app
-- [ ] Provision Schema → redirects to desktop app
+#### Global Admin
+- [ ] View Tenants — queries central_platform.tenants
+- [ ] Global Users — queries central_platform.global_users
+- [ ] Subscriptions — queries tenant_subscriptions + plans
+- [ ] Module Licenses — queries tenant_module_licenses
+- [ ] New Tenant — redirects to desktop app
+- [ ] Provision Schema — redirects to desktop app
 
-### K8s Infrastructure
-- [ ] Nodes → kubectl get nodes -o wide
-- [ ] All Pods → kubectl -n central get pods -o wide
-- [ ] Services → kubectl -n central get svc
-- [ ] HPA (Autoscale) → kubectl -n central get hpa
-- [ ] Events → kubectl -n central get events
-- [ ] Deploy Manifests → kubectl apply -k infra/k8s/base/
+#### K8s Infrastructure
+- [ ] Nodes — kubectl get nodes -o wide
+- [ ] All Pods — kubectl -n central get pods -o wide
+- [ ] Services — kubectl -n central get svc
+- [ ] HPA (Autoscale) — kubectl -n central get hpa
+- [ ] Events — kubectl -n central get events
+- [ ] Deploy Manifests — kubectl apply -k infra/k8s/base/
 
-### VMware VMs
-- [ ] Start All → vagrant up (in terminal window)
-- [ ] Stop All → vagrant halt
-- [ ] Status → vagrant status + kubectl get nodes
+#### VMware VMs
+- [ ] Start All — vagrant up (in terminal window)
+- [ ] Stop All — vagrant halt
+- [ ] Status — vagrant status + kubectl get nodes
 - [ ] SSH to k8s-master, k8s-worker-01 through k8s-worker-04
 
-### Cluster Actions
-- [ ] Restart All Services → rollout restart all 8 deployments
-- [ ] Stop All Services → scale all to 0
-- [ ] Refresh Status → force status re-poll
+#### Cluster Actions
+- [ ] Restart All Services — rollout restart all 8 deployments
+- [ ] Stop All Services — scale all to 0
+- [ ] Refresh Status — force status re-poll
 
-### Quick Launch
-- [ ] Open Gateway → http://192.168.56.203:8000
-- [ ] Open Swagger → http://192.168.56.200:5000/swagger
-- [ ] Open Angular → http://localhost:4200
-- [ ] Launch Desktop App → Central.exe
+#### Quick Launch
+- [ ] Open Gateway — http://192.168.56.203:8000
+- [ ] Open Swagger — http://192.168.56.200:5000/swagger
+- [ ] Open Angular — http://localhost:4200
+- [ ] Launch Desktop App — Central.exe
 
-### Tools
-- [ ] Tray Manager Logs → internal log viewer
-- [ ] Audit Log → view audit events
-- [ ] Open Project Folder → opens C:\Development\Central
-- [ ] Open Terminal → opens CMD
-- [ ] Check for Updates → version manifest check
-- [ ] About Central → version info dialog
+#### Tools
+- [ ] Tray Manager Logs — internal log viewer
+- [ ] Audit Log — view audit events
+- [ ] Open Project Folder — opens C:\Development\Central
+- [ ] Open Terminal — opens CMD
+- [ ] Check for Updates — version manifest check
+- [ ] About Central — version info dialog
 
----
+### 11.9 Engine Services (Cross-Cutting)
 
-## J. Unit Tests (1,900 total across 148 test classes)
+#### Mediator + PanelMessageBus
+- [ ] Mediator singleton handles all in-process panel messaging with pipeline behaviors — `MediatorTests` (11 tests)
+- [ ] MediatorLoggingBehavior logs all messages to debug output
+- [ ] MediatorPerformanceBehavior tracks per-message-type counts and avg latency
+- [ ] Mediator.GetDiagnostics() returns subscription and message count stats
+- [ ] Filtered subscriptions: handlers only called when filter function returns true
+- [ ] PanelMessageBus.Publish bridges to Mediator automatically — `PanelMessageBusTests` (7 tests)
+- [ ] 4 message types: SelectionChanged, NavigateToPanel, DataModified, RefreshPanel
+- [ ] Subscriber ID tracking, message count, multiple subscribers, filters, logging — `MediatorAdvancedTests` (5 tests)
 
-All tests are in `desktop/Central.Tests/`. Grouped by area with test counts.
-Per-section counts are based on [Fact]/[Theory] attribute counts and may differ slightly
-from the test runner total (1,900) due to [Theory] parameterization.
+#### Link Engine
+- [ ] LinkEngine manages DB-stored LinkRules — `LinkEngineTests` (8 tests)
+- [ ] Default link rules: SD Technicians>Requests, Requesters>Requests, Groups>Requests, Devices>Switches, Users>AuthEvents
+- [ ] Right-click grid > "Configure Links..." opens LinkCustomizerDialog
+- [ ] LinkCustomizerDialog shows source/target panel dropdowns + field names + active toggle
+- [ ] Link rules persisted in panel_customizations table
 
-### J1. Auth Tests (263 tests)
+#### Notification + Alert Services
+- [ ] NotificationService.Instance singleton with Info/Success/Warning/Error — `NotificationServiceTests` (8 tests)
+- [ ] Default toast channel / suppress none / email / both / disabled
+- [ ] NotificationService.NotificationReceived event for shell rendering
+- [ ] AlertService.PingFailed/PingRecovered/SshFailed/ConfigDrift/BgpPeerDown — `AlertServiceTests` (7 tests)
+- [ ] AlertRaised event fires
+- [ ] notification_preferences table + 8 event types — `NotificationPreferenceExtendedTests`
 
-| Test Class | Count | Coverage |
-|---|---|---|
-| `AuthContextTests` | 12 | AuthContext state, permissions, sites, offline, logout |
-| `AuthFrameworkTests` | 19 | AuthResult, UserTypes, AuthStates, SecureString, IdP config, claims, AppUser |
-| `AuthStatesTests` | 10 | All 9 auth states, state transitions, display names |
-| `CredentialEncryptorTests` | 18 | AES-256 encrypt/decrypt, roundtrip, Base64, special chars, unicode, IsEncrypted, key rotation |
-| `IdentityConfigTests` | 8 | IdentityProviderConfig, ClaimMapping, DomainMapping, AuthEvent, AuthRequest |
-| `PasswordHasherTests` | 7 | Salt generation, hash consistency, verify correct/wrong, empty |
-| `PasswordPolicyExtendedTests` | 19 | Extended policy validation, edge cases |
-| `PasswordPolicyTests` | 18 | Default/relaxed policy, validation, history, expiry, min age, errors |
-| `PermissionCodeTests` | 26 | All 25 permission codes defined, uniqueness, module grouping |
-| `PermissionCodeExtendedTests` | 43 | All individual permission code values, AllCodes_ContainColon, AllCodes_AreLowercase |
-| `PermissionGuardTests` | 6 | Permission guard checks, role-based access |
-| `SecureStringExtensionTests` | 10 | SecureString ToPlainText, ToPasswordHash, VerifyHash, roundtrips |
-| `TotpServiceTests` | 7 | Secret generation, QR URI, code generation, verify, recovery codes |
-| `UserTypesTests` | 8 | All types, IsProtected, Initials, StatusText, StatusColor |
-| `AuthContextExtendedTests` | 30 | IsAuthenticated, IsSuperAdmin, HasPermission case-insensitive, HasAnyPermission, HasSiteAccess, CanView/Edit/Delete, CanViewReserved, IsAdmin, SetOfflineAdmin, Logout, UpdateAllowedSites, PermissionCount, PermissionsChanged, PropertyChanged |
-| `AuthStatesExtendedTests` | 18 | Extended auth state validation, transitions, display names |
-| `AuthUserTests` | 4 | AuthUser model defaults, PropertyChanged |
+#### Email Service
+- [ ] EmailService.Instance configurable with SMTP settings — `EmailServiceTests` (6 tests)
+- [ ] Configure() accepts host, port, username, password, from address, SSL
+- [ ] SendAsync sends text or HTML emails
+- [ ] Predefined templates: sync failure alert, auth lockout alert, backup complete
+- [ ] SendTestEmailAsync for testing SMTP configuration
+- [ ] Non-blocking — email failures don't crash the app
 
-### J2. Enterprise Tests (54 tests)
+#### Cron Expression Parser
+- [ ] CronExpression.Parse various expressions — `CronExpressionTests` (14 tests) + `CronExpressionNextOccurrenceTests` (18 tests) + `CronExpressionExtendedTests` (16 tests) + `CronEdgeCaseTests` (7 tests)
+- [ ] Supports: *, ranges (1-5), steps (*/15), lists (1,3,5)
+- [ ] GetNextOccurrence skips non-matching months/days/years
+- [ ] Matches(DateTime) returns true when time matches
+- [ ] TryParse valid returns result, invalid returns false
+- [ ] job_schedules.schedule_cron column (migration 051)
+- [ ] Jobs with cron expression run when current minute matches
 
-| Test Class | Count | Coverage |
-|---|---|---|
-| `TenancyTests` | 10 | Default context, custom tenant, schema validation, Tenant/Plan/GlobalUser/Environment/ClientVersion/ModuleLicense models |
-| `CollaborationTests` | 10 | Presence join/leave/disconnect, multi-editor, tenant isolation, conflict detection, three-way merge |
-| `SecurityTests` | 6 | No policies=allow, deny blocks, field hiding, field filtering, priority |
-| `ObservabilityTests` | 5 | Correlation ID, set/get, scope restore, CEF format, severity mapping |
-| `LicenseKeyTests` | 13 | GenerateKeyPair, ValidateLicense (malformed/empty/invalidBase64/tampered/noPublicKey), LicensePayload defaults, LicenseValidationResult, LimitCheckResult |
-| `RegistrationTests` | 3 | RegistrationRequest defaults, RegistrationResult Fail factory + success |
-| `IntegrityResultTests` | 7 | IsIntact, Summary (intact/tampered/missing/both), defaults, zero verified |
+#### Data Validation Service
+- [ ] DataValidationService.Instance singleton — `DataValidationServiceTests` (12 tests) + `DataValidationEdgeCaseTests` (22 tests)
+- [ ] Required, MinLength, MaxLength, Regex, Range, Custom rules
+- [ ] Multiple rules per entity, all errors reported
+- [ ] RegisterDefaults() seeds rules for Device, User, SdRequest, Appointment, Country, ReferenceConfig
+- [ ] Registered at startup in App.OnStartup
 
-### J3. Integration Tests (64 tests)
+#### Settings Export/Import Service
+- [ ] ExportAsync exports user settings as JSON — `SettingsExportTests` (3 tests), `SettingsExportExtendedTests` (7 tests)
+- [ ] ExportToFileAsync writes JSON to file
+- [ ] ImportFromFile parses exported settings JSON
+- [ ] ExportedSettings defaults (empty collections, version, ISO timestamp)
+- [ ] ImportFromFile malformed JSON throws
 
-| Test Class | Count | Coverage |
-|---|---|---|
-| `AgentRegistrationTests` | 3 | All agents registered, all converters, duplicate overwrites |
-| `ConverterEdgeCaseTests` | 11 | Direct/constant/combine/split/dateformat/expression/lookup edge cases |
-| `CsvImportAgentTests` | 9 | TestConnection, read CSV/TSV, quoted fields, no header, GetFields, write error |
-| `FieldConverterTests` | 15 | All 7 converter types with various inputs |
-| `RestApiAgentTests` | 6 | AgentType, TestConnection, Initialize, GetEntityNames, Delete |
-| `SyncEngineTests` | 6 | Agent registration, execute sync, disabled entity |
-| `SyncModelsTests` | 9 | StatusColor, PropertyChanged for SyncConfig/EntityMap/FieldMap/LogEntry |
-| `SyncPipelineTests` | 5 | Full pipeline: direct, converters, failure, empty, multiple entity maps |
+#### CommandGuard + SafeAsync
+- [ ] TryEnter/Exit prevents concurrent execution — `CommandGuardTests` (7 tests) + `CommandGuardEdgeCaseTests` (6 tests)
+- [ ] RunAsync wraps async actions with automatic TryEnter/Exit
+- [ ] Run wraps sync actions with automatic TryEnter/Exit
+- [ ] IsRunning tracks current state
+- [ ] Applied to: GlobalAdd, GlobalDelete, AddTask, AddSubTask, Refresh, SaveLayout
+- [ ] SafeAsync.Run wraps async void handlers with try/catch — `SafeAsyncTests` (4 tests)
+- [ ] Exceptions routed to NotificationService.Error
+- [ ] SafeAsync.RunGuarded combines CommandGuard + safe exception handling
 
-### J4. Model Tests (954 tests)
+#### File Management Service
+- [ ] FileManagementService singleton: Configure() sets filesystem storage path — `FileManagementServiceTests` (17 tests)
+- [ ] ComputeMd5: byte array and Stream overloads
+- [ ] ShouldStoreInline: files <= 10MB stored in DB, larger on filesystem
+- [ ] GetStoragePath: sharded directory structure, auto-create
+- [ ] SaveToFilesystemAsync / ReadFromFilesystemAsync / DeleteFromFilesystem
+- [ ] FileRecord with FileSizeDisplay (B, KB, MB, GB)
+- [ ] FileVersionRecord model
 
-| Test Class | Count | Coverage |
-|---|---|---|
-| `AdminModelsTests` | 20 | ReferenceConfig, ContainerInfo, MigrationRecord, BackupRecord, GridSettings, Location, Appointment |
-| `ApiKeyRecordTests` | 3 | Defaults, PropertyChanged all fields, RawKey set on create |
-| `AppLogEntryTests` | 3 | Defaults, DisplayTime format, PropertyChanged all fields |
-| `AppointmentModelTests` | 4 | Defaults, PropertyChanged for Appointment + Resource |
-| `AppUserTests` | 21 | IsAdUser, IsSystemUser, IsProtected, Initials (display name/single word/dot-separated/single char), StatusText, StatusColor, PropertyChanged, defaults, DetailPermissions |
-| `AsnDefinitionTests` | 6 | DisplayText with/without description, zero devices, DetailDevices default, PropertyChanged all fields, AsnBoundDevice defaults |
-| `BackupRecordTests` | 2 | FileSizeDisplay, StatusColor |
-| `BgpRecordTests` | 6 | BgpRecord/BgpNeighborRecord/BgpNetworkRecord defaults, PropertyChanged |
-| `BuilderSectionTests` | 10 | ConfigLine record, BuilderSection/BuilderItem defaults, PropertyChanged, observable items |
-| `ConfigRangeTests` | 2 | Defaults, PropertyChanged all fields |
-| `ContainerInfoTests` | 3 | StateColor, IsRunning, PropertyChanged |
-| `DashboardDataTests` | 3 | Defaults, RecentActivity CanAddItems, ActivityItem defaults |
-| `DeviceRecordTests` | 12 | IsLinked, IsActive, StatusColor (Active/Reserved/Decommissioned/Maintenance/Unknown), PropertyChanged, defaults |
-| `EntityBaseTests` | 8 | SetField raises/suppresses PropertyChanged, TakeSnapshot captures all properties + null values, SoftDelete, Id/UpdatedAt PropertyChanged |
-| `IconOverrideTests` | 2 | Defaults, SetProperties |
-| `IntegrationModelTests` | 9 | StatusIcon/StatusText enabled/disabled, PropertyChanged IsEnabled notifies StatusIcon, defaults, IntegrationCredential defaults, IntegrationLogEntry defaults |
-| `InterfaceOpticsTests` | 16 | DisplayTx/Rx/Temp, RxColor by power level, Parse empty/null/whitespace/basic |
-| `IpRangeTests` | 2 | Defaults, PropertyChanged all fields |
-| `KanbanModelsTests` | 13 | BoardColumn defaults/IsOverWip/WipDisplay/HeaderDisplay/PropertyChanged cascades, BoardLane defaults/PropertyChanged |
-| `LocationModelTests` | 4 | Country/Region/Postcode PropertyChanged, lat/long |
-| `MasterDeviceTests` | 3 | Defaults, PropertyChanged selected fields, all link counts |
-| `MigrationRecordTests` | 5 | StatusColor green/amber, StatusText Applied/Pending, defaults |
-| `MlagMstpTests` | 4 | MlagConfig/MstpConfig defaults, PropertyChanged all fields |
-| `NetworkLinkTests` | 29 | P2P/B2B/FW BuildConfig, LinkHelper.ExtractPrefix, Validate, ValidationIcon/Color, ConfigA/ConfigB, GenerateDetailConfig, MismatchA/B, PropertyChanged |
-| `NotificationModelTests` | 14 | EventDescription, NotificationEventTypes, ActiveSession, ApiKey, Dashboard, SavedFilter, AdUser, AdConfig, IconOverride |
-| `NotificationTypeTests` | 11 | Notification Color/Icon by type, Timestamp, Properties, NullSource |
-| `PanelCustomizationExtendedTests` | 5 | GridSettings list properties, FormLayout with groups, FieldGroup collapsed, LinkRule with values, PanelCustomizationRecord set values |
-| `PermissionNodeTests` | 2 | Defaults, PropertyChanged all fields |
-| `ProjectModelsTests` | 22 | Portfolio/Programme/TaskProject/Sprint/Release defaults + PropertyChanged, DisplayName, DateRange, TaskLink/TaskDependency display, ProjectMember |
-| `ReferenceConfigTests` | 10 | SampleOutput (default/suffix/large/exceeds padding/empty prefix), PropertyChanged cascades (Prefix/PadLength/NextValue/Suffix notify SampleOutput), defaults |
-| `RibbonConfigTests` | 28 | RibbonPageConfig/GroupConfig/ItemConfig defaults + PropertyChanged, UserRibbonOverride, RibbonTreeItem DisplayText/NodeIcon/HiddenIcon/DisplayStyle/LinkTarget |
-| `RibbonTreeItemTests` | 15 | NodeIcon by type, DisplayText override/fallback, HiddenIcon, PropertyChanged cascades, defaults, DisplayStyle/LinkTarget |
-| `SavedFilterTests` | 3 | IsShared (null=shared, set=private), PropertyChanged all fields, defaults |
-| `SdFilterStateTests` | 9 | SD filter state model tests |
-| `SdModelsTests` | 10 | SD data model tests |
-| `SdRequestDirtyTrackingTests` | 7 | Dirty tracking, original value capture, revert |
-| `SdRequestTests` | 15 | SD request model tests |
-| `ServerModelTests` | 6 | PopulateNicDetails (all/partial/none/clear), default status, PropertyChanged |
-| `SwitchInterfaceTests` | 19 | Parse PicOS format, StatusColor, PropertyChanged, MergeOptics (green/red/yellow/null/empty), MergeLldp |
-| `SwitchRecordTests` | 38 | UptimeMinutes/Display, LoopbackDisplay, EffectiveSshIp, PingColor/Status/Latency/Icon, SshColor/Status, PropertyChanged cascades, SshPort default |
-| `SwitchVersionTests` | 7 | Parse basic output, empty/no colons/MAC variant/L2L3 version, CapturedAt, Windows line endings |
-| `TaskBaselineTests` | 8 | Defaults, SetProperties, GanttPredecessorLink (defaults/FinishToStart/StartToFinish/WithLag), SprintBurndownPoint defaults, SprintAllocation PropertyChanged |
-| `TaskItemEdgeCaseTests` | 29 | StatusColor/Icon unknown, PriorityIcon/Color unknown, TypeIcon SubTask/Task/Custom, RiskColor all levels, SeverityColor, IsOverdue, ProgressDisplay, DueDateDisplay, PropertyChanged cascades, Children, TaskComment defaults |
-| `VlanEntryTests` | 41 | IsBlockRoot, RowColor (blocked/default/root-downgraded), BlockLockedText, SitePrefix, SiteNetwork, SiteGateway, BuildingNumberMap, PropertyChanged cascades |
-| `VlanEntryExtendedTests` | 23 | Extended VLAN entry edge cases |
-| `AdModelsTests` | 6 | AD user/config model tests |
-| `CustomColumnModelsTests` | 16 | Custom column type, config JSON, drop list options, aggregation |
-| `DeviceRecordExtendedTests` | 9 | Extended device record edge cases |
-| `NetworkLinkExtendedTests` | 19 | Extended link model tests |
-| `ReportModelsTests` | 10 | SavedReport, ReportQuery, ReportFilter, DashboardTile models |
-| `RoleRecordTests` | 9 | Role record model, priority, permissions |
-| `SdFilterStateExtendedTests` | 7 | Extended SD filter state edge cases |
-| `SdRequestExtendedTests` | 21 | Extended SD request model tests |
-| `SdServiceModelsTests` | 14 | SD service-layer model tests |
-| `SprintPlanningModelsTests` | 5 | Sprint planning model edge cases |
-| `SwitchRecordExtendedTests` | 15 | Extended switch record edge cases |
-| `TaskItemTheoryTests` | 22 | TaskItem theory-based parameterized tests |
-| `TimeActivityModelsTests` | 10 | TimeEntry, ActivityFeedItem, TaskView models |
-| `ConfigVersionEntryTests` | 12 | Defaults, DisplayDate/Version/Summary, IsSelected PropertyChanged, Id assignment, edge cases |
-| `LookupItemTests` | 10 | Defaults, ParentId always null, PropertyChanged on all 6 fields |
-| `RoleSiteAccessTests` | 6 | Defaults (Allowed=true), PropertyChanged Building/Allowed, toggle, empty building |
-| `ServerASTests` | 7 | Defaults (Active status), PropertyChanged on Id/Building/ServerAsn/Status, status change |
-| `SshLogEntryTests` | 18 | Defaults, Duration computed (fractional/null/long/zero), StatusIcon success/failure, PropertyChanged all 13 fields, SwitchId nullable |
-| `NotificationPreferenceExtendedTests` | 25 | Defaults, PropertyChanged 5 fields, EventDescription 8 known + unknown types, NotificationEventTypes count, ActiveSession defaults/Duration/StatusColor/ExpiresAt |
-| `LocationModelExtendedTests` | 9 | Country/Region/Postcode defaults + AllProperties_FirePropertyChanged, Postcode lat/lon precision/null/negative |
-| `IntegrationModelExtendedTests` | 12 | Integration defaults/StatusIcon/StatusText/PropertyChanged/IsEnabled cascades, IntegrationCredential defaults/ExpiresAt, IntegrationLogEntry defaults/SetProperties |
-| `AppUserExtendedTests` | 29 | PropertyChanged 16 extended fields, Initials edge cases, IsAdUser/IsSystemUser Theory, nullable datetimes |
-| `SdFilterStateFormatTests` | 12 | FormatLabel day/week/month buckets, 14-day boundary, Default() factory, defaults/grid defaults |
-| `RoleRecordExtendedTests` | 22 | PropertyChanged 15 fields (11 permission bools, Id, Description, Priority, IsSystem), PermissionSummary various counts, RoleUserDetail, DevicesViewReserved |
-| `RibbonConfigExtendedTests` | 9 | RibbonPageConfig/GroupConfig/ItemConfig defaults + full PropertyChanged, UserRibbonOverride defaults/SetProperties/IsHidden |
-| `SdRequestExtendedTests2` | 43 | StatusColor all 11 statuses, PriorityColor all priorities, IsClosed, IsOverdue 6 scenarios, dirty tracking 7 scenarios, RowColor, defaults, PropertyChanged cascades |
-| `AdModelsExtendedTests` | 9 | Extended AD user/config model edge cases |
-| `AppointmentExtendedTests` | 19 | Extended appointment model PropertyChanged, defaults, resource model |
-| `ContainerInfoExtendedTests` | 19 | Extended container info StateColor/IsRunning edge cases, PropertyChanged |
-| `DashboardDataExtendedTests` | 9 | Extended dashboard data model tests |
-| `PanelCustomizationModelsTests` | 5 | Panel customization model defaults, serialization |
-| `PanelCustomizationTests2` | 6 | Extended panel customization edge cases |
+#### Elsa Workflows Engine
+- [ ] Central.Workflows project with Elsa 3.5.3
+- [ ] PostgreSQL persistence for both Management and Runtime stores
+- [ ] 6 custom activities: UpdateTaskStatus, ValidateTransition, SendNotification, Approval, LogAudit, SetField — `WorkflowActivityTests` (9 tests)
+- [ ] TaskStatusTransitionWorkflow built-in
+- [ ] Activities use workflow variables (SetVariable)
+- [ ] ApprovalActivity uses Elsa bookmarks for suspend/resume
+- [ ] Elsa management API at /elsa/api/*
 
-### J5. Service Tests (284 tests)
-
-| Test Class | Count | Coverage |
-|---|---|---|
-| `AuditServiceTests` | 7 | No persist func, persist called, broadcast, LogCreate/Delete, JSON, throws |
-| `CommandGuardTests` | 7 | Enter/exit, re-entrancy, IsRunning, sync/async Run, independent commands |
-| `CommandGuardEdgeCaseTests` | 6 | Exit non-existent, sync/async exception cleanup, skip when running, concurrent attempts, multiple enter/exit cycles |
-| `ConfigDiffServiceTests` | 9 | Identical lines, empty old/new/both, one-line replaced, inserted/deleted line alignment, output array length, unchanged lines match |
-| `CronEdgeCaseTests` | 7 | Sunday, comma values, first day, specific month, skip months, step, invalid |
-| `CronExpressionTests` | 14 | Parse, match, next occurrence, ranges, steps, lists, weekdays |
-| `CronExpressionNextOccurrenceTests` | 18 | GetNextOccurrence (every minute, specific time, monthly, null if not found, skip month, weekday filter), Matches (specific/wildcard), Parse (comma/range/step/day-of-week), TryParse, ToString, invalid field count |
-| `DataValidationServiceTests` | 12 | Required, min/max length, regex, range, custom, multi-rule, defaults |
-| `DataValidationEdgeCaseTests` | 22 | Unregistered type OK, required null/whitespace/with value, min/max length exact, regex valid/invalid, custom pass/fail, range in/below/above, multiple rules, ValidationResult Ok/Fail/ErrorSummary, missing property, additive register, RegisterDefaults, static factories |
-| `EmailServiceTests` | 6 | Configure, not configured, dictionary config, send without SMTP |
-| `EnvironmentServiceTests` | 10 | TypeColor (live green, test amber, dev blue, unknown grey), TypeLabel mapping, TypeLabel unknown uppercased, defaults |
-| `FileManagementServiceTests` | 17 | ComputeMd5 (byte array, different data, stream, stream resets, empty, lowercase hex), ShouldStoreInline (small/exact/large/zero), UseStorageService default, ConfigureStorageService, FileRecord.FileSizeDisplay |
-| `GridValidationHelperTests` | 14 | Validate all valid/empty/null/whitespace/multiple/guid/zero int/non-zero/priority zero/sort order zero/missing property, FormatErrors correct/empty |
-| `IconOverrideServiceTests` | 13 | Resolve admin/user priority, ResolveColor, ResolveIconName, IsLoaded, case-insensitive, reload |
-| `IntegrationServiceTests` | 8 | Constructor sets name, IsConfigured (no creds, with creds, missing refresh, missing clientId), HasValidToken, default properties, GetAccessTokenAsync null |
-| `NotificationServiceTests` | 8 | Default toast, suppress none, channels, disabled, preference reload, cap |
-| `PlatformTests` | 11 | Singletons exist, permission codes, AuthStates, NotificationEventTypes, PasswordPolicy |
-| `PreferenceKeysTests` | 7 | HideReserved/Theme/DockLayout correct values, all keys unique, all non-empty, pref keys start with "pref.", layout keys start with "layout." |
-| `SafeAsyncTests` | 4 | Success, exception doesn't crash, re-entrancy, guard release |
-| `SettingsExportTests` | 3 | ExportAsync, ExportToFile, ImportFromFile |
-| `StartupArgsTests` | 5 | Empty args, --dsn, short flags, long flags, mixed |
-| `UndoServiceTests` | 22 | Initial state, property change, undo/redo, batch, merge, discard, clear, RecordAdd/Remove, StateChanged, history |
-| `AlertServiceTests` | 7 | Alert service notification routing |
-| `ConfigDiffServiceExtendedTests` | 9 | Extended diff algorithm edge cases |
-| `CronExpressionExtendedTests` | 16 | Extended cron expression parsing and matching |
-| `DeployServiceTests` | 15 | Deployment service configuration and execution |
-| `SettingsExportExtendedTests` | 7 | ExportedSettings defaults, ISO timestamp, export with multiple/empty data, round-trip, AppVersion, malformed JSON |
-
-### J6. Shell Tests (64 tests)
-
-| Test Class | Count | Coverage |
-|---|---|---|
-| `LinkEngineTests` | 8 | Initialize, register/unregister, add/remove rules, clear |
-| `MediatorAdvancedTests` | 5 | Subscriber ID, message count, multiple subscribers, filters, logging |
-| `MediatorTests` | 11 | Publish, subscribe, filter, unsubscribe, diagnostics, pipeline, async |
-| `PanelCustomizationTests` | 6 | GridSettings/FormLayout/LinkRule/FieldGroup defaults, serialization |
-| `PanelMessageBusTests` | 7 | Pub/sub with SelectionChanged, NavigateToPanel, DataModified, RefreshPanel |
-| `RibbonBuilderTests` | 11 | AddPage, AddGroup, AddButton, AddLargeButton, AddCheckButton, AddToggleButton, AddSeparator, AddSplitButton, group accessors, sort order |
-| `WidgetCommandTests` | 16 | WidgetCommandAttribute Name/GroupName/Description/CommandParameter, IsAttribute/TargetsProperty, WidgetCommandData.Apply replacements/edge cases/TextReplacements default |
-
-### J7. Task Tests (95 tests)
-
-| Test Class | Count | Coverage |
-|---|---|---|
-| `TaskModelsTests` | 42 | TaskItem StatusIcon/PriorityColor/TypeIcon, IsComplete, IsOverdue, ProgressPercent, SeverityColor, PointsDisplay, DateDisplays, TaskProject DisplayName, Sprint DateRange/DisplayName, TaskLink/Dependency display, BoardColumn WIP, CustomColumn JSON, TaskCustomValue display, TimeEntry, ActivityFeedItem, ReportFilter, SavedReport, GanttPredecessorLink |
-| `TaskFileParserTests` | 10 | CSV parsing, XML parsing, Excel parsing, extension routing, field extraction |
-| `SprintAndPlanningTests` | 21 | SprintAllocation, BurndownPoint, BoardColumn header/WIP/PropertyChanged, BoardLane, TaskBaseline, GanttPredecessorLink, TaskViewConfig, TimeEntry, ActivityFeedItem TimeAgo, ReportQuery, DashboardTile, Dashboard, Portfolio, Programme, ProjectMember, Release |
-| `WorkflowActivityTests` | 9 | All 6 custom Elsa activities: UpdateTaskStatus, ValidateTransition, SendNotification, Approval, LogAudit, SetField |
-| `TaskRepositoryIntegrationTests` | 13 | CRUD for portfolios, projects, sprints, tasks, board columns, sprint commit, custom columns, time entries, activity feed, saved reports, sprint burndown |
+#### GridValidationHelper + PreferenceKeys + PlatformTests
+- [ ] GridValidationHelper.Validate all cases — `GridValidationHelperTests` (14 tests)
+- [ ] FormatErrors correct/empty
+- [ ] PreferenceKeys HideReserved/Theme/DockLayout correct values — `PreferenceKeysTests` (7 tests)
+- [ ] Platform singletons exist, permission codes, AuthStates, NotificationEventTypes, PasswordPolicy — `PlatformTests` (11 tests)
 
 ---
 
-## Web App (standalone reference)
+## 12. Unit Test Summary
 
-- [ ] Dashboard loads at /
-- [ ] IPAM grid loads at /ipam (987 devices)
-- [ ] Switch detail loads at /switches/{hostname}
-- [ ] Config preview loads at /switches/{hostname}/preview
-- [ ] Guide loads at /guide
-- [ ] Guide detail at /guide/{id} -- connection toggles work (HTMX)
-- [ ] Import page at /import -- .txt and .xlsx upload
-- [ ] Running configs at /switches/{hostname}/running-configs
-- [ ] HTTP Basic Auth (admin/admin default)
-- [ ] Ping button on switch detail works
-- [ ] Test SSH button works
-- [ ] Download Running Config button works
+Total: **2,229 tests across 164 test classes** (xUnit, .NET 10). 0 failures on unit tests.
+Tests live in `desktop/Central.Tests/`. 9 integration tests require live K8s services
+(auth-service, task-service, PostgreSQL, Redis) to run — they are skipped locally.
+
+Rough breakdown by area:
+
+| Area | Approx Count | Highlights |
+|---|---|---|
+| Auth | ~285 | AuthContext, AuthFramework, AuthStates, CredentialEncryptor, IdentityConfig, PasswordHasher, PasswordPolicy, PermissionCodes, PermissionGuard, SecureStringExtension, TotpService, UserTypes, AppUser |
+| Api | ~40 | Endpoint smoke tests, Swagger schema validation, middleware pipeline |
+| Enterprise | ~60 | Tenancy, Collaboration, Security, Observability, LicenseKey, Registration, IntegrityResult |
+| Integration | ~70 | Agent registration, ConverterEdgeCase, CsvImport, FieldConverter, RestApi, SyncEngine, SyncModels, SyncPipeline (9 need live K8s) |
+| Models | ~1,050 | TaskItem, DeviceRecord, SwitchRecord, NetworkLink, VlanEntry, RibbonConfig, SdRequest, RoleRecord, AppUser, Integration, Location, Appointment, Kanban, Project, Container, Dashboard, Notification, etc. |
+| Services | ~310 | AuditService, CommandGuard, ConfigDiff, CronExpression, DataValidation, EmailService, EnvironmentService, FileManagement, GridValidation, IconOverride, IntegrationService, NotificationService, Platform, PreferenceKeys, SafeAsync, SettingsExport, StartupArgs, UndoService, AlertService, DeployService |
+| Shell | ~65 | LinkEngine, Mediator, MediatorAdvanced, PanelCustomization, PanelMessageBus, RibbonBuilder, WidgetCommand |
+| Tasks | ~95 | TaskModels, TaskFileParser, SprintAndPlanning, WorkflowActivity, TaskRepositoryIntegration |
+| Widgets | small | Toast rendering, ribbon group helpers |
+
+Per-class breakdown details are intentionally omitted here — run `dotnet test` for the
+canonical test manifest. The full list lived at the bottom of the previous checklist
+and was noise that drifted out of date.
 
 ---
 
-Last updated: 2026-03-31
+## Migrations Reference
+
+Full list of all 80 migrations in `db/migrations/`. Each applies idempotently on a
+fresh DB via `MigrationRunner` at startup or `./db/setup.sh` manually.
+
+| #   | File | Purpose |
+|-----|------|---------|
+| 002 | `builder.sql` | `vlan_templates`; extra columns on `switch_connections` and `bgp_config` |
+| 003 | `connectivity.sql` | `management_ip`, `ssh_*`, `last_ping_*`, `last_ssh_*` on switches; `running_configs` table |
+| 004 | `ipam_fields.sql` | Additional IPAM device fields |
+| 005 | `lookup_values.sql` | `lookup_values` table for dropdown options |
+| 006 | `users_roles.sql` | `app_users`, `role_permissions`, `user_settings` tables |
+| 007 | `roles_table.sql` | `roles` table for role management UI |
+| 008 | `role_sites.sql` | `role_sites` table for per-role site/building access control |
+| 009 | `config_ranges.sql` | Config range definitions (reusable number/IP ranges: ASN, VLAN, etc.) |
+| 010 | `excel_sheets.sql` | Excel sheet data imported into queryable tables |
+| 011 | `view_reserved.sql` | `can_view_reserved` permission + reserved device view |
+| 012 | `config_versions.sql` | Config version history for compare |
+| 013 | `rename_ipam_to_devices.sql` | Rename module key from 'ipam' to 'devices' in role_permissions |
+| 014 | `asn_definitions.sql` | ASN definitions — one row per distinct ASN with description and type |
+| 015 | `app_log.sql` | General-purpose application log for errors, warnings, info, audit events |
+| 016 | `builder_selections.sql` | Persists config builder toggle state per device |
+| 017 | `missing_tables.sql` | Fills in missing tables from initial schema |
+| 018 | `switch_model_interfaces.sql` | Maps switch models to their interface layout |
+| 019 | `lldp_columns.sql` | LLDP neighbor columns on switch_interfaces |
+| 020 | `interface_optics.sql` | Historical optics diagnostics per interface per sync |
+| 021 | `p2p_descriptions.sql` | Port descriptions for each side of a P2P link |
+| 022 | `vlan_site.sql` | Per-site VLAN data |
+| 023 | `bgp_sync.sql` | BGP sync tracking (`fast_external_failover`, `bestpath_multipath_relax`, `last_synced`) |
+| 024 | `permissions_v2.sql` | `permissions` table (25 module:action codes), `role_permission_grants`, role priorities |
+| 025 | `audit_log_v2.sql` | `audit_log` (append-only JSONB) + soft delete columns on link + device tables |
+| 026 | `platform_schema.sql` | `central_platform` schema for cross-tenant global tables |
+| 027 | `global_admin.sql` | Global admin user + role + endpoints baseline |
+| 028 | `tenant_id.sql` | `tenant_id` column + RLS scaffolding on all public-schema tables |
+| 029 | `ribbon_default_panel.sql` | Ribbon page default panel + missing permissions |
+| 030 | `migrate_users_to_auth.sql` | Migrate Central app_users to auth-service secure_auth database |
+| 031 | `module_catalog_audit_globaladmin.sql` | Module catalog + audit + globaladmin seeds |
+| 032 | `global_admin_audit.sql` | `central_platform.global_admin_audit_log` — platform-level audit trail |
+| 033 | `global_admin_permissions.sql` | `global_admin:read/write/delete/provision` permissions |
+| 034 | `tenant_addresses_contacts.sql` | `tenant_addresses` (many-to-one), `contacts` + `tenant_contacts` (many-to-many) |
+| 035 | `api_key_salt.sql` | `salt` column on `api_keys` for per-key salted SHA256 hashing |
+| 036 | `companies.sql` | `companies` table with hierarchy |
+| 037 | `contacts_v2.sql` | Full CRM contacts + addresses + communications |
+| 038 | `teams_departments.sql` | `departments`, `teams`, `team_members` |
+| 039 | `addresses_unified.sql` | Polymorphic addresses |
+| 040 | `user_profiles.sql` | `user_profiles` + `user_invitations` + `role_templates` |
+| 041 | `global_admin_v2.sql` | `tenant_onboarding`, `billing_accounts`, `invoices`, usage metrics, FTS indexes |
+| 042 | `groups.sql` | `user_groups`, `group_members`, `group_permissions`, `group_resource_access`, `group_assignment_rules` |
+| 043 | `feature_flags.sql` | `feature_flags`, `tenant_feature_flags` (9 seeded flags) |
+| 044 | `security_enhancements.sql` | `ip_access_rules`, `user_ssh_keys`, `deprovisioning_rules`/`log`, `terms_of_service`, `domain_verifications` |
+| 045 | `team_hierarchy.sql` | `teams.parent_id`, `team_resources`, `team_permissions`, `company_user_roles`, `team_activity` |
+| 046 | `address_history.sql` | `address_history` + auto-audit trigger |
+| 047 | `permission_inheritance.sql` | `roles.parent_role_id`, `user_permission_overrides`, `v_user_effective_permissions` view |
+| 048 | `social_providers.sql` | `social_providers` (Google/Microsoft/GitHub seeded), `user_social_logins`, `oauth_states` |
+| 049 | `billing_extended.sql` | Annual pricing, trials, grace periods, addons (5 seeded), discount codes, payment methods, proration, quotas |
+| 050 | `password_recovery.sql` | `password_reset_tokens`, `email_verification_tokens`, `app_users.email_verified_at` + `must_change_password` |
+| 051 | `seed_data.sql` | Baseline seed data (subscription plans, module catalog, release channels) |
+| 052 | `tenant_sizing.sql` | `tenant_connection_map` + dedicated DB tracking + provisioning jobs + auto-upgrade trigger |
+| 053 | `rls_timescale_citus.sql` | Per-op RLS policies, TimescaleDB hypertables + compression + continuous aggregates, Citus scaffolding, logical replication publications, sharding threshold function |
+| 054 | `crm_core.sql` | CRM accounts, contacts M:N, deal pipeline (5 seeded stages), leads + scoring, unified activities |
+| 055 | `crm_quotes_products.sql` | Quote versioning + line items, products + price books + price book entries with volume tiers |
+| 056 | `email_integration.sql` | `email_accounts`, `email_templates` (4 seeded), `email_messages`, `email_tracking_events`, `email_attachments` |
+| 057 | `crm_dashboards_reports.sql` | `saved_reports`, `forecast_snapshots`, 4 materialized views (revenue/activity/lead_source_roi/account_health), `refresh_crm_dashboards()` + hourly job |
+| 058 | `crm_integrations.sql` | Salesforce/HubSpot/Dynamics/Exchange/Gmail/Pipedrive integrations seeded, `sync_configs`, `crm_external_ids`, `crm_sync_conflicts`, `crm_documents`, `crm_document_templates`, `crm_document_approvals` |
+| 059 | `crm_webhooks_polish.sql` | `webhook_event_types` (28 seeded), `webhook_subscriptions`, `webhook_deliveries`, deal_won trigger, contact/sd_requester auto-link, switch_guide.crm_account_id, task_projects.crm_deal_id |
+| 060 | `crm_campaigns.sql` | `crm_campaigns` + members + costs with auto-cost-recalc trigger |
+| 061 | `crm_segments_sequences.sql` | `crm_segments` (static + dynamic), `crm_email_sequences` + steps + enrollments, `crm_landing_pages`, `crm_forms` + form_submissions |
+| 062 | `crm_attribution.sql` | `crm_utm_events`, `crm_attribution_touches` (5 models), `generate_attribution()` fn, `crm_campaign_influence` matview, hourly refresh job |
+| 063 | `crm_territories.sql` | `crm_territories` + members + rules, territory FK on accounts and leads |
+| 064 | `crm_quotas_commissions.sql` | `crm_quotas`, `crm_commission_plans` + tiers + user assignment + payouts |
+| 065 | `crm_account_teams.sql` | `crm_opportunity_splits` (100% validation trigger), `crm_account_teams`, `crm_account_plans` + stakeholders, `crm_org_chart_edges` |
+| 066 | `crm_forecast_hierarchies.sql` | `crm_forecast_adjustments`, `crm_pipeline_health` matview, `crm_deal_insights` + `generate_deal_insights()` fn |
+| 067 | `crm_cpq.sql` | `crm_product_bundles` + components, `crm_pricing_rules`, `crm_discount_approval_matrix` (4 seeded tiers) |
+| 068 | `approval_engine.sql` | `approval_requests` + steps + actions + auto-resolve trigger (generic, reusable) |
+| 069 | `crm_contracts.sql` | `crm_contract_clauses` library, `crm_contract_templates`, `crm_contracts`, `crm_contract_versions`, `crm_contract_clause_usage`, `crm_contract_milestones`, `crm_contract_renewals` view |
+| 070 | `crm_subscriptions_revenue.sql` | `crm_subscriptions` + events with auto-log trigger, `crm_mrr_dashboard` matview, `crm_revenue_schedules` + entries (ASC 606), `generate_revenue_entries()` fn |
+| 071 | `crm_orders.sql` | `crm_orders` + order_lines with auto-recalc-totals + auto-create-subscription-from-order-line triggers, 16 new webhook event types |
+| 072 | `portals_community.sql` | `portal_users` (customer/partner), `magic_links`, `portal_sessions`, `partner_deal_registrations`, `kb_categories`, `kb_articles` (tsvector FTS), `community_threads` + `community_posts` + `community_votes`, auto-update triggers |
+| 073 | `rule_engines.sql` | `validation_rules` (JSONLogic), `workflow_rules` (Elsa-integrated), `rule_execution_log`, universal `broadcast_record_change` trigger attached to 7 CRM tables for pg_notify |
+| 074 | `custom_objects_field_security.sql` | `custom_entities`, `custom_fields`, `custom_entity_records` (jsonb + GIN), `custom_field_values`, `custom_relationships`, `field_permissions`, `get_field_permission()` function |
+| 075 | `import_commerce.sql` | `import_jobs` + `import_job_rows` with dedup strategies, `shopping_carts` + `cart_items` with auto-recalc trigger, `payments` with Stripe-compatible fields |
+| 076 | `ai_providers.sql` | `ai_providers` (8 platform providers seeded), `ai_models` (9 seeded), `tenant_ai_providers`, `tenant_ai_feature_mappings`, `ai_usage_log`, `resolve_ai_provider()` SQL fn |
+| 077 | `ai_ml_scoring.sql` | `ai_ml_models`, `ai_training_jobs`, `ai_model_scores`, `ai_next_best_actions` + ML score columns on crm_leads/crm_deals/crm_accounts |
+| 078 | `ai_assistant.sql` | `ai_conversations`, `ai_messages`, `ai_prompt_templates` (4 seeded), `ai_tool_definitions` (6 seeded) |
+| 079 | `ai_dedup_enrichment.sql` | `crm_duplicate_rules`, `crm_merge_operations`, `crm_enrichment_providers` (5 seeded), `crm_enrichment_jobs`, `v_contact_duplicate_candidates` view (pg_trgm) |
+| 080 | `ai_churn_calls.sql` | `crm_churn_risks`, `crm_account_ltv`, `crm_call_recordings`, `crm_auto_capture_queue`, 8 AI-related webhook event types |
+
+---
