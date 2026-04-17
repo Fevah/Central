@@ -1,6 +1,8 @@
 using Central.Engine.Auth;
 using Central.Engine.Modules;
 using Central.Engine.Shell;
+using Central.Engine.Widgets;
+using Central.Module.Global.Dashboard;
 
 namespace Central.Module.Global;
 
@@ -22,6 +24,13 @@ public class GlobalModule : IModule, IModuleRibbon, IModulePanels
     public string Name => "Global";
     public string PermissionCategory => "admin";
     public int SortOrder => 1;
+
+    public GlobalModule()
+    {
+        // Global owns the platform-wide health card that's always first on
+        // the dashboard. Feature modules register their own sections.
+        DashboardContributionRegistry.Register(new PlatformHealthDashboardContribution());
+    }
 
     public void RegisterRibbon(IRibbonBuilder ribbon)
     {

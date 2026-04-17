@@ -20,6 +20,7 @@
     <!-- DevExpress for grid UserControl -->
     <PackageReference Include="DevExpress.Wpf.Grid" Version="25.2.6" />
     <PackageReference Include="DevExpress.Wpf.Core" Version="25.2.6" />
+    <PackageReference Include="Npgsql" Version="10.0.2" />
   </ItemGroup>
 
 </Project>

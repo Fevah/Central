@@ -1,6 +1,8 @@
 ﻿using Central.Engine.Auth;
 using Central.Engine.Modules;
 using Central.Engine.Shell;
+using Central.Engine.Widgets;
+using Central.Module.Projects.Dashboards;
 
 namespace Central.Module.Projects;
 
@@ -9,6 +11,11 @@ public class ProjectsModule : IModule, IModuleRibbon, IModulePanels
     public string Name => "Tasks";
     public string PermissionCategory => "tasks";
     public int SortOrder => 60;
+
+    public ProjectsModule()
+    {
+        DashboardContributionRegistry.Register(new ProjectsDashboardContribution());
+    }
 
     public void RegisterRibbon(IRibbonBuilder ribbon)
     {

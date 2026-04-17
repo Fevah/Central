@@ -1,6 +1,8 @@
 ﻿using Central.Engine.Auth;
 using Central.Engine.Modules;
 using Central.Engine.Shell;
+using Central.Engine.Widgets;
+using Central.Module.Devices.Dashboards;
 
 namespace Central.Module.Devices;
 
@@ -19,6 +21,11 @@ public class DevicesModule : IModule, IModuleRibbon, IModulePanels
     public string Name => "Devices";
     public string PermissionCategory => "devices";
     public int SortOrder => 10;
+
+    public DevicesModule()
+    {
+        DashboardContributionRegistry.Register(new DevicesDashboardContribution());
+    }
 
     public void RegisterRibbon(IRibbonBuilder ribbon)
     {

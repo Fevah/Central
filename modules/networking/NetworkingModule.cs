@@ -1,5 +1,7 @@
 using Central.Engine.Auth;
 using Central.Engine.Modules;
+using Central.Engine.Widgets;
+using Central.Module.Networking.Dashboards;
 
 namespace Central.Module.Networking;
 
@@ -24,6 +26,14 @@ public class NetworkingModule : IModule, IModuleRibbon, IModulePanels
     public string PermissionCategory => "switches";
 
     public int SortOrder => 20;
+
+    public NetworkingModule()
+    {
+        // Self-register this module's dashboard cards. When the tenant
+        // disables Networking, NetworkingModule isn't instantiated and
+        // nothing is registered — the section disappears from the dashboard.
+        DashboardContributionRegistry.Register(new NetworkingDashboardContribution());
+    }
 
     public void RegisterRibbon(IRibbonBuilder ribbon)
     {
