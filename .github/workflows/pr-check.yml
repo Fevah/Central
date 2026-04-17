@@ -1,13 +1,50 @@
-﻿name: PR Validation
+name: PR Validation
 
 on:
   pull_request:
     branches: [main, develop]
 
+# Per-job path filters skip unrelated work on a PR. Each job runs only
+# if the paths it owns changed; otherwise it's skipped (not failed).
 jobs:
-  # Quick checks that block merge
+  changes:
+    name: Detect Changed Paths
+    runs-on: ubuntu-latest
+    outputs:
+      dotnet: ${{ steps.filter.outputs.dotnet }}
+      angular: ${{ steps.filter.outputs.angular }}
+      terraform: ${{ steps.filter.outputs.terraform }}
+      sql: ${{ steps.filter.outputs.sql }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            dotnet:
+              - 'apps/desktop/**'
+              - 'services/api/**'
+              - 'libs/**'
+              - 'modules/**'
+              - 'tests/dotnet/**'
+              - 'Central.sln'
+              - 'NuGet.config'
+              - 'Directory.Build.props'
+              - 'Directory.Packages.props'
+            angular:
+              - 'apps/web/**'
+            terraform:
+              - 'infra/terraform/**'
+              - 'infra/modules/**'
+              - 'infra/environments/**'
+              - 'infra/terragrunt.hcl'
+            sql:
+              - 'db/migrations/**'
+
   dotnet:
-    name: .NET Build + 1900 Tests
+    name: .NET Build + Test
+    needs: changes
+    if: needs.changes.outputs.dotnet == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,6 +56,8 @@ jobs:
 
   angular:
     name: Angular Build
+    needs: changes
+    if: needs.changes.outputs.angular == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,6 +70,8 @@ jobs:
 
   terraform:
     name: Terraform Validate
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,6 +83,8 @@ jobs:
 
   sql-lint:
     name: SQL Migration Lint
+    needs: changes
+    if: needs.changes.outputs.sql == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

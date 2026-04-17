@@ -1,0 +1,78 @@
+# CODEOWNERS — map folders to reviewers.
+#
+# When a team forms, replace the placeholder @cory-sharplin owner on each
+# line with the appropriate team handle (e.g. @acme-org/platform-team).
+# GitHub auto-requests review from the owner(s) listed for any file a PR
+# touches. Most-specific rule wins, so put broad catch-alls first and
+# narrow overrides below.
+#
+# Docs: https://docs.github.com/en/repositories/managing-your-repositories-settings-and-security/customizing-your-repository/about-code-owners
+
+# ── Catch-all ────────────────────────────────────────────────────────────
+*                               @cory-sharplin
+
+# ── Apps (end-user surfaces) ─────────────────────────────────────────────
+/apps/desktop/                  @cory-sharplin
+/apps/web/                      @cory-sharplin
+
+# ── Services (independently deployable) ──────────────────────────────────
+/services/api/                  @cory-sharplin
+/services/tenant-provisioner/   @cory-sharplin
+
+# ── Libs (shared .NET) ───────────────────────────────────────────────────
+# libs/engine is the kernel — treat as higher-risk; add security team
+# as a second required reviewer if/when one exists.
+/libs/engine/                   @cory-sharplin
+/libs/persistence/              @cory-sharplin
+/libs/api-client/               @cory-sharplin
+/libs/workflows/                @cory-sharplin
+/libs/security/                 @cory-sharplin
+/libs/tenancy/                  @cory-sharplin
+/libs/licensing/                @cory-sharplin
+/libs/observability/            @cory-sharplin
+/libs/collaboration/            @cory-sharplin
+/libs/protection/               @cory-sharplin
+/libs/update-client/            @cory-sharplin
+
+# ── Modules (WPF feature modules) ────────────────────────────────────────
+/modules/                       @cory-sharplin
+/modules/admin/                 @cory-sharplin
+/modules/audit/                 @cory-sharplin
+/modules/crm/                   @cory-sharplin
+/modules/dashboard/             @cory-sharplin
+/modules/devices/               @cory-sharplin
+/modules/global-admin/          @cory-sharplin
+/modules/links/                 @cory-sharplin
+/modules/routing/               @cory-sharplin
+/modules/service-desk/          @cory-sharplin
+/modules/switches/              @cory-sharplin
+/modules/tasks/                 @cory-sharplin
+/modules/vlans/                 @cory-sharplin
+
+# ── Database (shared contract — review with care) ────────────────────────
+/db/migrations/                 @cory-sharplin
+/db/schema.sql                  @cory-sharplin
+
+# ── Infrastructure (K8s / Terraform / Vagrant / Ansible) ─────────────────
+/infra/                         @cory-sharplin
+/infra/k8s/                     @cory-sharplin
+/infra/terraform/               @cory-sharplin
+/infra/modules/                 @cory-sharplin
+/infra/environments/            @cory-sharplin
+
+# ── CI / security-sensitive paths ────────────────────────────────────────
+/.github/                       @cory-sharplin
+/.github/workflows/             @cory-sharplin
+/.github/CODEOWNERS             @cory-sharplin
+/NuGet.config                   @cory-sharplin
+
+# ── Tests ────────────────────────────────────────────────────────────────
+/tests/dotnet/                  @cory-sharplin
+
+# ── Tools (dev utilities — not shipped) ──────────────────────────────────
+/tools/                         @cory-sharplin
+
+# ── Docs ─────────────────────────────────────────────────────────────────
+/docs/                          @cory-sharplin
+/CLAUDE.md                      @cory-sharplin
+/README.md                      @cory-sharplin

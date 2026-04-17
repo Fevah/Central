@@ -14,9 +14,58 @@ env:
   IMAGE_PREFIX: ${{ github.repository_owner }}/central
 
 jobs:
+  # Detect which paths changed. Downstream jobs only run if their owned
+  # paths actually touched — unrelated doc-only / infra-only changes
+  # don't rebuild the entire platform.
+  changes:
+    name: Detect Changed Paths
+    runs-on: ubuntu-latest
+    outputs:
+      dotnet: ${{ steps.filter.outputs.dotnet }}
+      angular: ${{ steps.filter.outputs.angular }}
+      rust: ${{ steps.filter.outputs.rust }}
+      terraform: ${{ steps.filter.outputs.terraform }}
+      container: ${{ steps.filter.outputs.container }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            dotnet:
+              - 'apps/desktop/**'
+              - 'services/api/**'
+              - 'libs/**'
+              - 'modules/**'
+              - 'tests/dotnet/**'
+              - 'Central.sln'
+              - 'NuGet.config'
+              - 'Directory.Build.props'
+              - 'Directory.Packages.props'
+            angular:
+              - 'apps/web/**'
+            rust:
+              - 'services/*/src/**'
+              - 'services/*/Cargo.toml'
+              - 'services/*/Cargo.lock'
+            terraform:
+              - 'infra/terraform/**'
+              - 'infra/modules/**'
+              - 'infra/environments/**'
+              - 'infra/terragrunt.hcl'
+            container:
+              - 'services/api/Containerfile'
+              - 'apps/desktop/**'
+              - 'services/api/**'
+              - 'libs/**'
+              - 'modules/**'
+              - 'NuGet.config'
+
   # ── .NET (Desktop + API) ────────────────────────────────────────────
   dotnet-build-test:
     name: .NET Build & Test
+    needs: changes
+    if: needs.changes.outputs.dotnet == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -36,6 +85,8 @@ jobs:
   # ── Angular Web Client ──────────────────────────────────────────────
   angular-build:
     name: Angular Build
+    needs: changes
+    if: needs.changes.outputs.angular == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -53,38 +104,33 @@ jobs:
   # ── Rust Services ───────────────────────────────────────────────────
   rust-check:
     name: Rust Check & Clippy
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ${{ github.workspace }}/../Secure/SecureAPP
     steps:
       - uses: actions/checkout@v4
-        with:
-          path: central
-      - uses: actions/checkout@v4
-        with:
-          repository: ${{ github.repository_owner }}/SecureAPP
-          path: secure
-          token: ${{ secrets.SECURE_REPO_TOKEN }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_VERSION }}
           components: clippy
       - name: Install build deps
         run: sudo apt-get update && sudo apt-get install -y pkg-config libssl-dev cmake protobuf-compiler
-      - name: Cargo check all services
-        working-directory: secure
+      - name: Cargo check all Rust services
         run: |
-          cargo check -p auth-service
-          cargo check -p gateway-service
-          cargo check -p task-service
-          cargo check -p storage-service
-          cargo check -p sync-service
-          cargo check -p audit-service
+          # Build every service that has a Cargo.toml under services/.
+          # Currently that's tenant-provisioner; more will land here.
+          for svc in services/*/Cargo.toml; do
+            dir=$(dirname "$svc")
+            echo "=== $dir ==="
+            (cd "$dir" && cargo check --all-targets)
+            (cd "$dir" && cargo clippy --all-targets -- -D warnings)
+          done
 
   # ── Terraform Validate ──────────────────────────────────────────────
   terraform-validate:
     name: Terraform Validate
+    needs: changes
+    if: needs.changes.outputs.terraform == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -104,8 +150,9 @@ jobs:
   # ── Security Scanning ───────────────────────────────────────────────
   security-scan:
     name: Security Scan
+    needs: [changes, dotnet-build-test]
+    if: needs.changes.outputs.dotnet == 'true' || needs.changes.outputs.container == 'true'
     runs-on: ubuntu-latest
-    needs: [dotnet-build-test]
     steps:
       - uses: actions/checkout@v4
 
@@ -155,8 +202,18 @@ jobs:
   container-images:
     name: Build & Push Containers
     runs-on: ubuntu-latest
-    needs: [dotnet-build-test, angular-build, rust-check]
-    if: github.ref == 'refs/heads/main'
+    needs: [changes, dotnet-build-test, angular-build, rust-check]
+    # Only publish on main, and only when something that affects the
+    # image actually changed. Angular/Rust jobs may have skipped (if:
+    # false) — that's fine, `always()` lets this job run as long as
+    # they didn't fail.
+    if: |
+      always() &&
+      github.ref == 'refs/heads/main' &&
+      needs.changes.outputs.container == 'true' &&
+      needs.dotnet-build-test.result == 'success' &&
+      (needs.angular-build.result == 'success' || needs.angular-build.result == 'skipped') &&
+      (needs.rust-check.result == 'success' || needs.rust-check.result == 'skipped')
     permissions:
       contents: read
       packages: write
@@ -198,12 +255,11 @@ jobs:
         run: kubectl apply -k infra/k8s/base/
       - name: Rollout restart
         run: |
+          # Currently only central-api is deployed from this repo. Gateway /
+          # auth-service / task-service are planned Rust services that don't
+          # yet exist — add lines here as each ships.
           kubectl -n central rollout restart deployment/central-api
-          kubectl -n central rollout restart deployment/gateway
-          kubectl -n central rollout restart deployment/auth-service
-          kubectl -n central rollout restart deployment/task-service
       - name: Verify
         run: |
           kubectl -n central rollout status deployment/central-api --timeout=120s
-          kubectl -n central rollout status deployment/gateway --timeout=120s
           kubectl -n central get pods -n central
