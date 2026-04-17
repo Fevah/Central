@@ -1,4 +1,4 @@
-<UserControl x:Class="Central.Module.Devices.Views.DeviceGridPanel"
+﻿<UserControl x:Class="Central.Module.Devices.Views.DeviceGridPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
@@ -7,7 +7,7 @@
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BoolVis" />
         <conv:StringToBrushConverter x:Key="StringToBrush"
-            xmlns:conv="clr-namespace:Central.Core.Converters;assembly=Central.Core" />
+            xmlns:conv="clr-namespace:Central.Engine.Converters;assembly=Central.Engine" />
     </UserControl.Resources>
 
     <Grid>

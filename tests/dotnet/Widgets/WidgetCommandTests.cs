@@ -1,4 +1,4 @@
-using Central.Core.Widgets;
+﻿using Central.Engine.Widgets;
 
 namespace Central.Tests.Widgets;
 

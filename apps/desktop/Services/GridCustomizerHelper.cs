@@ -1,7 +1,7 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using DevExpress.Xpf.Grid;
-using Central.Core.Auth;
-using Central.Core.Models;
+using Central.Engine.Auth;
+using Central.Engine.Models;
 
 namespace Central.Desktop.Services;
 
@@ -14,7 +14,7 @@ public static class GridCustomizerHelper
     /// <summary>
     /// Attach grid customizer + saved filters to a panel's grid. Call once during MainWindow_Loaded.
     /// </summary>
-    public static void Attach(GridControl grid, TableView view, string panelName, Data.DbRepository repo)
+    public static void Attach(GridControl grid, TableView view, string panelName, Central.Persistence.DbRepository repo)
     {
         // Load existing customization on attach
         _ = LoadAndApplyAsync(grid, view, panelName, repo);
@@ -110,7 +110,7 @@ public static class GridCustomizerHelper
             var linkItem = new DevExpress.Xpf.Bars.BarButtonItem { Content = "Configure Links..." };
             linkItem.ItemClick += async (_, _) =>
             {
-                var engine = Central.Core.Shell.LinkEngine.Instance;
+                var engine = Central.Engine.Shell.LinkEngine.Instance;
                 var existingRules = engine.Rules
                     .Where(r => r.SourcePanel == panelName || r.TargetPanel == panelName)
                     .ToList();
@@ -154,12 +154,12 @@ public static class GridCustomizerHelper
                     try
                     {
                         view.ExportToCsv(dlg.FileName);
-                        Central.Core.Services.NotificationService.Instance?.Success($"Exported to {dlg.FileName}");
-                        _ = Central.Core.Services.AuditService.Instance.LogExportAsync(panelName, $"CSV export: {dlg.FileName}");
+                        Central.Engine.Services.NotificationService.Instance?.Success($"Exported to {dlg.FileName}");
+                        _ = Central.Engine.Services.AuditService.Instance.LogExportAsync(panelName, $"CSV export: {dlg.FileName}");
                     }
                     catch (Exception ex)
                     {
-                        Central.Core.Services.NotificationService.Instance?.Error($"Export failed: {ex.Message}");
+                        Central.Engine.Services.NotificationService.Instance?.Error($"Export failed: {ex.Message}");
                     }
                 }
             };
@@ -180,12 +180,12 @@ public static class GridCustomizerHelper
                     try
                     {
                         view.ExportToXlsx(dlg.FileName);
-                        Central.Core.Services.NotificationService.Instance?.Success($"Exported to {dlg.FileName}");
-                        _ = Central.Core.Services.AuditService.Instance.LogExportAsync(panelName, $"Excel export: {dlg.FileName}");
+                        Central.Engine.Services.NotificationService.Instance?.Success($"Exported to {dlg.FileName}");
+                        _ = Central.Engine.Services.AuditService.Instance.LogExportAsync(panelName, $"Excel export: {dlg.FileName}");
                     }
                     catch (Exception ex)
                     {
-                        Central.Core.Services.NotificationService.Instance?.Error($"Export failed: {ex.Message}");
+                        Central.Engine.Services.NotificationService.Instance?.Error($"Export failed: {ex.Message}");
                     }
                 }
             };
@@ -206,12 +206,12 @@ public static class GridCustomizerHelper
                     try
                     {
                         view.ExportToPdf(dlg.FileName);
-                        Central.Core.Services.NotificationService.Instance?.Success($"Exported to {dlg.FileName}");
-                        _ = Central.Core.Services.AuditService.Instance.LogExportAsync(panelName, $"PDF export: {dlg.FileName}");
+                        Central.Engine.Services.NotificationService.Instance?.Success($"Exported to {dlg.FileName}");
+                        _ = Central.Engine.Services.AuditService.Instance.LogExportAsync(panelName, $"PDF export: {dlg.FileName}");
                     }
                     catch (Exception ex)
                     {
-                        Central.Core.Services.NotificationService.Instance?.Error($"Export failed: {ex.Message}");
+                        Central.Engine.Services.NotificationService.Instance?.Error($"Export failed: {ex.Message}");
                     }
                 }
             };
@@ -221,7 +221,7 @@ public static class GridCustomizerHelper
             var clipItem = new DevExpress.Xpf.Bars.BarButtonItem { Content = "Copy to Clipboard" };
             clipItem.ItemClick += (_, _) =>
             {
-                try { grid.SelectAll(); grid.CopyToClipboard(); Central.Core.Services.NotificationService.Instance?.Success("Copied to clipboard"); }
+                try { grid.SelectAll(); grid.CopyToClipboard(); Central.Engine.Services.NotificationService.Instance?.Success("Copied to clipboard"); }
                 catch { }
             };
             e.Customizations.Add(clipItem);
@@ -238,7 +238,7 @@ public static class GridCustomizerHelper
             printItem.ItemClick += (_, _) =>
             {
                 try { view.ShowPrintPreview(null); }
-                catch { Central.Core.Services.NotificationService.Instance?.Error("Print preview not available"); }
+                catch { Central.Engine.Services.NotificationService.Instance?.Error("Print preview not available"); }
             };
             e.Customizations.Add(printItem);
 
@@ -267,7 +267,7 @@ public static class GridCustomizerHelper
         };
 
         // Register this grid with the LinkEngine for cross-panel filtering
-        Central.Core.Shell.LinkEngine.Instance.RegisterGrid(panelName, (field, op, value) =>
+        Central.Engine.Shell.LinkEngine.Instance.RegisterGrid(panelName, (field, op, value) =>
         {
             grid.Dispatcher.Invoke(() =>
             {
@@ -306,7 +306,7 @@ public static class GridCustomizerHelper
         }
     }
 
-    private static async Task LoadAndApplyAsync(GridControl grid, TableView view, string panelName, Data.DbRepository repo)
+    private static async Task LoadAndApplyAsync(GridControl grid, TableView view, string panelName, Central.Persistence.DbRepository repo)
     {
         try
         {
@@ -336,10 +336,10 @@ public static class GridCustomizerHelper
             {
                 try
                 {
-                    var linkRules = System.Text.Json.JsonSerializer.Deserialize<List<Central.Core.Models.LinkRule>>(linkRecord.SettingJson);
+                    var linkRules = System.Text.Json.JsonSerializer.Deserialize<List<Central.Engine.Models.LinkRule>>(linkRecord.SettingJson);
                     if (linkRules != null)
                         foreach (var rule in linkRules.Where(r => r.FilterOnSelect))
-                            Central.Core.Shell.LinkEngine.Instance.AddRule(rule);
+                            Central.Engine.Shell.LinkEngine.Instance.AddRule(rule);
                 }
                 catch { }
             }
@@ -347,7 +347,7 @@ public static class GridCustomizerHelper
         catch { /* non-critical */ }
     }
 
-    private static async Task SaveGridSettingsAsync(string panelName, GridSettings settings, Data.DbRepository repo)
+    private static async Task SaveGridSettingsAsync(string panelName, GridSettings settings, Central.Persistence.DbRepository repo)
     {
         try
         {

@@ -1,7 +1,7 @@
-using System.Reflection;
-using Central.Core.Integration;
-using Central.Core.Services;
-using Central.Data;
+﻿using System.Reflection;
+using Central.Engine.Integration;
+using Central.Engine.Services;
+using Central.Persistence;
 
 namespace Central.Api.Endpoints;
 
@@ -74,7 +74,7 @@ public static class StatusEndpoints
                     agent_types = SyncEngine.Instance.GetAgentTypes(),
                     converter_types = SyncEngine.Instance.GetConverterTypes()
                 },
-                mediator = Central.Core.Shell.Mediator.Instance.GetDiagnostics()
+                mediator = Central.Engine.Shell.Mediator.Instance.GetDiagnostics()
             });
         });
 

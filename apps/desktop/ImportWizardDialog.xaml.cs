@@ -1,7 +1,7 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
-using Central.Core.Integration;
+using Central.Engine.Integration;
 
 namespace Central.Desktop;
 
@@ -11,7 +11,7 @@ namespace Central.Desktop;
 /// </summary>
 public partial class ImportWizardDialog : DevExpress.Xpf.Core.DXWindow
 {
-    private readonly Data.DbRepository _repo;
+    private readonly Central.Persistence.DbRepository _repo;
     private List<Dictionary<string, object?>>? _csvRecords;
     private string[]? _csvHeaders;
 
@@ -31,7 +31,7 @@ public partial class ImportWizardDialog : DevExpress.Xpf.Core.DXWindow
 
     public ImportWizardDialog(string dsn)
     {
-        _repo = new Data.DbRepository(dsn);
+        _repo = new Central.Persistence.DbRepository(dsn);
         InitializeComponent();
         _ = LoadTablesAsync();
     }
@@ -133,7 +133,7 @@ public partial class ImportWizardDialog : DevExpress.Xpf.Core.DXWindow
         {
             ["direct"] = new DirectConverter(),
             ["constant"] = new ConstantConverter(),
-            ["expression"] = new Central.Core.Integration.ExpressionConverter(),
+            ["expression"] = new Central.Engine.Integration.ExpressionConverter(),
             ["date_format"] = new DateFormatConverter(),
             ["combine"] = new CombineConverter(),
             ["split"] = new SplitConverter()
@@ -174,7 +174,7 @@ public partial class ImportWizardDialog : DevExpress.Xpf.Core.DXWindow
 
         StatusLabel.Text = $"Import complete: {ImportedCount} imported, {FailedCount} failed";
 
-        _ = Central.Core.Services.AuditService.Instance.LogAsync("Import", targetTable,
+        _ = Central.Engine.Services.AuditService.Instance.LogAsync("Import", targetTable,
             details: $"CSV import: {ImportedCount} records from {Path.GetFileName(FilePathEdit.Text)}");
 
         if (FailedCount == 0)

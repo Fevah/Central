@@ -1,5 +1,5 @@
-using System.Windows;
-using Central.Core.Models;
+﻿using System.Windows;
+using Central.Engine.Models;
 using WC = System.Windows.Controls;
 using WMedia = System.Windows.Media;
 
@@ -49,7 +49,7 @@ public partial class CrmDashboardPanel : System.Windows.Controls.UserControl
         }
         catch (Exception ex)
         {
-            Central.Core.Services.NotificationService.Instance?.Error($"CRM dashboard load failed: {ex.Message}");
+            Central.Engine.Services.NotificationService.Instance?.Error($"CRM dashboard load failed: {ex.Message}");
         }
     }
 

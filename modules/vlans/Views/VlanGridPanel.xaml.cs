@@ -1,6 +1,6 @@
-using System.Windows;
+﻿using System.Windows;
 using DevExpress.Xpf.Grid;
-using Central.Core.Models;
+using Central.Engine.Models;
 
 namespace Central.Module.VLANs.Views;
 

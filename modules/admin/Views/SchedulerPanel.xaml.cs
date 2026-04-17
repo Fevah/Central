@@ -1,7 +1,7 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Windows;
 using DevExpress.Xpf.Grid;
-using Central.Core.Models;
+using Central.Engine.Models;
 
 namespace Central.Module.Admin.Views;
 
@@ -174,7 +174,7 @@ public partial class SchedulerPanel : System.Windows.Controls.UserControl
             Subject = "",
             StartTime = new DateTime(now.Year, now.Month, now.Day, now.Hour, 0, 0),
             EndTime = new DateTime(now.Year, now.Month, now.Day, now.Hour + 1, 0, 0),
-            CreatedBy = Central.Core.Auth.AuthContext.Instance.CurrentUser?.Id
+            CreatedBy = Central.Engine.Auth.AuthContext.Instance.CurrentUser?.Id
         };
 
         var dialog = new AppointmentEditDialog(appt, Resources);

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Windows.Input;
 
 namespace Central.Desktop.ViewModels;
@@ -23,7 +23,7 @@ public class RelayCommand : ICommand
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"RelayCommand error: {ex.Message}");
-            try { Central.Data.AppLogger.LogException("Command", ex, "RelayCommand.Execute"); } catch { }
+            try { Central.Persistence.AppLogger.LogException("Command", ex, "RelayCommand.Execute"); } catch { }
         }
     }
 

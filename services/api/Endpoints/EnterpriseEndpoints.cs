@@ -1,8 +1,8 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Npgsql;
-using Central.Data;
+using Central.Persistence;
 
 namespace Central.Api.Endpoints;
 
@@ -219,7 +219,7 @@ public static class AccountRecoveryEndpoints
             var tokenHash = Convert.ToBase64String(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token)));
 
             // Validate policy
-            var policy = Central.Core.Auth.PasswordPolicy.Default;
+            var policy = Central.Engine.Auth.PasswordPolicy.Default;
             var validation = policy.Validate(newPassword);
             if (!validation.IsValid)
                 return ApiProblem.ValidationError(validation.ErrorSummary);
@@ -235,8 +235,8 @@ public static class AccountRecoveryEndpoints
             var userId = rd.GetInt32(1);
             await rd.CloseAsync();
 
-            var salt = Central.Core.Auth.PasswordHasher.GenerateSalt();
-            var hash = Central.Core.Auth.PasswordHasher.Hash(newPassword, salt);
+            var salt = Central.Engine.Auth.PasswordHasher.GenerateSalt();
+            var hash = Central.Engine.Auth.PasswordHasher.Hash(newPassword, salt);
 
             await using var update = new NpgsqlCommand(
                 @"UPDATE app_users SET password_hash = @h, salt = @s, password_changed_at = NOW(),
@@ -339,7 +339,7 @@ public static class SocialProviderEndpoints
             cmd.Parameters.AddWithValue("p", provider);
             cmd.Parameters.AddWithValue("cid", body.TryGetProperty("client_id", out var cid) ? cid.GetString() ?? "" : "");
             cmd.Parameters.AddWithValue("secret", body.TryGetProperty("client_secret", out var sec) && !string.IsNullOrEmpty(sec.GetString())
-                ? Central.Core.Auth.CredentialEncryptor.Encrypt(sec.GetString()!) : "");
+                ? Central.Engine.Auth.CredentialEncryptor.Encrypt(sec.GetString()!) : "");
             cmd.Parameters.AddWithValue("en", body.TryGetProperty("is_enabled", out var en) && en.GetBoolean());
             cmd.Parameters.AddWithValue("sc", body.TryGetProperty("scope", out var sc) ? (object)(sc.GetString() ?? "") : DBNull.Value);
             var r = await cmd.ExecuteScalarAsync();

@@ -1,5 +1,5 @@
-using Central.Core.Models;
-using IntegrationModel = Central.Core.Models.Integration;
+﻿using Central.Engine.Models;
+using IntegrationModel = Central.Engine.Models.Integration;
 
 namespace Central.Tests.Models;
 

@@ -1,8 +1,8 @@
-using System.Net.Http;
+﻿using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using Central.Core.Integration;
+using Central.Engine.Integration;
 
 namespace Central.Module.ServiceDesk.Services;
 

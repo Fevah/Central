@@ -1,4 +1,4 @@
-using System.Text;
+﻿using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Central.Api.Auth;
@@ -28,7 +28,7 @@ var dsn = builder.Configuration.GetConnectionString("Default")
     ?? Environment.GetEnvironmentVariable("CENTRAL_DSN")
     ?? throw new InvalidOperationException(
         "Database connection string not configured. Set ConnectionStrings:Default in appsettings.json or CENTRAL_DSN environment variable.");
-builder.Services.AddSingleton(new Central.Data.DbConnectionFactory(dsn));
+builder.Services.AddSingleton(new Central.Persistence.DbConnectionFactory(dsn));
 
 // JWT settings — MUST be set via environment variables (no hardcoded fallbacks)
 var jwtSecret = Environment.GetEnvironmentVariable("CENTRAL_JWT_SECRET")
@@ -98,7 +98,7 @@ builder.Services.AddSingleton(new RateLimiter(maxRequests: 10, windowSeconds: 60
 builder.Services.AddHostedService<JobSchedulerService>();
 
 // Credential encryption key (from env or default)
-Central.Core.Auth.CredentialEncryptor.Initialize(
+Central.Engine.Auth.CredentialEncryptor.Initialize(
     Environment.GetEnvironmentVariable("CENTRAL_CREDENTIAL_KEY"));
 
 // Swagger/OpenAPI (Swashbuckle 10.x + Microsoft.OpenApi 2.x)
@@ -169,8 +169,8 @@ builder.Services.AddSingleton(Central.Security.SecurityPolicyEngine.Instance);
 builder.Services.AddSingleton(Central.Collaboration.PresenceService.Instance);
 
 // AI: Tenant provider resolver (dual-tier: tenant BYOK → platform key fallback)
-builder.Services.AddSingleton<Central.Core.Services.ITenantAiProviderResolver>(
-    _ => new Central.Data.TenantAiProviderResolver(dsn));
+builder.Services.AddSingleton<Central.Engine.Services.ITenantAiProviderResolver>(
+    _ => new Central.Persistence.TenantAiProviderResolver(dsn));
 
 // Elsa Workflows engine (PostgreSQL persistence, custom activities)
 builder.Services.AddCentralWorkflows(dsn);
@@ -339,7 +339,7 @@ app.MapGroup("/api/validation").WithTags("Platform").MapValidationEndpoints().Re
 app.MapGroup("/api/settings").WithTags("Platform").MapSettingsEndpoints().RequireAuthorization();
 
 // Register default validation rules
-Central.Core.Services.DataValidationService.Instance.RegisterDefaults();
+Central.Engine.Services.DataValidationService.Instance.RegisterDefaults();
 
 // SignalR hub (auth required)
 app.MapHub<NotificationHub>("/hubs/notify").RequireAuthorization();

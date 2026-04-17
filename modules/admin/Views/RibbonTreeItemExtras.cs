@@ -1,13 +1,13 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Text.Json;
-using Central.Core.Models;
+using Central.Engine.Models;
 
 namespace Central.Module.Admin.Views;
 
-// NOTE: RibbonGlobalActionCatalogue moved to Central.Core.Services so that
+// NOTE: RibbonGlobalActionCatalogue moved to Central.Engine.Services so that
 // GlobalActionsModule (in Central.Desktop) can share the same catalogue as
 // the admin tree and GlobalActionService. Reference
-// <see cref="Central.Core.Services.RibbonGlobalActionCatalogue"/> instead.
+// <see cref="Central.Engine.Services.RibbonGlobalActionCatalogue"/> instead.
 
 /// <summary>
 /// Shared JSONB round-trip for the extended ribbon properties that live on

@@ -1,4 +1,4 @@
-using Central.Data;
+﻿using Central.Persistence;
 using Npgsql;
 
 namespace Central.Tests.Integration;

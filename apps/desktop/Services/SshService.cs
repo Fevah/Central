@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -31,7 +31,7 @@ public static class SshService
     }
 
     public static async Task<SshResult> DownloadConfigAsync(
-        Data.DbRepository repo,
+        Central.Persistence.DbRepository repo,
         Guid? switchId,
         string hostname,
         string host,
@@ -339,7 +339,7 @@ public static class SshService
     /// Enters config mode, sends each command, then commits.
     /// </summary>
     public static async Task<SshResult> SendCommandsAsync(
-        Data.DbRepository repo,
+        Central.Persistence.DbRepository repo,
         Guid? switchId,
         string hostname,
         string host,

@@ -1,4 +1,4 @@
-using Central.Core.Auth;
+﻿using Central.Engine.Auth;
 
 namespace Central.Desktop.Auth;
 
@@ -66,7 +66,7 @@ public class SessionRefreshService : IDisposable
         {
             System.Windows.Application.Current?.Dispatcher.Invoke(() =>
             {
-                Central.Core.Services.NotificationService.Instance?.Warning(
+                Central.Engine.Services.NotificationService.Instance?.Warning(
                     "Session refresh failed. Click your profile to re-authenticate.");
             });
         }

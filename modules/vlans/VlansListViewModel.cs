@@ -1,5 +1,5 @@
-using Central.Core.Models;
-using Central.Core.Widgets;
+﻿using Central.Engine.Models;
+using Central.Engine.Widgets;
 
 namespace Central.Module.VLANs;
 
@@ -8,14 +8,14 @@ namespace Central.Module.VLANs;
 /// Keeps the existing MainViewModel-owned <c>VlanEntries</c> collection as the
 /// grid's ItemsSource (no data-flow change), and just exposes the uniform
 /// Add / Edit / Delete / Refresh / Duplicate / Export / Undo / Redo commands that
-/// <see cref="Central.Core.Services.GlobalActionService"/> dispatches to.
+/// <see cref="Central.Engine.Services.GlobalActionService"/> dispatches to.
 ///
 /// Proves out per-panel undo: pushing an Add here recorded on
 /// <see cref="ListViewModelBase.Undo"/> is independent of the other panels'
 /// undo stacks, so Ctrl+Z on the VLANs tab rolls back only VLAN edits.
 ///
 /// The shell supplies repo adapters so this VM has no direct DbRepository dep
-/// and can move into Central.Core once other modules adopt the pattern.
+/// and can move into Central.Engine once other modules adopt the pattern.
 /// </summary>
 public sealed class VlansListViewModel : ListViewModelBase<VlanEntry>
 {

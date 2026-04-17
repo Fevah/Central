@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -9,9 +9,9 @@ using MessageBox = System.Windows.MessageBox;
 using MessageBoxButton = System.Windows.MessageBoxButton;
 using MessageBoxImage = System.Windows.MessageBoxImage;
 using System.Windows.Input;
-using Central.Core.Auth;
-using Central.Data;
-using Central.Core.Models;
+using Central.Engine.Auth;
+using Central.Persistence;
+using Central.Engine.Models;
 using Central.Desktop.Services;
 
 namespace Central.Desktop.ViewModels;
@@ -39,7 +39,7 @@ public class MainViewModel : INotifyPropertyChanged
     public DbRepository Repo => _repo;
 
     /// <summary>Active data service (DirectDb or Api). Falls back to Repo for methods not on IDataService.</summary>
-    public Central.Core.Data.IDataService? DataService => App.Connectivity?.ActiveDataService;
+    public Central.Engine.Data.IDataService? DataService => App.Connectivity?.ActiveDataService;
 
     public ObservableCollection<DeviceRecord>  Devices       { get; } = new();
     public ObservableCollection<SwitchRecord>  Switches      { get; } = new();
@@ -707,7 +707,7 @@ public class MainViewModel : INotifyPropertyChanged
 
             var sites = AuthContext.Instance.AllowedSites.Count > 0 ? AuthContext.Instance.AllowedSites.ToList() : null;
             var noRes = !AuthContext.Instance.CanViewReserved;
-            var useApi = DataService != null && App.Connectivity?.Mode == Central.Core.Data.DataServiceMode.Api;
+            var useApi = DataService != null && App.Connectivity?.Mode == Central.Engine.Data.DataServiceMode.Api;
 
             // ── Critical path: Devices + Switches + Lookups ──
             List<DeviceRecord> devices;
@@ -811,7 +811,7 @@ public class MainViewModel : INotifyPropertyChanged
     // Each method checks DataService mode — API mode uses typed HTTP calls,
     // DirectDb mode uses DbRepository. This is the Phase 7 migration path.
 
-    public bool UseApi => DataService != null && App.Connectivity?.Mode == Central.Core.Data.DataServiceMode.Api;
+    public bool UseApi => DataService != null && App.Connectivity?.Mode == Central.Engine.Data.DataServiceMode.Api;
 
     private void ReplaceCollection<T>(ObservableCollection<T> target, List<T> source)
     {
@@ -996,8 +996,8 @@ public class MainViewModel : INotifyPropertyChanged
         {
             await _repo.UpsertTaskAsync(task);
             StatusText = $"Task saved: {task.Title}  ·  {DateTime.Now:HH:mm:ss}";
-            Central.Core.Shell.PanelMessageBus.Publish(
-                new Central.Core.Shell.DataModifiedMessage("tasks", "Task", "Update"));
+            Central.Engine.Shell.PanelMessageBus.Publish(
+                new Central.Engine.Shell.DataModifiedMessage("tasks", "Task", "Update"));
         }
         catch (Exception ex) { StatusText = $"Task save error: {ex.Message}"; }
     }
@@ -1009,8 +1009,8 @@ public class MainViewModel : INotifyPropertyChanged
             if (task.Id > 0)
                 await _repo.DeleteTaskAsync(task.Id);
             StatusText = $"Task deleted: {task.Title}";
-            Central.Core.Shell.PanelMessageBus.Publish(
-                new Central.Core.Shell.DataModifiedMessage("tasks", "Task", "Delete"));
+            Central.Engine.Shell.PanelMessageBus.Publish(
+                new Central.Engine.Shell.DataModifiedMessage("tasks", "Task", "Delete"));
         }
         catch (Exception ex) { StatusText = $"Task delete error: {ex.Message}"; }
     }
@@ -1233,7 +1233,7 @@ public class MainViewModel : INotifyPropertyChanged
     public async Task SaveDeviceAsync(DeviceRecord device)
     {
         // Validate required fields
-        var errors = Central.Core.Widgets.GridValidationHelper.Validate(device,
+        var errors = Central.Engine.Widgets.GridValidationHelper.Validate(device,
             ("SwitchName", "Device name is required"),
             ("Building", "Building is required"));
         if (errors.Count > 0)
@@ -1253,9 +1253,9 @@ public class MainViewModel : INotifyPropertyChanged
                 await _repo.UpdateDeviceAsync(device);
 
             StatusText = $"Saved: {device.SwitchName}  ·  {DateTime.Now:HH:mm:ss}";
-            Central.Core.Shell.PanelMessageBus.Publish(
-                new Central.Core.Shell.DataModifiedMessage("devices", "Device", isNew ? "Add" : "Update"));
-            _ = Central.Core.Services.AuditService.Instance.LogAsync(
+            Central.Engine.Shell.PanelMessageBus.Publish(
+                new Central.Engine.Shell.DataModifiedMessage("devices", "Device", isNew ? "Add" : "Update"));
+            _ = Central.Engine.Services.AuditService.Instance.LogAsync(
                 isNew ? "Create" : "Update", "Device", device.Id, device.SwitchName);
         }
         catch (Exception ex)
@@ -1278,13 +1278,13 @@ public class MainViewModel : INotifyPropertyChanged
                 await _repo.DeleteDeviceAsync(device.Id);
             Devices.Remove(device);
             StatusText = $"Deleted: {device.SwitchName}  ·  {DateTime.Now:HH:mm:ss}";
-            Central.Core.Shell.PanelMessageBus.Publish(
-                new Central.Core.Shell.DataModifiedMessage("devices", "Device", "Delete"));
-            _ = Central.Core.Services.AuditService.Instance.LogDeleteAsync("Device", device.Id ?? "", device.SwitchName);
+            Central.Engine.Shell.PanelMessageBus.Publish(
+                new Central.Engine.Shell.DataModifiedMessage("devices", "Device", "Delete"));
+            _ = Central.Engine.Services.AuditService.Instance.LogDeleteAsync("Device", device.Id ?? "", device.SwitchName);
 
             // Record undo — re-add on undo, re-delete on redo
             var snapshot = device;
-            Central.Core.Services.UndoService.Instance.RecordRemove(
+            Central.Engine.Services.UndoService.Instance.RecordRemove(
                 Devices, snapshot, Devices.Count,
                 $"Delete device {device.SwitchName}");
         }
@@ -1305,8 +1305,8 @@ public class MainViewModel : INotifyPropertyChanged
             var lookups = await _repo.GetLookupsAsync();
             System.Windows.Application.Current.Dispatcher.Invoke(() => RefreshLookupOptions(lookups));
             StatusText = $"Lookup saved: {item.Category} / {item.Value}";
-            Central.Core.Shell.PanelMessageBus.Publish(
-                new Central.Core.Shell.DataModifiedMessage("admin", "Lookup", "Update"));
+            Central.Engine.Shell.PanelMessageBus.Publish(
+                new Central.Engine.Shell.DataModifiedMessage("admin", "Lookup", "Update"));
         }
         catch (Exception ex)
         {
@@ -1322,7 +1322,7 @@ public class MainViewModel : INotifyPropertyChanged
         {
             if (item.Id > 0) await _repo.DeleteLookupAsync(item.Id);
             LookupItems.Remove(item);
-            Central.Core.Services.UndoService.Instance.RecordRemove(
+            Central.Engine.Services.UndoService.Instance.RecordRemove(
                 LookupItems, item, LookupItems.Count, $"Delete lookup {item.Category}/{item.Value}");
             var lookups = await _repo.GetLookupsAsync();
             System.Windows.Application.Current.Dispatcher.Invoke(() => RefreshLookupOptions(lookups));
@@ -1344,8 +1344,8 @@ public class MainViewModel : INotifyPropertyChanged
         {
             await _repo.UpsertConfigRangeAsync(item);
             StatusText = $"Range saved: {item.Category} / {item.Name}";
-            Central.Core.Shell.PanelMessageBus.Publish(
-                new Central.Core.Shell.DataModifiedMessage("admin", "ConfigRange", "Update"));
+            Central.Engine.Shell.PanelMessageBus.Publish(
+                new Central.Engine.Shell.DataModifiedMessage("admin", "ConfigRange", "Update"));
         }
         catch (Exception ex)
         {
@@ -1377,8 +1377,8 @@ public class MainViewModel : INotifyPropertyChanged
         {
             await _repo.UpdateServerNicStatusAsync(s);
             StatusText = $"NIC status saved: {s.ServerName}";
-            Central.Core.Shell.PanelMessageBus.Publish(
-                new Central.Core.Shell.DataModifiedMessage("devices", "Server", "Update"));
+            Central.Engine.Shell.PanelMessageBus.Publish(
+                new Central.Engine.Shell.DataModifiedMessage("devices", "Server", "Update"));
         }
         catch (Exception ex) { StatusText = $"Server save error: {ex.Message}"; }
     }
@@ -1391,8 +1391,8 @@ public class MainViewModel : INotifyPropertyChanged
         {
             await _repo.UpsertUserAsync(user);
             StatusText = $"User saved: {user.Username}  ·  {DateTime.Now:HH:mm:ss}";
-            Central.Core.Shell.PanelMessageBus.Publish(
-                new Central.Core.Shell.DataModifiedMessage("admin", "User", "Update"));
+            Central.Engine.Shell.PanelMessageBus.Publish(
+                new Central.Engine.Shell.DataModifiedMessage("admin", "User", "Update"));
         }
         catch (Exception ex)
         {
@@ -1410,10 +1410,10 @@ public class MainViewModel : INotifyPropertyChanged
             if (!deleted) { StatusText = $"Cannot delete protected user: {user.Username}"; return; }
             Users.Remove(user);
             StatusText = $"User deleted: {user.Username}  ·  {DateTime.Now:HH:mm:ss}";
-            Central.Core.Shell.PanelMessageBus.Publish(
-                new Central.Core.Shell.DataModifiedMessage("admin", "User", "Delete"));
-            _ = Central.Core.Services.AuditService.Instance.LogDeleteAsync("User", user.Id.ToString(), user.Username);
-            Central.Core.Services.UndoService.Instance.RecordRemove(
+            Central.Engine.Shell.PanelMessageBus.Publish(
+                new Central.Engine.Shell.DataModifiedMessage("admin", "User", "Delete"));
+            _ = Central.Engine.Services.AuditService.Instance.LogDeleteAsync("User", user.Id.ToString(), user.Username);
+            Central.Engine.Services.UndoService.Instance.RecordRemove(
                 Users, user, Users.Count, $"Delete user {user.Username}");
         }
         catch (Exception ex)
@@ -1438,8 +1438,8 @@ public class MainViewModel : INotifyPropertyChanged
                 foreach (var n in names) RoleNames.Add(n);
             });
             StatusText = $"Role saved: {role.Name}  ·  {DateTime.Now:HH:mm:ss}";
-            Central.Core.Shell.PanelMessageBus.Publish(
-                new Central.Core.Shell.DataModifiedMessage("admin", "Role", "Update"));
+            Central.Engine.Shell.PanelMessageBus.Publish(
+                new Central.Engine.Shell.DataModifiedMessage("admin", "Role", "Update"));
         }
         catch (Exception ex)
         {
@@ -1457,9 +1457,9 @@ public class MainViewModel : INotifyPropertyChanged
             Roles.Remove(role);
             RoleNames.Remove(role.Name);
             StatusText = $"Role deleted: {role.Name}  ·  {DateTime.Now:HH:mm:ss}";
-            Central.Core.Shell.PanelMessageBus.Publish(
-                new Central.Core.Shell.DataModifiedMessage("admin", "Role", "Delete"));
-            Central.Core.Services.UndoService.Instance.RecordRemove(
+            Central.Engine.Shell.PanelMessageBus.Publish(
+                new Central.Engine.Shell.DataModifiedMessage("admin", "Role", "Delete"));
+            Central.Engine.Services.UndoService.Instance.RecordRemove(
                 Roles, role, Roles.Count, $"Delete role {role.Name}");
         }
         catch (Exception ex)
@@ -1496,7 +1496,7 @@ public class MainViewModel : INotifyPropertyChanged
             // If editing the current user's role, refresh allowed sites immediately
             if (string.Equals(roleName, AuthContext.Instance.CurrentUser?.RoleName, StringComparison.OrdinalIgnoreCase))
             {
-                var permRepo = new Central.Data.Repositories.PermissionRepository(App.Dsn);
+                var permRepo = new Central.Persistence.Repositories.PermissionRepository(App.Dsn);
                 var newSites = await permRepo.GetAllowedSitesAsync(roleName);
                 AuthContext.Instance.UpdateAllowedSites(newSites);
                 await ReloadDevicesAsync();
@@ -1561,9 +1561,9 @@ public class MainViewModel : INotifyPropertyChanged
             // Alert on state change
             var wasPingOk = prevState.GetValueOrDefault(sw.Hostname);
             if (sw.LastPingOk == false && wasPingOk != false)
-                Central.Core.Services.AlertService.Instance.PingFailed(sw.Hostname, sw.ManagementIp);
+                Central.Engine.Services.AlertService.Instance.PingFailed(sw.Hostname, sw.ManagementIp);
             else if (sw.LastPingOk == true && wasPingOk == false)
-                Central.Core.Services.AlertService.Instance.PingRecovered(sw.Hostname, sw.LastPingMs ?? 0);
+                Central.Engine.Services.AlertService.Instance.PingRecovered(sw.Hostname, sw.LastPingMs ?? 0);
         }
         var reachable = snapshot.Where(s => s.LastPingOk == true && !string.IsNullOrWhiteSpace(s.SshPassword)).ToList();
         if (reachable.Count > 0)
@@ -1728,7 +1728,7 @@ public class MainViewModel : INotifyPropertyChanged
         if (SelectedSwitch is not { } sw || sw.Id == Guid.Empty) return;
         if (string.IsNullOrWhiteSpace(RunningConfigText) || RunningConfigText.StartsWith("(")) return;
 
-        var op = Central.Core.Auth.AuthContext.Instance.CurrentUser?.DisplayName ?? Environment.UserName;
+        var op = Central.Engine.Auth.AuthContext.Instance.CurrentUser?.DisplayName ?? Environment.UserName;
         var lineCount = RunningConfigText.Split('\n').Length;
         var desc = $"Manual backup — {lineCount} lines — {DateTime.Now:yyyy-MM-dd HH:mm}";
         await Repo.SaveConfigBackupAsync(sw.Id, RunningConfigText, sw.EffectiveSshIp, op, desc);

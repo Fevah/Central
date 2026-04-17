@@ -1,7 +1,7 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Windows;
 using DevExpress.Xpf.Grid;
-using Central.Core.Auth;
+using Central.Engine.Auth;
 
 namespace Central.Module.Admin.Views;
 

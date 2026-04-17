@@ -1,8 +1,8 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using DevExpress.Xpf.Grid;
-using Central.Core.Models;
+using Central.Engine.Models;
 
 namespace Central.Module.Switches.Views;
 

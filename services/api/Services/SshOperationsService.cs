@@ -1,8 +1,8 @@
-using Microsoft.AspNetCore.SignalR;
+﻿using Microsoft.AspNetCore.SignalR;
 using Npgsql;
 using Renci.SshNet;
 using Central.Api.Hubs;
-using Central.Data;
+using Central.Persistence;
 
 namespace Central.Api.Services;
 
@@ -242,7 +242,7 @@ public class SshOperationsService
     {
         var host = !string.IsNullOrEmpty(sw.SshOverrideIp) ? sw.SshOverrideIp : sw.ManagementIp;
         // Decrypt password if encrypted at rest (falls back to plaintext for legacy values)
-        var password = Central.Core.Auth.CredentialEncryptor.DecryptOrPassthrough(sw.SshPassword);
+        var password = Central.Engine.Auth.CredentialEncryptor.DecryptOrPassthrough(sw.SshPassword);
         return (host, sw.SshPort, sw.SshUsername, password);
     }
 

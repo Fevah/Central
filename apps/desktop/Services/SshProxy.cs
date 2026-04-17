@@ -1,4 +1,4 @@
-using Central.Core.Models;
+﻿using Central.Engine.Models;
 
 namespace Central.Desktop.Services;
 
@@ -134,12 +134,12 @@ public static class SshProxy
         catch (Exception ex) { return (false, ex.Message); }
     }
 
-    private static Central.Api.Client.CentralApiClient CreateApiClient()
+    private static Central.ApiClient.CentralApiClient CreateApiClient()
     {
         var apiUrl = App.Settings?.Get<string>("api.url") ?? "http://192.168.56.203:8000";
-        var client = new Central.Api.Client.CentralApiClient(apiUrl);
+        var client = new Central.ApiClient.CentralApiClient(apiUrl);
         // Auto-login
-        var username = Central.Core.Auth.AuthContext.Instance.CurrentUser?.Username ?? Environment.UserName;
+        var username = Central.Engine.Auth.AuthContext.Instance.CurrentUser?.Username ?? Environment.UserName;
         client.LoginAsync(username).Wait(5000);
         return client;
     }

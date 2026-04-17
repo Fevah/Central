@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -6,6 +6,6 @@
     <RootNamespace>Central.Security</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\core\Central.Core.csproj" />
+    <ProjectReference Include="..\engine\Central.Engine.csproj" />
   </ItemGroup>
 </Project>

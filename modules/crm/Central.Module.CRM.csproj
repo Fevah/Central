@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -11,8 +11,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\libs\core\Central.Core.csproj" />
-    <ProjectReference Include="..\..\libs\data\Central.Data.csproj" />
+    <ProjectReference Include="..\..\libs\engine\Central.Engine.csproj" />
+    <ProjectReference Include="..\..\libs\persistence\Central.Persistence.csproj" />
   </ItemGroup>
 
   <ItemGroup>

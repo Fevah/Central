@@ -1,9 +1,9 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Central.Core.Auth;
+using Central.Engine.Auth;
 
 namespace Central.Desktop.Auth.Providers;
 

@@ -1,8 +1,8 @@
-using System.Net.Http.Json;
+﻿using System.Net.Http.Json;
 using System.Text.Json;
-using Central.Core.Data;
+using Central.Engine.Data;
 
-namespace Central.Api.Client;
+namespace Central.ApiClient;
 
 /// <summary>
 /// IDataService implementation that uses the Central REST API.

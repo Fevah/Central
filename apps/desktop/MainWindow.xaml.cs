@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -7,11 +7,11 @@ using System.Windows;
 using System.Windows.Input;
 using DevExpress.Xpf.Bars;
 using DevExpress.Xpf.Grid;
-using Central.Core.Auth;
-using Central.Core.Models;
-using Central.Core.Services;
-using Central.Core.Shell;
-using Central.Data;
+using Central.Engine.Auth;
+using Central.Engine.Models;
+using Central.Engine.Services;
+using Central.Engine.Shell;
+using Central.Persistence;
 using Central.Desktop.Services;
 using Central.Desktop.ViewModels;
 using DevExpress.Xpf.Diagram;
@@ -91,10 +91,10 @@ public partial class MainWindow
         InputBindings.Add(new KeyBinding(new RelayCommand(ShowImportWizard),
             Key.I, ModifierKeys.Control));
         InputBindings.Add(new KeyBinding(new RelayCommand(() =>
-            Central.Core.Services.UndoService.Instance.Undo()),
+            Central.Engine.Services.UndoService.Instance.Undo()),
             Key.Z, ModifierKeys.Control));
         InputBindings.Add(new KeyBinding(new RelayCommand(() =>
-            Central.Core.Services.UndoService.Instance.Redo()),
+            Central.Engine.Services.UndoService.Instance.Redo()),
             Key.Y, ModifierKeys.Control));
 
         // Double-click on device/switch row opens detail panel
@@ -235,7 +235,7 @@ public partial class MainWindow
                     SwitchInterface.MergeOptics(ifaces, optics);
                 }
                 sw.DetailInterfaces.Clear();
-                foreach (var i in Central.Core.Extensions.NaturalSortExtensions.OrderByNatural(ifaces, x => x.InterfaceName))
+                foreach (var i in Central.Engine.Extensions.NaturalSortExtensions.OrderByNatural(ifaces, x => x.InterfaceName))
                     sw.DetailInterfaces.Add(i);
             }
             catch (Exception ex) { AppLogger.LogException("Detail", ex, $"LoadInterfaces:{sw.Hostname}"); }
@@ -288,8 +288,8 @@ public partial class MainWindow
                 ? await SafeApiWrite(() => VM.DataService!.UpsertP2PLinkAsync(link), "P2P")
                 : await VM.Repo.SafeWriteAsync(() => VM.Repo.UpsertP2PLinkAsync(link), "P2PView_ValidateRow");
             VM.StatusText = result.Success ? $"P2P link saved: {link.LinkId}" : $"Save failed: {result.Error}";
-            if (result.Success) Central.Core.Shell.PanelMessageBus.Publish(
-                new Central.Core.Shell.DataModifiedMessage("p2p", "P2PLink", "Update"));
+            if (result.Success) Central.Engine.Shell.PanelMessageBus.Publish(
+                new Central.Engine.Shell.DataModifiedMessage("p2p", "P2PLink", "Update"));
         };
         P2PGridPanel.View.ShownEditor += P2PView_ShownEditor;
         B2BGridPanel.SaveLink += async (link) =>
@@ -298,8 +298,8 @@ public partial class MainWindow
                 ? await SafeApiWrite(() => VM.DataService!.UpsertB2BLinkAsync(link), "B2B")
                 : await VM.Repo.SafeWriteAsync(() => VM.Repo.UpsertB2BLinkAsync(link), "B2BView_ValidateRow");
             VM.StatusText = result.Success ? $"B2B link saved: {link.LinkId}" : $"Save failed: {result.Error}";
-            if (result.Success) Central.Core.Shell.PanelMessageBus.Publish(
-                new Central.Core.Shell.DataModifiedMessage("b2b", "B2BLink", "Update"));
+            if (result.Success) Central.Engine.Shell.PanelMessageBus.Publish(
+                new Central.Engine.Shell.DataModifiedMessage("b2b", "B2BLink", "Update"));
         };
         B2BGridPanel.View.ShownEditor += B2BView_ShownEditor;
         FWGridPanel.SaveLink += async (link) =>
@@ -308,8 +308,8 @@ public partial class MainWindow
                 ? await SafeApiWrite(() => VM.DataService!.UpsertFWLinkAsync(link), "FW")
                 : await VM.Repo.SafeWriteAsync(() => VM.Repo.UpsertFWLinkAsync(link), "FWView_ValidateRow");
             VM.StatusText = result.Success ? $"FW link saved: {link.LinkId}" : $"Save failed: {result.Error}";
-            if (result.Success) Central.Core.Shell.PanelMessageBus.Publish(
-                new Central.Core.Shell.DataModifiedMessage("fw", "FWLink", "Update"));
+            if (result.Success) Central.Engine.Shell.PanelMessageBus.Publish(
+                new Central.Engine.Shell.DataModifiedMessage("fw", "FWLink", "Update"));
         };
         FWGridPanel.View.ShownEditor += FWView_ShownEditor;
         AsnGridPanel.View.InvalidRowException    += AsnView_InvalidRowException;
@@ -549,7 +549,7 @@ public partial class MainWindow
                 {
                     _ = Task.Run(async () =>
                     {
-                        var userId = Central.Core.Auth.AuthContext.Instance.CurrentUser?.Id;
+                        var userId = Central.Engine.Auth.AuthContext.Instance.CurrentUser?.Id;
                         var tasks = await VM.Repo.GetTasksAsync();
                         var myTasks = userId.HasValue ? tasks.Where(t => t.AssignedTo == userId.Value).ToList() : tasks;
                         System.Windows.Application.Current.Dispatcher.Invoke(() => MyTasksViewPanel.Grid.ItemsSource = myTasks);
@@ -769,7 +769,7 @@ public partial class MainWindow
                         var user = await repo.GetUserByUsernameAsync(windowsUser);
                         if (user != null)
                         {
-                            var permRepo = new Central.Data.Repositories.PermissionRepository(App.Dsn);
+                            var permRepo = new Central.Persistence.Repositories.PermissionRepository(App.Dsn);
                             var permCodes = await permRepo.GetPermissionCodesForRoleAsync(user.Role);
                             var sites = await permRepo.GetAllowedSitesAsync(user.Role);
                             var authUser = await permRepo.GetUserByUsernameAsync(windowsUser);
@@ -1125,7 +1125,7 @@ public partial class MainWindow
         };
         TaskTreeGridPanel.AddTaskRequested += async () =>
         {
-            await Central.Core.Services.CommandGuard.RunAsync("AddTask", async () =>
+            await Central.Engine.Services.CommandGuard.RunAsync("AddTask", async () =>
             {
                 var task = new TaskItem { Title = "New Task", Status = "Open", Priority = "Medium", TaskType = "Task",
                     ProjectId = TaskTreeGridPanel.SelectedProjectId, CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now };
@@ -1136,7 +1136,7 @@ public partial class MainWindow
         };
         TaskTreeGridPanel.AddSubTaskRequested += async () =>
         {
-            await Central.Core.Services.CommandGuard.RunAsync("AddSubTask", async () =>
+            await Central.Engine.Services.CommandGuard.RunAsync("AddSubTask", async () =>
             {
                 var parent = TaskTreeGridPanel.Tree.CurrentItem as TaskItem;
                 if (parent == null) { VM.StatusText = "Select a parent task first"; return; }
@@ -1151,7 +1151,7 @@ public partial class MainWindow
         // Wire task tree selection → detail panel
         TaskTreeGridPanel.Tree.CurrentItemChanged += (s, e) =>
         {
-            if (VM.IsTaskDetailPanelOpen && TaskTreeGridPanel.Tree.CurrentItem is Central.Core.Models.TaskItem task)
+            if (VM.IsTaskDetailPanelOpen && TaskTreeGridPanel.Tree.CurrentItem is Central.Engine.Models.TaskItem task)
                 TaskDetailViewPanel.ShowTask(task);
         };
 
@@ -1267,7 +1267,7 @@ public partial class MainWindow
         };
         QAGridPanel.NewBugRequested += () =>
         {
-            _ = Central.Core.Services.CommandGuard.RunAsync("AddBug", async () =>
+            _ = Central.Engine.Services.CommandGuard.RunAsync("AddBug", async () =>
             {
                 var bug = new TaskItem
                 {
@@ -1365,7 +1365,7 @@ public partial class MainWindow
         };
         TimesheetViewPanel.WeekChanged += async (from, to) =>
         {
-            var userId = Central.Core.Auth.AuthContext.Instance.CurrentUser?.Id;
+            var userId = Central.Engine.Auth.AuthContext.Instance.CurrentUser?.Id;
             var entries = await VM.Repo.GetTimeEntriesAsync(userId, from, to);
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
@@ -1391,7 +1391,7 @@ public partial class MainWindow
         // Wire task import
         TaskImportViewPanel.ParseFile += async (filePath) =>
         {
-            return await Task.Run(() => Central.Core.Services.TaskFileParser.ParseFile(filePath));
+            return await Task.Run(() => Central.Engine.Services.TaskFileParser.ParseFile(filePath));
         };
         TaskImportViewPanel.ImportTasks += async (tasks, updateExisting) =>
         {
@@ -1626,8 +1626,8 @@ public partial class MainWindow
         {
             var result = await VM.Repo.SafeWriteAsync(() => VM.Repo.UpsertVlanEntryAsync(vlan), "VlanSave");
             VM.StatusText = result.Success ? $"VLAN saved: {vlan.VlanId}" : $"VLAN save failed: {result.Error}";
-            if (result.Success) Central.Core.Shell.PanelMessageBus.Publish(
-                new Central.Core.Shell.DataModifiedMessage("vlans", "VLAN", "Update"));
+            if (result.Success) Central.Engine.Shell.PanelMessageBus.Publish(
+                new Central.Engine.Shell.DataModifiedMessage("vlans", "VLAN", "Update"));
         };
         MlagGridPanel.BindComboSources(VM.StatusOptions);
         MstpGridPanel.BindComboSources(VM.StatusOptions);
@@ -1820,7 +1820,7 @@ public partial class MainWindow
                 var dbPage = pages.FirstOrDefault(p => string.Equals(p.Header, pageCaption, StringComparison.OrdinalIgnoreCase));
                 if (dbPage == null)
                 {
-                    dbPage = new Central.Core.Models.RibbonPageConfig
+                    dbPage = new Central.Engine.Models.RibbonPageConfig
                     {
                         Header = pageCaption, SortOrder = pageSortOrder * 10, IsSystem = true, IsVisible = dxPage.IsVisible
                     };
@@ -1838,7 +1838,7 @@ public partial class MainWindow
                     var dbGroup = groups.FirstOrDefault(g => string.Equals(g.Header, groupCaption, StringComparison.OrdinalIgnoreCase));
                     if (dbGroup == null)
                     {
-                        dbGroup = new Central.Core.Models.RibbonGroupConfig
+                        dbGroup = new Central.Engine.Models.RibbonGroupConfig
                         {
                             PageId = dbPage.Id, Header = groupCaption, SortOrder = groupSortOrder * 10, IsVisible = true
                         };
@@ -1866,7 +1866,7 @@ public partial class MainWindow
                         }
                         else continue;
 
-                        await VM.Repo.UpsertRibbonItemAsync(new Central.Core.Models.RibbonItemConfig
+                        await VM.Repo.UpsertRibbonItemAsync(new Central.Engine.Models.RibbonItemConfig
                         {
                             GroupId = dbGroup.Id, Content = content, ItemType = itemType,
                             SortOrder = itemSort++, Permission = permission, IsSystem = true, IsVisible = true
@@ -1881,7 +1881,7 @@ public partial class MainWindow
                 var dbPage = pages.FirstOrDefault(p => string.Equals(p.Header, pageReg.Header, StringComparison.OrdinalIgnoreCase));
                 if (dbPage == null)
                 {
-                    dbPage = new Central.Core.Models.RibbonPageConfig
+                    dbPage = new Central.Engine.Models.RibbonPageConfig
                     {
                         Header = pageReg.Header, SortOrder = pageReg.SortOrder,
                         RequiredPermission = pageReg.RequiredPermission, IsSystem = true, IsVisible = true
@@ -1895,7 +1895,7 @@ public partial class MainWindow
                     var dbGroup = groups.FirstOrDefault(g => string.Equals(g.Header, groupReg.Header, StringComparison.OrdinalIgnoreCase));
                     if (dbGroup == null)
                     {
-                        dbGroup = new Central.Core.Models.RibbonGroupConfig
+                        dbGroup = new Central.Engine.Models.RibbonGroupConfig
                         {
                             PageId = dbPage.Id, Header = groupReg.Header, IsVisible = true
                         };
@@ -1910,15 +1910,15 @@ public partial class MainWindow
 
                         switch (itemReg)
                         {
-                            case Central.Core.Shell.RibbonButtonRegistration btn:
+                            case Central.Engine.Shell.RibbonButtonRegistration btn:
                                 content = btn.Content; perm = btn.Permission; break;
-                            case Central.Core.Shell.RibbonCheckButtonRegistration chk:
+                            case Central.Engine.Shell.RibbonCheckButtonRegistration chk:
                                 content = chk.Content; itemType = "check"; break;
-                            case Central.Core.Shell.RibbonToggleRegistration tog:
+                            case Central.Engine.Shell.RibbonToggleRegistration tog:
                                 content = tog.Content; itemType = "toggle"; perm = tog.Permission; break;
-                            case Central.Core.Shell.RibbonSplitButtonRegistration split:
+                            case Central.Engine.Shell.RibbonSplitButtonRegistration split:
                                 content = split.Content; itemType = "split"; perm = split.Permission; break;
-                            case Central.Core.Shell.RibbonSeparatorRegistration:
+                            case Central.Engine.Shell.RibbonSeparatorRegistration:
                                 content = "───"; itemType = "separator"; break;
                             default: continue;
                         }
@@ -1927,7 +1927,7 @@ public partial class MainWindow
                         var items = await VM.Repo.GetRibbonItemsAsync(dbGroup.Id);
                         if (!items.Any(i => string.Equals(i.Content, content, StringComparison.OrdinalIgnoreCase)))
                         {
-                            await VM.Repo.UpsertRibbonItemAsync(new Central.Core.Models.RibbonItemConfig
+                            await VM.Repo.UpsertRibbonItemAsync(new Central.Engine.Models.RibbonItemConfig
                             {
                                 GroupId = dbGroup.Id, Content = content, ItemType = itemType,
                                 SortOrder = sort, Permission = perm, IsSystem = true, IsVisible = true
@@ -2117,7 +2117,7 @@ public partial class MainWindow
     {
         // Stub — full implementation will reload overrides from DB and re-inject icons
         await Task.CompletedTask;
-        Central.Core.Services.GlobalActionService.Instance.RaiseOverridesChanged();
+        Central.Engine.Services.GlobalActionService.Instance.RaiseOverridesChanged();
     }
 
     private static System.Windows.Media.ImageSource? ResolveGlyphImage(string name)
@@ -2269,12 +2269,12 @@ public partial class MainWindow
         try
         {
             VM.StatusText = $"Connecting to API server at {apiUrl}...";
-            var apiClient = new Central.Api.Client.CentralApiClient(apiUrl);
+            var apiClient = new Central.ApiClient.CentralApiClient(apiUrl);
             var login = await apiClient.LoginAsync(AuthContext.Instance.CurrentUser?.Username ?? Environment.UserName);
             if (login != null)
             {
-                App.Connectivity.RegisterApi(new Central.Api.Client.ApiDataService(apiClient));
-                App.Connectivity.SwitchMode(Central.Core.Data.DataServiceMode.Api);
+                App.Connectivity.RegisterApi(new Central.ApiClient.ApiDataService(apiClient));
+                App.Connectivity.SwitchMode(Central.Engine.Data.DataServiceMode.Api);
                 App.Connectivity.ApiUrl = apiUrl;
 
                 await App.Connectivity.ConnectSignalRAsync($"{apiUrl.TrimEnd('/')}/hubs/notify", login.Token);
@@ -2348,7 +2348,7 @@ public partial class MainWindow
                             // Refresh current user's allowed sites + reload devices with new filter
                             try
                             {
-                                var permRepo = new Central.Data.Repositories.PermissionRepository(App.Dsn);
+                                var permRepo = new Central.Persistence.Repositories.PermissionRepository(App.Dsn);
                                 var newSites = await permRepo.GetAllowedSitesAsync(AuthContext.Instance.CurrentUser?.RoleName ?? "");
                                 AuthContext.Instance.UpdateAllowedSites(newSites);
                                 await VM.ReloadDevicesAsync();
@@ -2588,8 +2588,8 @@ public partial class MainWindow
                 d.SwitchName?.Contains(term, StringComparison.OrdinalIgnoreCase) == true);
             if (device != null)
             {
-                Central.Core.Shell.PanelMessageBus.Publish(
-                    new Central.Core.Shell.NavigateToPanelMessage("devices", device.SwitchName));
+                Central.Engine.Shell.PanelMessageBus.Publish(
+                    new Central.Engine.Shell.NavigateToPanelMessage("devices", device.SwitchName));
                 VM.StatusText = $"Navigated to: {device.SwitchName}";
                 ToggleGlobalSearch();
                 return;
@@ -2599,8 +2599,8 @@ public partial class MainWindow
                 s.Hostname?.Contains(term, StringComparison.OrdinalIgnoreCase) == true);
             if (sw != null)
             {
-                Central.Core.Shell.PanelMessageBus.Publish(
-                    new Central.Core.Shell.NavigateToPanelMessage("switches", sw.Hostname));
+                Central.Engine.Shell.PanelMessageBus.Publish(
+                    new Central.Engine.Shell.NavigateToPanelMessage("switches", sw.Hostname));
                 VM.StatusText = $"Navigated to: {sw.Hostname}";
                 ToggleGlobalSearch();
                 return;
@@ -2646,7 +2646,7 @@ public partial class MainWindow
 
     private void PreviewDeployConfig(DevExpress.Xpf.Grid.GridControl grid, string linkType)
     {
-        var link = grid.CurrentItem as Central.Core.Models.INetworkLink;
+        var link = grid.CurrentItem as Central.Engine.Models.INetworkLink;
         if (link == null) { VM.StatusText = "Select a link first"; return; }
 
         // Build config for both sides
@@ -2691,7 +2691,7 @@ public partial class MainWindow
         DockManager.Activate(DeployPanel);
     }
 
-    private Central.Core.Models.INetworkLink? _pendingDeployLink;
+    private Central.Engine.Models.INetworkLink? _pendingDeployLink;
 
     private async Task OnDeployConfirmed()
     {
@@ -2702,7 +2702,7 @@ public partial class MainWindow
         DeployGridPanel.SelectLogTab();
         DeployGridPanel.StatusText = "Deploying...";
 
-        var notif = Central.Core.Services.NotificationService.Instance;
+        var notif = Central.Engine.Services.NotificationService.Instance;
 
         // Deploy to Switch A
         if (!string.IsNullOrWhiteSpace(DeployGridPanel.ConfigA))
@@ -2808,7 +2808,7 @@ public partial class MainWindow
         if (dialog.ShowDialog() == true)
         {
             VM.StatusText = $"Bulk edit: {dialog.ModifiedField} updated on {dialog.ModifiedCount} rows — save each row to persist";
-            Central.Core.Services.NotificationService.Instance.Success(
+            Central.Engine.Services.NotificationService.Instance.Success(
                 "Bulk Edit", $"{dialog.ModifiedField} updated on {dialog.ModifiedCount} rows");
         }
     }
@@ -2819,7 +2819,7 @@ public partial class MainWindow
 
     private void WireNotifications()
     {
-        var svc = Central.Core.Services.NotificationService.Instance;
+        var svc = Central.Engine.Services.NotificationService.Instance;
         svc.NotificationReceived += notification =>
         {
             Dispatcher.InvokeAsync(() => ShowToast(notification));
@@ -2856,7 +2856,7 @@ public partial class MainWindow
         _flashTimer.Start();
     }
 
-    private void ShowToast(Central.Core.Services.Notification n)
+    private void ShowToast(Central.Engine.Services.Notification n)
     {
         ToastIcon.Text = n.Icon;
         ToastIcon.Foreground = new System.Windows.Media.SolidColorBrush(
@@ -2885,12 +2885,12 @@ public partial class MainWindow
     private void InitializeLinkEngine()
     {
         // Add pipeline behaviors for diagnostics
-        Central.Core.Shell.Mediator.Instance.AddBehavior(new Central.Core.Shell.MediatorLoggingBehavior());
-        Central.Core.Shell.Mediator.Instance.AddBehavior(new Central.Core.Shell.MediatorPerformanceBehavior());
+        Central.Engine.Shell.Mediator.Instance.AddBehavior(new Central.Engine.Shell.MediatorLoggingBehavior());
+        Central.Engine.Shell.Mediator.Instance.AddBehavior(new Central.Engine.Shell.MediatorPerformanceBehavior());
 
         // Initialize LinkEngine with default cross-panel rules
         // These are the baseline rules — users can add more via "Configure Links..." in the grid right-click menu
-        var defaultRules = new List<Central.Core.Models.LinkRule>
+        var defaultRules = new List<Central.Engine.Models.LinkRule>
         {
             // Service Desk: click technician/requester/group → filter request grid
             new() { SourcePanel = "SdTechnicians", SourceField = "TechnicianName", TargetPanel = "ServiceDesk", TargetField = "TechnicianName", FilterOnSelect = true },
@@ -2904,7 +2904,7 @@ public partial class MainWindow
             new() { SourcePanel = "Users", SourceField = "Username", TargetPanel = "AuthEvents", TargetField = "Username", FilterOnSelect = true },
         };
 
-        Central.Core.Shell.LinkEngine.Instance.Initialize(defaultRules);
+        Central.Engine.Shell.LinkEngine.Instance.Initialize(defaultRules);
     }
 
     // ── Dashboard ──────────────────────────────────────────────────────────
@@ -2924,7 +2924,7 @@ public partial class MainWindow
         if (dialog.ShowDialog() == true)
         {
             VM.StatusText = $"Import complete: {dialog.ImportedCount} records imported";
-            Central.Core.Services.NotificationService.Instance?.Success(
+            Central.Engine.Services.NotificationService.Instance?.Success(
                 $"Import complete: {dialog.ImportedCount} records");
         }
     }
@@ -3056,7 +3056,7 @@ public partial class MainWindow
         GroupCatsPanel.OnStructureChanged = async () => { await RefreshSdSettingsAsync(); VM.StatusText = "SD Settings refreshed"; };
 
         // ── Cross-panel linking: selecting a row in one grid filters the request grid ──
-        Central.Core.Shell.PanelMessageBus.Subscribe<Central.Core.Shell.LinkSelectionMessage>(msg =>
+        Central.Engine.Shell.PanelMessageBus.Subscribe<Central.Engine.Shell.LinkSelectionMessage>(msg =>
         {
             Dispatcher.InvokeAsync(() =>
             {
@@ -3081,10 +3081,10 @@ public partial class MainWindow
         // Also: selecting a request publishes its tech/group for other panels to highlight
         RequestGridPanel.Grid.CurrentItemChanged += (_, _) =>
         {
-            if (RequestGridPanel.Grid.CurrentItem is Central.Core.Models.SdRequest req)
+            if (RequestGridPanel.Grid.CurrentItem is Central.Engine.Models.SdRequest req)
             {
-                Central.Core.Shell.PanelMessageBus.Publish(
-                    new Central.Core.Shell.SelectionChangedMessage("servicedesk", req));
+                Central.Engine.Shell.PanelMessageBus.Publish(
+                    new Central.Engine.Shell.SelectionChangedMessage("servicedesk", req));
             }
         };
 
@@ -3182,7 +3182,7 @@ public partial class MainWindow
             SdSettingsPanel.LoadTechnicians(techs, teams);
 
             var groupNames = await VM.Repo.GetSdGroupNamesAsync();
-            List<Central.Core.Models.SdGroupCategory> groupCats;
+            List<Central.Engine.Models.SdGroupCategory> groupCats;
             try { groupCats = await VM.Repo.GetSdGroupCategoriesAsync(); } catch { groupCats = new(); }
 
             var disabledGroups = new HashSet<string>();
@@ -3200,10 +3200,10 @@ public partial class MainWindow
         catch (Exception ex) { AppLogger.LogException("ServiceDesk", ex, "RefreshSdSettingsAsync"); }
     }
 
-    private async Task<(List<string> techs, List<Central.Core.Models.SdTeam> teams)> GetSdTechsAndTeamsAsync()
+    private async Task<(List<string> techs, List<Central.Engine.Models.SdTeam> teams)> GetSdTechsAndTeamsAsync()
     {
         var techNames = await VM.Repo.GetSdTechnicianNamesAsync();
-        List<Central.Core.Models.SdTeam> teams;
+        List<Central.Engine.Models.SdTeam> teams;
         try { teams = await VM.Repo.GetSdTeamsAsync(); } catch { teams = new(); }
         return (techNames, teams);
     }
@@ -3212,7 +3212,7 @@ public partial class MainWindow
 
     private async Task LoadServiceDeskAsync() => await LoadServiceDeskAsync(SdSettingsPanel.GetCurrentFilters());
 
-    private async Task LoadServiceDeskAsync(Central.Core.Models.SdFilterState f)
+    private async Task LoadServiceDeskAsync(Central.Engine.Models.SdFilterState f)
     {
         try
         {
@@ -3227,7 +3227,7 @@ public partial class MainWindow
 
     private async Task LoadSdOverviewAsync() => await LoadSdOverviewAsync(SdSettingsPanel.GetCurrentFilters());
 
-    private async Task LoadSdOverviewAsync(Central.Core.Models.SdFilterState f)
+    private async Task LoadSdOverviewAsync(Central.Engine.Models.SdFilterState f)
     {
         try
         {
@@ -3263,7 +3263,7 @@ public partial class MainWindow
 
     private async Task LoadSdClosuresAsync() => await LoadSdClosuresAsync(SdSettingsPanel.GetCurrentFilters());
 
-    private async Task LoadSdClosuresAsync(Central.Core.Models.SdFilterState f)
+    private async Task LoadSdClosuresAsync(Central.Engine.Models.SdFilterState f)
     {
         try
         {
@@ -3282,7 +3282,7 @@ public partial class MainWindow
 
     private async Task LoadSdAgingAsync() => await LoadSdAgingAsync(SdSettingsPanel.GetCurrentFilters());
 
-    private async Task LoadSdAgingAsync(Central.Core.Models.SdFilterState f)
+    private async Task LoadSdAgingAsync(Central.Engine.Models.SdFilterState f)
     {
         try
         {
@@ -3358,7 +3358,7 @@ public partial class MainWindow
         ApplySdGridOptions(SdReqGridPanel.Grid, SdReqGridPanel.View, f);
     }
 
-    private static void ApplySdGridOptions(DevExpress.Xpf.Grid.GridControl grid, DevExpress.Xpf.Grid.TableView view, Central.Core.Models.SdFilterState f)
+    private static void ApplySdGridOptions(DevExpress.Xpf.Grid.GridControl grid, DevExpress.Xpf.Grid.TableView view, Central.Engine.Models.SdFilterState f)
     {
         try
         {
@@ -3379,7 +3379,7 @@ public partial class MainWindow
     }
 
     /// <summary>Apply chart type, bar style, and palette based on SdFilterState.</summary>
-    private static void ApplyChartStyle(DevExpress.Xpf.Charts.ChartControl? chart, Central.Core.Models.SdFilterState f)
+    private static void ApplyChartStyle(DevExpress.Xpf.Charts.ChartControl? chart, Central.Engine.Models.SdFilterState f)
     {
         if (chart?.Diagram is not DevExpress.Xpf.Charts.XYDiagram2D diag) return;
         try
@@ -3645,7 +3645,7 @@ public partial class MainWindow
     /// <summary>Write an update back to ManageEngine for the selected request.</summary>
     private async Task WriteBackToManageEngineAsync(string action)
     {
-        if (RequestGridPanel.Grid.CurrentItem is not Central.Core.Models.SdRequest request)
+        if (RequestGridPanel.Grid.CurrentItem is not Central.Engine.Models.SdRequest request)
         {
             NotificationService.Instance.Warning("No request selected");
             return;
@@ -3962,7 +3962,7 @@ public partial class MainWindow
                 if (userId == 0) return;
                 if (!string.IsNullOrEmpty(node.CustomText) || !string.IsNullOrEmpty(node.IconName) || node.IsHidden)
                 {
-                    await VM.Repo.UpsertUserRibbonOverrideAsync(new Central.Core.Models.UserRibbonOverride
+                    await VM.Repo.UpsertUserRibbonOverrideAsync(new Central.Engine.Models.UserRibbonOverride
                     {
                         UserId = userId, ItemKey = node.ItemKey,
                         CustomIcon = node.IconName, CustomText = node.CustomText,
@@ -3986,7 +3986,7 @@ public partial class MainWindow
                 {
                     if (!string.IsNullOrEmpty(node.CustomText) || !string.IsNullOrEmpty(node.IconName) || node.IsHidden)
                     {
-                        await VM.Repo.UpsertUserRibbonOverrideAsync(new Central.Core.Models.UserRibbonOverride
+                        await VM.Repo.UpsertUserRibbonOverrideAsync(new Central.Engine.Models.UserRibbonOverride
                         {
                             UserId = userId, ItemKey = node.ItemKey,
                             CustomIcon = node.IconName, CustomText = node.CustomText,
@@ -4024,7 +4024,7 @@ public partial class MainWindow
         try
         {
             var apiUrl = App.Settings?.Get<string>("api.url") ?? "http://192.168.56.203:8000";
-            using var client = new Central.Api.Client.CentralApiClient(apiUrl);
+            using var client = new Central.ApiClient.CentralApiClient(apiUrl);
             var loginResult = await client.LoginAsync(AuthContext.Instance.CurrentUser?.Username ?? Environment.UserName);
             if (loginResult == null) { VM.StatusText = "Jobs: API login failed"; return; }
 
@@ -4072,7 +4072,7 @@ public partial class MainWindow
             try
             {
                 var apiUrl = App.Settings?.Get<string>("api.url") ?? "http://192.168.56.203:8000";
-                using var client = new Central.Api.Client.CentralApiClient(apiUrl);
+                using var client = new Central.ApiClient.CentralApiClient(apiUrl);
                 var login = await client.LoginAsync(AuthContext.Instance.CurrentUser?.Username ?? Environment.UserName);
                 if (login == null) { VM.StatusText = "Jobs: API login failed"; return; }
 
@@ -4265,7 +4265,7 @@ public partial class MainWindow
             ("Add Note", () => _ = WriteBackToManageEngineAsync("note")),
             ("-", () => { }),
             ("Open in Browser", () => {
-                if (RequestGridPanel.Grid.CurrentItem is Central.Core.Models.SdRequest req && !string.IsNullOrEmpty(req.TicketUrl))
+                if (RequestGridPanel.Grid.CurrentItem is Central.Engine.Models.SdRequest req && !string.IsNullOrEmpty(req.TicketUrl))
                     System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(req.TicketUrl) { UseShellExecute = true });
             }),
             ("-", () => { }),
@@ -4278,7 +4278,7 @@ public partial class MainWindow
 
         GridContextMenuBuilder.AttachSimple(SdTechGridPanel.Grid,
             ("Filter Requests by Tech", () => {
-                if (SdTechGridPanel.Grid.CurrentItem is Central.Core.Models.SdTechnician t)
+                if (SdTechGridPanel.Grid.CurrentItem is Central.Engine.Models.SdTechnician t)
                     PanelMessageBus.Publish(new LinkSelectionMessage("SdTechnicians", "TechnicianName", t.Name));
             }),
             ("-", () => { }),
@@ -4288,7 +4288,7 @@ public partial class MainWindow
 
         GridContextMenuBuilder.AttachSimple(SdGroupsGridPanel.Grid,
             ("Filter Requests by Group", () => {
-                if (SdGroupsGridPanel.Grid.CurrentItem is Central.Core.Models.SdGroup g)
+                if (SdGroupsGridPanel.Grid.CurrentItem is Central.Engine.Models.SdGroup g)
                     PanelMessageBus.Publish(new LinkSelectionMessage("SdGroups", "GroupName", g.Name));
             }),
             ("-", () => { }),
@@ -4298,7 +4298,7 @@ public partial class MainWindow
 
         GridContextMenuBuilder.AttachSimple(SdReqGridPanel.Grid,
             ("Filter Requests by Requester", () => {
-                if (SdReqGridPanel.Grid.CurrentItem is Central.Core.Models.SdRequester r)
+                if (SdReqGridPanel.Grid.CurrentItem is Central.Engine.Models.SdRequester r)
                     PanelMessageBus.Publish(new LinkSelectionMessage("SdRequesters", "RequesterName", r.Name));
             }),
             ("-", () => { }),
@@ -4358,21 +4358,21 @@ public partial class MainWindow
     private void WireTaskContextMenus()
     {
         void Noop() { }
-        void TaskAdd() { _ = Central.Core.Services.CommandGuard.RunAsync("CtxAddTask", async () =>
+        void TaskAdd() { _ = Central.Engine.Services.CommandGuard.RunAsync("CtxAddTask", async () =>
         {
-            var task = new Central.Core.Models.TaskItem { Title = "New Task", Status = "Open", Priority = "Medium", TaskType = "Task", ProjectId = TaskTreeGridPanel.SelectedProjectId, CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now };
+            var task = new Central.Engine.Models.TaskItem { Title = "New Task", Status = "Open", Priority = "Medium", TaskType = "Task", ProjectId = TaskTreeGridPanel.SelectedProjectId, CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now };
             await VM.SaveTaskAsync(task); VM.TaskItems.Insert(0, task);
         }); }
-        void TaskAddSub() { _ = Central.Core.Services.CommandGuard.RunAsync("CtxAddSubTask", async () =>
+        void TaskAddSub() { _ = Central.Engine.Services.CommandGuard.RunAsync("CtxAddSubTask", async () =>
         {
-            var parent = TaskTreeGridPanel.Tree.CurrentItem as Central.Core.Models.TaskItem;
+            var parent = TaskTreeGridPanel.Tree.CurrentItem as Central.Engine.Models.TaskItem;
             if (parent == null) return;
-            var task = new Central.Core.Models.TaskItem { Title = "New Sub-Task", ParentId = parent.Id, Status = "Open", Priority = "Medium", TaskType = "SubTask", ProjectId = parent.ProjectId, CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now };
+            var task = new Central.Engine.Models.TaskItem { Title = "New Sub-Task", ParentId = parent.Id, Status = "Open", Priority = "Medium", TaskType = "SubTask", ProjectId = parent.ProjectId, CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now };
             await VM.SaveTaskAsync(task); VM.TaskItems.Add(task);
         }); }
         void TaskDelete()
         {
-            if (TaskTreeGridPanel.Tree.CurrentItem is Central.Core.Models.TaskItem t)
+            if (TaskTreeGridPanel.Tree.CurrentItem is Central.Engine.Models.TaskItem t)
             {
                 var result = DevExpress.Xpf.Core.ThemedMessageBox.Show(
                     $"Delete task \"{t.Title}\"?\n\nThis will also delete all sub-tasks.",
@@ -4388,9 +4388,9 @@ public partial class MainWindow
         void TaskRefresh() { _ = VM.LoadTasksAsync(TaskTreeGridPanel.SelectedProjectId); }
         void BacklogRefresh() { _ = VM.LoadTasksAsync(BacklogGridPanel.SelectedProjectId); }
         void SprintRefresh() { _ = VM.LoadTasksAsync(); }
-        void BugAdd() { _ = Central.Core.Services.CommandGuard.RunAsync("CtxAddBug", async () =>
+        void BugAdd() { _ = Central.Engine.Services.CommandGuard.RunAsync("CtxAddBug", async () =>
         {
-            var bug = new Central.Core.Models.TaskItem { Title = "New Bug", Status = "New", Priority = "Medium", TaskType = "Bug", Severity = "Major", BugPriority = "Medium", Category = "Bug", ProjectId = QAGridPanel.SelectedProjectId, CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now };
+            var bug = new Central.Engine.Models.TaskItem { Title = "New Bug", Status = "New", Priority = "Medium", TaskType = "Bug", Severity = "Major", BugPriority = "Medium", Category = "Bug", ProjectId = QAGridPanel.SelectedProjectId, CreatedAt = DateTime.Now, UpdatedAt = DateTime.Now };
             await VM.SaveTaskAsync(bug);
             var bugs = await VM.Repo.GetBugsAsync(QAGridPanel.SelectedProjectId);
             System.Windows.Application.Current.Dispatcher.Invoke(() => QAGridPanel.Grid.ItemsSource = bugs);
@@ -4399,14 +4399,14 @@ public partial class MainWindow
         void LogTime() { }  // handled by toolbar
         void DeleteEntry()
         {
-            if (TimesheetViewPanel.Grid.CurrentItem is Central.Core.Models.TimeEntry e && e.Id > 0)
+            if (TimesheetViewPanel.Grid.CurrentItem is Central.Engine.Models.TimeEntry e && e.Id > 0)
             {
                 _ = VM.Repo.DeleteTimeEntryAsync(e.Id);
-                Central.Core.Shell.PanelMessageBus.Publish(new Central.Core.Shell.DataModifiedMessage("time_entries", "TimeEntry", "Delete"));
+                Central.Engine.Shell.PanelMessageBus.Publish(new Central.Engine.Shell.DataModifiedMessage("time_entries", "TimeEntry", "Delete"));
                 VM.StatusText = "Time entry deleted";
             }
         }
-        void GoToTask() { if (MyTasksViewPanel.Grid.CurrentItem is Central.Core.Models.TaskItem t) { VM.IsTasksPanelOpen = true; try { TaskTreeGridPanel.Tree.CurrentItem = t; } catch { } } }
+        void GoToTask() { if (MyTasksViewPanel.Grid.CurrentItem is Central.Engine.Models.TaskItem t) { VM.IsTasksPanelOpen = true; try { TaskTreeGridPanel.Tree.CurrentItem = t; } catch { } } }
         void MyTasksRefresh() { VM.IsMyTasksPanelOpen = false; VM.IsMyTasksPanelOpen = true; }
         void PortfolioRefresh() { _ = BuildPortfolioTreeAsync().ContinueWith(t => System.Windows.Application.Current.Dispatcher.Invoke(() => PortfolioViewPanel.LoadData(t.Result))); }
         void ReportExportCsv() { }
@@ -4478,7 +4478,7 @@ public partial class MainWindow
     private void GoToSwitch(string? hostname)
     {
         if (string.IsNullOrEmpty(hostname)) return;
-        Central.Core.Shell.PanelMessageBus.Publish(new Central.Core.Shell.NavigateToPanelMessage("switches", hostname));
+        Central.Engine.Shell.PanelMessageBus.Publish(new Central.Engine.Shell.NavigateToPanelMessage("switches", hostname));
     }
 
     private string? GetLinkDevice(DevExpress.Xpf.Grid.GridControl grid, string fieldName)
@@ -4492,7 +4492,7 @@ public partial class MainWindow
     private void NavigateToDevice()
     {
         if (VM.SelectedSwitch?.Hostname is { } hostname)
-            Central.Core.Shell.PanelMessageBus.Publish(new Central.Core.Shell.NavigateToPanelMessage("devices", hostname));
+            Central.Engine.Shell.PanelMessageBus.Publish(new Central.Engine.Shell.NavigateToPanelMessage("devices", hostname));
     }
 
     private void PingSingleSwitch_ContextMenu()
@@ -4539,7 +4539,7 @@ public partial class MainWindow
     private void WirePanelMessages()
     {
         // Navigate to a panel and optionally select an item
-        Central.Core.Shell.PanelMessageBus.Subscribe<Central.Core.Shell.NavigateToPanelMessage>(msg =>
+        Central.Engine.Shell.PanelMessageBus.Subscribe<Central.Engine.Shell.NavigateToPanelMessage>(msg =>
         {
             Dispatcher.InvokeAsync(() =>
             {
@@ -4620,7 +4620,7 @@ public partial class MainWindow
         });
 
         // Refresh a panel's data on demand
-        Central.Core.Shell.PanelMessageBus.Subscribe<Central.Core.Shell.RefreshPanelMessage>(msg =>
+        Central.Engine.Shell.PanelMessageBus.Subscribe<Central.Engine.Shell.RefreshPanelMessage>(msg =>
         {
             Dispatcher.InvokeAsync(async () =>
             {
@@ -4639,7 +4639,7 @@ public partial class MainWindow
         });
 
         // Auto-refresh dependent panels when data is modified
-        Central.Core.Shell.PanelMessageBus.Subscribe<Central.Core.Shell.DataModifiedMessage>(msg =>
+        Central.Engine.Shell.PanelMessageBus.Subscribe<Central.Engine.Shell.DataModifiedMessage>(msg =>
         {
             Dispatcher.InvokeAsync(async () =>
             {
@@ -4678,8 +4678,8 @@ public partial class MainWindow
         }
 
         // Publish selection for cross-panel communication
-        Central.Core.Shell.PanelMessageBus.Publish(
-            new Central.Core.Shell.SelectionChangedMessage("devices", VM.SelectedDevice));
+        Central.Engine.Shell.PanelMessageBus.Publish(
+            new Central.Engine.Shell.SelectionChangedMessage("devices", VM.SelectedDevice));
 
         // Always refresh detail tabs to match the selected row 1:1
         await LoadRunningConfigForSelectedSwitch();
@@ -4690,8 +4690,8 @@ public partial class MainWindow
     {
         VM.SelectedSwitch = e.NewItem as SwitchRecord;
 
-        Central.Core.Shell.PanelMessageBus.Publish(
-            new Central.Core.Shell.SelectionChangedMessage("switches", VM.SelectedSwitch));
+        Central.Engine.Shell.PanelMessageBus.Publish(
+            new Central.Engine.Shell.SelectionChangedMessage("switches", VM.SelectedSwitch));
 
         await LoadRunningConfigForSelectedSwitch();
         UpdateSwitchTabVisibility();
@@ -5009,8 +5009,8 @@ public partial class MainWindow
         if (e.Row is not AsnDefinition asn) return;
         await VM.Repo.UpsertAsnDefinitionAsync(asn);
         VM.StatusText = $"ASN saved: {asn.Asn}  ·  {DateTime.Now:HH:mm:ss}";
-        Central.Core.Shell.PanelMessageBus.Publish(
-            new Central.Core.Shell.DataModifiedMessage("devices", "ASN", "Update"));
+        Central.Engine.Shell.PanelMessageBus.Publish(
+            new Central.Engine.Shell.DataModifiedMessage("devices", "ASN", "Update"));
     }
 
     private void AsnView_InvalidRowException(object sender, InvalidRowExceptionEventArgs e)
@@ -5649,7 +5649,7 @@ public partial class MainWindow
 
             switch (def.Type)
             {
-                case Central.Core.Services.SettingType.Boolean:
+                case Central.Engine.Services.SettingType.Boolean:
                     var cb = new System.Windows.Controls.CheckBox { IsChecked = def.CurrentValue is true or "True" or "true" };
                     var defKey1 = def.Key;
                     cb.Checked += async (_, _) => { if (App.Settings != null) await App.Settings.SetAsync(defKey1, true); };
@@ -5657,7 +5657,7 @@ public partial class MainWindow
                     row.Children.Add(cb);
                     break;
 
-                case Central.Core.Services.SettingType.Integer:
+                case Central.Engine.Services.SettingType.Integer:
                     var intBox = new System.Windows.Controls.TextBox
                     {
                         Text = def.CurrentValue?.ToString() ?? "",
@@ -5811,7 +5811,7 @@ public partial class MainWindow
         {
             if (App.Connectivity != null)
             {
-                App.Connectivity.SwitchMode(Central.Core.Data.DataServiceMode.DirectDb);
+                App.Connectivity.SwitchMode(Central.Engine.Data.DataServiceMode.DirectDb);
                 BackstageModeStatus.Text = "Switched to Direct DB mode";
                 BackstageConnMode.Text = "DirectDb";
             }
@@ -5827,13 +5827,13 @@ public partial class MainWindow
 
                 try
                 {
-                    var apiClient = new Central.Api.Client.CentralApiClient(url);
+                    var apiClient = new Central.ApiClient.CentralApiClient(url);
                     var login = await apiClient.LoginAsync(AuthContext.Instance.CurrentUser?.Username ?? Environment.UserName);
                     if (login != null)
                     {
                         // Register API data service and switch mode
-                        App.Connectivity.RegisterApi(new Central.Api.Client.ApiDataService(apiClient));
-                        App.Connectivity.SwitchMode(Central.Core.Data.DataServiceMode.Api);
+                        App.Connectivity.RegisterApi(new Central.ApiClient.ApiDataService(apiClient));
+                        App.Connectivity.SwitchMode(Central.Engine.Data.DataServiceMode.Api);
 
                         await App.Connectivity.ConnectSignalRAsync($"{url.TrimEnd('/')}/hubs/notify", login.Token);
                         BackstageModeStatus.Text = $"API mode active + SignalR connected ({login.Role})";
@@ -5853,7 +5853,7 @@ public partial class MainWindow
                 if (resp.IsSuccessStatusCode)
                 {
                     // Test login
-                    var apiClient = new Central.Api.Client.CentralApiClient(url);
+                    var apiClient = new Central.ApiClient.CentralApiClient(url);
                     var login = await apiClient.LoginAsync(AuthContext.Instance.CurrentUser?.Username ?? Environment.UserName);
                     BackstageModeStatus.Text = login != null
                         ? $"API OK — {login.Role} ({login.Permissions?.Length ?? 0} permissions)"
@@ -5866,7 +5866,7 @@ public partial class MainWindow
         };
 
         // Bind recent activity to notification service
-        var notifSvc = Central.Core.Services.NotificationService.Instance;
+        var notifSvc = Central.Engine.Services.NotificationService.Instance;
         BackstageRecentActivity.ItemsSource = notifSvc.Recent.Select(n => new
         {
             n.Icon,
@@ -6394,7 +6394,7 @@ public partial class MainWindow
 
     private void GlobalAdd_ItemClick(object sender, DevExpress.Xpf.Bars.ItemClickEventArgs e)
     {
-        Central.Core.Services.CommandGuard.Run("GlobalAdd", () =>
+        Central.Engine.Services.CommandGuard.Run("GlobalAdd", () =>
         {
             var (_, view) = GetActiveGrid();
             if (view != null) view.AddNewRow();
@@ -6403,7 +6403,7 @@ public partial class MainWindow
 
     private async void GlobalDelete_ItemClick(object sender, DevExpress.Xpf.Bars.ItemClickEventArgs e)
     {
-        if (!Central.Core.Services.CommandGuard.TryEnter("GlobalDelete")) return;
+        if (!Central.Engine.Services.CommandGuard.TryEnter("GlobalDelete")) return;
         try
         {
         var (grid, view) = GetActiveGrid();
@@ -6467,7 +6467,7 @@ public partial class MainWindow
         if (deleted > 0)
             VM.StatusText = $"Deleted {deleted} row(s)  ·  {DateTime.Now:HH:mm:ss}";
         }
-        finally { Central.Core.Services.CommandGuard.Exit("GlobalDelete"); }
+        finally { Central.Engine.Services.CommandGuard.Exit("GlobalDelete"); }
     }
 
     private void GlobalEdit_ItemClick(object sender, DevExpress.Xpf.Bars.ItemClickEventArgs e)
@@ -6516,7 +6516,7 @@ public partial class MainWindow
         var name = Services.InputPrompt.Show("Save Filter", "Filter name:", $"Filter {DateTime.Now:HH:mm}", this);
         if (string.IsNullOrWhiteSpace(name)) return;
 
-        var filter = new Central.Core.Models.SavedFilter
+        var filter = new Central.Engine.Models.SavedFilter
         {
             UserId = AuthContext.Instance.CurrentUser?.Id,
             PanelName = panelName,
@@ -6625,7 +6625,7 @@ public partial class MainWindow
 
     private async void GlobalSaveLayout_ItemClick(object sender, DevExpress.Xpf.Bars.ItemClickEventArgs e)
     {
-        await Central.Core.Services.CommandGuard.RunAsync("SaveLayout", async () =>
+        await Central.Engine.Services.CommandGuard.RunAsync("SaveLayout", async () =>
         {
             var (grid, _) = GetActiveGrid();
             var key = GetLayoutKeyForActiveGrid();
@@ -6678,7 +6678,7 @@ public partial class MainWindow
     private void CopyConfigA_ItemClick(object sender, DevExpress.Xpf.Bars.ItemClickEventArgs e)
     {
         var (grid, _) = GetActiveGrid();
-        if (grid?.CurrentItem is Central.Core.Models.INetworkLink link)
+        if (grid?.CurrentItem is Central.Engine.Models.INetworkLink link)
         {
             System.Windows.Clipboard.SetText(link.ConfigA);
             VM.StatusText = "Config A copied to clipboard";
@@ -6688,7 +6688,7 @@ public partial class MainWindow
     private void CopyConfigB_ItemClick(object sender, DevExpress.Xpf.Bars.ItemClickEventArgs e)
     {
         var (grid, _) = GetActiveGrid();
-        if (grid?.CurrentItem is Central.Core.Models.INetworkLink link)
+        if (grid?.CurrentItem is Central.Engine.Models.INetworkLink link)
         {
             System.Windows.Clipboard.SetText(link.ConfigB);
             VM.StatusText = "Config B copied to clipboard";
@@ -6699,17 +6699,17 @@ public partial class MainWindow
         => PingSingleSwitch_ContextMenu();
 
     /// <summary>Safe wrapper for API data service writes. Returns DbResult-compatible tuple.</summary>
-    private static async Task<Central.Data.DbResult> SafeApiWrite(Func<Task> action, string context)
+    private static async Task<Central.Persistence.DbResult> SafeApiWrite(Func<Task> action, string context)
     {
         try
         {
             await action();
-            return new Central.Data.DbResult { Success = true };
+            return new Central.Persistence.DbResult { Success = true };
         }
         catch (Exception ex)
         {
             AppLogger.LogException("API", ex, $"SafeApiWrite:{context}");
-            return new Central.Data.DbResult { Success = false, Error = ex.Message };
+            return new Central.Persistence.DbResult { Success = false, Error = ex.Message };
         }
     }
 
@@ -6914,11 +6914,11 @@ public partial class MainWindow
         dialog.OnMfaEnabled = async (secret, recoveryCodes) =>
         {
             // Encrypt secret and save to DB
-            var encrypted = Central.Core.Auth.CredentialEncryptor.Encrypt(secret);
+            var encrypted = Central.Engine.Auth.CredentialEncryptor.Encrypt(secret);
             await VM.Repo.EnableMfaAsync(user.Id, encrypted);
             await VM.Repo.SaveRecoveryCodesAsync(user.Id, recoveryCodes);
             VM.StatusText = $"MFA enabled for {user.Username}";
-            _ = Central.Core.Services.AuditService.Instance.LogAsync(
+            _ = Central.Engine.Services.AuditService.Instance.LogAsync(
                 "MfaEnabled", "User", user.Id.ToString(), user.Username);
         };
         dialog.ShowDialog();
@@ -7067,7 +7067,7 @@ public partial class MainWindow
 
     private async void RefreshButton_ItemClick(object sender, DevExpress.Xpf.Bars.ItemClickEventArgs e)
     {
-        await Central.Core.Services.CommandGuard.RunAsync("Refresh", async () =>
+        await Central.Engine.Services.CommandGuard.RunAsync("Refresh", async () =>
         {
             VM.StatusText = "Refreshing...";
             await VM.LoadAllAsync();
@@ -7217,12 +7217,12 @@ public partial class MainWindow
                     case ".pdf":  view.ExportToPdf(dlg.FileName);  break;
                     default:      view.ExportToCsv(dlg.FileName);  break;
                 }
-                Central.Core.Services.NotificationService.Instance?.Success($"Exported to {dlg.FileName}");
-                _ = Central.Core.Services.AuditService.Instance.LogExportAsync("Export", $"{ext} export: {dlg.FileName}");
+                Central.Engine.Services.NotificationService.Instance?.Success($"Exported to {dlg.FileName}");
+                _ = Central.Engine.Services.AuditService.Instance.LogExportAsync("Export", $"{ext} export: {dlg.FileName}");
             }
             catch (Exception ex)
             {
-                Central.Core.Services.NotificationService.Instance?.Error($"Export failed: {ex.Message}");
+                Central.Engine.Services.NotificationService.Instance?.Error($"Export failed: {ex.Message}");
             }
         }
     }
@@ -7779,7 +7779,7 @@ public partial class MainWindow
 
     private void ShowTenantDetailDialog(bool isEdit = false)
     {
-        var tenant = isEdit ? _tenantsVm?.CurrentItem : new Central.Core.Models.TenantRecord { Tier = "free" };
+        var tenant = isEdit ? _tenantsVm?.CurrentItem : new Central.Engine.Models.TenantRecord { Tier = "free" };
         if (tenant == null) return;
 
         var dlg = new Central.Module.GlobalAdmin.Views.Dialogs.TenantDetailDialog(tenant, isEdit) { Owner = this };
@@ -7875,8 +7875,8 @@ public partial class MainWindow
         var dlg = new Central.Module.GlobalAdmin.Views.Dialogs.InviteUserDialog(tenants) { Owner = this };
         if (dlg.ShowDialogWindow()?.IsDefault != true || !dlg.Validate()) return;
 
-        var salt = Central.Core.Auth.PasswordHasher.GenerateSalt();
-        var hash = Central.Core.Auth.PasswordHasher.Hash(dlg.Password, salt);
+        var salt = Central.Engine.Auth.PasswordHasher.GenerateSalt();
+        var hash = Central.Engine.Auth.PasswordHasher.Hash(dlg.Password, salt);
         var userId = await VM.Repo.CreateGlobalUserAsync(dlg.Email, dlg.DisplayName, hash, salt, dlg.IsGlobalAdmin);
 
         // Add tenant memberships
@@ -7905,13 +7905,13 @@ public partial class MainWindow
         _globalUsersVm.RefreshCommand.Execute(null);
     }
 
-    private async void ShowResetPasswordDialog(Central.Core.Models.GlobalUserRecord user)
+    private async void ShowResetPasswordDialog(Central.Engine.Models.GlobalUserRecord user)
     {
         var dlg = new Central.Module.GlobalAdmin.Views.Dialogs.ResetPasswordDialog(user.Email) { Owner = this };
         if (dlg.ShowDialogWindow()?.IsDefault != true || !dlg.Validate()) return;
 
-        var salt = Central.Core.Auth.PasswordHasher.GenerateSalt();
-        var hash = Central.Core.Auth.PasswordHasher.Hash(dlg.NewPassword, salt);
+        var salt = Central.Engine.Auth.PasswordHasher.GenerateSalt();
+        var hash = Central.Engine.Auth.PasswordHasher.Hash(dlg.NewPassword, salt);
         await VM.Repo.ResetGlobalUserPasswordAsync(user.Id, hash, salt, dlg.ForceEmailVerification);
         if (dlg.ForceEmailVerification) user.EmailVerified = false;
         _ = Audit("password_reset", "user", user.Email);
@@ -7923,7 +7923,7 @@ public partial class MainWindow
         var plans = await VM.Repo.GetPlanItemsAsync();
         var modules = await VM.Repo.GetModuleItemsAsync();
         var wizard = new Central.Module.GlobalAdmin.Views.Dialogs.TenantSetupWizard(plans, modules) { Owner = this };
-        wizard.CreateTenant = (slug, name, domain, tier) => VM.Repo.CreateTenantTypedAsync(new Central.Core.Models.TenantRecord { Slug = slug, DisplayName = name, Domain = domain, Tier = tier });
+        wizard.CreateTenant = (slug, name, domain, tier) => VM.Repo.CreateTenantTypedAsync(new Central.Engine.Models.TenantRecord { Slug = slug, DisplayName = name, Domain = domain, Tier = tier });
         wizard.CreateSubscription = (tid, pid, status, exp) => VM.Repo.CreateSubscriptionAsync(tid, pid, status, exp);
         wizard.BulkGrantModules = (tid, mids, exp) => VM.Repo.BulkGrantModulesAsync(tid, mids, exp);
         wizard.ProvisionSchema = async slug =>

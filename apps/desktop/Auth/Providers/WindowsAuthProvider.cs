@@ -1,5 +1,5 @@
-using Central.Core.Auth;
-using Central.Data.Repositories;
+﻿using Central.Engine.Auth;
+using Central.Persistence.Repositories;
 
 namespace Central.Desktop.Auth.Providers;
 

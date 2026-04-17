@@ -1,8 +1,8 @@
-using System.Windows.Input;
+﻿using System.Windows.Input;
 using System.Windows.Media;
 using DevExpress.Xpf.Charts;
-using Central.Core.Models;
-using Central.Core.Widgets;
+using Central.Engine.Models;
+using Central.Engine.Widgets;
 
 namespace Central.Module.ServiceDesk.Views;
 

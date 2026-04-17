@@ -1,4 +1,4 @@
-using Central.Core.Models;
+﻿using Central.Engine.Models;
 
 namespace Central.Tests.Models;
 
@@ -209,19 +209,19 @@ public class CrmExpansionModelsTests
 public class CrmExpansionPermissionTests
 {
     [Theory]
-    [InlineData(Central.Core.Auth.P.MarketingRead, "marketing:read")]
-    [InlineData(Central.Core.Auth.P.MarketingCampaigns, "marketing:campaigns")]
-    [InlineData(Central.Core.Auth.P.MarketingSegments, "marketing:segments")]
-    [InlineData(Central.Core.Auth.P.SalesOpsTerritories, "salesops:territories")]
-    [InlineData(Central.Core.Auth.P.SalesOpsQuotas, "salesops:quotas")]
-    [InlineData(Central.Core.Auth.P.SalesOpsCommissions, "salesops:commissions")]
-    [InlineData(Central.Core.Auth.P.CpqBundles, "cpq:bundles")]
-    [InlineData(Central.Core.Auth.P.CpqDiscountApproval, "cpq:discount_approval")]
-    [InlineData(Central.Core.Auth.P.ContractsRead, "contracts:read")]
-    [InlineData(Central.Core.Auth.P.SubscriptionsWrite, "subscriptions:write")]
-    [InlineData(Central.Core.Auth.P.RevenueRead, "revenue:read")]
-    [InlineData(Central.Core.Auth.P.OrdersWrite, "orders:write")]
-    [InlineData(Central.Core.Auth.P.ApprovalsAct, "approvals:act")]
+    [InlineData(Central.Engine.Auth.P.MarketingRead, "marketing:read")]
+    [InlineData(Central.Engine.Auth.P.MarketingCampaigns, "marketing:campaigns")]
+    [InlineData(Central.Engine.Auth.P.MarketingSegments, "marketing:segments")]
+    [InlineData(Central.Engine.Auth.P.SalesOpsTerritories, "salesops:territories")]
+    [InlineData(Central.Engine.Auth.P.SalesOpsQuotas, "salesops:quotas")]
+    [InlineData(Central.Engine.Auth.P.SalesOpsCommissions, "salesops:commissions")]
+    [InlineData(Central.Engine.Auth.P.CpqBundles, "cpq:bundles")]
+    [InlineData(Central.Engine.Auth.P.CpqDiscountApproval, "cpq:discount_approval")]
+    [InlineData(Central.Engine.Auth.P.ContractsRead, "contracts:read")]
+    [InlineData(Central.Engine.Auth.P.SubscriptionsWrite, "subscriptions:write")]
+    [InlineData(Central.Engine.Auth.P.RevenueRead, "revenue:read")]
+    [InlineData(Central.Engine.Auth.P.OrdersWrite, "orders:write")]
+    [InlineData(Central.Engine.Auth.P.ApprovalsAct, "approvals:act")]
     public void PermissionCode_HasCorrectValue(string actual, string expected)
     {
         Assert.Equal(expected, actual);

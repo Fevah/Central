@@ -1,6 +1,6 @@
-using Central.Core.Auth;
-using Central.Core.Modules;
-using Central.Core.Services;
+﻿using Central.Engine.Auth;
+using Central.Engine.Modules;
+using Central.Engine.Services;
 
 namespace Central.Desktop;
 

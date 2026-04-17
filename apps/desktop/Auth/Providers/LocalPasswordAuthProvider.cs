@@ -1,6 +1,6 @@
-using Central.Core.Auth;
-using Central.Data;
-using Central.Data.Repositories;
+﻿using Central.Engine.Auth;
+using Central.Persistence;
+using Central.Persistence.Repositories;
 
 namespace Central.Desktop.Auth.Providers;
 
@@ -66,10 +66,10 @@ public class LocalPasswordAuthProvider : IAuthenticationProvider
             if (failedCount + 1 >= _lockoutThreshold)
             {
                 await dbRepo.LockUserAsync(request.Username, _lockoutDurationMinutes);
-                Central.Core.Services.NotificationService.Instance?.NotifyEvent(
+                Central.Engine.Services.NotificationService.Instance?.NotifyEvent(
                     "auth_lockout", $"Account Locked: {request.Username}",
                     $"Locked after {failedCount + 1} failed attempts for {_lockoutDurationMinutes} minutes",
-                    Central.Core.Services.NotificationType.Warning);
+                    Central.Engine.Services.NotificationType.Warning);
             }
 
             await dbRepo.LogAuthEventAsync("failed", request.Username, false, "local",

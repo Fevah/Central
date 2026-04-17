@@ -1,7 +1,7 @@
-using Microsoft.AspNetCore.SignalR;
+﻿using Microsoft.AspNetCore.SignalR;
 using Npgsql;
 using Central.Api.Hubs;
-using Central.Data;
+using Central.Persistence;
 
 namespace Central.Api.Services;
 
@@ -72,7 +72,7 @@ public class JobSchedulerService : BackgroundService
         dueJobs = dueJobs.Where(j =>
         {
             if (string.IsNullOrEmpty(j.Cron)) return true; // interval-based — already filtered by SQL
-            return Central.Core.Services.CronExpression.TryParse(j.Cron, out var cron) && cron!.Matches(now);
+            return Central.Engine.Services.CronExpression.TryParse(j.Cron, out var cron) && cron!.Matches(now);
         }).ToList();
 
         foreach (var job in dueJobs)
@@ -83,7 +83,7 @@ public class JobSchedulerService : BackgroundService
 
             // Update next_run_at immediately to prevent re-trigger
             DateTime nextRun;
-            if (!string.IsNullOrEmpty(job.Cron) && Central.Core.Services.CronExpression.TryParse(job.Cron, out var cronExpr))
+            if (!string.IsNullOrEmpty(job.Cron) && Central.Engine.Services.CronExpression.TryParse(job.Cron, out var cronExpr))
             {
                 nextRun = cronExpr!.GetNextOccurrence(DateTime.Now) ?? DateTime.Now.AddMinutes(job.IntervalMin);
             }

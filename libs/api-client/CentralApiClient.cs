@@ -1,8 +1,8 @@
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 
-namespace Central.Api.Client;
+namespace Central.ApiClient;
 
 /// <summary>
 /// Typed HTTP client for the Central REST API.

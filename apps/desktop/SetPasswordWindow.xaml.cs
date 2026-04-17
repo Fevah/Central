@@ -1,8 +1,8 @@
-using System;
+﻿using System;
 using System.Windows;
 using Npgsql;
-using Central.Core.Auth;
-using Central.Core.Models;
+using Central.Engine.Auth;
+using Central.Engine.Models;
 
 namespace Central.Desktop;
 
@@ -88,7 +88,7 @@ public partial class SetPasswordWindow : DevExpress.Xpf.Core.DXDialogWindow
             await histIns.ExecuteNonQueryAsync();
 
             // Audit log
-            _ = Central.Core.Services.AuditService.Instance.LogAsync("PasswordChange", "User",
+            _ = Central.Engine.Services.AuditService.Instance.LogAsync("PasswordChange", "User",
                 _userId.ToString(), details: "Password changed via SetPasswordWindow");
 
             DialogResult = true;

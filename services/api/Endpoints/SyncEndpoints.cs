@@ -1,6 +1,6 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using Npgsql;
-using Central.Data;
+using Central.Persistence;
 
 namespace Central.Api.Endpoints;
 
@@ -20,7 +20,7 @@ public static class SyncEndpoints
         group.MapPut("/configs", async (DbConnectionFactory db, JsonElement body) =>
         {
             var repo = new DbRepository(db.ConnectionString);
-            var config = new Central.Core.Integration.SyncConfig
+            var config = new Central.Engine.Integration.SyncConfig
             {
                 Id = body.TryGetProperty("id", out var idp) ? idp.GetInt32() : 0,
                 Name = body.GetProperty("name").GetString() ?? "",
@@ -57,11 +57,11 @@ public static class SyncEndpoints
             if (config == null) return Results.NotFound("Sync config not found");
 
             var entityMaps = await repo.GetSyncEntityMapsAsync(id);
-            var allFieldMaps = new List<Central.Core.Integration.SyncFieldMap>();
+            var allFieldMaps = new List<Central.Engine.Integration.SyncFieldMap>();
             foreach (var em in entityMaps)
                 allFieldMaps.AddRange(await repo.GetSyncFieldMapsAsync(em.Id));
 
-            var engine = Central.Core.Integration.SyncEngine.Instance;
+            var engine = Central.Engine.Integration.SyncEngine.Instance;
             engine.SetLogCallback(async (cid, status, entity, read, created, updated, failed, error) =>
                 await repo.InsertSyncLogAsync(cid, status, entity, read, created, updated, failed, error));
 
@@ -74,13 +74,13 @@ public static class SyncEndpoints
 
         group.MapGet("/agent-types", () =>
         {
-            var engine = Central.Core.Integration.SyncEngine.Instance;
+            var engine = Central.Engine.Integration.SyncEngine.Instance;
             return Results.Ok(engine.GetAgentTypes());
         });
 
         group.MapGet("/converter-types", () =>
         {
-            var engine = Central.Core.Integration.SyncEngine.Instance;
+            var engine = Central.Engine.Integration.SyncEngine.Instance;
             return Results.Ok(engine.GetConverterTypes());
         });
 

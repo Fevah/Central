@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Windows.Controls;
 using DevExpress.Xpf.Grid;
-using Central.Core.Models;
+using Central.Engine.Models;
 
 namespace Central.Module.Admin.Views;
 
@@ -124,8 +124,8 @@ public partial class RibbonConfigPanel : System.Windows.Controls.UserControl
         if (OpenIconPicker == null) return;
 
         // Capture which grid/row BEFORE opening the picker dialog (focus will shift)
-        var targetItem = ItemsGrid.CurrentItem as Central.Core.Models.RibbonItemConfig;
-        var targetPage = PagesGrid.CurrentItem as Central.Core.Models.RibbonPageConfig;
+        var targetItem = ItemsGrid.CurrentItem as Central.Engine.Models.RibbonItemConfig;
+        var targetPage = PagesGrid.CurrentItem as Central.Engine.Models.RibbonPageConfig;
         var targetColumn = ItemsGrid.CurrentColumn?.FieldName;
 
         var selected = OpenIconPicker();

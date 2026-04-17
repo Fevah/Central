@@ -1,5 +1,5 @@
-using System.Windows;
-using Central.Core.Auth;
+﻿using System.Windows;
+using Central.Engine.Auth;
 
 namespace Central.Desktop;
 
@@ -46,7 +46,7 @@ public partial class MfaEnrollmentDialog : DevExpress.Xpf.Core.DXWindow
     private void CopyUri_Click(object sender, RoutedEventArgs e)
     {
         System.Windows.Clipboard.SetText(_qrUri);
-        Central.Core.Services.NotificationService.Instance?.Success("QR URI copied to clipboard");
+        Central.Engine.Services.NotificationService.Instance?.Success("QR URI copied to clipboard");
     }
 
     private async void Verify_Click(object sender, RoutedEventArgs e)
@@ -94,7 +94,7 @@ public partial class MfaEnrollmentDialog : DevExpress.Xpf.Core.DXWindow
         if (_recoveryCodes != null)
         {
             System.Windows.Clipboard.SetText(string.Join("\n", _recoveryCodes));
-            Central.Core.Services.NotificationService.Instance?.Success("Recovery codes copied");
+            Central.Engine.Services.NotificationService.Instance?.Success("Recovery codes copied");
         }
     }
 

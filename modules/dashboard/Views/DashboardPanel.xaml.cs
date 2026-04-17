@@ -1,8 +1,8 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
-using Central.Core.Models;
-using Central.Core.Shell;
-using Central.Core.Services;
+using Central.Engine.Models;
+using Central.Engine.Shell;
+using Central.Engine.Services;
 using Npgsql;
 using WC = System.Windows.Controls;
 using WMedia = System.Windows.Media;

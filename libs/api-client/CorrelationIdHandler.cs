@@ -1,6 +1,6 @@
-using Central.Observability;
+﻿using Central.Observability;
 
-namespace Central.Api.Client;
+namespace Central.ApiClient;
 
 /// <summary>
 /// DelegatingHandler that adds X-Correlation-ID header to all outgoing HTTP requests.

@@ -1,8 +1,8 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Npgsql;
-using Central.Data;
+using Central.Persistence;
 
 namespace Central.Api.Endpoints;
 
@@ -36,12 +36,12 @@ public static class EmailEndpoints
             // Encrypt passwords
             string? smtpEnc = null, imapEnc = null;
             if (body.TryGetProperty("smtp_password", out var sp) && !string.IsNullOrEmpty(sp.GetString()))
-                smtpEnc = Central.Core.Auth.CredentialEncryptor.IsAvailable
-                    ? Central.Core.Auth.CredentialEncryptor.Encrypt(sp.GetString()!)
+                smtpEnc = Central.Engine.Auth.CredentialEncryptor.IsAvailable
+                    ? Central.Engine.Auth.CredentialEncryptor.Encrypt(sp.GetString()!)
                     : sp.GetString();
             if (body.TryGetProperty("imap_password", out var ip) && !string.IsNullOrEmpty(ip.GetString()))
-                imapEnc = Central.Core.Auth.CredentialEncryptor.IsAvailable
-                    ? Central.Core.Auth.CredentialEncryptor.Encrypt(ip.GetString()!)
+                imapEnc = Central.Engine.Auth.CredentialEncryptor.IsAvailable
+                    ? Central.Engine.Auth.CredentialEncryptor.Encrypt(ip.GetString()!)
                     : ip.GetString();
 
             await using var cmd = new NpgsqlCommand(

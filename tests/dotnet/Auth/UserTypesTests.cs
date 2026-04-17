@@ -1,5 +1,5 @@
-using Central.Core.Auth;
-using Central.Core.Models;
+﻿using Central.Engine.Auth;
+using Central.Engine.Models;
 
 namespace Central.Tests.Auth;
 

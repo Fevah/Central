@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -17,8 +17,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\libs\core\Central.Core.csproj" />
-    <ProjectReference Include="..\..\libs\data\Central.Data.csproj" />
+    <ProjectReference Include="..\..\libs\engine\Central.Engine.csproj" />
+    <ProjectReference Include="..\..\libs\persistence\Central.Persistence.csproj" />
     <ProjectReference Include="..\..\libs\tenancy\Central.Tenancy.csproj" />
     <ProjectReference Include="..\..\libs\licensing\Central.Licensing.csproj" />
     <ProjectReference Include="..\..\libs\security\Central.Security.csproj" />

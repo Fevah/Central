@@ -1,6 +1,6 @@
-using System.Net.Http;
-using Central.Core.Auth;
-using Central.Api.Client;
+﻿using System.Net.Http;
+using Central.Engine.Auth;
+using Central.ApiClient;
 
 namespace Central.Desktop.Auth.Providers;
 

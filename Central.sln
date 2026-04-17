@@ -5,9 +5,9 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Central.Desktop", "apps\desktop\Central.Desktop.csproj", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Central.Core", "libs\core\Central.Core.csproj", "{B2C3D4E5-F6A7-8901-BCDE-F12345678901}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Central.Engine", "libs\engine\Central.Engine.csproj", "{B2C3D4E5-F6A7-8901-BCDE-F12345678901}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Central.Data", "libs\data\Central.Data.csproj", "{C3D4E5F6-A7B8-9012-CDEF-123456789012}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Central.Persistence", "libs\persistence\Central.Persistence.csproj", "{C3D4E5F6-A7B8-9012-CDEF-123456789012}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Central.Module.Devices", "modules\devices\Central.Module.Devices.csproj", "{D4E5F6A7-B8C9-0123-DEF0-234567890123}"
 EndProject
@@ -23,7 +23,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Central.Module.Admin", "mod
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Central.Api", "services\api\Central.Api.csproj", "{5906A74E-D070-41C3-9CD6-986A4E98F8D1}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Central.Api.Client", "libs\api-client\Central.Api.Client.csproj", "{1CC69299-C13F-488E-A0A3-665BA40293EB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Central.ApiClient", "libs\api-client\Central.ApiClient.csproj", "{1CC69299-C13F-488E-A0A3-665BA40293EB}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Central.Module.Tasks", "modules\tasks\Central.Module.Tasks.csproj", "{499CF8CA-E0B9-4DA5-9081-4C1CD90D5B1F}"
 EndProject

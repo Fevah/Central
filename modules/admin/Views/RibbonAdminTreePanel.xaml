@@ -1,4 +1,4 @@
-<UserControl x:Class="Central.Module.Admin.Views.RibbonAdminTreePanel"
+﻿<UserControl x:Class="Central.Module.Admin.Views.RibbonAdminTreePanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
@@ -7,9 +7,9 @@
 
     <UserControl.Resources>
         <conv:NullToVisibilityConverter x:Key="NullToCollapsed" NullValue="Collapsed" NotNullValue="Visible"
-            xmlns:conv="clr-namespace:Central.Core.Converters;assembly=Central.Core" />
+            xmlns:conv="clr-namespace:Central.Engine.Converters;assembly=Central.Engine" />
         <conv:NullToVisibilityConverter x:Key="NullToVisible" NullValue="Visible" NotNullValue="Collapsed"
-            xmlns:conv="clr-namespace:Central.Core.Converters;assembly=Central.Core" />
+            xmlns:conv="clr-namespace:Central.Engine.Converters;assembly=Central.Engine" />
     </UserControl.Resources>
 
     <Grid>

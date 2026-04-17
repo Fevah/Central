@@ -1,7 +1,7 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Windows;
 using DevExpress.Xpf.Grid;
-using Central.Core.Integration;
+using Central.Engine.Integration;
 
 namespace Central.Module.Admin.Views;
 

@@ -1,8 +1,8 @@
-using Central.Core.Auth;
-using Central.Core.Integration;
-using Central.Core.Models;
-using Central.Core.Services;
-using Central.Core.Shell;
+﻿using Central.Engine.Auth;
+using Central.Engine.Integration;
+using Central.Engine.Models;
+using Central.Engine.Services;
+using Central.Engine.Shell;
 
 namespace Central.Tests.Services;
 

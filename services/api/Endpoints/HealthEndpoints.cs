@@ -1,7 +1,7 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Reflection;
 using Npgsql;
-using Central.Data;
+using Central.Persistence;
 
 namespace Central.Api.Endpoints;
 
@@ -112,7 +112,7 @@ public static class HealthEndpoints
             // Sync engine
             try
             {
-                var syncEngine = Central.Core.Integration.SyncEngine.Instance;
+                var syncEngine = Central.Engine.Integration.SyncEngine.Instance;
                 checks["sync_engine"] = new
                 {
                     agent_types = syncEngine.GetAgentTypes(),
@@ -124,7 +124,7 @@ public static class HealthEndpoints
             // Mediator diagnostics
             try
             {
-                checks["mediator"] = Central.Core.Shell.Mediator.Instance.GetDiagnostics();
+                checks["mediator"] = Central.Engine.Shell.Mediator.Instance.GetDiagnostics();
             }
             catch { }
 

@@ -1,10 +1,10 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
-using Central.Core.Auth;
-using Central.Core.Services;
-using Central.Data;
+using Central.Engine.Auth;
+using Central.Engine.Services;
+using Central.Persistence;
 using Central.Desktop.Services;
 using DevExpress.Xpf.Core;
 using DevExpress.Xpf.Editors;
@@ -148,7 +148,7 @@ public partial class GlobalActionsAdminDialog : DXDialogWindow
             }
             catch (Exception ex)
             {
-                Central.Data.AppLogger.LogException("Ribbon", ex, $"SaveAll row {key}");
+                Central.Persistence.AppLogger.LogException("Ribbon", ex, $"SaveAll row {key}");
             }
         }
 

@@ -1,7 +1,7 @@
-using Central.Core.Auth;
-using Central.Core.Models;
-using Central.Data;
-using Central.Data.Repositories;
+﻿using Central.Engine.Auth;
+using Central.Engine.Models;
+using Central.Persistence;
+using Central.Persistence.Repositories;
 
 namespace Central.Desktop.Auth;
 
@@ -93,7 +93,7 @@ public class UserProvisioningService : IUserProvisioningService
         {
             try
             {
-                foreach (var eventType in Core.Models.NotificationEventTypes.All)
+                foreach (var eventType in Central.Engine.Models.NotificationEventTypes.All)
                     await _repo.UpsertNotificationPreferenceAsync(newUser.Id, eventType, "toast", true);
             }
             catch { /* non-critical */ }

@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 
 namespace Central.Module.CRM.Views;
 
@@ -28,7 +28,7 @@ public partial class CrmDealsPanel : System.Windows.Controls.UserControl
         }
         catch (Exception ex)
         {
-            Central.Core.Services.NotificationService.Instance?.Error($"Deals load failed: {ex.Message}");
+            Central.Engine.Services.NotificationService.Instance?.Error($"Deals load failed: {ex.Message}");
         }
     }
 }

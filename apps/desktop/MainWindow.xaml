@@ -1,4 +1,4 @@
-<dxr:DXRibbonWindow
+﻿<dxr:DXRibbonWindow
     x:Class="Central.Desktop.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -10,7 +10,7 @@
     xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
     xmlns:dxdiag="http://schemas.devexpress.com/winfx/2008/xaml/diagram"
     xmlns:vm="clr-namespace:Central.Desktop.ViewModels"
-    xmlns:conv="clr-namespace:Central.Core.Converters;assembly=Central.Core"
+    xmlns:conv="clr-namespace:Central.Engine.Converters;assembly=Central.Engine"
     xmlns:devViews="clr-namespace:Central.Module.Devices.Views;assembly=Central.Module.Devices"
     xmlns:linkViews="clr-namespace:Central.Module.Links.Views;assembly=Central.Module.Links"
     xmlns:swViews="clr-namespace:Central.Module.Switches.Views;assembly=Central.Module.Switches"

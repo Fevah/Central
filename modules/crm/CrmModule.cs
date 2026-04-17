@@ -1,6 +1,6 @@
-using Central.Core.Auth;
-using Central.Core.Modules;
-using Central.Core.Shell;
+﻿using Central.Engine.Auth;
+using Central.Engine.Modules;
+using Central.Engine.Shell;
 
 namespace Central.Module.CRM;
 

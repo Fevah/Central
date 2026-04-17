@@ -1,10 +1,10 @@
-<UserControl x:Class="Central.Module.Switches.Views.DetailTabsPanel"
+﻿<UserControl x:Class="Central.Module.Switches.Views.DetailTabsPanel"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
              xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
              xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
-             xmlns:conv="clr-namespace:Central.Core.Converters;assembly=Central.Core">
+             xmlns:conv="clr-namespace:Central.Engine.Converters;assembly=Central.Engine">
     <UserControl.Resources>
         <conv:StringToBrushConverter x:Key="StringToBrush" />
         <BooleanToVisibilityConverter x:Key="BoolVis" />

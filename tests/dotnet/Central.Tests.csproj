@@ -19,9 +19,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\libs\core\Central.Core.csproj" />
+    <ProjectReference Include="..\..\libs\engine\Central.Engine.csproj" />
     <ProjectReference Include="..\..\services\api\Central.Api.csproj" />
-    <ProjectReference Include="..\..\libs\data\Central.Data.csproj" />
+    <ProjectReference Include="..\..\libs\persistence\Central.Persistence.csproj" />
     <ProjectReference Include="..\..\libs\tenancy\Central.Tenancy.csproj" />
     <ProjectReference Include="..\..\libs\collaboration\Central.Collaboration.csproj" />
     <ProjectReference Include="..\..\libs\security\Central.Security.csproj" />

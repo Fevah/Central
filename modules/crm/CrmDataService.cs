@@ -1,5 +1,5 @@
-using System.Collections.ObjectModel;
-using Central.Core.Models;
+﻿using System.Collections.ObjectModel;
+using Central.Engine.Models;
 using Npgsql;
 
 namespace Central.Module.CRM;

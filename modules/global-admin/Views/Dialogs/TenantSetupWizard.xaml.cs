@@ -1,8 +1,8 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
-using Central.Core.Models;
+using Central.Engine.Models;
 using DevExpress.Xpf.Core;
 
 namespace Central.Module.GlobalAdmin.Views.Dialogs;
@@ -130,8 +130,8 @@ public partial class TenantSetupWizard : DXDialogWindow
             // 5. Create admin user + membership
             if (!string.IsNullOrWhiteSpace(email) && !string.IsNullOrWhiteSpace(password) && CreateUser != null)
             {
-                var salt = Central.Core.Auth.PasswordHasher.GenerateSalt();
-                var hash = Central.Core.Auth.PasswordHasher.Hash(password, salt);
+                var salt = Central.Engine.Auth.PasswordHasher.GenerateSalt();
+                var hash = Central.Engine.Auth.PasswordHasher.Hash(password, salt);
                 var userId = await CreateUser(email, adminName, hash, salt, false);
                 if (AddMembership != null)
                     await AddMembership(userId, tenantId, "Admin");

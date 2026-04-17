@@ -1,6 +1,6 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using Central.Core.Models;
+using Central.Engine.Models;
 using DevExpress.Xpf.Core;
 
 namespace Central.Module.GlobalAdmin.Views.Dialogs;

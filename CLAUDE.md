@@ -1,4 +1,4 @@
-# Central
+﻿# Central
 
 Enterprise infrastructure platform — network config, service desk, IT operations.
 Desktop app builds as `Central.exe`. All namespaces are `Central.*`.
@@ -170,7 +170,7 @@ Phase 4: ✅ COMPLETE (API Server):
 - ✅ Webhook HMAC-SHA256 signature validation (X-Webhook-Signature header)
 - ✅ Column whitelist validation preventing SQL injection on sort/filter parameters
 - ✅ pg_notify triggers (19+ tables) + ChangeNotifier background service
-- ✅ Central.Api.Client (typed HTTP + SignalR client)
+- ✅ Central.ApiClient (typed HTTP + SignalR client)
 - ✅ IDataService abstraction (DirectDb / Api / Offline modes)
 - ✅ DirectDbDataService + ApiDataService implementations
 - ✅ ConnectivityManager tri-mode + SignalR DataChanged event

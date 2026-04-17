@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -159,9 +159,9 @@ public class ConnectivityManager : INotifyPropertyChanged, IDisposable
 
     // ── Data Service Mode ─────────────────────────────────────────────────
 
-    private Central.Core.Data.DataServiceMode _mode = Central.Core.Data.DataServiceMode.DirectDb;
+    private Central.Engine.Data.DataServiceMode _mode = Central.Engine.Data.DataServiceMode.DirectDb;
     /// <summary>Current data service mode (DirectDb, Api, or Offline).</summary>
-    public Central.Core.Data.DataServiceMode Mode
+    public Central.Engine.Data.DataServiceMode Mode
     {
         get => _mode;
         set { if (_mode != value) { _mode = value; OnPropertyChanged(); } }
@@ -171,26 +171,26 @@ public class ConnectivityManager : INotifyPropertyChanged, IDisposable
     public string? ApiUrl { get; set; }
 
     /// <summary>The active IDataService based on current mode. Use this for all data operations.</summary>
-    public Central.Core.Data.IDataService? ActiveDataService { get; private set; }
+    public Central.Engine.Data.IDataService? ActiveDataService { get; private set; }
 
-    private Central.Core.Data.IDataService? _directDbService;
-    private Central.Core.Data.IDataService? _apiService;
+    private Central.Engine.Data.IDataService? _directDbService;
+    private Central.Engine.Data.IDataService? _apiService;
 
     /// <summary>Register the direct DB data service (created at startup with DbRepository).</summary>
-    public void RegisterDirectDb(Central.Core.Data.IDataService service) => _directDbService = service;
+    public void RegisterDirectDb(Central.Engine.Data.IDataService service) => _directDbService = service;
 
     /// <summary>Register the API data service (created when API URL is configured).</summary>
-    public void RegisterApi(Central.Core.Data.IDataService service) => _apiService = service;
+    public void RegisterApi(Central.Engine.Data.IDataService service) => _apiService = service;
 
     /// <summary>Switch to the specified mode and update ActiveDataService.</summary>
-    public void SwitchMode(Central.Core.Data.DataServiceMode newMode)
+    public void SwitchMode(Central.Engine.Data.DataServiceMode newMode)
     {
         Mode = newMode;
         ActiveDataService = newMode switch
         {
-            Central.Core.Data.DataServiceMode.Api => _apiService ?? _directDbService,
-            Central.Core.Data.DataServiceMode.DirectDb => _directDbService,
-            Central.Core.Data.DataServiceMode.Offline => null,
+            Central.Engine.Data.DataServiceMode.Api => _apiService ?? _directDbService,
+            Central.Engine.Data.DataServiceMode.DirectDb => _directDbService,
+            Central.Engine.Data.DataServiceMode.Offline => null,
             _ => _directDbService
         };
         OnPropertyChanged(nameof(ActiveDataService));
@@ -198,7 +198,7 @@ public class ConnectivityManager : INotifyPropertyChanged, IDisposable
 
     // ── SignalR real-time updates ────────────────────────────────────────
 
-    private Central.Api.Client.SignalRClient? _signalR;
+    private Central.ApiClient.SignalRClient? _signalR;
 
     /// <summary>Fires when a table is changed on the server. Args: table, operation, id.</summary>
     public event Action<string, string, string>? DataChanged;
@@ -206,7 +206,7 @@ public class ConnectivityManager : INotifyPropertyChanged, IDisposable
     /// <summary>Connect to the API's SignalR hub for real-time change notifications.</summary>
     public async Task ConnectSignalRAsync(string hubUrl, string jwtToken)
     {
-        _signalR = new Central.Api.Client.SignalRClient();
+        _signalR = new Central.ApiClient.SignalRClient();
         _signalR.DataChanged += (table, op, id) => DataChanged?.Invoke(table, op, id);
         try
         {

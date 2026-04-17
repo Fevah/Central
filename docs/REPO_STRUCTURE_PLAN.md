@@ -1,4 +1,4 @@
-# Repo Structure — Enterprise Redesign (Plan)
+﻿# Repo Structure — Enterprise Redesign (Plan)
 
 **Status:** Draft — no moves have been made yet. Review, redirect, approve before execution.
 **Date:** 2026-04-17
@@ -49,9 +49,9 @@ We want: a convention-based tree where a new developer lands and knows where eve
 │   └── tenant-provisioner/        Rust — already in tree
 │
 ├── libs/                          Shared .NET libraries (cross-app)
-│   ├── core/                      Central.Core — engine, auth, models, widgets
-│   ├── data/                      Central.Data — PostgreSQL repositories + logger
-│   ├── api-client/                Central.Api.Client — typed HTTP + SignalR client
+│   ├── core/                      Central.Engine — engine, auth, models, widgets
+│   ├── data/                      Central.Persistence — PostgreSQL repositories + logger
+│   ├── api-client/                Central.ApiClient — typed HTTP + SignalR client
 │   ├── workflows/                 Central.Workflows — Elsa integration
 │   ├── security/                  Central.Security — ABAC engine
 │   ├── tenancy/                   Central.Tenancy — tenant resolution
@@ -163,8 +163,8 @@ The big one. Move 25 .NET projects into their proper homes.
 
 | From | To |
 |------|----|
-| `desktop/Central.Core` | `libs/core` |
-| `desktop/Central.Data` | `libs/data` |
+| `desktop/Central.Core` | `libs/engine` |
+| `desktop/Central.Data` | `libs/persistence` |
 | `desktop/Central.Api.Client` | `libs/api-client` |
 | `desktop/Central.Workflows` | `libs/workflows` |
 | `desktop/Central.Security` | `libs/security` |
@@ -188,7 +188,7 @@ After moves:
 - Rewrite any script that hardcodes `desktop/...` (search for the string; fix each).
 - Remove the now-empty `desktop/` folder.
 
-**Rename scope:** three projects get new assembly + namespace names in this phase — `Central.Core → Central.Engine`, `Central.Data → Central.Persistence`, `Central.Api.Client → Central.ApiClient`. See §"Assembly rename scope" for impact. All other 22 projects keep their current names. Split this phase into two commits if the diff is unmanageable — (2a) folder moves with names unchanged, verify green build; (2b) scripted namespace rename of the three projects, re-verify green build.
+**Rename scope:** three projects get new assembly + namespace names in this phase — `Central.Engine → Central.Engine`, `Central.Persistence → Central.Persistence`, `Central.ApiClient → Central.ApiClient`. See §"Assembly rename scope" for impact. All other 22 projects keep their current names. Split this phase into two commits if the diff is unmanageable — (2a) folder moves with names unchanged, verify green build; (2b) scripted namespace rename of the three projects, re-verify green build.
 
 **Risk:** medium. Path breakage is the failure mode. Catch it with a full build + test run before merge.
 
@@ -240,7 +240,7 @@ Only after Phases 0-5 are merged and stable. Treat each as its own PR.
 - **Per-folder README.md** in each of `apps/`, `services/`, `libs/`, `modules/`, `tools/` — one paragraph on what belongs there and the convention for adding new entries.
 - **CI workflow optimisation** — now that paths are predictable, use `paths:` filters in `.github/workflows/` so unrelated changes don't trigger the full build.
 - **Renaming** — consider renaming `Central.Core` → `Central.Engine`, `Central.Data` → `Central.Persistence`, etc. to match the new folder names. Deferred — separate risk surface.
-- **Code-owner file** — `.github/CODEOWNERS` mapping `libs/core/` → a specific reviewer, etc., once a team actually exists.
+- **Code-owner file** — `.github/CODEOWNERS` mapping `libs/engine/` → a specific reviewer, etc., once a team actually exists.
 
 ## Risks and rollback
 
@@ -280,14 +280,14 @@ So only 3 actual renames: `Core → Engine`, `Data → Persistence`, `Api.Client
 
 **Rename impact (for the 3 renamed projects):**
 
-- ~900 `using Central.Core;` statements across the codebase become `using Central.Engine;` (scripted).
-- ~120 `using Central.Data.*;` → `using Central.Persistence.*;`.
+- ~900 `using Central.Engine;` statements across the codebase become `using Central.Engine;` (scripted).
+- ~120 `using Central.Persistence.*;` → `using Central.Persistence.*;`.
 - ~30 XAML `xmlns:` references updated.
 - `[assembly: InternalsVisibleTo]` attributes updated.
 - Any DB-stored assembly-qualified type names (audit log, serialised settings) — check and update if found.
 - NuGet package IDs (if any are published) would need new names or transitional metapackages.
 
-**Reject any of the 3 renames above if the churn isn't worth it.** "Central.Core" is fine if you don't want the disruption. Most concrete case: renaming `Central.Core` touches 900+ files.
+**Reject any of the 3 renames above if the churn isn't worth it.** "Central.Engine" is fine if you don't want the disruption. Most concrete case: renaming `Central.Core` touches 900+ files.
 
 ## Rust services status
 

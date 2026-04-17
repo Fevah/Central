@@ -1,4 +1,4 @@
-using Central.Core.Models;
+﻿using Central.Engine.Models;
 
 namespace Central.Tests.Models;
 
@@ -179,20 +179,20 @@ public class EnterpriseModelsTests
 public class EnterprisePermissionCodeTests
 {
     [Theory]
-    [InlineData(Central.Core.Auth.P.GroupsRead, "groups:read")]
-    [InlineData(Central.Core.Auth.P.GroupsWrite, "groups:write")]
-    [InlineData(Central.Core.Auth.P.GroupsDelete, "groups:delete")]
-    [InlineData(Central.Core.Auth.P.GroupsAssign, "groups:assign")]
-    [InlineData(Central.Core.Auth.P.FeaturesRead, "features:read")]
-    [InlineData(Central.Core.Auth.P.FeaturesWrite, "features:write")]
-    [InlineData(Central.Core.Auth.P.SecurityIpRules, "security:ip_rules")]
-    [InlineData(Central.Core.Auth.P.SecurityKeys, "security:keys")]
-    [InlineData(Central.Core.Auth.P.SecurityDeprovision, "security:deprovision")]
-    [InlineData(Central.Core.Auth.P.SecurityDomains, "security:domains")]
-    [InlineData(Central.Core.Auth.P.BillingRead, "billing:read")]
-    [InlineData(Central.Core.Auth.P.BillingWrite, "billing:write")]
-    [InlineData(Central.Core.Auth.P.BillingDiscount, "billing:discount")]
-    [InlineData(Central.Core.Auth.P.BillingInvoice, "billing:invoice")]
+    [InlineData(Central.Engine.Auth.P.GroupsRead, "groups:read")]
+    [InlineData(Central.Engine.Auth.P.GroupsWrite, "groups:write")]
+    [InlineData(Central.Engine.Auth.P.GroupsDelete, "groups:delete")]
+    [InlineData(Central.Engine.Auth.P.GroupsAssign, "groups:assign")]
+    [InlineData(Central.Engine.Auth.P.FeaturesRead, "features:read")]
+    [InlineData(Central.Engine.Auth.P.FeaturesWrite, "features:write")]
+    [InlineData(Central.Engine.Auth.P.SecurityIpRules, "security:ip_rules")]
+    [InlineData(Central.Engine.Auth.P.SecurityKeys, "security:keys")]
+    [InlineData(Central.Engine.Auth.P.SecurityDeprovision, "security:deprovision")]
+    [InlineData(Central.Engine.Auth.P.SecurityDomains, "security:domains")]
+    [InlineData(Central.Engine.Auth.P.BillingRead, "billing:read")]
+    [InlineData(Central.Engine.Auth.P.BillingWrite, "billing:write")]
+    [InlineData(Central.Engine.Auth.P.BillingDiscount, "billing:discount")]
+    [InlineData(Central.Engine.Auth.P.BillingInvoice, "billing:invoice")]
     public void PermissionCode_HasCorrectValue(string actual, string expected)
     {
         Assert.Equal(expected, actual);

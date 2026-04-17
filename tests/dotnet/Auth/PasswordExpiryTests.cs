@@ -1,4 +1,4 @@
-using Central.Core.Auth;
+﻿using Central.Engine.Auth;
 
 namespace Central.Tests.Auth;
 

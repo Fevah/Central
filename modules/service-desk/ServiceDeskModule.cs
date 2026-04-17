@@ -1,5 +1,5 @@
-using Central.Core.Modules;
-using Central.Core.Shell;
+﻿using Central.Engine.Modules;
+using Central.Engine.Shell;
 
 namespace Central.Module.ServiceDesk;
 
@@ -77,27 +77,27 @@ public class ServiceDeskModule : IModule, IModuleRibbon, IModulePanels
     {
         panels.AddPanel("ServiceDeskRequests", "Service Desk",
             typeof(Views.RequestGridPanel), typeof(object),
-            "servicedesk:read", Central.Core.Modules.DockPosition.Document, true);
+            "servicedesk:read", Central.Engine.Modules.DockPosition.Document, true);
         panels.AddPanel("SdOverview", "SD Overview",
             typeof(Views.OverviewChartPanel), typeof(object),
-            "servicedesk:read", Central.Core.Modules.DockPosition.Document, true);
+            "servicedesk:read", Central.Engine.Modules.DockPosition.Document, true);
         panels.AddPanel("SdTechClosures", "SD Tech Closures",
             typeof(Views.TechClosuresPanel), typeof(object),
-            "servicedesk:read", Central.Core.Modules.DockPosition.Document, true);
+            "servicedesk:read", Central.Engine.Modules.DockPosition.Document, true);
         panels.AddPanel("SdAging", "SD Aging",
             typeof(Views.AgingChartPanel), typeof(object),
-            "servicedesk:read", Central.Core.Modules.DockPosition.Document, true);
+            "servicedesk:read", Central.Engine.Modules.DockPosition.Document, true);
         panels.AddPanel("SdTeams", "SD Teams",
             typeof(Views.TeamsPanel), typeof(object),
-            "servicedesk:write", Central.Core.Modules.DockPosition.Document, true);
+            "servicedesk:write", Central.Engine.Modules.DockPosition.Document, true);
         panels.AddPanel("SdGroups", "SD Groups",
             typeof(Views.SdGroupsPanel), typeof(object),
-            "servicedesk:read", Central.Core.Modules.DockPosition.Document, true);
+            "servicedesk:read", Central.Engine.Modules.DockPosition.Document, true);
         panels.AddPanel("SdTechnicians", "SD Technicians",
             typeof(Views.SdTechniciansPanel), typeof(object),
-            "servicedesk:read", Central.Core.Modules.DockPosition.Document, true);
+            "servicedesk:read", Central.Engine.Modules.DockPosition.Document, true);
         panels.AddPanel("SdRequesters", "SD Requesters",
             typeof(Views.SdRequestersPanel), typeof(object),
-            "servicedesk:read", Central.Core.Modules.DockPosition.Document, true);
+            "servicedesk:read", Central.Engine.Modules.DockPosition.Document, true);
     }
 }

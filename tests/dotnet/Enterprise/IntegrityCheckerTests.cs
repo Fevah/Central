@@ -1,4 +1,4 @@
-namespace Central.Tests.Enterprise;
+﻿namespace Central.Tests.Enterprise;
 
 /// <summary>
 /// Tests for integrity result model patterns.
@@ -21,8 +21,8 @@ public class IntegrityResultTests
     public void IsIntact_WhenNoIssues()
     {
         var result = new IntegrityResult { IsIntact = true };
-        result.VerifiedFiles.Add("Central.Core.dll");
-        result.VerifiedFiles.Add("Central.Data.dll");
+        result.VerifiedFiles.Add("Central.Engine.dll");
+        result.VerifiedFiles.Add("Central.Persistence.dll");
 
         Assert.True(result.IsIntact);
         Assert.Equal(2, result.VerifiedFiles.Count);
@@ -43,7 +43,7 @@ public class IntegrityResultTests
     public void Summary_WhenTampered()
     {
         var result = new IntegrityResult { IsIntact = false };
-        result.TamperedFiles.Add("Central.Core.dll");
+        result.TamperedFiles.Add("Central.Engine.dll");
         Assert.Contains("INTEGRITY VIOLATION", result.Summary);
         Assert.Contains("1 tampered", result.Summary);
         Assert.Contains("0 missing", result.Summary);

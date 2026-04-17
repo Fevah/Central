@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -49,9 +49,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\libs\core\Central.Core.csproj" />
-    <ProjectReference Include="..\..\libs\data\Central.Data.csproj" />
-    <ProjectReference Include="..\..\libs\api-client\Central.Api.Client.csproj" />
+    <ProjectReference Include="..\..\libs\engine\Central.Engine.csproj" />
+    <ProjectReference Include="..\..\libs\persistence\Central.Persistence.csproj" />
+    <ProjectReference Include="..\..\libs\api-client\Central.ApiClient.csproj" />
 
     <!-- Module assemblies — referenced so they're loaded for ModuleLoader discovery -->
     <ProjectReference Include="..\..\modules\dashboard\Central.Module.Dashboard.csproj" />

@@ -1,5 +1,5 @@
-using Npgsql;
-using Central.Data;
+﻿using Npgsql;
+using Central.Persistence;
 
 namespace Central.Api.Endpoints;
 

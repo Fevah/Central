@@ -1,8 +1,8 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http;
 using System.Text.Json;
-using Central.Core.Auth;
+using Central.Engine.Auth;
 
 namespace Central.Desktop.Auth.Providers;
 

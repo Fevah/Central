@@ -1,5 +1,5 @@
-using System.ComponentModel;
-using Central.Core.Auth;
+﻿using System.ComponentModel;
+using Central.Engine.Auth;
 
 namespace Central.Tests.Auth;
 

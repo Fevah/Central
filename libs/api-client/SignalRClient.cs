@@ -1,6 +1,6 @@
-using Microsoft.AspNetCore.SignalR.Client;
+﻿using Microsoft.AspNetCore.SignalR.Client;
 
-namespace Central.Api.Client;
+namespace Central.ApiClient;
 
 /// <summary>
 /// SignalR client that connects to the NotificationHub and raises events

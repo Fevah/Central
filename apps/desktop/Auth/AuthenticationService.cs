@@ -1,6 +1,6 @@
-using Central.Core.Auth;
-using Central.Data;
-using Central.Data.Repositories;
+﻿using Central.Engine.Auth;
+using Central.Persistence;
+using Central.Persistence.Repositories;
 
 namespace Central.Desktop.Auth;
 
@@ -107,7 +107,7 @@ public class AuthenticationService : IAuthenticationService
         try
         {
             var provider = (Providers.RustAuthServiceProvider)rustAuth;
-            var client = new Api.Client.AuthServiceClient(
+            var client = new Central.ApiClient.AuthServiceClient(
                 Environment.GetEnvironmentVariable("AUTH_SERVICE_URL") ?? "http://192.168.56.10:30081");
             var result = await client.VerifyMfaAsync(sessionId, code, method);
 
@@ -202,7 +202,7 @@ public class AuthenticationService : IAuthenticationService
         AuthContext.Instance.SetSession(authUser, permCodes, allowedSites, authState);
 
         // Set tenant context for all subsequent DB queries (Phase 1.6)
-        Central.Data.DbRepository.SetTenantId("00000000-0000-0000-0000-000000000001");
+        Central.Persistence.DbRepository.SetTenantId("00000000-0000-0000-0000-000000000001");
 
         await _logger.LogAsync("session", authUser.Username, true, result.ProviderType, authUser.Id);
 

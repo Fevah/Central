@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 
 namespace Central.Module.CRM.Views;
 
@@ -28,7 +28,7 @@ public partial class CrmAccountsPanel : System.Windows.Controls.UserControl
         }
         catch (Exception ex)
         {
-            Central.Core.Services.NotificationService.Instance?.Error($"Accounts load failed: {ex.Message}");
+            Central.Engine.Services.NotificationService.Instance?.Error($"Accounts load failed: {ex.Message}");
         }
     }
 

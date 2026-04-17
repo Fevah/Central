@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using WC = System.Windows.Controls;
 using WMedia = System.Windows.Media;
@@ -45,11 +45,11 @@ public partial class CrmPipelinePanel : System.Windows.Controls.UserControl
         }
         catch (Exception ex)
         {
-            Central.Core.Services.NotificationService.Instance?.Error($"Pipeline load failed: {ex.Message}");
+            Central.Engine.Services.NotificationService.Instance?.Error($"Pipeline load failed: {ex.Message}");
         }
     }
 
-    private static WC.Border BuildColumn(string stageName, string color, List<Central.Core.Models.CrmDeal> deals)
+    private static WC.Border BuildColumn(string stageName, string color, List<Central.Engine.Models.CrmDeal> deals)
     {
         var stack = new WC.StackPanel { Margin = new Thickness(4) };
 
@@ -104,7 +104,7 @@ public partial class CrmPipelinePanel : System.Windows.Controls.UserControl
         };
     }
 
-    private static WC.Border BuildDealCard(Central.Core.Models.CrmDeal deal)
+    private static WC.Border BuildDealCard(Central.Engine.Models.CrmDeal deal)
     {
         var panel = new WC.StackPanel { Margin = new Thickness(8, 6, 8, 6) };
         panel.Children.Add(new WC.TextBlock

@@ -1,12 +1,12 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using DevExpress.Xpf.Core;
-using Central.Core.Auth;
-using Central.Core.Modules;
-using Central.Core.Shell;
-using Central.Data.Repositories;
-using Central.Data;
+using Central.Engine.Auth;
+using Central.Engine.Modules;
+using Central.Engine.Shell;
+using Central.Persistence.Repositories;
+using Central.Persistence;
 using Central.Desktop.Services;
 
 namespace Central.Desktop;
@@ -64,7 +64,7 @@ public partial class App : System.Windows.Application
                     try
                     {
                         // Show toast if notification service is available
-                        Central.Core.Services.NotificationService.Instance?.Error($"Layout error: {msg}");
+                        Central.Engine.Services.NotificationService.Instance?.Error($"Layout error: {msg}");
                     }
                     catch { }
                     return;
@@ -79,9 +79,9 @@ public partial class App : System.Windows.Application
                 }
 
                 // Log to audit trail
-                try { _ = Central.Core.Services.AuditService.Instance.LogAsync("UnhandledException", "System", details: ex.Message); } catch { }
+                try { _ = Central.Engine.Services.AuditService.Instance.LogAsync("UnhandledException", "System", details: ex.Message); } catch { }
                 // Show toast notification
-                try { Central.Core.Services.NotificationService.Instance?.Error($"Unhandled error: {ex.Message}"); } catch { }
+                try { Central.Engine.Services.NotificationService.Instance?.Error($"Unhandled error: {ex.Message}"); } catch { }
                 // For truly fatal errors, show MessageBox before crashing
                 try
                 {
@@ -100,14 +100,14 @@ public partial class App : System.Windows.Application
                 // Log to audit trail + show toast
                 try
                 {
-                    _ = Central.Core.Services.AuditService.Instance.LogAsync(
+                    _ = Central.Engine.Services.AuditService.Instance.LogAsync(
                         "UnhandledException", "System", details: $"Task exception: {ex.Message}");
                 }
                 catch { }
                 try
                 {
                     System.Windows.Application.Current?.Dispatcher?.InvokeAsync(() =>
-                        Central.Core.Services.NotificationService.Instance?.Error(
+                        Central.Engine.Services.NotificationService.Instance?.Error(
                             $"Background error: {ex.Message}"));
                 }
                 catch { }
@@ -136,13 +136,13 @@ public partial class App : System.Windows.Application
             var repo = new DbRepository(Dsn);
             AppLogger.Init(repo);
             Connectivity.RegisterDirectDb(new DirectDbDataService(repo));
-            Connectivity.SwitchMode(Central.Core.Data.DataServiceMode.DirectDb);
+            Connectivity.SwitchMode(Central.Engine.Data.DataServiceMode.DirectDb);
 
             // ── File storage ──
             var fileStoragePath = System.IO.Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Central", "file_storage");
-            Central.Core.Services.FileManagementService.Instance.Configure(fileStoragePath);
+            Central.Engine.Services.FileManagementService.Instance.Configure(fileStoragePath);
 
             // ── Module discovery ──
             splash.UpdateStatus("Discovering modules...", 20);
@@ -163,7 +163,7 @@ public partial class App : System.Windows.Application
                 var newRepo = new DbRepository(Dsn);
                 AppLogger.Init(newRepo);
                 Connectivity.RegisterDirectDb(new DirectDbDataService(newRepo));
-                Connectivity.SwitchMode(Central.Core.Data.DataServiceMode.DirectDb);
+                Connectivity.SwitchMode(Central.Engine.Data.DataServiceMode.DirectDb);
             }
 
             // ── Authentication (via AuthenticationService) ──
@@ -176,7 +176,7 @@ public partial class App : System.Windows.Application
             {
                 try
                 {
-                    var runner = new Central.Data.MigrationRunner(Dsn);
+                    var runner = new Central.Persistence.MigrationRunner(Dsn);
                     var migrationsDir = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "db", "migrations");
                     if (!System.IO.Directory.Exists(migrationsDir))
                         migrationsDir = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "migrations");
@@ -197,7 +197,7 @@ public partial class App : System.Windows.Application
             // ── Startup health check ──
             if (IsDbOnline)
             {
-                var healthCheck = await Central.Data.StartupHealthCheck.CheckAsync(Dsn);
+                var healthCheck = await Central.Persistence.StartupHealthCheck.CheckAsync(Dsn);
                 Log($"Health check: {healthCheck.Summary}");
                 if (!healthCheck.IsHealthy)
                     Log($"Missing tables: {string.Join(", ", healthCheck.MissingTables)}");
@@ -275,11 +275,11 @@ public partial class App : System.Windows.Application
                     Log("Icon overrides loading...");
                     try
                     {
-                        var iconRepo = new Central.Data.DbRepository(Dsn);
+                        var iconRepo = new Central.Persistence.DbRepository(Dsn);
                         var adminIcons = await iconRepo.GetAllIconDefaultsAsync();
-                        var iconUserId = Central.Core.Auth.AuthContext.Instance.CurrentUser?.Id ?? 0;
+                        var iconUserId = Central.Engine.Auth.AuthContext.Instance.CurrentUser?.Id ?? 0;
                         var userIcons = iconUserId > 0 ? await iconRepo.GetUserIconOverridesAsync(iconUserId) : new();
-                        Central.Core.Services.IconOverrideService.Instance.Load(adminIcons, userIcons);
+                        Central.Engine.Services.IconOverrideService.Instance.Load(adminIcons, userIcons);
                         Log($"Icon overrides loaded: {adminIcons.Count} admin, {userIcons.Count} user");
                     }
                     catch (Exception ex) { Log($"Icon overrides load: {ex.Message}"); }
@@ -324,7 +324,7 @@ public partial class App : System.Windows.Application
                 {
                     splash.UpdateStatus("Connecting to API server...", 80);
                     Connectivity!.ApiUrl = apiUrl;
-                    Connectivity.Mode = Central.Core.Data.DataServiceMode.Api;
+                    Connectivity.Mode = Central.Engine.Data.DataServiceMode.Api;
 
                     try
                     {
@@ -334,8 +334,8 @@ public partial class App : System.Windows.Application
                         var httpHandler = !string.IsNullOrEmpty(certFingerprint)
                             ? new Central.Protection.CertificatePinningHandler(certFingerprint)
                             : Central.Protection.CertificatePinningHandler.TrustAll();
-                        var correlationHandler = new Central.Api.Client.CorrelationIdHandler { InnerHandler = httpHandler };
-                        var apiClient = new Central.Api.Client.CentralApiClient(apiUrl, correlationHandler);
+                        var correlationHandler = new Central.ApiClient.CorrelationIdHandler { InnerHandler = httpHandler };
+                        var apiClient = new Central.ApiClient.CentralApiClient(apiUrl, correlationHandler);
                         var loginResult = await apiClient.LoginAsync(AuthContext.Instance.CurrentUser?.Username ?? Environment.UserName);
                         if (loginResult != null)
                         {
@@ -346,13 +346,13 @@ public partial class App : System.Windows.Application
                         else
                         {
                             Log("API login failed — falling back to DirectDb");
-                            Connectivity.Mode = Central.Core.Data.DataServiceMode.DirectDb;
+                            Connectivity.Mode = Central.Engine.Data.DataServiceMode.DirectDb;
                         }
                     }
                     catch (Exception ex)
                     {
                         Log($"API connect failed: {ex.Message} — falling back to DirectDb");
-                        Connectivity.Mode = Central.Core.Data.DataServiceMode.DirectDb;
+                        Connectivity.Mode = Central.Engine.Data.DataServiceMode.DirectDb;
                     }
                 }
             }
@@ -369,7 +369,7 @@ public partial class App : System.Windows.Application
             if (IsDbOnline)
             {
                 var auditRepo = new DbRepository(Dsn);
-                Central.Core.Services.AuditService.Instance.SetPersistFunc(
+                Central.Engine.Services.AuditService.Instance.SetPersistFunc(
                     entry => auditRepo.InsertAuditEntryAsync(entry));
                 Log("Audit service initialized");
             }
@@ -384,22 +384,22 @@ public partial class App : System.Windows.Application
                     if (notifUserId > 0)
                     {
                         var prefs = await notifRepo.GetNotificationPreferencesAsync(notifUserId);
-                        Central.Core.Services.NotificationService.Instance.LoadPreferences(prefs);
+                        Central.Engine.Services.NotificationService.Instance.LoadPreferences(prefs);
                     }
 
                     // Wire email sending when notification channel is "email" or "both"
-                    Central.Core.Services.NotificationService.Instance.EmailRequested += (eventType, title, body) =>
+                    Central.Engine.Services.NotificationService.Instance.EmailRequested += (eventType, title, body) =>
                     {
-                        if (!Central.Core.Services.EmailService.Instance.IsConfigured) return;
+                        if (!Central.Engine.Services.EmailService.Instance.IsConfigured) return;
                         var adminEmail = AuthContext.Instance.CurrentUser?.Email;
                         if (!string.IsNullOrEmpty(adminEmail))
-                            _ = Central.Core.Services.EmailService.Instance.SendAsync(adminEmail, $"[Central] {title}", body, isHtml: false);
+                            _ = Central.Engine.Services.EmailService.Instance.SendAsync(adminEmail, $"[Central] {title}", body, isHtml: false);
                     };
 
                     // Load email config from settings if available
                     if (Settings != null)
                     {
-                        Central.Core.Services.EmailService.Instance.Configure(new Dictionary<string, string>
+                        Central.Engine.Services.EmailService.Instance.Configure(new Dictionary<string, string>
                         {
                             ["smtp_host"] = Settings.Get<string>("email.smtp_host") ?? "",
                             ["smtp_port"] = Settings.Get<string>("email.smtp_port") ?? "587",
@@ -415,7 +415,7 @@ public partial class App : System.Windows.Application
             }
 
             // ── Register data validation rules ──
-            Central.Core.Services.DataValidationService.Instance.RegisterDefaults();
+            Central.Engine.Services.DataValidationService.Instance.RegisterDefaults();
 
             // ── Create MainWindow (hidden — splash stays until ribbon/data/layout loaded) ──
             Log("Pre-MainWindow construction");
@@ -445,38 +445,38 @@ public partial class App : System.Windows.Application
     private static void RegisterDefaultSettings(SettingsProvider settings)
     {
         // App-level settings
-        settings.Register("app.theme", "Application Theme", "Office2019Colorful", Core.Services.SettingType.String, "Appearance");
-        settings.Register("app.auto_scan", "Auto Ping Scan", false, Core.Services.SettingType.Boolean, "Connectivity");
-        settings.Register("app.scan_interval", "Scan Interval (minutes)", 10, Core.Services.SettingType.Integer, "Connectivity");
+        settings.Register("app.theme", "Application Theme", "Office2019Colorful", Central.Engine.Services.SettingType.String, "Appearance");
+        settings.Register("app.auto_scan", "Auto Ping Scan", false, Central.Engine.Services.SettingType.Boolean, "Connectivity");
+        settings.Register("app.scan_interval", "Scan Interval (minutes)", 10, Central.Engine.Services.SettingType.Integer, "Connectivity");
 
         // Switch module settings
-        settings.Register("switch.ping_timeout", "Ping Timeout (ms)", 5000, Core.Services.SettingType.Integer, "Switches");
-        settings.Register("switch.ssh_timeout", "SSH Timeout (s)", 30, Core.Services.SettingType.Integer, "Switches");
-        settings.Register("switch.ssh_default_port", "Default SSH Port", 22, Core.Services.SettingType.Integer, "Switches");
-        settings.Register("switch.ssh_default_user", "Default SSH Username", "admin", Core.Services.SettingType.String, "Switches");
+        settings.Register("switch.ping_timeout", "Ping Timeout (ms)", 5000, Central.Engine.Services.SettingType.Integer, "Switches");
+        settings.Register("switch.ssh_timeout", "SSH Timeout (s)", 30, Central.Engine.Services.SettingType.Integer, "Switches");
+        settings.Register("switch.ssh_default_port", "Default SSH Port", 22, Central.Engine.Services.SettingType.Integer, "Switches");
+        settings.Register("switch.ssh_default_user", "Default SSH Username", "admin", Central.Engine.Services.SettingType.String, "Switches");
 
         // Link module settings
-        settings.Register("link.auto_description", "Auto-generate Link Description", true, Core.Services.SettingType.Boolean, "Links");
-        settings.Register("link.default_subnet", "Default P2P Subnet", "/30", Core.Services.SettingType.String, "Links");
+        settings.Register("link.auto_description", "Auto-generate Link Description", true, Central.Engine.Services.SettingType.Boolean, "Links");
+        settings.Register("link.default_subnet", "Default P2P Subnet", "/30", Central.Engine.Services.SettingType.String, "Links");
 
         // Server/API settings
-        settings.Register("api.url", "API Server URL", "http://192.168.56.203:8000", Core.Services.SettingType.String, "Server");
-        settings.Register("api.auto_connect", "Auto-connect to API on startup", false, Core.Services.SettingType.Boolean, "Server");
-        settings.Register("api.use_server_ssh", "Use server-side SSH (credentials stay on server)", false, Core.Services.SettingType.Boolean, "Server");
+        settings.Register("api.url", "API Server URL", "http://192.168.56.203:8000", Central.Engine.Services.SettingType.String, "Server");
+        settings.Register("api.auto_connect", "Auto-connect to API on startup", false, Central.Engine.Services.SettingType.Boolean, "Server");
+        settings.Register("api.use_server_ssh", "Use server-side SSH (credentials stay on server)", false, Central.Engine.Services.SettingType.Boolean, "Server");
 
         // Email/SMTP settings
-        settings.Register("email.smtp_host", "SMTP Host", "", Core.Services.SettingType.String, "Email");
-        settings.Register("email.smtp_port", "SMTP Port", "587", Core.Services.SettingType.String, "Email");
-        settings.Register("email.smtp_username", "SMTP Username", "", Core.Services.SettingType.String, "Email");
-        settings.Register("email.smtp_password", "SMTP Password", "", Core.Services.SettingType.String, "Email");
-        settings.Register("email.smtp_from", "From Address", "", Core.Services.SettingType.String, "Email");
-        settings.Register("email.smtp_ssl", "Use SSL/TLS", true, Core.Services.SettingType.Boolean, "Email");
+        settings.Register("email.smtp_host", "SMTP Host", "", Central.Engine.Services.SettingType.String, "Email");
+        settings.Register("email.smtp_port", "SMTP Port", "587", Central.Engine.Services.SettingType.String, "Email");
+        settings.Register("email.smtp_username", "SMTP Username", "", Central.Engine.Services.SettingType.String, "Email");
+        settings.Register("email.smtp_password", "SMTP Password", "", Central.Engine.Services.SettingType.String, "Email");
+        settings.Register("email.smtp_from", "From Address", "", Central.Engine.Services.SettingType.String, "Email");
+        settings.Register("email.smtp_ssl", "Use SSL/TLS", true, Central.Engine.Services.SettingType.Boolean, "Email");
 
         // Security settings
-        settings.Register("security.password_min_length", "Password Min Length", 8, Core.Services.SettingType.Integer, "Security");
-        settings.Register("security.lockout_threshold", "Login Lockout Threshold", 5, Core.Services.SettingType.Integer, "Security");
-        settings.Register("security.lockout_duration", "Lockout Duration (minutes)", 30, Core.Services.SettingType.Integer, "Security");
-        settings.Register("security.password_expiry_days", "Password Expiry (days, 0=never)", 90, Core.Services.SettingType.Integer, "Security");
-        settings.Register("security.require_mfa", "Require MFA for all users", false, Core.Services.SettingType.Boolean, "Security");
+        settings.Register("security.password_min_length", "Password Min Length", 8, Central.Engine.Services.SettingType.Integer, "Security");
+        settings.Register("security.lockout_threshold", "Login Lockout Threshold", 5, Central.Engine.Services.SettingType.Integer, "Security");
+        settings.Register("security.lockout_duration", "Lockout Duration (minutes)", 30, Central.Engine.Services.SettingType.Integer, "Security");
+        settings.Register("security.password_expiry_days", "Password Expiry (days, 0=never)", 90, Central.Engine.Services.SettingType.Integer, "Security");
+        settings.Register("security.require_mfa", "Require MFA for all users", false, Central.Engine.Services.SettingType.Boolean, "Security");
     }
 }

@@ -1,8 +1,8 @@
-// MainWindow partial — Admin panel loading methods.
+﻿// MainWindow partial — Admin panel loading methods.
 // Extracted to reduce MainWindow.xaml.cs size.
 
-using Central.Core.Auth;
-using Central.Data;
+using Central.Engine.Auth;
+using Central.Persistence;
 
 namespace Central.Desktop;
 
@@ -25,7 +25,7 @@ public partial class MainWindow
                 var all = await VM.Repo.GetAllIconDefaultsAsync();
                 var userId = AuthContext.Instance.CurrentUser?.Id ?? 0;
                 var userOv = userId > 0 ? await VM.Repo.GetUserIconOverridesAsync(userId) : new();
-                Central.Core.Services.IconOverrideService.Instance.Load(all, userOv);
+                Central.Engine.Services.IconOverrideService.Instance.Load(all, userOv);
             };
 
             IconDefaultsGridPanel.DeleteDefault = async item =>
@@ -34,7 +34,7 @@ public partial class MainWindow
                 var all = await VM.Repo.GetAllIconDefaultsAsync();
                 var userId = AuthContext.Instance.CurrentUser?.Id ?? 0;
                 var userOv = userId > 0 ? await VM.Repo.GetUserIconOverridesAsync(userId) : new();
-                Central.Core.Services.IconOverrideService.Instance.Load(all, userOv);
+                Central.Engine.Services.IconOverrideService.Instance.Load(all, userOv);
             };
 
             IconDefaultsGridPanel.RefreshRequested = async () => await LoadIconDefaultsAsync();
@@ -58,7 +58,7 @@ public partial class MainWindow
                 await VM.Repo.UpsertUserIconOverrideAsync(userId, item);
                 var adminDefs = await VM.Repo.GetAllIconDefaultsAsync();
                 var userOv = await VM.Repo.GetUserIconOverridesAsync(userId);
-                Central.Core.Services.IconOverrideService.Instance.Load(adminDefs, userOv);
+                Central.Engine.Services.IconOverrideService.Instance.Load(adminDefs, userOv);
             };
 
             IconOverridesGridPanel.DeleteOverride = async item =>
@@ -66,14 +66,14 @@ public partial class MainWindow
                 await VM.Repo.DeleteUserIconOverrideAsync(userId, item.Context, item.ElementKey);
                 var adminDefs = await VM.Repo.GetAllIconDefaultsAsync();
                 var userOv = await VM.Repo.GetUserIconOverridesAsync(userId);
-                Central.Core.Services.IconOverrideService.Instance.Load(adminDefs, userOv);
+                Central.Engine.Services.IconOverrideService.Instance.Load(adminDefs, userOv);
             };
 
             IconOverridesGridPanel.ResetAllRequested = async () =>
             {
                 await VM.Repo.ResetAllUserIconOverridesAsync(userId);
                 var adminDefs = await VM.Repo.GetAllIconDefaultsAsync();
-                Central.Core.Services.IconOverrideService.Instance.Load(adminDefs, new());
+                Central.Engine.Services.IconOverrideService.Instance.Load(adminDefs, new());
             };
 
             IconOverridesGridPanel.RefreshRequested = async () => await LoadIconOverridesAsync();
@@ -98,8 +98,8 @@ public partial class MainWindow
                     AdBrowserGridPanel.Status.Text = "Configure Active Directory in Integrations panel first";
                     return;
                 }
-                var config = System.Text.Json.JsonSerializer.Deserialize<Central.Core.Models.AdConfig>(integration.ConfigJson)
-                    ?? new Central.Core.Models.AdConfig();
+                var config = System.Text.Json.JsonSerializer.Deserialize<Central.Engine.Models.AdConfig>(integration.ConfigJson)
+                    ?? new Central.Engine.Models.AdConfig();
                 if (!config.IsConfigured)
                 {
                     AdBrowserGridPanel.Status.Text = "AD domain not configured";
@@ -107,16 +107,16 @@ public partial class MainWindow
                 }
                 var existingGuids = (await VM.Repo.GetAllUsersAsync())
                     .Where(u => !string.IsNullOrEmpty(u.AdGuid)).Select(u => u.AdGuid).ToHashSet();
-                var adUsers = await Central.Core.Services.ActiveDirectoryService.BrowseUsersAsync(config, existingGuids);
+                var adUsers = await Central.Engine.Services.ActiveDirectoryService.BrowseUsersAsync(config, existingGuids);
                 AdBrowserGridPanel.Load(adUsers);
             };
             AdBrowserGridPanel.ImportSelected = async () =>
             {
                 var selected = AdBrowserGridPanel.Grid.SelectedItems?
-                    .OfType<Central.Core.Models.AdUser>()
+                    .OfType<Central.Engine.Models.AdUser>()
                     .Where(u => !u.IsImported).ToList();
                 if (selected == null || selected.Count == 0) return;
-                var imports = Central.Core.Services.ActiveDirectoryService.BuildImportUsers(selected);
+                var imports = Central.Engine.Services.ActiveDirectoryService.BuildImportUsers(selected);
                 await VM.Repo.BulkUpsertAdUsersAsync(imports);
                 AdBrowserGridPanel.Status.Text = $"Imported {imports.Count} users";
                 await VM.LoadPanelDataAsync("admin", force: true);
@@ -203,9 +203,9 @@ public partial class MainWindow
                     AuthContext.Instance.CurrentUser?.Username ?? "admin");
                 BackupGridPanel.Status.Text = $"Backup complete: {record.FileSizeDisplay}";
                 BackupGridPanel.Load(await backupSvc.GetBackupHistoryAsync());
-                Central.Core.Services.NotificationService.Instance?.NotifyEvent(
+                Central.Engine.Services.NotificationService.Instance?.NotifyEvent(
                     "backup_complete", "Backup Complete", $"{record.FileSizeDisplay} → {path}",
-                    Central.Core.Services.NotificationType.Success);
+                    Central.Engine.Services.NotificationType.Success);
             };
             BackupGridPanel.RefreshRequested = async () =>
                 BackupGridPanel.Load(await backupSvc.GetBackupHistoryAsync());
@@ -261,28 +261,28 @@ public partial class MainWindow
     {
         try
         {
-            var containers = await Central.Core.Services.PodmanService.GetContainersAsync();
+            var containers = await Central.Engine.Services.PodmanService.GetContainersAsync();
             PodmanGridPanel.Load(containers);
 
             PodmanGridPanel.RefreshContainers = async () =>
-                PodmanGridPanel.Load(await Central.Core.Services.PodmanService.GetContainersAsync());
+                PodmanGridPanel.Load(await Central.Engine.Services.PodmanService.GetContainersAsync());
             PodmanGridPanel.StartContainer = async name =>
             {
-                await Central.Core.Services.PodmanService.StartContainerAsync(name);
-                PodmanGridPanel.Load(await Central.Core.Services.PodmanService.GetContainersAsync());
+                await Central.Engine.Services.PodmanService.StartContainerAsync(name);
+                PodmanGridPanel.Load(await Central.Engine.Services.PodmanService.GetContainersAsync());
             };
             PodmanGridPanel.StopContainer = async name =>
             {
-                await Central.Core.Services.PodmanService.StopContainerAsync(name);
-                PodmanGridPanel.Load(await Central.Core.Services.PodmanService.GetContainersAsync());
+                await Central.Engine.Services.PodmanService.StopContainerAsync(name);
+                PodmanGridPanel.Load(await Central.Engine.Services.PodmanService.GetContainersAsync());
             };
             PodmanGridPanel.RestartContainer = async name =>
             {
-                await Central.Core.Services.PodmanService.RestartContainerAsync(name);
-                PodmanGridPanel.Load(await Central.Core.Services.PodmanService.GetContainersAsync());
+                await Central.Engine.Services.PodmanService.RestartContainerAsync(name);
+                PodmanGridPanel.Load(await Central.Engine.Services.PodmanService.GetContainersAsync());
             };
             PodmanGridPanel.GetLogs = async name =>
-                await Central.Core.Services.PodmanService.GetLogsAsync(name);
+                await Central.Engine.Services.PodmanService.GetLogsAsync(name);
             _podmanLoaded = true;
         }
         catch (Exception ex) { AppLogger.LogException("Podman", ex, "LoadPodmanAsync"); }
@@ -377,11 +377,11 @@ public partial class MainWindow
                     config.LastSyncStatus = "running";
 
                     var entityMaps = await VM.Repo.GetSyncEntityMapsAsync(config.Id);
-                    var allFieldMaps = new List<Central.Core.Integration.SyncFieldMap>();
+                    var allFieldMaps = new List<Central.Engine.Integration.SyncFieldMap>();
                     foreach (var em in entityMaps)
                         allFieldMaps.AddRange(await VM.Repo.GetSyncFieldMapsAsync(em.Id));
 
-                    var engine = Central.Core.Integration.SyncEngine.Instance;
+                    var engine = Central.Engine.Integration.SyncEngine.Instance;
                     engine.SetLogCallback(async (cid, status, entity, read, created, updated, failed, error) =>
                         await VM.Repo.InsertSyncLogAsync(cid, status, entity, read, created, updated, failed, error));
 
@@ -391,10 +391,10 @@ public partial class MainWindow
                     await VM.Repo.UpdateSyncStatusAsync(config.Id, result.Status, result.ErrorMessage);
                     config.LastSyncStatus = result.Status;
                     config.LastSyncAt = DateTime.UtcNow;
-                    Central.Core.Services.NotificationService.Instance?.NotifyEvent(
+                    Central.Engine.Services.NotificationService.Instance?.NotifyEvent(
                         "sync_complete", $"Sync Complete: {config.Name}",
                         $"{result.RecordsRead} read, {result.RecordsCreated} created, {result.RecordsFailed} failed",
-                        result.RecordsFailed > 0 ? Central.Core.Services.NotificationType.Warning : Central.Core.Services.NotificationType.Success);
+                        result.RecordsFailed > 0 ? Central.Engine.Services.NotificationType.Warning : Central.Engine.Services.NotificationType.Success);
 
                     SyncConfigGridPanel.Status.Text = $"Sync complete: {result.RecordsRead} read, {result.RecordsCreated} created, {result.RecordsFailed} failed ({result.DurationMs}ms)";
                 }
@@ -403,15 +403,15 @@ public partial class MainWindow
                     await VM.Repo.UpdateSyncStatusAsync(config.Id, "failed", ex.Message);
                     config.LastSyncStatus = "failed";
                     SyncConfigGridPanel.Status.Text = $"Sync failed: {ex.Message}";
-                    Central.Core.Services.NotificationService.Instance?.NotifyEvent(
+                    Central.Engine.Services.NotificationService.Instance?.NotifyEvent(
                         "sync_failure", $"Sync Failed: {config.Name}", ex.Message,
-                        Central.Core.Services.NotificationType.Error);
+                        Central.Engine.Services.NotificationType.Error);
                 }
             };
 
             SyncConfigGridPanel.TestConnection = async config =>
             {
-                var engine = Central.Core.Integration.SyncEngine.Instance;
+                var engine = Central.Engine.Integration.SyncEngine.Instance;
                 var agentTypes = engine.GetAgentTypes();
                 if (!agentTypes.Contains(config.AgentType))
                     return $"No agent registered for: {config.AgentType}. Available: {string.Join(", ", agentTypes)}";
@@ -419,19 +419,19 @@ public partial class MainWindow
             };
 
             // Register built-in agents
-            var syncEngine = Central.Core.Integration.SyncEngine.Instance;
+            var syncEngine = Central.Engine.Integration.SyncEngine.Instance;
             syncEngine.RegisterAgent(new Central.Module.ServiceDesk.Services.ManageEngineAgent());
-            syncEngine.RegisterAgent(new Central.Core.Integration.CsvImportAgent());
-            syncEngine.RegisterAgent(new Central.Core.Integration.RestApiAgent());
+            syncEngine.RegisterAgent(new Central.Engine.Integration.CsvImportAgent());
+            syncEngine.RegisterAgent(new Central.Engine.Integration.RestApiAgent());
 
             // Register built-in converters
-            syncEngine.RegisterConverter(new Central.Core.Integration.DirectConverter());
-            syncEngine.RegisterConverter(new Central.Core.Integration.ConstantConverter());
-            syncEngine.RegisterConverter(new Central.Core.Integration.CombineConverter());
-            syncEngine.RegisterConverter(new Central.Core.Integration.SplitConverter());
-            syncEngine.RegisterConverter(new Central.Core.Integration.LookupConverter());
-            syncEngine.RegisterConverter(new Central.Core.Integration.DateFormatConverter());
-            syncEngine.RegisterConverter(new Central.Core.Integration.ExpressionConverter());
+            syncEngine.RegisterConverter(new Central.Engine.Integration.DirectConverter());
+            syncEngine.RegisterConverter(new Central.Engine.Integration.ConstantConverter());
+            syncEngine.RegisterConverter(new Central.Engine.Integration.CombineConverter());
+            syncEngine.RegisterConverter(new Central.Engine.Integration.SplitConverter());
+            syncEngine.RegisterConverter(new Central.Engine.Integration.LookupConverter());
+            syncEngine.RegisterConverter(new Central.Engine.Integration.DateFormatConverter());
+            syncEngine.RegisterConverter(new Central.Engine.Integration.ExpressionConverter());
 
             _syncConfigLoaded = true;
         }
@@ -450,15 +450,15 @@ public partial class MainWindow
 
             ApiKeysGridPanel.GenerateKey = async (name, role) =>
             {
-                var userId = Central.Core.Auth.AuthContext.Instance.CurrentUser?.Id ?? 0;
+                var userId = Central.Engine.Auth.AuthContext.Instance.CurrentUser?.Id ?? 0;
                 var rawKey = await VM.Repo.CreateApiKeyAsync(name, role, userId);
-                _ = Central.Core.Services.AuditService.Instance.LogCreateAsync("ApiKey", "", name);
+                _ = Central.Engine.Services.AuditService.Instance.LogCreateAsync("ApiKey", "", name);
                 return rawKey;
             };
             ApiKeysGridPanel.RevokeKey = async id =>
             {
                 await VM.Repo.RevokeApiKeyAsync(id);
-                _ = Central.Core.Services.AuditService.Instance.LogAsync("Revoke", "ApiKey", id.ToString());
+                _ = Central.Engine.Services.AuditService.Instance.LogAsync("Revoke", "ApiKey", id.ToString());
             };
             ApiKeysGridPanel.DeleteKey = async id => await VM.Repo.DeleteApiKeyAsync(id);
             ApiKeysGridPanel.RefreshRequested = async () =>
@@ -497,12 +497,12 @@ public partial class MainWindow
             SessionsGridPanel.ForceLogout = async id =>
             {
                 await VM.Repo.ForceEndSessionAsync(id);
-                _ = Central.Core.Services.AuditService.Instance.LogAsync("ForceLogout", "Session", id.ToString());
+                _ = Central.Engine.Services.AuditService.Instance.LogAsync("ForceLogout", "Session", id.ToString());
             };
             SessionsGridPanel.ForceLogoutAll = async userId =>
             {
                 await VM.Repo.ForceEndAllSessionsAsync(userId);
-                _ = Central.Core.Services.AuditService.Instance.LogAsync("ForceLogoutAll", "User", userId.ToString());
+                _ = Central.Engine.Services.AuditService.Instance.LogAsync("ForceLogoutAll", "User", userId.ToString());
             };
             SessionsGridPanel.RefreshRequested = async () =>
                 SessionsGridPanel.Load(await VM.Repo.GetActiveSessionsAsync());
@@ -518,7 +518,7 @@ public partial class MainWindow
     {
         try
         {
-            var userId = Central.Core.Auth.AuthContext.Instance.CurrentUser?.Id ?? 0;
+            var userId = Central.Engine.Auth.AuthContext.Instance.CurrentUser?.Id ?? 0;
             if (userId == 0) return;
 
             var prefs = await VM.Repo.GetNotificationPreferencesAsync(userId);
@@ -529,7 +529,7 @@ public partial class MainWindow
                 await VM.Repo.UpsertNotificationPreferenceAsync(userId, pref.EventType, pref.Channel, pref.IsEnabled);
                 // Refresh cached prefs in NotificationService
                 var allPrefs = await VM.Repo.GetNotificationPreferencesAsync(userId);
-                Central.Core.Services.NotificationService.Instance.LoadPreferences(allPrefs);
+                Central.Engine.Services.NotificationService.Instance.LoadPreferences(allPrefs);
             };
             NotificationPrefsGridPanel.RefreshRequested = async () =>
             {
@@ -537,7 +537,7 @@ public partial class MainWindow
             };
 
             // Also load prefs into NotificationService cache
-            Central.Core.Services.NotificationService.Instance.LoadPreferences(prefs);
+            Central.Engine.Services.NotificationService.Instance.LoadPreferences(prefs);
 
             _notifPrefsLoaded = true;
         }
