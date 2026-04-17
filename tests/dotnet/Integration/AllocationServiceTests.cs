@@ -91,7 +91,7 @@ public class AllocationServiceTests
     {
         if (Skip || !await CanReachDb()) return;
 
-        var (poolId, blockId) = await SetupAsnPoolAndBlockAsync("asn-alloc-test", 65100, 65110);
+        var (poolId, blockId) = await SetupAsnPoolAndBlockAsync("asn-alloc-test", 64680, 64690);
         try
         {
             var svc = new AllocationService(Dsn);
@@ -99,8 +99,8 @@ public class AllocationServiceTests
             var first = await svc.AllocateAsnAsync(blockId, OrgId, "Device", Guid.NewGuid());
             var second = await svc.AllocateAsnAsync(blockId, OrgId, "Device", Guid.NewGuid());
 
-            Assert.Equal(65100L, first.Asn);
-            Assert.Equal(65101L, second.Asn);
+            Assert.Equal(64680L, first.Asn);
+            Assert.Equal(64681L, second.Asn);
         }
         finally { await CleanupAsnAsync(poolId); }
     }
@@ -110,19 +110,22 @@ public class AllocationServiceTests
     {
         if (Skip || !await CanReachDb()) return;
 
-        var (poolId, blockId) = await SetupAsnPoolAndBlockAsync("asn-shelf-test", 65120, 65130);
+        // Use a test window well below the Immunocore imported ASNs
+        // (65112 / 65121 / 65132 / 65141 / 65162) so our shelf check
+        // isn't fighting the tenant-wide UNIQUE(org, asn) index.
+        var (poolId, blockId) = await SetupAsnPoolAndBlockAsync("asn-shelf-test", 64700, 64710);
         try
         {
             var svc = new AllocationService(Dsn);
 
-            // Park 65120 (the next-free value) on the shelf for an hour.
-            await svc.RetireAsync(OrgId, ShelfResourceType.Asn, "65120",
+            // Park 64700 (the next-free value) on the shelf for an hour.
+            await svc.RetireAsync(OrgId, ShelfResourceType.Asn, "64700",
                 TimeSpan.FromHours(1), poolId: poolId, blockId: blockId,
                 reason: "unit test");
 
             var result = await svc.AllocateAsnAsync(blockId, OrgId, "Device", Guid.NewGuid());
 
-            Assert.Equal(65121L, result.Asn);
+            Assert.Equal(64701L, result.Asn);
         }
         finally { await CleanupAsnAsync(poolId); }
     }
@@ -132,7 +135,7 @@ public class AllocationServiceTests
     {
         if (Skip || !await CanReachDb()) return;
 
-        var (poolId, blockId) = await SetupAsnPoolAndBlockAsync("asn-exhaust-test", 65140, 65141);
+        var (poolId, blockId) = await SetupAsnPoolAndBlockAsync("asn-exhaust-test", 64720, 64721);
         try
         {
             var svc = new AllocationService(Dsn);
