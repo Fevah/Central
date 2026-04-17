@@ -308,6 +308,9 @@ public class MainViewModel : INotifyPropertyChanged
     private bool _isHierarchyPanelOpen;
     public bool IsHierarchyPanelOpen { get => _isHierarchyPanelOpen; set { _isHierarchyPanelOpen = value; OnPropertyChanged(); } }
 
+    private bool _isPoolsPanelOpen;
+    public bool IsPoolsPanelOpen { get => _isPoolsPanelOpen; set { _isPoolsPanelOpen = value; OnPropertyChanged(); } }
+
     private bool _isAsnPanelOpen, _isP2PPanelOpen, _isB2BPanelOpen, _isFWPanelOpen;
     private bool _isVlansPanelOpen, _isMlagPanelOpen, _isMstpPanelOpen;
     private bool _isServerAsPanelOpen, _isIpRangesPanelOpen, _isServersPanelOpen;

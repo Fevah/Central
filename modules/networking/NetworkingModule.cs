@@ -92,6 +92,7 @@ public class NetworkingModule : IModule, IModuleRibbon, IModulePanels
             page.AddGroup("Panels", group =>
             {
                 group.AddCheckButton("Hierarchy",   panelId: "HierarchyPanel");
+                group.AddCheckButton("Pools",       panelId: "PoolsPanel");
                 group.AddCheckButton("IPAM",        panelId: "DevicesPanel");
                 group.AddCheckButton("Device Details", panelId: "DeviceDetailPanel");
                 group.AddCheckButton("Switches",    panelId: "SwitchesPanel");

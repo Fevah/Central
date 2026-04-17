@@ -17,6 +17,7 @@
     xmlns:rtViews="clr-namespace:Central.Module.Networking.Routing;assembly=Central.Module.Networking"
     xmlns:vlViews="clr-namespace:Central.Module.Networking.Vlans;assembly=Central.Module.Networking"
     xmlns:hierViews="clr-namespace:Central.Module.Networking.Hierarchy;assembly=Central.Module.Networking"
+    xmlns:poolViews="clr-namespace:Central.Module.Networking.Pools;assembly=Central.Module.Networking"
     xmlns:admViews="clr-namespace:Central.Module.Global.Admin;assembly=Central.Module.Global"
     xmlns:sdViews="clr-namespace:Central.Module.ServiceDesk.Views;assembly=Central.Module.ServiceDesk"
     xmlns:taskViews="clr-namespace:Central.Module.Projects;assembly=Central.Module.Projects"
@@ -579,6 +580,10 @@
                                            Glyph="{dx:DXImage Image=TreeView_16x16}"
                                            RibbonStyle="SmallWithText"
                                            IsChecked="{Binding IsHierarchyPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Pools"
+                                           Glyph="{dx:DXImage Image=BOBinLocation_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsPoolsPanelOpen, Mode=TwoWay}" />
                         <dxb:BarCheckItem  Content="Devices"
                                            Glyph="{dx:DXImage Image=Grid_16x16}"
                                            RibbonStyle="SmallWithText"
@@ -1183,6 +1188,13 @@
                                         Caption="Hierarchy"
                                         AllowClose="True">
                         <hierViews:HierarchyTreePanel x:Name="HierarchyTreePanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- Pools Panel (ASN / IP / VLAN / MLAG / MSTP + utilisation) -->
+                    <dxdo:DocumentPanel x:Name="PoolsPanel"
+                                        Caption="Pools"
+                                        AllowClose="True">
+                        <poolViews:PoolsTreePanel x:Name="PoolsTreePanel" />
                     </dxdo:DocumentPanel>
 
                     <!-- Devices Panel (extracted to Module.Devices) -->
