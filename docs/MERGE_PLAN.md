@@ -1,4 +1,4 @@
-# Central + Secure Platform Merge Plan
+﻿# Central + Secure Platform Merge Plan
 
 Phased approach to merge the **Central** WPF desktop engine (C#/.NET 10/DX 25.2/PostgreSQL)
 and the **Secure** Rust microservices backend (Axum/PostgreSQL/Redis/K8s) into a single
@@ -101,7 +101,7 @@ The WPF desktop and API server authenticate against the Rust auth-service.
 ### 1.2 Central.Api JWT Migration
 
 - Replace Central.Api's homegrown JWT with validation against auth-service RS256 keys
-- Central.Api.Client sends login to `http://localhost:8081/api/v1/auth/login`
+- Central.ApiClient sends login to `http://localhost:8081/api/v1/auth/login`
 - JWT claims include `tenant_id`, `user_id`, `roles[]`, `permissions[]`
 - Keep backward compat: if auth-service unreachable, fall back to local auth
 
@@ -117,7 +117,7 @@ The WPF desktop and API server authenticate against the Rust auth-service.
 
 - Add `tenant_id UUID` column to ALL Central tables (67 migrations + alter)
 - Create RLS policies mirroring Secure's pattern (`SET LOCAL app.tenant_id`)
-- Central.Data `DbRepository` sets tenant context before every query
+- Central.Persistence `DbRepository` sets tenant context before every query
 - PgBouncer (transaction mode) between Central.Api and PostgreSQL
 - Default tenant for existing data (single-tenant backward compat)
 

@@ -1,4 +1,4 @@
-# Central Platform Architecture
+﻿# Central Platform Architecture
 
 Target: Multi-project modular WPF platform with DevExpress 25.2, Autofac DI,
 fine-grained RBAC, and pluggable modules. Based on TotalLink patterns, modernised
@@ -179,8 +179,8 @@ Central.sln
 │       └── 025_audit_log_v2.sql
 │
 └── tests/
-    ├── Central.Core.Tests/
-    ├── Central.Data.Tests/
+    ├── Central.Engine.Tests/
+    ├── Central.Persistence.Tests/
     └── Central.Module.Links.Tests/
 ```
 
@@ -1268,7 +1268,7 @@ CREATE TABLE task_attachments (
 
 ```
 Central.Module.Tasks/
-├── TasksModule.cs                    # : Autofac.Module, IModule, IModuleRibbon, IModulePanels
+├── ProjectsModule.cs                    # : Autofac.Module, IModule, IModuleRibbon, IModulePanels
 ├── Models/
 │   ├── TaskItem.cs                   # INotifyPropertyChanged, parent/children
 │   └── TaskComment.cs
@@ -1319,7 +1319,7 @@ public void RegisterRibbon(IRibbonBuilder ribbon)
 | 8.2 | TaskRepository + API endpoints | 1 day |
 | 8.3 | TaskTreePanel (TreeListControl with parent/child) | 2 days |
 | 8.4 | TaskDetailPanel (description + comments + attachments) | 1 day |
-| 8.5 | TasksModule registration (ribbon + panels) | 0.5 day |
+| 8.5 | ProjectsModule registration (ribbon + panels) | 0.5 day |
 | 8.6 | TaskBoardPanel (Kanban drag-drop) | 2 days |
 | 8.7 | Task-to-switch linking (attach config version to task) | 1 day |
 | 8.8 | TaskGanttPanel (optional DX GanttControl) | 2 days |
