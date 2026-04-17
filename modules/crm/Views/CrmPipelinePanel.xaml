@@ -1,0 +1,22 @@
+<UserControl x:Class="Central.Module.CRM.Views.CrmPipelinePanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <DockPanel Margin="4">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4,4,4,8">
+            <TextBlock Text="Sales Pipeline" FontSize="14" FontWeight="SemiBold"
+                       Foreground="#C0C0C0" VerticalAlignment="Center" Margin="0,0,12,0"/>
+            <TextBlock x:Name="TotalsText" Foreground="#808080" VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+            <ItemsControl x:Name="PipelineColumns">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

@@ -1,0 +1,51 @@
+<UserControl x:Class="Central.Module.Dashboard.Views.NotificationCenterPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             Background="Transparent">
+
+    <DockPanel Margin="4">
+        <!-- Toolbar -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4,4,4,8">
+            <TextBlock Text="Notification Center" FontSize="14" FontWeight="SemiBold"
+                       Foreground="#C0C0C0" VerticalAlignment="Center" Margin="0,0,12,0"/>
+
+            <ComboBox x:Name="FilterType" Width="100" Margin="0,0,8,0" SelectedIndex="0">
+                <ComboBoxItem Content="All"/>
+                <ComboBoxItem Content="Info"/>
+                <ComboBoxItem Content="Success"/>
+                <ComboBoxItem Content="Warning"/>
+                <ComboBoxItem Content="Error"/>
+            </ComboBox>
+
+            <Button x:Name="BtnClear" Content="Clear All" Padding="8,2"
+                    Background="#2D2D30" Foreground="#C0C0C0" BorderThickness="1" BorderBrush="#555"/>
+        </StackPanel>
+
+        <!-- Notification Grid -->
+        <dxg:GridControl x:Name="NotifGrid" AutoGenerateColumns="None"
+                         ShowBorder="False" ShowLoadingPanel="False">
+            <dxg:GridControl.Columns>
+                <dxg:GridColumn FieldName="Icon" Header="" Width="28" AllowEditing="Never"
+                                FixedWidth="True" AllowSorting="False"/>
+                <dxg:GridColumn FieldName="Timestamp" Header="Time" Width="70"
+                                AllowEditing="Never" SortOrder="Descending">
+                    <dxg:GridColumn.EditSettings>
+                        <dxe:TextEditSettings DisplayFormat="HH:mm:ss"/>
+                    </dxg:GridColumn.EditSettings>
+                </dxg:GridColumn>
+                <dxg:GridColumn FieldName="TypeName" Header="Type" Width="70" AllowEditing="Never"/>
+                <dxg:GridColumn FieldName="Title" Header="Title" Width="200" AllowEditing="Never"/>
+                <dxg:GridColumn FieldName="Message" Header="Message" AllowEditing="Never"/>
+                <dxg:GridColumn FieldName="Source" Header="Source" Width="100" AllowEditing="Never"/>
+            </dxg:GridControl.Columns>
+            <dxg:GridControl.View>
+                <dxg:TableView ShowGroupPanel="False" AllowEditing="False"
+                               NavigationStyle="Row" AutoWidth="True"
+                               RowStyle="{x:Null}"
+                               ShowFilterPanelMode="Default"/>
+            </dxg:GridControl.View>
+        </dxg:GridControl>
+    </DockPanel>
+</UserControl>

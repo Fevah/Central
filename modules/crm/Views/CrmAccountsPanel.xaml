@@ -1,0 +1,38 @@
+<UserControl x:Class="Central.Module.CRM.Views.CrmAccountsPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             Background="Transparent">
+    <DockPanel Margin="4">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4">
+            <TextBlock Text="CRM Accounts" FontSize="14" FontWeight="SemiBold"
+                       Foreground="#C0C0C0" VerticalAlignment="Center" Margin="0,0,12,0"/>
+            <TextBlock x:Name="CountText" Foreground="#808080" VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <dxg:GridControl x:Name="AccountsGrid" AutoGenerateColumns="None"
+                         ShowBorder="False" ShowLoadingPanel="False">
+            <dxg:GridControl.Columns>
+                <dxg:GridColumn FieldName="Id" Header="ID" Width="60" AllowEditing="Never"/>
+                <dxg:GridColumn FieldName="Name" Header="Account" Width="240"/>
+                <dxg:GridColumn FieldName="AccountType" Header="Type" Width="90"/>
+                <dxg:GridColumn FieldName="Industry" Header="Industry" Width="140"/>
+                <dxg:GridColumn FieldName="Rating" Header="Rating" Width="80"/>
+                <dxg:GridColumn FieldName="Stage" Header="Stage" Width="120"/>
+                <dxg:GridColumn FieldName="AnnualRevenue" Header="Revenue" Width="120">
+                    <dxg:GridColumn.EditSettings>
+                        <dxe:TextEditSettings DisplayFormat="N0"/>
+                    </dxg:GridColumn.EditSettings>
+                </dxg:GridColumn>
+                <dxg:GridColumn FieldName="EmployeeCount" Header="Employees" Width="90"/>
+                <dxg:GridColumn FieldName="AccountOwnerName" Header="Owner" Width="140"/>
+                <dxg:GridColumn FieldName="LastActivityAt" Header="Last Activity" Width="120"/>
+            </dxg:GridControl.Columns>
+            <dxg:GridControl.View>
+                <dxg:TableView ShowGroupPanel="True" AllowEditing="False"
+                               NavigationStyle="Row" AutoWidth="False"/>
+            </dxg:GridControl.View>
+        </dxg:GridControl>
+    </DockPanel>
+</UserControl>

@@ -1,0 +1,76 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>Central</AssemblyName>
+    <Product>Central</Product>
+    <RootNamespace>Central.Desktop</RootNamespace>
+
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <ApplicationIcon>central.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="central.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- DevExpress WPF -->
+    <PackageReference Include="DevExpress.Wpf.Grid" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Ribbon" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Docking" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Core" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Themes.Office2019Colorful" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Themes.Office2019DarkGray" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Themes.Office2019Black" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Themes.Office2019White" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Themes.Win11Dark" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Themes.Win11Light" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Themes.VS2019Dark" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Themes.VS2019Light" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Themes.VS2019Blue" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Diagram" Version="25.2.6" />
+
+    <!-- PostgreSQL + SSH -->
+    <PackageReference Include="Npgsql" Version="10.0.2" />
+    <PackageReference Include="SSH.NET" Version="2025.1.0" />
+
+    <!-- DI Container -->
+    <PackageReference Include="Autofac" Version="8.*" />
+    <PackageReference Include="Svg" Version="3.4.7" />
+
+    <!-- Authentication -->
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\libs\core\Central.Core.csproj" />
+    <ProjectReference Include="..\..\libs\data\Central.Data.csproj" />
+    <ProjectReference Include="..\..\libs\api-client\Central.Api.Client.csproj" />
+
+    <!-- Module assemblies — referenced so they're loaded for ModuleLoader discovery -->
+    <ProjectReference Include="..\..\modules\dashboard\Central.Module.Dashboard.csproj" />
+    <ProjectReference Include="..\..\modules\crm\Central.Module.CRM.csproj" />
+    <ProjectReference Include="..\..\modules\devices\Central.Module.Devices.csproj" />
+    <ProjectReference Include="..\..\modules\switches\Central.Module.Switches.csproj" />
+    <ProjectReference Include="..\..\modules\links\Central.Module.Links.csproj" />
+    <ProjectReference Include="..\..\modules\routing\Central.Module.Routing.csproj" />
+    <ProjectReference Include="..\..\modules\vlans\Central.Module.VLANs.csproj" />
+    <ProjectReference Include="..\..\modules\admin\Central.Module.Admin.csproj" />
+    <ProjectReference Include="..\..\modules\tasks\Central.Module.Tasks.csproj" />
+    <ProjectReference Include="..\..\modules\service-desk\Central.Module.ServiceDesk.csproj" />
+
+    <ProjectReference Include="..\..\modules\global-admin\Central.Module.GlobalAdmin.csproj" />
+
+    <!-- Enterprise V2 -->
+    <ProjectReference Include="..\..\libs\protection\Central.Protection.csproj" />
+    <ProjectReference Include="..\..\libs\collaboration\Central.Collaboration.csproj" />
+    <ProjectReference Include="..\..\libs\observability\Central.Observability.csproj" />
+  </ItemGroup>
+
+</Project>

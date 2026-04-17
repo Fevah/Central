@@ -1,0 +1,47 @@
+<UserControl x:Class="Central.Module.CRM.Views.CrmDealsPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             Background="Transparent">
+    <DockPanel Margin="4">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="4">
+            <TextBlock Text="Deals" FontSize="14" FontWeight="SemiBold"
+                       Foreground="#C0C0C0" VerticalAlignment="Center" Margin="0,0,12,0"/>
+            <TextBlock x:Name="SummaryText" Foreground="#808080" VerticalAlignment="Center"/>
+        </StackPanel>
+
+        <dxg:GridControl x:Name="DealsGrid" AutoGenerateColumns="None"
+                         ShowBorder="False" ShowLoadingPanel="False">
+            <dxg:GridControl.Columns>
+                <dxg:GridColumn FieldName="Id" Header="ID" Width="60" AllowEditing="Never"/>
+                <dxg:GridColumn FieldName="Title" Header="Deal" Width="280"/>
+                <dxg:GridColumn FieldName="AccountName" Header="Account" Width="200"/>
+                <dxg:GridColumn FieldName="Stage" Header="Stage" Width="130"/>
+                <dxg:GridColumn FieldName="Value" Header="Value" Width="120">
+                    <dxg:GridColumn.EditSettings>
+                        <dxe:TextEditSettings DisplayFormat="N0"/>
+                    </dxg:GridColumn.EditSettings>
+                </dxg:GridColumn>
+                <dxg:GridColumn FieldName="Currency" Header="Cur" Width="60"/>
+                <dxg:GridColumn FieldName="Probability" Header="Prob %" Width="70"/>
+                <dxg:GridColumn FieldName="WeightedValue" Header="Weighted" Width="120" AllowEditing="Never">
+                    <dxg:GridColumn.EditSettings>
+                        <dxe:TextEditSettings DisplayFormat="N0"/>
+                    </dxg:GridColumn.EditSettings>
+                </dxg:GridColumn>
+                <dxg:GridColumn FieldName="ExpectedClose" Header="Expected Close" Width="120">
+                    <dxg:GridColumn.EditSettings>
+                        <dxe:TextEditSettings DisplayFormat="dd/MM/yyyy"/>
+                    </dxg:GridColumn.EditSettings>
+                </dxg:GridColumn>
+                <dxg:GridColumn FieldName="OwnerName" Header="Owner" Width="140"/>
+                <dxg:GridColumn FieldName="NextStep" Header="Next Step" Width="200"/>
+            </dxg:GridControl.Columns>
+            <dxg:GridControl.View>
+                <dxg:TableView ShowGroupPanel="True" AllowEditing="False"
+                               NavigationStyle="Row" AutoWidth="False"/>
+            </dxg:GridControl.View>
+        </dxg:GridControl>
+    </DockPanel>
+</UserControl>

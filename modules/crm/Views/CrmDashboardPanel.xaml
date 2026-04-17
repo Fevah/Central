@@ -1,0 +1,28 @@
+<UserControl x:Class="Central.Module.CRM.Views.CrmDashboardPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="8">
+            <TextBlock Text="CRM Dashboard" FontSize="16" FontWeight="SemiBold"
+                       Foreground="#C0C0C0" Margin="8,4,0,12"/>
+
+            <!-- Sales KPI cards -->
+            <TextBlock Text="Sales Pipeline" FontSize="13" FontWeight="SemiBold"
+                       Foreground="#909090" Margin="8,4,0,4"/>
+            <WrapPanel x:Name="SalesKpis" Margin="4,0,4,8"/>
+
+            <!-- Customer KPI cards -->
+            <TextBlock Text="Customers" FontSize="13" FontWeight="SemiBold"
+                       Foreground="#909090" Margin="8,8,0,4"/>
+            <WrapPanel x:Name="CustomerKpis" Margin="4,0,4,8"/>
+
+            <!-- Pipeline by stage -->
+            <TextBlock Text="Pipeline by Stage" FontSize="13" FontWeight="SemiBold"
+                       Foreground="#909090" Margin="8,8,0,4"/>
+            <Border BorderBrush="#333" BorderThickness="1" CornerRadius="4" Margin="4,0,4,8" Padding="8">
+                <StackPanel x:Name="PipelineStages"/>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
