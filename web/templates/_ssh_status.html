@@ -1,9 +1,0 @@
-{% if result.success %}
-<span class="badge-status ok">
-  ✓ SSH OK · {{ user }}@{{ ip }}
-</span>
-{% else %}
-<span class="badge-status fail">
-  ✗ SSH Failed · {{ result.error or 'Unknown error' }}
-</span>
-{% endif %}
