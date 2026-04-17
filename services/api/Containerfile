@@ -3,33 +3,39 @@ WORKDIR /src
 
 ENV EnableWindowsTargeting=true
 
-# Copy all project files for restore
-COPY Central.Core/Central.Core.csproj Central.Core/
-COPY Central.Data/Central.Data.csproj Central.Data/
-COPY Central.Api.Client/Central.Api.Client.csproj Central.Api.Client/
-COPY Central.Api/Central.Api.csproj Central.Api/
-COPY Central.Tenancy/Central.Tenancy.csproj Central.Tenancy/
-COPY Central.Licensing/Central.Licensing.csproj Central.Licensing/
-COPY Central.Security/Central.Security.csproj Central.Security/
-COPY Central.Collaboration/Central.Collaboration.csproj Central.Collaboration/
-COPY Central.Observability/Central.Observability.csproj Central.Observability/
-COPY Central.Workflows/Central.Workflows.csproj Central.Workflows/
-COPY NuGet.config .
-RUN mkdir -p packages-offline && \
-    dotnet restore Central.Api/Central.Api.csproj --force --packages /src/.nuget
+# Build context is the repo root (docker build . -f services/api/Containerfile).
+# Paths below reflect the post-restructure tree: apps/ libs/ modules/ services/ tests/.
 
-# Copy all source
-COPY Central.Core/ Central.Core/
-COPY Central.Data/ Central.Data/
-COPY Central.Api.Client/ Central.Api.Client/
-COPY Central.Api/ Central.Api/
-COPY Central.Tenancy/ Central.Tenancy/
-COPY Central.Licensing/ Central.Licensing/
-COPY Central.Security/ Central.Security/
-COPY Central.Collaboration/ Central.Collaboration/
-COPY Central.Observability/ Central.Observability/
-COPY Central.Workflows/ Central.Workflows/
-RUN dotnet publish Central.Api/Central.Api.csproj -c Release -o /app \
+# Copy NuGet config + the sln so paths resolve
+COPY NuGet.config Central.sln ./
+
+# Csproj files only, for a faster `dotnet restore` layer cache
+COPY libs/engine/Central.Engine.csproj                 libs/engine/
+COPY libs/persistence/Central.Persistence.csproj       libs/persistence/
+COPY libs/api-client/Central.ApiClient.csproj          libs/api-client/
+COPY libs/tenancy/Central.Tenancy.csproj               libs/tenancy/
+COPY libs/licensing/Central.Licensing.csproj           libs/licensing/
+COPY libs/security/Central.Security.csproj             libs/security/
+COPY libs/collaboration/Central.Collaboration.csproj   libs/collaboration/
+COPY libs/observability/Central.Observability.csproj   libs/observability/
+COPY libs/workflows/Central.Workflows.csproj           libs/workflows/
+COPY services/api/Central.Api.csproj                   services/api/
+
+RUN dotnet restore services/api/Central.Api.csproj --packages /src/.nuget
+
+# Copy the source trees referenced by Central.Api
+COPY libs/engine/           libs/engine/
+COPY libs/persistence/      libs/persistence/
+COPY libs/api-client/       libs/api-client/
+COPY libs/tenancy/          libs/tenancy/
+COPY libs/licensing/        libs/licensing/
+COPY libs/security/         libs/security/
+COPY libs/collaboration/    libs/collaboration/
+COPY libs/observability/    libs/observability/
+COPY libs/workflows/        libs/workflows/
+COPY services/api/          services/api/
+
+RUN dotnet publish services/api/Central.Api.csproj -c Release -o /app \
     -p:EnableWindowsTargeting=true \
     -p:RestorePackagesPath=/src/.nuget
 

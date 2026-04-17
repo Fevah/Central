@@ -1,4 +1,4 @@
-name: Central Platform CI/CD
+﻿name: Central Platform CI/CD
 
 on:
   push:
@@ -23,15 +23,15 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
-      - run: dotnet restore desktop/Central.sln
-      - run: dotnet build desktop/Central.sln -c Release -p:Platform=x64 --no-restore
-      - run: dotnet test desktop/Central.Tests/ -c Release -p:Platform=x64 --no-build -v normal
+      - run: dotnet restore Central.sln
+      - run: dotnet build Central.sln -c Release -p:Platform=x64 --no-restore
+      - run: dotnet test tests/dotnet/ -c Release -p:Platform=x64 --no-build -v normal
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: desktop/Central.Tests/TestResults/
+          path: tests/dotnet/TestResults/
 
   # ── Angular Web Client ──────────────────────────────────────────────
   angular-build:
@@ -43,12 +43,12 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: web-client/package-lock.json
-      - run: cd web-client && npm ci && npx ng build --configuration production
+          cache-dependency-path: apps/web/package-lock.json
+      - run: cd apps/web && npm ci && npx ng build --configuration production
       - uses: actions/upload-artifact@v4
         with:
           name: angular-dist
-          path: web-client/dist/
+          path: apps/web/dist/
 
   # ── Rust Services ───────────────────────────────────────────────────
   rust-check:
@@ -101,6 +101,56 @@ jobs:
             cd "$GITHUB_WORKSPACE"
           done
 
+  # ── Security Scanning ───────────────────────────────────────────────
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: [dotnet-build-test]
+    steps:
+      - uses: actions/checkout@v4
+
+      # .NET dependency audit (NuGet vulnerabilities)
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: NuGet vulnerability audit
+        run: |
+          dotnet restore Central.sln
+          dotnet list Central.sln package --vulnerable --include-transitive 2>&1 | tee nuget-audit.txt
+          # Fail if critical/high vulnerabilities found
+          if grep -qE "(Critical|High)" nuget-audit.txt; then
+            echo "::error::Critical or high severity NuGet vulnerabilities found"
+            exit 1
+          fi
+
+      # npm audit (Angular web client)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: npm audit
+        run: |
+          cd apps/web
+          npm ci
+          npm audit --audit-level=high || true
+
+      # Trivy container image scan (runs after build)
+      - name: Build API image for scanning
+        run: docker build -f services/api/Containerfile -t central-api:scan .
+      - name: Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@0.32.0
+        with:
+          image-ref: 'central-api:scan'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+
+      # Secret detection (gitleaks)
+      - name: Gitleaks secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   # ── Container Images ────────────────────────────────────────────────
   container-images:
     name: Build & Push Containers
@@ -122,10 +172,10 @@ jobs:
       # Central API (.NET)
       - name: Build Central.Api
         run: |
-          docker build -f desktop/Central.Api/Containerfile \
+          docker build -f services/api/Containerfile \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/central-api:${{ github.sha }} \
             -t ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/central-api:latest \
-            desktop/
+            .
       - name: Push Central.Api
         run: |
           docker push ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/central-api:${{ github.sha }}

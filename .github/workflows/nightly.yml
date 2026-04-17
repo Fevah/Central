@@ -1,4 +1,4 @@
-name: Nightly Full Build
+﻿name: Nightly Full Build
 
 on:
   schedule:
@@ -19,20 +19,20 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Restore
-        run: dotnet restore desktop/Central.sln
+        run: dotnet restore Central.sln
 
       - name: Build Release
-        run: dotnet build desktop/Central.sln -c Release -p:Platform=x64 --no-restore
+        run: dotnet build Central.sln -c Release -p:Platform=x64 --no-restore
 
       - name: Run 1900+ Tests
-        run: dotnet test desktop/Central.Tests/ -c Release -p:Platform=x64 --no-build --logger "trx;LogFileName=results.trx"
+        run: dotnet test tests/dotnet/ -c Release -p:Platform=x64 --no-build --logger "trx;LogFileName=results.trx"
 
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: nightly-test-results
-          path: desktop/Central.Tests/TestResults/results.trx
+          path: tests/dotnet/TestResults/results.trx
 
   angular:
     name: Angular Full Build
@@ -42,7 +42,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: cd web-client && npm ci && npx ng build --configuration production
+      - run: cd apps/web && npm ci && npx ng build --configuration production
 
   terraform:
     name: Terraform Plan (dry-run)

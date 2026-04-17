@@ -1,4 +1,4 @@
-name: PR Validation
+﻿name: PR Validation
 
 on:
   pull_request:
@@ -14,8 +14,8 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - run: dotnet build desktop/Central.sln -c Release -p:Platform=x64
-      - run: dotnet test desktop/Central.Tests/ -c Release -p:Platform=x64 --no-build
+      - run: dotnet build Central.sln -c Release -p:Platform=x64
+      - run: dotnet test tests/dotnet/ -c Release -p:Platform=x64 --no-build
 
   angular:
     name: Angular Build
@@ -26,8 +26,8 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-          cache-dependency-path: web-client/package-lock.json
-      - run: cd web-client && npm ci && npx ng build --configuration production
+          cache-dependency-path: apps/web/package-lock.json
+      - run: cd apps/web && npm ci && npx ng build --configuration production
 
   terraform:
     name: Terraform Validate
