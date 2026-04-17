@@ -7566,7 +7566,7 @@ public partial class MainWindow
 
     private bool _globalAdminBound;
     private static Task Audit(string action, string? entityType = null, string? entityId = null, object? details = null)
-        => Central.Module.GlobalAdmin.Services.GlobalAdminAuditService.LogAsync(action, entityType, entityId, details);
+        => Central.Module.Global.Platform.Services.GlobalAdminAuditService.LogAsync(action, entityType, entityId, details);
 
     /// <summary>Navigate to a Global Admin panel and select a tenant by slug.</summary>
     private void NavigateToTenant(string slug)
@@ -7614,18 +7614,18 @@ public partial class MainWindow
         { error = "Slug must be lowercase alphanumeric with hyphens only"; return false; }
         return true;
     }
-    private Central.Module.GlobalAdmin.ViewModels.TenantsListViewModel? _tenantsVm;
-    private Central.Module.GlobalAdmin.ViewModels.GlobalUsersListViewModel? _globalUsersVm;
-    private Central.Module.GlobalAdmin.ViewModels.SubscriptionsListViewModel? _subscriptionsVm;
-    private Central.Module.GlobalAdmin.ViewModels.ModuleLicensesListViewModel? _licensesVm;
+    private Central.Module.Global.Platform.ViewModels.TenantsListViewModel? _tenantsVm;
+    private Central.Module.Global.Platform.ViewModels.GlobalUsersListViewModel? _globalUsersVm;
+    private Central.Module.Global.Platform.ViewModels.SubscriptionsListViewModel? _subscriptionsVm;
+    private Central.Module.Global.Platform.ViewModels.ModuleLicensesListViewModel? _licensesVm;
 
     private void BindGlobalAdminGrids()
     {
         if (_globalAdminBound) return;
-        Central.Module.GlobalAdmin.Services.GlobalAdminAuditService.Initialize(VM.Repo);
+        Central.Module.Global.Platform.Services.GlobalAdminAuditService.Initialize(VM.Repo);
 
         // ── Tenants ViewModel ──
-        _tenantsVm = new Central.Module.GlobalAdmin.ViewModels.TenantsListViewModel
+        _tenantsVm = new Central.Module.Global.Platform.ViewModels.TenantsListViewModel
         {
             Loader = () => VM.Repo.GetTenantsTypedAsync(),
             Inserter = async t => { var id = await VM.Repo.CreateTenantTypedAsync(t); t.Id = id; _ = Audit("tenant_created", "tenant", t.Slug); return 1; },
@@ -7658,7 +7658,7 @@ public partial class MainWindow
         TenantsGridPanel.Grid.ItemsSource = _tenantsVm.Items;
 
         // ── Global Users ViewModel ──
-        _globalUsersVm = new Central.Module.GlobalAdmin.ViewModels.GlobalUsersListViewModel
+        _globalUsersVm = new Central.Module.Global.Platform.ViewModels.GlobalUsersListViewModel
         {
             Loader = () => VM.Repo.GetGlobalUsersTypedAsync(),
             Deleter = async u => { await VM.Repo.DeleteGlobalUserAsync(u.Id); _ = Audit("user_removed", "user", u.Email); },
@@ -7674,7 +7674,7 @@ public partial class MainWindow
         GlobalUsersGridPanel.Grid.ItemsSource = _globalUsersVm.Items;
 
         // ── Subscriptions ViewModel ──
-        _subscriptionsVm = new Central.Module.GlobalAdmin.ViewModels.SubscriptionsListViewModel
+        _subscriptionsVm = new Central.Module.Global.Platform.ViewModels.SubscriptionsListViewModel
         {
             Loader = () => VM.Repo.GetSubscriptionsTypedAsync(),
             OnChangePlan = async sub =>
@@ -7693,7 +7693,7 @@ public partial class MainWindow
         SubscriptionsGridPanel.Grid.ItemsSource = _subscriptionsVm.Items;
 
         // ── Module Licenses ViewModel ──
-        _licensesVm = new Central.Module.GlobalAdmin.ViewModels.ModuleLicensesListViewModel
+        _licensesVm = new Central.Module.Global.Platform.ViewModels.ModuleLicensesListViewModel
         {
             Loader = () => VM.Repo.GetLicensesTypedAsync(),
             OnGrantModule = () => { ShowGrantModuleDialog(); return Task.CompletedTask; },
@@ -7782,7 +7782,7 @@ public partial class MainWindow
         var tenant = isEdit ? _tenantsVm?.CurrentItem : new Central.Engine.Models.TenantRecord { Tier = "free" };
         if (tenant == null) return;
 
-        var dlg = new Central.Module.GlobalAdmin.Views.Dialogs.TenantDetailDialog(tenant, isEdit) { Owner = this };
+        var dlg = new Central.Module.Global.Platform.Dialogs.TenantDetailDialog(tenant, isEdit) { Owner = this };
         dlg.LoadTenantDetails = async id =>
         {
             var subs = await VM.Repo.GetTenantSubscriptionsAsync(id);
@@ -7840,7 +7840,7 @@ public partial class MainWindow
         if (tenantId == Guid.Empty) { NotificationService.Instance.Warning("Select a tenant first"); return; }
 
         var plans = await VM.Repo.GetPlanItemsAsync();
-        var dlg = new Central.Module.GlobalAdmin.Views.Dialogs.AssignPlanDialog(tenantSlug, plans) { Owner = this };
+        var dlg = new Central.Module.Global.Platform.Dialogs.AssignPlanDialog(tenantSlug, plans) { Owner = this };
         if (dlg.ShowDialogWindow()?.IsDefault == true && dlg.SelectedPlanId > 0)
         {
             await VM.Repo.CreateSubscriptionAsync(tenantId, dlg.SelectedPlanId, dlg.SelectedStatus, dlg.SelectedExpiry);
@@ -7859,7 +7859,7 @@ public partial class MainWindow
         if (tenantId == Guid.Empty) { NotificationService.Instance.Warning("Select a tenant first"); return; }
 
         var modules = await VM.Repo.GetModuleItemsAsync(tenantId);
-        var dlg = new Central.Module.GlobalAdmin.Views.Dialogs.GrantModuleDialog(tenantSlug, modules) { Owner = this };
+        var dlg = new Central.Module.Global.Platform.Dialogs.GrantModuleDialog(tenantSlug, modules) { Owner = this };
         if (dlg.ShowDialogWindow()?.IsDefault == true && dlg.SelectedModuleIds.Count > 0)
         {
             await VM.Repo.BulkGrantModulesAsync(tenantId, dlg.SelectedModuleIds, dlg.SelectedExpiry);
@@ -7872,7 +7872,7 @@ public partial class MainWindow
     private async void ShowInviteUserDialog()
     {
         var tenants = await VM.Repo.GetTenantOptionsAsync();
-        var dlg = new Central.Module.GlobalAdmin.Views.Dialogs.InviteUserDialog(tenants) { Owner = this };
+        var dlg = new Central.Module.Global.Platform.Dialogs.InviteUserDialog(tenants) { Owner = this };
         if (dlg.ShowDialogWindow()?.IsDefault != true || !dlg.Validate()) return;
 
         var salt = Central.Engine.Auth.PasswordHasher.GenerateSalt();
@@ -7895,7 +7895,7 @@ public partial class MainWindow
 
         var memberships = await VM.Repo.GetUserMembershipsAsync(user.Id);
         var tenants = await VM.Repo.GetTenantOptionsAsync();
-        var dlg = new Central.Module.GlobalAdmin.Views.Dialogs.ManageMembershipsDialog(user.Id, user.Email, memberships, tenants) { Owner = this };
+        var dlg = new Central.Module.Global.Platform.Dialogs.ManageMembershipsDialog(user.Id, user.Email, memberships, tenants) { Owner = this };
         dlg.OnAddMembership = (uid, tid, role) => VM.Repo.AddTenantMembershipAsync(uid, tid, role);
         dlg.OnRemoveMembership = id => VM.Repo.RemoveTenantMembershipAsync(id);
         dlg.OnChangeRole = (id, role) => VM.Repo.UpdateMembershipRoleAsync(id, role);
@@ -7907,7 +7907,7 @@ public partial class MainWindow
 
     private async void ShowResetPasswordDialog(Central.Engine.Models.GlobalUserRecord user)
     {
-        var dlg = new Central.Module.GlobalAdmin.Views.Dialogs.ResetPasswordDialog(user.Email) { Owner = this };
+        var dlg = new Central.Module.Global.Platform.Dialogs.ResetPasswordDialog(user.Email) { Owner = this };
         if (dlg.ShowDialogWindow()?.IsDefault != true || !dlg.Validate()) return;
 
         var salt = Central.Engine.Auth.PasswordHasher.GenerateSalt();
@@ -7922,7 +7922,7 @@ public partial class MainWindow
     {
         var plans = await VM.Repo.GetPlanItemsAsync();
         var modules = await VM.Repo.GetModuleItemsAsync();
-        var wizard = new Central.Module.GlobalAdmin.Views.Dialogs.TenantSetupWizard(plans, modules) { Owner = this };
+        var wizard = new Central.Module.Global.Platform.Dialogs.TenantSetupWizard(plans, modules) { Owner = this };
         wizard.CreateTenant = (slug, name, domain, tier) => VM.Repo.CreateTenantTypedAsync(new Central.Engine.Models.TenantRecord { Slug = slug, DisplayName = name, Domain = domain, Tier = tier });
         wizard.CreateSubscription = (tid, pid, status, exp) => VM.Repo.CreateSubscriptionAsync(tid, pid, status, exp);
         wizard.BulkGrantModules = (tid, mids, exp) => VM.Repo.BulkGrantModulesAsync(tid, mids, exp);
@@ -7938,7 +7938,7 @@ public partial class MainWindow
 
         if (wizard.Provisioned)
         {
-            _ = Central.Module.GlobalAdmin.Services.GlobalAdminAuditService.LogAsync("tenant_provisioned", "tenant", "", new { wizard = true });
+            _ = Central.Module.Global.Platform.Services.GlobalAdminAuditService.LogAsync("tenant_provisioned", "tenant", "", new { wizard = true });
             _tenantsVm?.RefreshCommand.Execute(null);
             _subscriptionsVm?.RefreshCommand.Execute(null);
             _licensesVm?.RefreshCommand.Execute(null);

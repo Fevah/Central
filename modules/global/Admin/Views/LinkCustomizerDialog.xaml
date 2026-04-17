@@ -1,0 +1,61 @@
+﻿<dx:DXWindow x:Class="Central.Module.Global.Admin.LinkCustomizerDialog"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             Title="Configure Panel Links"
+             Width="700" Height="500"
+             WindowStartupLocation="CenterOwner"
+             ShowInTaskbar="False">
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Description -->
+        <TextBlock Grid.Row="0" TextWrapping="Wrap" Margin="0,0,0,8" Foreground="#9CA3AF" FontSize="11">
+            Configure how selecting a row in one panel automatically filters another panel.
+            For example: click a Technician → Service Desk grid shows only that tech's tickets.
+        </TextBlock>
+
+        <!-- Link Rules Grid -->
+        <dxg:GridControl x:Name="RulesGrid" Grid.Row="1" AutoGenerateColumns="None" SelectionMode="Row">
+            <dxg:GridControl.View>
+                <dxg:TableView AllowEditing="True" NavigationStyle="Cell" NewItemRowPosition="Top"
+                               ShowGroupPanel="False" />
+            </dxg:GridControl.View>
+            <dxg:GridControl.Columns>
+                <dxg:GridColumn FieldName="SourcePanel" Header="Source Panel" Width="140">
+                    <dxg:GridColumn.EditSettings>
+                        <dxe:ComboBoxEditSettings x:Name="SourcePanelCombo" IsTextEditable="True" />
+                    </dxg:GridColumn.EditSettings>
+                </dxg:GridColumn>
+                <dxg:GridColumn FieldName="SourceField" Header="Source Field" Width="140" />
+                <dxg:GridColumn FieldName="TargetPanel" Header="Target Panel" Width="140">
+                    <dxg:GridColumn.EditSettings>
+                        <dxe:ComboBoxEditSettings x:Name="TargetPanelCombo" IsTextEditable="True" />
+                    </dxg:GridColumn.EditSettings>
+                </dxg:GridColumn>
+                <dxg:GridColumn FieldName="TargetField" Header="Target Field" Width="140" />
+                <dxg:GridColumn FieldName="FilterOnSelect" Header="Active" Width="60" />
+            </dxg:GridControl.Columns>
+        </dxg:GridControl>
+
+        <!-- Actions -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,8,0,8">
+            <Button Content="Add Rule" Click="AddRule_Click" Padding="12,4" Margin="0,0,4,0" />
+            <Button Content="Delete Rule" Click="DeleteRule_Click" Padding="12,4" Margin="0,0,16,0" />
+            <TextBlock x:Name="StatusLabel" VerticalAlignment="Center" Foreground="#9CA3AF" FontSize="11" />
+        </StackPanel>
+
+        <!-- OK/Cancel -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Apply" Click="Apply_Click" Padding="16,4" Margin="0,0,4,0" FontWeight="SemiBold" />
+            <Button Content="Cancel" Click="Cancel_Click" Padding="16,4" IsCancel="True" />
+        </StackPanel>
+    </Grid>
+</dx:DXWindow>

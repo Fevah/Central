@@ -1,0 +1,50 @@
+﻿<UserControl x:Class="Central.Module.Global.Admin.PurgePanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             xmlns:conv="clr-namespace:Central.Engine.Converters;assembly=Central.Engine">
+
+    <UserControl.Resources>
+        <conv:NullToBoolConverter x:Key="NullToBool" />
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Toolbar -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="4">
+            <Button Content="Purge Selected" Click="PurgeSelected_Click" Padding="8,4" Margin="0,0,8,0" />
+            <Button Content="Purge All" Click="PurgeAll_Click" Padding="8,4" Margin="0,0,8,0" />
+            <Button Content="Refresh" Click="Refresh_Click" Padding="8,4" Margin="0,0,8,0" />
+            <TextBlock x:Name="StatusLabel" VerticalAlignment="Center" Foreground="#AAA" />
+        </StackPanel>
+
+        <!-- Purge Items Grid -->
+        <dxg:GridControl x:Name="PurgeGrid" Grid.Row="1"
+                         AutoGenerateColumns="None"
+                         SelectionMode="Row">
+            <dxg:GridControl.View>
+                <dxg:TableView x:Name="PurgeView"
+                               ShowGroupPanel="False"
+                               AllowColumnFiltering="True"
+                               NavigationStyle="Row"
+                               AllowEditing="False"
+                               ShowAutoFilterRow="True"
+                               UseEvenRowBackground="True"
+                               ShowTotalSummary="True" />
+            </dxg:GridControl.View>
+            <dxg:GridControl.Columns>
+                <dxg:GridColumn FieldName="TableName"    Header="Table"          Width="250" SortIndex="0" SortOrder="Ascending" />
+                <dxg:GridColumn FieldName="DeletedCount" Header="Deleted Count"  Width="120" />
+            </dxg:GridControl.Columns>
+            <dxg:GridControl.TotalSummary>
+                <dxg:GridSummaryItem SummaryType="Count" FieldName="TableName" DisplayFormat="{}Tables: {0}" />
+                <dxg:GridSummaryItem SummaryType="Sum"   FieldName="DeletedCount" DisplayFormat="{}Total deleted: {0}" />
+            </dxg:GridControl.TotalSummary>
+        </dxg:GridControl>
+    </Grid>
+</UserControl>

@@ -1,0 +1,40 @@
+﻿<dxc:DXDialogWindow x:Class="Central.Module.Global.Platform.Dialogs.InviteUserDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:dxc="http://schemas.devexpress.com/winfx/2008/xaml/core"
+        xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+        xmlns:dxlc="http://schemas.devexpress.com/winfx/2008/xaml/layoutcontrol"
+        Title="Invite User" Width="450" Height="400"
+        WindowStartupLocation="CenterOwner">
+
+    <dxlc:LayoutControl Orientation="Vertical" Padding="12">
+
+        <dxlc:LayoutGroup Header="User Details" View="GroupBox" Orientation="Vertical">
+            <dxlc:LayoutItem Label="Email">
+                <dxe:TextEdit x:Name="EmailEdit" NullText="user@example.com" />
+            </dxlc:LayoutItem>
+            <dxlc:LayoutItem Label="Display Name">
+                <dxe:TextEdit x:Name="NameEdit" />
+            </dxlc:LayoutItem>
+            <dxlc:LayoutItem Label="Password">
+                <dxe:PasswordBoxEdit x:Name="PasswordEdit" />
+            </dxlc:LayoutItem>
+            <dxlc:LayoutItem Label="Confirm Password">
+                <dxe:PasswordBoxEdit x:Name="ConfirmEdit" />
+            </dxlc:LayoutItem>
+            <dxlc:LayoutItem Label="">
+                <dxe:CheckEdit x:Name="AdminCheck" Content="Global Administrator" />
+            </dxlc:LayoutItem>
+        </dxlc:LayoutGroup>
+
+        <dxlc:LayoutGroup Header="Assign to Tenants" View="GroupBox">
+            <dxe:ListBoxEdit x:Name="TenantList" Height="100"
+                             SelectionMode="Multiple"
+                             DisplayMember="DisplayText"
+                             ValueMember="Id" />
+        </dxlc:LayoutGroup>
+
+        <TextBlock x:Name="ValidationMsg" Foreground="#EF4444" FontSize="12" TextWrapping="Wrap" />
+
+    </dxlc:LayoutControl>
+</dxc:DXDialogWindow>

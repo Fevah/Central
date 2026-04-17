@@ -39,26 +39,21 @@ public static class Bootstrapper
     }
 
     // Module registry. Each entry is a tenant-togglable unit — disabling one
-    // here removes its ribbon tab, panels, and commands in one switch.
+    // here removes its ribbon tab, panels, and commands in one switch. The
+    // Global module (landing dashboard + admin + platform-admin) is the one
+    // exception: always loaded because a tenant without it has no UI.
     private static readonly Type[] _moduleTypes =
     {
-        // Landing page
-        typeof(Central.Module.Dashboard.DashboardModule),
+        // Always-on core (dashboard + per-tenant admin + platform admin all
+        // under one assembly — ribbon tabs appear based on permission claims)
+        typeof(Central.Module.Global.GlobalModule),
 
-        // Infrastructure
+        // Tenant-togglable feature modules
         typeof(Central.Module.Devices.DevicesModule),
-        typeof(Central.Module.Networking.NetworkingModule),  // switches + routing + vlans + links
-
-        // Platform admin
-        typeof(Central.Module.Admin.AdminModule),
-
-        // Business modules (tenant-togglable)
-        typeof(Central.Module.Projects.ProjectsModule),       // was Tasks — expanding to cover portfolios + programmes
+        typeof(Central.Module.Networking.NetworkingModule),   // switches + routing + vlans + links
+        typeof(Central.Module.Projects.ProjectsModule),       // tasks + portfolios + programmes
         typeof(Central.Module.ServiceDesk.ServiceDeskModule),
         typeof(Central.Module.CRM.CrmModule),
-
-        // Platform-level (global admin only)
-        typeof(Central.Module.GlobalAdmin.GlobalAdminModule),
     };
 
     private static void ForceLoadModuleAssemblies()

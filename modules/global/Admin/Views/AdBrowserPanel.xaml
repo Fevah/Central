@@ -1,0 +1,56 @@
+﻿<UserControl x:Class="Central.Module.Global.Admin.AdBrowserPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             xmlns:conv="clr-namespace:Central.Engine.Converters;assembly=Central.Engine">
+
+    <UserControl.Resources>
+        <conv:NullToBoolConverter x:Key="NullToBool" />
+        <conv:StringToBrushConverter x:Key="StringToBrush" />
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Toolbar -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="4">
+            <Button Content="Browse AD" Click="BrowseAd_Click" Padding="8,4" Margin="0,0,8,0" />
+            <Button Content="Import Selected" Click="ImportSelected_Click" Padding="8,4" Margin="0,0,8,0" />
+            <Button Content="Sync All" Click="SyncAll_Click" Padding="8,4" Margin="0,0,8,0" />
+            <TextBlock x:Name="StatusLabel" VerticalAlignment="Center" Foreground="#AAA" />
+        </StackPanel>
+
+        <!-- AD Users Grid -->
+        <dxg:GridControl x:Name="AdGrid" Grid.Row="1"
+                         AutoGenerateColumns="None"
+                         SelectionMode="Row">
+            <dxg:GridControl.View>
+                <dxg:TableView x:Name="AdView"
+                               ShowGroupPanel="False"
+                               AllowColumnFiltering="True"
+                               NavigationStyle="Row"
+                               AllowEditing="False"
+                               ShowAutoFilterRow="True"
+                               UseEvenRowBackground="True"
+                               ShowTotalSummary="True" />
+            </dxg:GridControl.View>
+            <dxg:GridControl.Columns>
+                <dxg:GridColumn FieldName="ObjectGuid"     Header="Object GUID"    Width="200" />
+                <dxg:GridColumn FieldName="SamAccountName" Header="Username"        Width="120" />
+                <dxg:GridColumn FieldName="DisplayName"    Header="Display Name"    Width="160" />
+                <dxg:GridColumn FieldName="Email"          Header="Email"           Width="180" />
+                <dxg:GridColumn FieldName="Department"     Header="Department"      Width="120" AllowGrouping="True" />
+                <dxg:GridColumn FieldName="Title"          Header="Title"           Width="140" />
+                <dxg:GridColumn FieldName="Enabled"        Header="Enabled"         Width="70" />
+                <dxg:GridColumn FieldName="IsImported"     Header="Imported"        Width="70" />
+            </dxg:GridControl.Columns>
+            <dxg:GridControl.TotalSummary>
+                <dxg:GridSummaryItem SummaryType="Count" FieldName="SamAccountName" DisplayFormat="{}Total: {0}" />
+            </dxg:GridControl.TotalSummary>
+        </dxg:GridControl>
+    </Grid>
+</UserControl>

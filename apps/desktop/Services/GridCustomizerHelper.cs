@@ -32,7 +32,7 @@ public static class GridCustomizerHelper
             customizeItem.ItemClick += async (_, _) =>
             {
                 var currentSettings = ReadCurrentSettings(view);
-                var dialog = new Central.Module.Admin.Views.GridCustomizerDialog();
+                var dialog = new Central.Module.Global.Admin.GridCustomizerDialog();
                 dialog.GridSettings = currentSettings;
                 if (dialog.ShowDialog() == true)
                 {
@@ -50,7 +50,7 @@ public static class GridCustomizerHelper
                 if (userId == 0) return;
 
                 var filters = await repo.GetSavedFiltersAsync(userId, panelName);
-                var dialog = new Central.Module.Admin.Views.SavedFilterDialog
+                var dialog = new Central.Module.Global.Admin.SavedFilterDialog
                 {
                     PanelName = panelName,
                     CurrentFilterString = grid.FilterString ?? ""
@@ -115,7 +115,7 @@ public static class GridCustomizerHelper
                     .Where(r => r.SourcePanel == panelName || r.TargetPanel == panelName)
                     .ToList();
 
-                var dialog = new Central.Module.Admin.Views.LinkCustomizerDialog();
+                var dialog = new Central.Module.Global.Admin.LinkCustomizerDialog();
                 dialog.SetPanelNames(engine.GetRegisteredGrids());
                 dialog.Load(existingRules);
 

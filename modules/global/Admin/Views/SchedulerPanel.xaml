@@ -1,0 +1,80 @@
+﻿<UserControl x:Class="Central.Module.Global.Admin.SchedulerPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:conv="clr-namespace:Central.Engine.Converters;assembly=Central.Engine">
+
+    <UserControl.Resources>
+        <conv:StringToBrushConverter x:Key="StringToBrush" />
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Toolbar -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="4">
+            <Button x:Name="RefreshBtn" Content="Refresh" Click="Refresh_Click" Padding="12,4" Margin="0,0,4,0" />
+            <Button x:Name="NewApptBtn" Content="New Appointment" Click="NewAppointment_Click" Padding="12,4" Margin="0,0,4,0" />
+            <Button x:Name="EditApptBtn" Content="Edit" Click="EditAppointment_Click" Padding="12,4" Margin="0,0,4,0" />
+            <Button x:Name="DeleteApptBtn" Content="Delete" Click="DeleteAppointment_Click" Padding="12,4" Margin="0,0,16,0" />
+            <TextBlock Text="View:" VerticalAlignment="Center" Margin="0,0,4,0" />
+            <dxe:ComboBoxEdit x:Name="ViewCombo" Width="120" EditValue="Week"
+                               EditValueChanged="ViewCombo_Changed">
+                <dxe:ComboBoxEdit.Items>
+                    <dxe:ComboBoxEditItem Content="Day" />
+                    <dxe:ComboBoxEditItem Content="Week" />
+                    <dxe:ComboBoxEditItem Content="Month" />
+                </dxe:ComboBoxEdit.Items>
+            </dxe:ComboBoxEdit>
+            <Button x:Name="PrevBtn" Content="◀" Click="PrevPeriod_Click" Padding="8,4" Margin="8,0,2,0" />
+            <Button x:Name="TodayBtn" Content="Today" Click="Today_Click" Padding="8,4" Margin="0,0,2,0" />
+            <Button x:Name="NextBtn" Content="▶" Click="NextPeriod_Click" Padding="8,4" Margin="0,0,8,0" />
+            <TextBlock x:Name="PeriodLabel" VerticalAlignment="Center" FontWeight="SemiBold" FontSize="13" />
+        </StackPanel>
+
+        <!-- Resource filter -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="4,0,4,4">
+            <TextBlock Text="Resource:" VerticalAlignment="Center" Margin="0,0,4,0" />
+            <dxe:ComboBoxEdit x:Name="ResourceCombo" Width="200" NullText="All Resources"
+                               EditValueChanged="ResourceCombo_Changed" />
+            <TextBlock x:Name="StatusLabel" VerticalAlignment="Center" Foreground="#9CA3AF" FontSize="11" Margin="16,0,0,0" />
+        </StackPanel>
+
+        <!-- Appointments grid -->
+        <dxg:GridControl x:Name="AppointmentsGrid" Grid.Row="2" AutoGenerateColumns="None"
+                          SelectionMode="Row">
+            <dxg:GridControl.View>
+                <dxg:TableView x:Name="AppointmentsView"
+                               AllowEditing="False"
+                               NavigationStyle="Row"
+                               ShowGroupPanel="True"
+                               ShowAutoFilterRow="True"
+                               AllowColumnFiltering="True"
+                               ShowFilterPanelMode="ShowAlways"
+                               ShowTotalSummary="True"
+                               RowDoubleClick="AppointmentsView_RowDoubleClick" />
+            </dxg:GridControl.View>
+            <dxg:GridControl.Columns>
+                <dxg:GridColumn FieldName="StartTime" Header="Start" Width="140" SortIndex="0" SortOrder="Ascending" />
+                <dxg:GridColumn FieldName="EndTime" Header="End" Width="140" />
+                <dxg:GridColumn FieldName="Subject" Header="Subject" Width="250" />
+                <dxg:GridColumn FieldName="Description" Header="Description" Width="200" />
+                <dxg:GridColumn FieldName="Location" Header="Location" Width="150" />
+                <dxg:GridColumn FieldName="AllDay" Header="All Day" Width="60" />
+                <dxg:GridColumn FieldName="ResourceId" Header="Resource" Width="100" />
+                <dxg:GridColumn FieldName="StatusText" Header="Status" Width="80" />
+                <dxg:GridColumn FieldName="TaskId" Header="Task" Width="60" />
+                <dxg:GridColumn FieldName="TicketId" Header="Ticket" Width="70" />
+            </dxg:GridControl.Columns>
+            <dxg:GridControl.TotalSummary>
+                <dxg:GridSummaryItem SummaryType="Count" FieldName="Subject" DisplayFormat="{}Appointments: {0}" />
+            </dxg:GridControl.TotalSummary>
+        </dxg:GridControl>
+    </Grid>
+</UserControl>

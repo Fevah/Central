@@ -55,16 +55,16 @@ DSN / credentials / API URLs: [docs/CREDENTIALS.md](docs/CREDENTIALS.md).
 │   └── update-client/        Central.UpdateClient
 │
 ├── modules/                  WPF feature modules (plug into apps/desktop)
-│   ├── admin/                Users, roles, lookups, jobs, ribbon config
-│   ├── audit/                Audit log viewer
-│   ├── crm/                  Accounts, deals, pipeline, dashboard
-│   ├── dashboard/            KPI cards, notification center
+│   ├── global/               Always-on core — landing dashboard + per-tenant
+│   │                         admin + platform admin. Subfolders Admin/,
+│   │                         Dashboard/, Platform/.
+│   ├── audit/                Audit log viewer (+ module-specific Dashboards/)
+│   ├── crm/                  Accounts, deals, pipeline (+ module-specific Dashboards/)
 │   ├── devices/              IPAM
-│   ├── global-admin/         Tenant / licensing / audit
 │   ├── networking/           Switches, routing, VLANs, links — one self-contained
 │   │                         tenant-togglable module
-│   ├── projects/             Project + task management (portfolios, programmes,
-│   │                         sprints, Kanban, Gantt — 16 panels)
+│   ├── projects/             Project + task management — 16 panels
+│   │                         (+ module-specific Dashboards/)
 │   ├── service-desk/         ManageEngine integration
 │
 ├── tests/

@@ -1,0 +1,101 @@
+﻿<UserControl x:Class="Central.Module.Global.Platform.PlatformDashboardPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dxc="http://schemas.devexpress.com/winfx/2008/xaml/charts">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+        <StackPanel>
+            <TextBlock Text="Platform Overview" FontSize="20" FontWeight="Bold" Margin="0,0,0,16"
+                       Foreground="{DynamicResource {x:Static SystemColors.ControlTextBrushKey}}" />
+
+            <!-- KPI Cards -->
+            <WrapPanel>
+                <Border Background="#1E3A5F" CornerRadius="8" Padding="20" Margin="0,0,12,12" MinWidth="180">
+                    <StackPanel>
+                        <TextBlock x:Name="TotalTenantsText" Text="0" FontSize="36" FontWeight="Bold" Foreground="White" />
+                        <TextBlock Text="Total Tenants" FontSize="13" Foreground="#AAB8C2" />
+                        <TextBlock x:Name="ActiveTenantsText" Text="0 active" FontSize="12" Foreground="#6B8299" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Background="#1E3A5F" CornerRadius="8" Padding="20" Margin="0,0,12,12" MinWidth="180">
+                    <StackPanel>
+                        <TextBlock x:Name="TotalUsersText" Text="0" FontSize="36" FontWeight="Bold" Foreground="White" />
+                        <TextBlock Text="Global Users" FontSize="13" Foreground="#AAB8C2" />
+                        <TextBlock x:Name="VerifiedUsersText" Text="0 verified" FontSize="12" Foreground="#6B8299" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Background="#1E3A5F" CornerRadius="8" Padding="20" Margin="0,0,12,12" MinWidth="180">
+                    <StackPanel>
+                        <TextBlock x:Name="ActiveSubsText" Text="0" FontSize="36" FontWeight="Bold" Foreground="White" />
+                        <TextBlock Text="Active Subscriptions" FontSize="13" Foreground="#AAB8C2" />
+                    </StackPanel>
+                </Border>
+            </WrapPanel>
+
+            <!-- Charts row 1 -->
+            <WrapPanel Margin="0,16,0,0">
+                <!-- Subscription by tier (pie) -->
+                <Border Background="#0D1B2A" CornerRadius="8" Padding="12" Margin="0,0,12,12" Width="340" Height="280">
+                    <StackPanel>
+                        <TextBlock Text="Subscriptions by Tier" FontSize="14" FontWeight="SemiBold" Foreground="#AAB8C2" Margin="0,0,0,8" />
+                        <dxc:ChartControl x:Name="TierPieChart" Height="220">
+                            <dxc:ChartControl.Diagram>
+                                <dxc:SimpleDiagram2D>
+                                    <dxc:PieSeries2D x:Name="TierPieSeries" />
+                                </dxc:SimpleDiagram2D>
+                            </dxc:ChartControl.Diagram>
+                            <dxc:ChartControl.Legend>
+                                <dxc:Legend Visibility="Visible" HorizontalPosition="Right" />
+                            </dxc:ChartControl.Legend>
+                        </dxc:ChartControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- Users per tenant (bar) -->
+                <Border Background="#0D1B2A" CornerRadius="8" Padding="12" Margin="0,0,12,12" Width="420" Height="280">
+                    <StackPanel>
+                        <TextBlock Text="Users per Tenant (Top 10)" FontSize="14" FontWeight="SemiBold" Foreground="#AAB8C2" Margin="0,0,0,8" />
+                        <dxc:ChartControl x:Name="UsersByTenantChart" Height="220">
+                            <dxc:ChartControl.Diagram>
+                                <dxc:XYDiagram2D>
+                                    <dxc:XYDiagram2D.AxisX>
+                                        <dxc:AxisX2D>
+                                            <dxc:AxisX2D.Label>
+                                                <dxc:AxisLabel Angle="45" />
+                                            </dxc:AxisX2D.Label>
+                                        </dxc:AxisX2D>
+                                    </dxc:XYDiagram2D.AxisX>
+                                    <dxc:BarSideBySideSeries2D x:Name="UsersByTenantSeries" />
+                                </dxc:XYDiagram2D>
+                            </dxc:ChartControl.Diagram>
+                        </dxc:ChartControl>
+                    </StackPanel>
+                </Border>
+            </WrapPanel>
+
+            <!-- Charts row 2 -->
+            <WrapPanel Margin="0,0,0,0">
+                <!-- Module adoption (bar) -->
+                <Border Background="#0D1B2A" CornerRadius="8" Padding="12" Margin="0,0,12,12" Width="500" Height="280">
+                    <StackPanel>
+                        <TextBlock Text="Module Adoption" FontSize="14" FontWeight="SemiBold" Foreground="#AAB8C2" Margin="0,0,0,8" />
+                        <dxc:ChartControl x:Name="ModuleAdoptionChart" Height="220">
+                            <dxc:ChartControl.Diagram>
+                                <dxc:XYDiagram2D>
+                                    <dxc:XYDiagram2D.AxisX>
+                                        <dxc:AxisX2D>
+                                            <dxc:AxisX2D.Label>
+                                                <dxc:AxisLabel Angle="45" />
+                                            </dxc:AxisX2D.Label>
+                                        </dxc:AxisX2D>
+                                    </dxc:XYDiagram2D.AxisX>
+                                    <dxc:BarSideBySideSeries2D x:Name="ModuleAdoptionSeries" />
+                                </dxc:XYDiagram2D>
+                            </dxc:ChartControl.Diagram>
+                        </dxc:ChartControl>
+                    </StackPanel>
+                </Border>
+            </WrapPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

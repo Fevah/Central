@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>Central.Module.Global</RootNamespace>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\libs\engine\Central.Engine.csproj" />
+    <ProjectReference Include="..\..\libs\persistence\Central.Persistence.csproj" />
+    <ProjectReference Include="..\..\libs\tenancy\Central.Tenancy.csproj" />
+    <ProjectReference Include="..\..\libs\licensing\Central.Licensing.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DevExpress.Wpf.Grid" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Core" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Docking" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Scheduling" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Charts" Version="25.2.6" />
+    <PackageReference Include="DevExpress.Wpf.Themes.Win11Dark" Version="25.2.6" />
+    <PackageReference Include="Npgsql" Version="10.0.2" />
+  </ItemGroup>
+
+</Project>

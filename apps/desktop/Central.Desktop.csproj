@@ -54,13 +54,9 @@
     <ProjectReference Include="..\..\libs\api-client\Central.ApiClient.csproj" />
 
     <!-- Module assemblies — referenced so they're loaded for ModuleLoader discovery -->
-    <ProjectReference Include="..\..\modules\dashboard\Central.Module.Dashboard.csproj" />
     <ProjectReference Include="..\..\modules\crm\Central.Module.CRM.csproj" />
     <ProjectReference Include="..\..\modules\devices\Central.Module.Devices.csproj" />
-    <ProjectReference Include="..\..\modules\admin\Central.Module.Admin.csproj" />
     <ProjectReference Include="..\..\modules\service-desk\Central.Module.ServiceDesk.csproj" />
-
-    <ProjectReference Include="..\..\modules\global-admin\Central.Module.GlobalAdmin.csproj" />
 
     <!-- Enterprise V2 -->
     <ProjectReference Include="..\..\libs\protection\Central.Protection.csproj" />
@@ -68,6 +64,7 @@
     <ProjectReference Include="..\..\libs\observability\Central.Observability.csproj" />
     <ProjectReference Include="..\..\modules\networking\Central.Module.Networking.csproj" />
     <ProjectReference Include="..\..\modules\projects\Central.Module.Projects.csproj" />
+    <ProjectReference Include="..\..\modules\global\Central.Module.Global.csproj" />
   </ItemGroup>
 
 </Project>

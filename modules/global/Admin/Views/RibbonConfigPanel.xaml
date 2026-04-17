@@ -1,0 +1,131 @@
+﻿<UserControl x:Class="Central.Module.Global.Admin.RibbonConfigPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             xmlns:dx="http://schemas.devexpress.com/winfx/2008/xaml/core"
+             xmlns:local="clr-namespace:Central.Module.Global.Admin">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="5" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="5" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Ribbon Pages -->
+        <DockPanel Grid.Row="0">
+            <TextBlock DockPanel.Dock="Top" Text="Ribbon Pages" FontWeight="SemiBold" Margin="4,2" />
+            <dxg:GridControl x:Name="PagesGrid" AutoGenerateColumns="None">
+                <dxg:GridControl.Columns>
+                    <dxg:GridColumn FieldName="Header"              Header="Page Name"   Width="150" />
+                    <dxg:GridColumn FieldName="SortOrder"           Header="Order"        Width="60" />
+                    <dxg:GridColumn FieldName="RequiredPermission"  Header="Permission"   Width="120" />
+                    <dxg:GridColumn FieldName="IconName"            Header="Icon"         Width="120">
+                        <dxg:GridColumn.EditSettings>
+                            <dxe:ButtonEditSettings AllowDefaultButton="False">
+                                <dxe:ButtonEditSettings.Buttons>
+                                    <dxe:ButtonInfo GlyphKind="Search" Click="IconPicker_Click" />
+                                </dxe:ButtonEditSettings.Buttons>
+                            </dxe:ButtonEditSettings>
+                        </dxg:GridColumn.EditSettings>
+                    </dxg:GridColumn>
+                    <dxg:GridColumn FieldName="IsVisible"           Header="Visible"      Width="60" />
+                    <dxg:GridColumn FieldName="IsSystem"            Header="System"       Width="60" ReadOnly="True" />
+                </dxg:GridControl.Columns>
+                <dxg:GridControl.View>
+                    <dxg:TableView x:Name="PagesView"
+                                   AllowEditing="True" NavigationStyle="Cell"
+                                   ShowGroupPanel="False" NewItemRowPosition="Top" ShowTotalSummary="False"
+                                   ShowAutoFilterRow="True" SearchPanelNullText="Search..."
+                                   ValidateRow="PagesView_ValidateRow"
+                                   InvalidRowException="View_InvalidRowException"
+                                   FocusedRowChanged="PagesGrid_FocusedRowChanged" />
+                </dxg:GridControl.View>
+                <dxg:GridControl.TotalSummary>
+                    <dxg:GridSummaryItem SummaryType="Count" FieldName="Header" DisplayFormat="{}Total: {0}" />
+                </dxg:GridControl.TotalSummary>
+            </dxg:GridControl>
+        </DockPanel>
+
+        <GridSplitter Grid.Row="1" HorizontalAlignment="Stretch" Height="5" />
+
+        <!-- Ribbon Groups (filtered by selected page) -->
+        <DockPanel Grid.Row="2">
+            <TextBlock x:Name="GroupsLabel" DockPanel.Dock="Top" Text="Groups" FontWeight="SemiBold" Margin="4,2" />
+            <dxg:GridControl x:Name="GroupsGrid" AutoGenerateColumns="None">
+                <dxg:GridControl.Columns>
+                    <dxg:GridColumn FieldName="Header"      Header="Group Name"  Width="150" />
+                    <dxg:GridColumn FieldName="SortOrder"   Header="Order"       Width="60" />
+                    <dxg:GridColumn FieldName="IsVisible"   Header="Visible"     Width="60" />
+                    <dxg:GridColumn FieldName="PageHeader"  Header="Page"        Width="120" ReadOnly="True" />
+                </dxg:GridControl.Columns>
+                <dxg:GridControl.View>
+                    <dxg:TableView x:Name="GroupsView"
+                                   AllowEditing="True" NavigationStyle="Cell"
+                                   ShowGroupPanel="False" NewItemRowPosition="Top"
+                                   ShowAutoFilterRow="True" SearchPanelNullText="Search..."
+                                   ValidateRow="GroupsView_ValidateRow"
+                                   InvalidRowException="View_InvalidRowException"
+                                   FocusedRowChanged="GroupsGrid_FocusedRowChanged" />
+                </dxg:GridControl.View>
+            </dxg:GridControl>
+        </DockPanel>
+
+        <GridSplitter Grid.Row="3" HorizontalAlignment="Stretch" Height="5" />
+
+        <!-- Ribbon Items (filtered by selected group) -->
+        <DockPanel Grid.Row="4">
+            <TextBlock x:Name="ItemsLabel" DockPanel.Dock="Top" Text="Items" FontWeight="SemiBold" Margin="4,2" />
+            <dxg:GridControl x:Name="ItemsGrid" AutoGenerateColumns="None">
+                <dxg:GridControl.Columns>
+                    <dxg:GridColumn FieldName="Content"       Header="Label"       Width="140" />
+                    <dxg:GridColumn FieldName="ItemType"      Header="Type"        Width="80">
+                        <dxg:GridColumn.EditSettings>
+                            <dxe:ComboBoxEditSettings ItemsSource="{x:Static local:RibbonConfigPanel.ItemTypes}" />
+                        </dxg:GridColumn.EditSettings>
+                    </dxg:GridColumn>
+                    <dxg:GridColumn FieldName="SortOrder"     Header="Order"       Width="50" />
+                    <dxg:GridColumn FieldName="Permission"    Header="Permission"  Width="120" />
+                    <dxg:GridColumn FieldName="Glyph"         Header="Glyph"       Width="120">
+                        <dxg:GridColumn.EditSettings>
+                            <dxe:ButtonEditSettings AllowDefaultButton="False">
+                                <dxe:ButtonEditSettings.Buttons>
+                                    <dxe:ButtonInfo GlyphKind="Search" Click="IconPicker_Click" />
+                                </dxe:ButtonEditSettings.Buttons>
+                            </dxe:ButtonEditSettings>
+                        </dxg:GridColumn.EditSettings>
+                    </dxg:GridColumn>
+                    <dxg:GridColumn FieldName="LargeGlyph"    Header="Large Glyph" Width="120">
+                        <dxg:GridColumn.EditSettings>
+                            <dxe:ButtonEditSettings AllowDefaultButton="False">
+                                <dxe:ButtonEditSettings.Buttons>
+                                    <dxe:ButtonInfo GlyphKind="Search" Click="IconPicker_Click" />
+                                </dxe:ButtonEditSettings.Buttons>
+                            </dxe:ButtonEditSettings>
+                        </dxg:GridColumn.EditSettings>
+                    </dxg:GridColumn>
+                    <dxg:GridColumn FieldName="CommandType"   Header="Command"     Width="100">
+                        <dxg:GridColumn.EditSettings>
+                            <dxe:ComboBoxEditSettings ItemsSource="{x:Static local:RibbonConfigPanel.CommandTypes}" />
+                        </dxg:GridColumn.EditSettings>
+                    </dxg:GridColumn>
+                    <dxg:GridColumn FieldName="CommandParam"  Header="Param"       Width="120" />
+                    <dxg:GridColumn FieldName="Tooltip"       Header="Tooltip"     Width="150" />
+                    <dxg:GridColumn FieldName="IsVisible"     Header="Visible"     Width="55" />
+                    <dxg:GridColumn FieldName="IsSystem"      Header="System"      Width="55" ReadOnly="True" />
+                </dxg:GridControl.Columns>
+                <dxg:GridControl.View>
+                    <dxg:TableView x:Name="ItemsView"
+                                   AllowEditing="True" NavigationStyle="Cell"
+                                   ShowGroupPanel="False" NewItemRowPosition="Top"
+                                   ShowAutoFilterRow="True" SearchPanelNullText="Search..."
+                                   ValidateRow="ItemsView_ValidateRow"
+                                   InvalidRowException="View_InvalidRowException" />
+                </dxg:GridControl.View>
+            </dxg:GridControl>
+        </DockPanel>
+    </Grid>
+</UserControl>

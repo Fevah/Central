@@ -280,19 +280,23 @@ Restructured 2026-04-17 — see [docs/REPO_STRUCTURE_PLAN.md](docs/REPO_STRUCTUR
 │   └── update-client/        Central.UpdateClient
 │
 ├── modules/                  WPF feature modules (pluggable into apps/desktop)
-│   ├── admin/                Users, roles, lookups, AD browser, migrations, jobs, ribbon config
-│   ├── audit/                Audit log viewer
-│   ├── crm/                  Accounts, deals, pipeline Kanban, dashboard
-│   ├── dashboard/            KPI cards, notification center
+│   ├── global/               Always-on core — landing dashboard + per-tenant
+│   │                         admin + platform admin. Internal subfolders
+│   │                         Admin/, Dashboard/, Platform/. Merged
+│   │                         2026-04-17 from former admin + dashboard +
+│   │                         global-admin modules.
+│   ├── audit/                Audit log viewer (+ Dashboards/GdprDashboardPanel)
+│   ├── crm/                  Accounts, deals, pipeline Kanban
+│   │                         (+ Dashboards/CrmDashboardPanel)
 │   ├── devices/              IPAM (8 grid panels + ASN + servers)
-│   ├── global-admin/         Platform-level tenant / licensing / audit
 │   ├── networking/           Switches + routing + VLANs + links — merged
 │   │                         2026-04-17 into one self-contained, tenant-
 │   │                         togglable module with internal subfolders
 │   │                         (Switches/, Routing/, Vlans/, Links/)
 │   ├── projects/             Project + task management (portfolios,
 │   │                         programmes, sprints, Kanban, Gantt — 16 panels)
-│   ├── service-desk/         ManageEngine sync, dashboards, teams
+│   │                         (+ Dashboards/TaskDashboardPanel + QADashboardPanel)
+│   ├── service-desk/         ManageEngine sync, teams, groups
 │
 ├── tests/
 │   └── dotnet/               Central.Tests — 2,382 unit + integration tests
