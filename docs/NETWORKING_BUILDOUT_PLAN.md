@@ -379,6 +379,41 @@ Each phase has: scope, entities delivered, capabilities delivered (by MFL §), D
 
 **Risk:** medium.
 
+**Status (2026-04-18) — config generation work in flight; RBAC / search / bulk / XLSX / turn-up pack not started:**
+
+The config-generation half of the phase is being shipped as
+self-contained slices inside `services/networking-engine/`. Each
+slice lands a new PicOS renderer section, its DB fetch path, and
+its tests. 193/193 tests passing; renderer is pure over a
+`DeviceContext` struct so every section has isolated fixtures.
+
+CLI flavor foundation + PicOS renderer slices landed so far:
+
+| # | Slice | Commit |
+|---|-------|--------|
+| 0 | CLI flavor catalog (6 flavors: PicOS Ga + 5 stubs) + tenant enable / single-default constraint + `render_device` dispatcher + migration `102_net_cli_flavors.sql` | 74d0523b6 |
+| 1 | Loopback `lo0` + management-VLAN (152) SVI sections | 7903d5fe4 |
+| 2 | BGP scalar block (local-as, ebgp-requires-policy, router-id, ipv4-unicast redistribute + multipath) | 5a7852901 |
+| 3 | BGP neighbors derived from `net.link_endpoint` (P2P / B2B, with `"?"` fallback for unmodelled peers) | 54776cc7d |
+| 4 | MSTP bridge-priority + MLAG peer-link (domain id + peer-link interface) | f6b029c0d |
+| 5 | L3 VLAN SVI section (per-device IPs for VLAN-linked subnets, LOOPBACK filtered) | d2567b3b6 |
+| 6 | Port description section from `net.link_endpoint.interface_name` | 992cd2f9d |
+| 7 | Hostname derivation from `net.device_role.naming_template` + hierarchy codes + `device_code` → `{instance}` | 56aa5ab40 |
+| 8 | Port L2 rules (port-mode + native-vlan-id) from `net.port` | 9583b7e75 |
+| 9 | VLAN → SVI binding line (`set vlans vlan-id N l3-interface "vlan-N"`) when SVI present | ac80e3e9b |
+| 10 | IP routing enable + LLDP enable fixed lines | 7861abc86 |
+| 11 | QoS / CoS preset (55-line forwarding-class + scheduler + classifier + scheduler-profile block) | 08153f37f |
+| 12 | Per-port QoS bindings from `net.port` (breakouts filtered) | 69b273114 |
+
+**Still to emit for byte-for-byte parity:**
+- Voice-VLAN 4-line preset (Avaya MAC seed) — static, tenant-config path open
+- Static default route — needs mgmt-VLAN gateway lookup (no data model yet)
+- DHCP relay — needs DHCP-role server discovery from `net.server`
+- VRRP per-VLAN VIP — needs `net.vrrp_*` migration (not yet in tree)
+- Interleave port description + L2 rules + QoS bindings per-interface for stricter byte parity (currently emitted as three adjacent blocks)
+
+**Phase 10 deliverables still NOT started:** RBAC scoped policy engine, global search + faceted filters + saved views, bulk edit / import / export, XLSX round-trip of the Immunocore workbook, turn-up pack generator. Those remain genuinely un-touched.
+
 ---
 
 ### Phase 11 — Data migration: Immunocore legacy tables → engine tables

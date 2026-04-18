@@ -40,7 +40,7 @@ project structure without updating the architecture doc first.
 | [docs/GLOBALADMIN_BUILDOUT.md](docs/GLOBALADMIN_BUILDOUT.md) | Global Admin 5-phase buildout — tenant CRUD, licensing, subscriptions, setup wizard, audit |
 | [docs/TASKS_BUILDOUT.md](docs/TASKS_BUILDOUT.md) | Task module 11-phase buildout plan (Hansoft/P4 Plan clone) — all phases complete |
 | [docs/MERGE_PLAN.md](docs/MERGE_PLAN.md) | Central + Secure merge — 10 phases, unified auth, API gateway, K8s elastic scaling |
-| [docs/NETWORKING_BUILDOUT_PLAN.md](docs/NETWORKING_BUILDOUT_PLAN.md) | Networking engine — 23-phase buildout transforming single-customer toolkit into multi-tenant source-of-truth. Phases 1-6 complete (2026-04-18) |
+| [docs/NETWORKING_BUILDOUT_PLAN.md](docs/NETWORKING_BUILDOUT_PLAN.md) | Networking engine — 23-phase buildout transforming single-customer toolkit into multi-tenant source-of-truth. Phases 1-6 complete; Phase 10 config-generation in flight (2026-04-18) |
 | [docs/NETWORKING_RIBBON_AUDIT.md](docs/NETWORKING_RIBBON_AUDIT.md) | Networking ribbon action inventory — every button, permission, message, handler; placeholder-lambda canary test |
 | [docs/CREDENTIALS.md](docs/CREDENTIALS.md) | All login credentials, DSNs, SSH info, service URLs, K8s access |
 
@@ -71,7 +71,19 @@ Chunks (pull-forward cross-cutting work):
 
 Per-phase checklist invariant (from plan amendment 758ccaa98) — every *-type catalog table carries: `naming_template` column, `XNamingService` + `XNamingContext` record with documented tokens, unit tests for happy + edge paths, CRUD REST, ribbon audit with no placeholder lambdas, extracted dialog validation.
 
-**Honest gaps**: Phase 7 (scope-resolution engine + override table + preview API + admin UI) not started. Phases 8-23 not started. MSTP rule editor panel deferred. XAML ribbon coexists with engine-registered ribbon until Phase 11.
+**Honest gaps**: Phase 7 (scope-resolution engine + override table + preview API + admin UI) not started. Phases 8, 9, 11-23 not started. MSTP rule editor panel deferred. XAML ribbon coexists with engine-registered ribbon until Phase 11.
+
+### Networking Engine Phase 10 — Config Generation IN PROGRESS (2026-04-18)
+
+The config-generation half of Phase 10 is shipping as self-contained slices in `services/networking-engine/src/config_gen.rs`. CLI-flavor foundation supports multi-vendor dispatch (PicOS `Ga` today; Cisco NX-OS / Cisco IOS / Arista EOS / Junos / FRR registered as stubs). 193/193 Rust tests green. Migration `102_net_cli_flavors.sql` adds `net.tenant_cli_flavor` (enable + single-default) and `net.rendered_config` (render history with SHA-256 chain).
+
+PicOS renderer sections shipped so far: header, `set system hostname` (with **parametric derivation** from `net.device_role.naming_template` + hierarchy codes + `device_code` → `{instance}`), IP routing enable, QoS preset (55 fixed class-of-service lines) + per-port QoS bindings, loopback `lo0`, management-VLAN (152) SVI, VLANs (with `l3-interface "vlan-N"` binding when SVI present), L3 VLAN SVIs, BGP scalar block + neighbors derived from `net.link_endpoint`, MSTP bridge-priority, MLAG peer-link (domain + interface), port descriptions + port L2 rules (port-mode + native-vlan-id), LLDP enable.
+
+Still to emit for byte-for-byte parity: voice-VLAN 4-line preset, static default route, DHCP relay (needs DHCP-role server discovery), VRRP (needs `net.vrrp_*` migration), and per-interface interleaving of the three port sections.
+
+**Phase 10 deliverables NOT started**: RBAC scoped policy engine, global search + faceted filters + saved views, bulk edit / import / export, XLSX round-trip of the Immunocore workbook, turn-up pack generator.
+
+See `docs/NETWORKING_BUILDOUT_PLAN.md` §Phase 10 for the slice-by-slice commit list.
 
 ### Central + Secure Merge — ALL 10 PHASES COMPLETE
 
