@@ -43,8 +43,13 @@
                 <dxg:TreeListColumn FieldName="UtilisationText" Header="Used"  Width="90"/>
                 <dxg:TreeListColumn FieldName="UtilisationPct"  Header="%"     Width="180">
                     <dxg:TreeListColumn.EditSettings>
+                        <!-- ContentDisplayMode enum only has None / Value / Content
+                             (verified via dxdocs WPF 25.2). For a percent render,
+                             use Value mode + a "p0" DisplayFormat on the 0..1
+                             fraction in UtilisationPct. -->
                         <dxe:ProgressBarEditSettings Minimum="0" Maximum="1"
-                                                     ContentDisplayMode="Percent"/>
+                                                     ContentDisplayMode="Value"
+                                                     DisplayFormat="p0"/>
                     </dxg:TreeListColumn.EditSettings>
                 </dxg:TreeListColumn>
                 <dxg:TreeListColumn FieldName="Status"          Header="Status" Width="90"/>
