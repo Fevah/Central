@@ -2357,9 +2357,13 @@ Per the plan amendment (commit `758ccaa98`), every new *-type catalog row must c
 
 Compliance by *-type table: `link_type` ✓, `device_role` ✓, `server_profile` ✓. Pending coverage: `building_profile`, `vlan_template`, `mstp_priority_rule` (Phase 7).
 
-### 7.X.9 Config Generation — Phase 10 (2026-04-18)
+### 7.X.9 Phase 10 — SERVICE-SIDE COMPLETE (2026-04-18)
 
-**Byte-for-byte parity acceptance bar REACHED.** Every section the legacy `ConfigBuilderService` emits now has a counterpart in the Rust renderer — once a tenant seeds Gateway / Vrrp / DhcpRelayTarget rows, the output matches line-for-line. Lives in three Rust files: `services/networking-engine/src/cli_flavor.rs`, `config_gen.rs`, `dhcp_relay.rs`. 229 Rust tests green (up from 121 before Phase 10 started).
+**Every Phase 10 service-side deliverable shipped.** 48-commit arc from CLI flavor catalog (commit `74d0523b6`) through saved views (`1f3da348e`) plus this closure docs commit. 290 Rust unit tests + 76 live-DB integration tests across 7 suites, 0 failures. .NET ApiClient build clean.
+
+See the slice table in `docs/NETWORKING_BUILDOUT_PLAN.md` §Phase 10 for the per-commit breakdown. This section is the acceptance-bar checklist — each bullet below is a behaviour an operator can verify manually or via integration test.
+
+**Config generation (byte-for-byte parity with legacy ConfigBuilderService):** byte-parity achieved. Once a tenant seeds Gateway / Vrrp / DhcpRelayTarget rows, the output matches line-for-line. Lives in three Rust files: `services/networking-engine/src/cli_flavor.rs`, `config_gen.rs`, `dhcp_relay.rs`.
 
 **CLI flavor foundation** (commit `74d0523b6`, migration 102_net_cli_flavors.sql)
 - [ ] `FLAVORS` const catalog — 6 entries: PicOS (Ga, default-on), Cisco NX-OS / Cisco IOS / Arista EOS / Junos OS / FRR (all Stub, default-off)
@@ -2423,11 +2427,119 @@ Compliance by *-type table: `link_type` ✓, `device_role` ✓, `server_profile`
 - [ ] Every mutation writes an audit entry in the same transaction as the DB write so neither can land without the other
 
 **Still open:**
-- [ ] SQL paths lack a live-DB harness — persist / list / get / diff / fan-out / CRUD queries are exercised only via in-memory unit tests of the pure helpers + struct shape assertions. Integration harness is the flagged next-slice candidate.
-- [ ] Immunocore seed import for the three new data models — Gateway IPs, VRRP VIPs, DHCP relay targets — lives in the customer's `public.dhcp_relay` / `public.vrrp_config` legacy tables and needs a migration to copy forward.
 - [ ] Per-port QoS binding interleaving with description + L2 lines — deferred; QoS bindings reference forward-declared classifier + scheduler-profile names so keeping them near the QoS preset remains the simpler correctness story.
+- [ ] Immunocore seed import migration shipped (commit `104053191`), but operators need to run it against their tenant to actually populate the Gateway / Vrrp / DhcpRelayTarget rows.
 
-**Phase 10 deliverables NOT yet started:** RBAC scoped policy engine, global search + faceted filters + saved views, bulk edit / import / export, XLSX round-trip of the Immunocore workbook. (Turn-up pack generator is shipped at building + site scope; region scope would be trivial to add when needed.)
+### 7.X.10 Bulk Export — CSV (Phase 10)
+
+9 entities addressable via `GET /api/net/<entity>/export`:
+
+- [ ] **Devices** — `hostname, role_code, building_code, site_code, management_ip, asn, status, version` (hostname-sorted)
+- [ ] **VLANs** — `vlan_id, display_name, description, scope_level, template_code, block_code, status` (block_code + vlan_id sorted)
+- [ ] **IP addresses** — `address, subnet_code, assigned_to_type, assigned_to_id, is_reserved, status` (bare host, subnet-grouped)
+- [ ] **Links** — cross-tab A/B columns (`device_a, port_a, ip_a, device_b, port_b, ip_b`) matching legacy P2P/B2B/FW layout
+- [ ] **Servers** — `hostname, profile_code, building_code, asn, loopback_ip, management_ip, nic_count, status` (NIC count via LATERAL COUNT(*))
+- [ ] **Subnets** — `subnet_code, display_name, network, vlan_id, pool_code, scope_level, status`
+- [ ] **ASN allocations** — `asn, allocated_to_type, allocated_to_hostname, block_code, allocated_at, status` (dual-joins device + server for hostname)
+- [ ] **MLAG domains** — `domain_id, display_name, pool_code, scope_level, scope_entity_id, status`
+- [ ] **DHCP relay targets** — `vlan_id, server_ip, priority, linked_ip_address_id, notes, status` (priority-ordered within VLAN)
+
+Shared invariants:
+- [ ] RFC 4180 escaping (embedded `,` `"` CR LF all wrap + double-quote)
+- [ ] `Content-Disposition: attachment; filename="<entity>.csv"` for browser download
+- [ ] Joined-through display codes rather than UUIDs (e.g. `subnet_code`, `template_code`, `pool_code`) so output round-trips cleanly through spreadsheets
+- [ ] Deterministic ordering — repeated export of the same tenant state produces byte-identical output
+
+### 7.X.11 Bulk Import — CSV (Phase 10)
+
+6 entities addressable via `POST /api/net/<entity>/import` with `dryRun=true|false`:
+
+- [ ] **Devices** — required: hostname (unique per tenant); optional: role_code, building_code, management_ip, status. ASN ignored on apply (use allocation CRUD)
+- [ ] **VLANs** — required: vlan_id (1-4094), display_name, block_code; duplicate detection by `(block_code, vlan_id)`
+- [ ] **Subnets** — required: subnet_code, display_name, network (valid CIDR), pool_code; vlan_id ignored on apply
+- [ ] **Servers** — required: hostname; optional: profile_code, building_code. ASN/loopback/nic_count ignored on apply
+- [ ] **DHCP relay targets** — required: vlan_id (must exist), server_ip; first-wins on duplicate numeric vlan_ids across multiple blocks
+- [ ] **Links** — required: link_code, link_type, device_a, device_b (hostnames resolve). Cross-tab: 1 CSV row → 1 `net.link` + 2 `net.link_endpoint` rows in one transaction. IP columns ignored on apply
+
+Shared invariants:
+- [ ] Hand-rolled RFC 4180 parser in `bulk_import::parse_csv` — accepts LF/CRLF/CR, doubled-quote unescape, rejects unterminated quoted fields AND content-after-closing-quote
+- [ ] `dryRun=true` default runs validate-only; `dryRun=false` commits
+- [ ] Any per-row validation failure → `applied=false` with the whole batch rolled back
+- [ ] Any DB-level failure mid-apply → tx rolls back, no partial writes
+- [ ] `ImportValidationResult { totalRows, valid, invalid, dryRun, applied, outcomes[] }` envelope with per-row `{rowNumber, ok, errors[], identifier}`
+- [ ] FK pre-fetch — one query per dimension regardless of row count
+- [ ] Audit entry per created row in the same transaction as the INSERT
+- [ ] RBAC: `write:<EntityType>` at Global (creates don't have an id for hierarchy resolution)
+
+### 7.X.12 Bulk Edit (Phase 10)
+
+5 entities via `POST /api/net/<entity>/bulk-edit`:
+
+- [ ] **Devices** — whitelist: status, role_code, building_code, management_ip, notes
+- [ ] **VLANs** — whitelist: display_name, description, scope_level, status, template_code, notes
+- [ ] **Subnets** — whitelist: display_name, scope_level, status, notes
+- [ ] **Servers** — whitelist: profile_code, building_code, management_ip, status, notes
+- [ ] **DHCP relay targets** — whitelist: priority, status, notes
+
+Shared invariants:
+- [ ] `hostname` / `vlan_id` / `network` / `server_ip` explicitly gated out — editing at scale would turn a typo into a Sev-1
+- [ ] Version-checked UPDATE per row; concurrent-write → whole batch rolls back
+- [ ] Same-value-for-all across the selected id set (per-row different values is what bulk-import is for)
+- [ ] `BulkEditResult { total, succeeded, failed, dryRun, applied, outcomes[] }` envelope
+- [ ] RBAC: `write:<EntityType>` at each row's scope (hierarchy expansion kicks in for Device/Server/Building/Site)
+- [ ] Audit entry per row, action="BulkEdited", source="bulk_edit"
+
+### 7.X.13 RBAC Scoped Policy Engine (Phase 10)
+
+- [ ] Migration 105 `net.scope_grant` — `(organization_id, user_id, action, entity_type, scope_type, scope_entity_id)` with CHECK constraints + partial-unique index for dedup
+- [ ] `scope_grants::has_permission(pool, org, user_id, action, entity_type, entity_id)` resolver — single query matching Global + EntityId + hierarchy-expanded Region/Site/Building for entity types with a modelled hierarchy (Device, Server, Building, Site)
+- [ ] `scope_grants::require_permission` helper — service-bypass on None user_id, Forbidden on denied, Ok on allowed
+- [ ] `EngineError::Forbidden { user_id, action, entity_type }` → HTTP 403 + RFC 7807 `forbidden` code
+- [ ] CRUD endpoints: `GET/POST /api/net/scope-grants`, `GET/DELETE /scope-grants/:id`, `GET /scope-grants/check` (dry-run resolver)
+- [ ] **Meta-protection**: ScopeGrant CRUD itself gates on `read:ScopeGrant` / `write:ScopeGrant` / `delete:ScopeGrant`. Bootstrap: root admin uses service-bypass (no X-User-Id) or direct DB INSERT for the first `write:ScopeGrant` grant
+- [ ] Enforcement wired into every state-changing surface:
+  - [ ] `bulk_edit_devices` / `bulk_edit_vlans` / `bulk_edit_subnets` / `bulk_edit_servers` / `bulk_edit_dhcp_relay_targets`
+  - [ ] `bulk_import::import_devices` / `import_vlans` / `import_subnets` / `import_servers` / `import_dhcp_relay_targets` / `import_links`
+  - [ ] `DhcpRelayTarget` CRUD (read/write/delete per verb)
+  - [ ] `ScopeGrant` CRUD (meta)
+  - [ ] Config-gen renders: `render_device_config` (write:Device), `render_building_configs` (write:Building), `render_site_configs` (write:Site), `render_region_configs` (write:Region)
+  - [ ] Render history: `list_device_renders` / `get_render_by_id` / `diff_render_by_id` (read:Device)
+- [ ] Service-bypass: calls without `X-User-Id` skip enforcement; preserves backward compat during rollout
+- [ ] Hierarchy expansion is type-dispatched — adding a new entity type to the resolver = one match arm in `fetch_entity_hierarchy`, no SQL change
+
+### 7.X.14 XLSX Round-Trip (Phase 10)
+
+12 endpoints, 6 entities × export.xlsx + import.xlsx:
+
+- [ ] `xlsx_codec::csv_body_to_xlsx(csv, sheet_name)` — parses CSV, writes single-sheet workbook; first row bold; sheet name truncated to Excel's 31-char limit + banned chars (`/\*[]:?`) substituted to `_`
+- [ ] `xlsx_codec::xlsx_bytes_to_csv(bytes)` — opens workbook via `calamine`, reads FIRST sheet only, serialises cell grid back to RFC 4180 CSV
+- [ ] Float formatting strips trailing `.0` so VLAN id `120.0` from Excel lands as `"120"` for `i32::parse` downstream
+- [ ] Content-Type on export: `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+- [ ] XLSX is a PURE TRANSPORT ADAPTER over the CSV pipeline — no per-entity XLSX code that could drift from CSV shape
+- [ ] Same RBAC enforcement as the CSV counterpart — no new policy code needed per endpoint
+- [ ] C# ApiClient `ExportXxxXlsxAsync` (byte[]) + `ImportXxxXlsxAsync` (byte[] + dryRun)
+
+### 7.X.15 Global Search + Saved Views (Phase 10)
+
+`GET /api/net/search?organizationId=X&q=...[&entityTypes=Device,Vlan][&limit=50]`:
+
+- [ ] Query-time UNION across 6 entity types (Device / Vlan / Subnet / Server / Link / DhcpRelayTarget)
+- [ ] `to_tsvector('english', ...) @@ plainto_tsquery('english', $q)` — tokenisation + stemming handled by Postgres
+- [ ] Results ranked by `ts_rank` descending
+- [ ] `entityTypes` comma filter narrows scan to the selected subset; unknown types silently dropped
+- [ ] `limit` clamped to `[1, 500]` via `clamp_search_limit` (default 50)
+- [ ] Empty `q` short-circuits to empty results (avoids full table scan)
+- [ ] RBAC post-filter: each raw hit gets a `has_permission(read, entity_type, id)` check; unauthorised drop
+- [ ] Organization_id is a hard wall — cross-tenant search returns empty
+
+Migration 106 `net.saved_view` — per-user named queries via `GET/POST/PUT/DELETE /api/net/saved-views[/:id]`:
+
+- [ ] `UNIQUE (organization_id, user_id, name)` — names unique in owner's namespace; two operators can both have a "Critical" view
+- [ ] list returns ONLY caller's views (scoped by `X-User-Id`); service calls return empty (no admin backdoor)
+- [ ] get/update/delete require `X-User-Id`; service calls reject with 400 rather than materialising orphan rows
+- [ ] cross-user read returns 404 not 403 — avoids leaking existence of other users' views
+- [ ] optimistic concurrency via `version` column collapsed into single UPDATE (WHERE user_id AND version → 0 rows = "not owned OR stale")
+- [ ] `filters jsonb` unstructured so future UI facet additions need no schema change
 
 ---
 

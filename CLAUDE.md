@@ -40,7 +40,7 @@ project structure without updating the architecture doc first.
 | [docs/GLOBALADMIN_BUILDOUT.md](docs/GLOBALADMIN_BUILDOUT.md) | Global Admin 5-phase buildout — tenant CRUD, licensing, subscriptions, setup wizard, audit |
 | [docs/TASKS_BUILDOUT.md](docs/TASKS_BUILDOUT.md) | Task module 11-phase buildout plan (Hansoft/P4 Plan clone) — all phases complete |
 | [docs/MERGE_PLAN.md](docs/MERGE_PLAN.md) | Central + Secure merge — 10 phases, unified auth, API gateway, K8s elastic scaling |
-| [docs/NETWORKING_BUILDOUT_PLAN.md](docs/NETWORKING_BUILDOUT_PLAN.md) | Networking engine — 23-phase buildout transforming single-customer toolkit into multi-tenant source-of-truth. Phases 1-6 complete; Phase 10 config-gen + turn-up pack byte-parity ACHIEVED (RBAC / search / bulk / XLSX still pending) (2026-04-18) |
+| [docs/NETWORKING_BUILDOUT_PLAN.md](docs/NETWORKING_BUILDOUT_PLAN.md) | Networking engine — 23-phase buildout transforming single-customer toolkit into multi-tenant source-of-truth. Phases 1-6 complete; **Phase 10 service-side COMPLETE** — byte-parity config-gen, turn-up packs, bulk export/import/edit, RBAC, XLSX, search, saved views. WPF/Angular UI integration pending (2026-04-18) |
 | [docs/NETWORKING_RIBBON_AUDIT.md](docs/NETWORKING_RIBBON_AUDIT.md) | Networking ribbon action inventory — every button, permission, message, handler; placeholder-lambda canary test |
 | [docs/CREDENTIALS.md](docs/CREDENTIALS.md) | All login credentials, DSNs, SSH info, service URLs, K8s access |
 
@@ -94,7 +94,11 @@ The config-gen + turn-up-pack halves of Phase 10 shipped as 28 self-contained Ru
 
 **RBAC scoped policy engine (COMPLETE for Phase 10)**: Migration 105 `net.scope_grant` with `(user_id, action, entity_type, scope_type, scope_entity_id)` tuples. Resolver matches Global + EntityId + hierarchy-expanded Region/Site/Building for Device/Server/Building/Site entity types. `GET /api/net/scope-grants/check` dry-runs the resolver for UI feedback. Enforcement wired into every state-changing surface (bulk_edit, bulk_import, DhcpRelayTarget CRUD, ScopeGrant CRUD, config-gen render + history endpoints). Opt-in rollout via `X-User-Id` header presence — service-bypass on missing header preserves backward compat during the rollout window.
 
-**Phase 10 deliverables NOT started**: global search + faceted filters + saved views; XLSX round-trip (bolts onto existing CSV pipeline).
+**Global search + saved views (COMPLETE)**: `GET /api/net/search` — full-text across 6 entity types via query-time `tsvector` UNION with `plainto_tsquery` stemming + `ts_rank` ordering; optional comma-separated `entityTypes` filter; RBAC post-filter drops hits the caller can't read. Migration 106 `net.saved_view` + per-user CRUD (ownership-as-auth; 404-not-403 on cross-user reads).
+
+**XLSX round-trip (COMPLETE)**: `calamine` (read) + `rust_xlsxwriter` (write) crate deps; `xlsx_codec.rs` wraps the existing CSV pipeline so XLSX is a pure transport adapter with no per-entity XLSX code that could drift from the CSV shape. 12 endpoints (6 entities × export.xlsx + import.xlsx); C# ApiClient gets byte-array transport helpers alongside the existing CSV ones.
+
+**Phase 10 service-side surface is COMPLETE** — every deliverable in the plan (config-gen byte-parity, turn-up pack generator, bulk export/import/edit, RBAC with hierarchy + enforcement, XLSX, global search, saved views) has shipped. Remaining work is WPF/Angular UI integration on top of the completed service surface.
 
 See `docs/NETWORKING_BUILDOUT_PLAN.md` §Phase 10 for the slice-by-slice commit table and acceptance-criteria check.
 

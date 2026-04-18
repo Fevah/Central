@@ -379,7 +379,7 @@ Each phase has: scope, entities delivered, capabilities delivered (by MFL §), D
 
 **Risk:** medium.
 
-**Status (2026-04-18) — ACCEPTANCE BAR REACHED + the three remaining Phase-10 bulk deliverables CLOSED. Byte-for-byte parity renderer, turn-up pack generator (device / building / site / region), render history + diff, bulk CSV export (9 entities), bulk import (6 entities), bulk edit (5 entities), RBAC scoped policy engine (with hierarchy expansion + opt-in enforcement across every state-changing surface). XLSX round-trip + global search + saved views NOT started.**
+**Status (2026-04-18) — SERVICE-SIDE PHASE 10 COMPLETE.** Byte-for-byte parity renderer, turn-up pack generator (device / building / site / region), render history + diff, bulk CSV export (9 entities), bulk import (6 entities), bulk edit (5 entities), RBAC scoped policy engine (with hierarchy expansion + opt-in enforcement across every state-changing surface), XLSX round-trip (6 entities × export + import), global search (ranked full-text across 6 entities with RBAC post-filter), saved views (per-user CRUD with ownership-as-auth). Remaining Phase 10 work is pure WPF/web UI integration on top of the completed service surface.
 
 The config-generation half + turn-up pack generator shipped as
 self-contained Rust slices inside `services/networking-engine/`.
@@ -437,20 +437,30 @@ tenant) the output matches line-for-line. 230/230 unit tests +
 | 41 | Bulk import — links. Cross-tab A/B decomposition: 1 CSV row → 1 link + 2 endpoints in a single tx | 2ddf5cf4b |
 | 42 | Bulk edit — VLANs + subnets | 0763a7ffd |
 | 43 | Bulk edit — servers + DHCP relay targets. **Bulk surface closed** — all 5 addressable-via-CRUD entities support edit | a44bd8c87 |
-| 44 | RBAC enforcement on config-gen endpoints — render-device/building/site/region (write); list/get/diff renders (read). Closes the last unenforced state-change surface | this commit |
+| 44 | RBAC enforcement on config-gen endpoints — render-device/building/site/region (write); list/get/diff renders (read). Closes the last unenforced state-change surface | 724c79b86 |
+| 45 | **XLSX round-trip** — `calamine` (read) + `rust_xlsxwriter` (write) crate deps; `xlsx_codec.rs` as a pure transport adapter over the existing CSV pipeline. 12 new endpoints (6 entities × export.xlsx + import.xlsx). C# ApiClient gets 12 typed methods + byte-array transport helpers. +10 unit tests on the codec | 9aa0771bc |
+| 46 | **Global search** — tsvector-based full-text across 6 tenant-owned entity types via query-time UNION; `GET /api/net/search` with RBAC post-filter dropping hits the caller can't read; comma-separated `entityTypes` filter + `limit` clamp. +10 unit + 7 live-DB tests | 92d1403f3 |
+| 47 | **Saved views** — migration 106 `net.saved_view`; per-user CRUD with ownership model as the auth boundary (no scope_grants gating; user_id on every row IS the access control); 404-not-403 on cross-user reads to avoid leaking existence; optimistic concurrency collapsed into single UPDATE. +4 unit + 8 live-DB tests | 1f3da348e |
+| 48 | Phase 10 closure docs refresh — plan + CLAUDE.md + FEATURE_TEST_CHECKLIST catching up on slices 31-47 | this commit |
 
 **Acceptance criteria check:**
 - [x] Byte-for-byte match with pre-migration output — every legacy section has a Rust counterpart
 - [x] Turn-up pack generator — device / building / site / region scopes all ship; per-device error tolerance
 - [x] Config generation against the new schema — reads from `net.device`, `net.link_endpoint`, `net.asn_allocation`, `net.ip_address`, `net.mstp_priority_allocation`, `net.mlag_domain`, `net.vlan`, `net.subnet`, `net.port`, `net.dhcp_relay_target`
 
-**Remaining Phase 10 deliverables:**
-- **Bulk export** — 9 entities shipped (devices / VLANs / IP addresses / links / servers / subnets / DHCP relay targets / ASN allocations / MLAG domains). Surface is closed.
-- **Bulk import** — 6 entities shipped (devices / VLANs / subnets / servers / DHCP relay targets / links). Surface is closed. Create-only + transactional all-or-nothing; upsert + version-checked update lands in a follow-on slice once operators need it.
-- **Bulk edit** — 5 entities shipped (devices / VLANs / subnets / servers / DHCP relay targets). Surface is closed; Links stays gated (cross-tab edit is a different primitive).
-- **RBAC scoped policy engine** — SHIPPED. Schema + CRUD + resolver with hierarchy expansion (Device/Server/Building/Site walk up the chain) + `Forbidden` error variant + enforcement wired into every state-changing surface (bulk_edit, bulk_import, DhcpRelayTarget CRUD, ScopeGrant CRUD, config-gen renders + history reads). Opt-in rollout via `X-User-Id` presence — service-bypass preserves backward compat.
-- **Global search + faceted filters + saved views** — not started. Decision point upfront: PG tsvector full-text vs a dedicated search engine (tantivy, meilisearch). Saved-view storage lands on top of whichever.
-- **XLSX round-trip of the Immunocore workbook** — not started. Bolts onto existing CSV export/import by adding `calamine` (read) + `rust_xlsxwriter` (write) crates; converts xlsx ↔ CSV at the transport layer.
+**Phase 10 deliverable status — all SHIPPED:**
+- **Bulk export** — 9 entities (devices / VLANs / IP addresses / links / servers / subnets / DHCP relay targets / ASN allocations / MLAG domains). RFC 4180 CSV with `Content-Disposition: attachment`.
+- **Bulk import** — 6 entities (devices / VLANs / subnets / servers / DHCP relay targets / links). Create-only + transactional all-or-nothing. Upsert + version-checked update remains a future slice when operators need it.
+- **Bulk edit** — 5 entities (devices / VLANs / subnets / servers / DHCP relay targets). Links gated (cross-tab edit is a different primitive).
+- **RBAC scoped policy engine** — `net.scope_grant` with `(user, action, entity_type, scope_type, scope_entity_id)` tuples. Resolver with hierarchy expansion (Device/Server/Building/Site walk up the chain) + `Forbidden` variant + enforcement wired into every state-changing surface. Opt-in rollout via `X-User-Id` header presence preserves backward compat.
+- **Global search + faceted filters + saved views** — full-text search via query-time UNION with RBAC post-filter; `entityTypes` filter parameter; `net.saved_view` per-user CRUD with ownership-as-auth boundary.
+- **XLSX round-trip** — `calamine` + `rust_xlsxwriter` crate deps; pure transport adapter over the CSV pipeline (no per-entity XLSX re-implementation, no drift risk).
+
+**What the plan does NOT cover today** — these are future Phase 11+ scope, not Phase 10 regressions:
+- WPF module integration consuming the new endpoints (separate client-side slice; the service surface is ready)
+- GIN indexes on the search expressions (deferred until a tenant hits the ~10k-rows-per-entity performance cliff)
+- Upsert semantics for bulk import (create-only is today's rule)
+- Hierarchy expansion in the RBAC resolver for more entity types (Link / Vlan / Subnet fall back to Global+EntityId; extending is one match arm per type in `fetch_entity_hierarchy`)
 
 **Known limitations / follow-up:**
 - The `#[ignore]` live-DB integration tests need a `TEST_DATABASE_URL` to actually run — CI doesn't yet opt them in (add in a follow-up PR when a test DB is available)
