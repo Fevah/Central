@@ -103,6 +103,26 @@ pub struct DeviceContext {
     pub vlans: Vec<VlanLine>,
     pub bgp: Option<BgpContext>,
     pub bgp_neighbors: Vec<BgpNeighborLine>,
+    /// MSTP bridge-priority for this device. `net.mstp_priority_allocation`
+    /// is unique per (org, device) so this is one row or none. Standard
+    /// values are multiples of 4096 (0, 4096, 8192, 12288, 16384) — the
+    /// renderer emits whatever is stored without re-validating.
+    pub mstp_priority: Option<i32>,
+    pub mlag: Option<MlagContext>,
+}
+
+/// MLAG peer-link state derived from:
+///  - `net.link` of type `MLAG-Peer` where this device is one endpoint
+///    (gives us the peer-link interface name)
+///  - `net.mlag_domain` scoped to the device's building (gives us the
+///    domain id)
+/// Either field can be missing (e.g. link modelled but domain not yet
+/// allocated, or vice versa) — the renderer emits whichever lines are
+/// resolvable and skips the rest.
+#[derive(Debug, Clone)]
+pub struct MlagContext {
+    pub domain_id: Option<i32>,
+    pub peer_link_interface: Option<String>,
 }
 
 /// BGP scalar context — local AS + router-id source. Neighbors live
@@ -238,6 +258,44 @@ async fn fetch_context(
         .fetch_all(pool)
         .await?;
 
+    // MSTP priority — unique per (org, device) so one row or none.
+    let mstp: Option<(i32,)> = sqlx::query_as(
+        "SELECT priority
+           FROM net.mstp_priority_allocation
+          WHERE organization_id = $1 AND device_id = $2 AND deleted_at IS NULL
+          LIMIT 1")
+        .bind(org_id)
+        .bind(device_id)
+        .fetch_optional(pool)
+        .await?;
+
+    // MLAG: if the device terminates an MLAG-Peer link, we want:
+    //   - the local endpoint's interface_name (peer-link port)
+    //   - the mlag_domain allocated to the device's building
+    // Either half may be missing; both are Option.
+    let mlag_row: Option<(Option<i32>, Option<String>)> = sqlx::query_as(
+        r#"SELECT mg.domain_id, le_self.interface_name
+             FROM net.link l
+             JOIN net.link_type lt ON lt.id = l.link_type_id
+             JOIN net.link_endpoint le_self
+               ON le_self.link_id   = l.id
+              AND le_self.device_id = $2
+              AND le_self.deleted_at IS NULL
+             JOIN net.device d ON d.id = le_self.device_id AND d.deleted_at IS NULL
+             LEFT JOIN net.mlag_domain mg
+               ON mg.organization_id = $1
+              AND mg.scope_level     = 'Building'
+              AND mg.scope_entity_id = d.building_id
+              AND mg.deleted_at IS NULL
+            WHERE l.organization_id = $1
+              AND l.deleted_at      IS NULL
+              AND lt.type_code      = 'MLAG-Peer'
+            LIMIT 1"#)
+        .bind(org_id)
+        .bind(device_id)
+        .fetch_optional(pool)
+        .await?;
+
     // VLANs the device terminates — for now, every VLAN in the tenant's
     // active rows. Real scoping (VLAN's scope_level / scope_entity_id
     // intersects device's building) comes in a follow-on slice.
@@ -273,6 +331,11 @@ async fn fetch_context(
                 .unwrap_or(peer_ip);
             BgpNeighborLine { peer_ip: peer_ip_host, remote_as: peer_asn, kind, peer_label }
         }).collect(),
+        mstp_priority: mstp.map(|(p,)| p),
+        mlag: mlag_row.map(|(dom, iface)| MlagContext {
+            domain_id: dom,
+            peer_link_interface: iface,
+        }),
     })
 }
 
@@ -298,8 +361,10 @@ impl Renderer for PicosRenderer {
         render_management_interface_section(&mut out, ctx);
         render_vlans_section(&mut out, ctx);
         render_bgp_scalar_section(&mut out, ctx);
-        // TODO(follow-on): render_bgp_neighbors (derived from
-        // net.link_endpoint), render_mlag_peer, render_mstp, render_ports.
+        render_mstp_section(&mut out, ctx);
+        render_mlag_section(&mut out, ctx);
+        // TODO(follow-on): render_ports, render_vrrp, render_dhcp_relay,
+        // render_static_routes, render_lldp.
         out
     }
 }
@@ -398,6 +463,32 @@ fn render_bgp_scalar_section(out: &mut String, ctx: &DeviceContext) {
     out.push('\n');
 }
 
+fn render_mstp_section(out: &mut String, ctx: &DeviceContext) {
+    let Some(prio) = ctx.mstp_priority else { return; };
+    out.push_str(&format!(
+        "set protocols spanning-tree mstp bridge-priority {}\n", prio));
+    out.push('\n');
+}
+
+fn render_mlag_section(out: &mut String, ctx: &DeviceContext) {
+    let Some(mlag) = ctx.mlag.as_ref() else { return; };
+    // Require at least one of the two fields to render anything. An
+    // MLAG-Peer link with neither the domain allocated nor the port
+    // named is effectively empty state — skip.
+    if mlag.domain_id.is_none() && mlag.peer_link_interface.is_none() {
+        return;
+    }
+    if let Some(dom) = mlag.domain_id {
+        out.push_str(&format!("set protocols mlag domain {}\n", dom));
+    }
+    if let Some(iface) = mlag.peer_link_interface.as_deref() {
+        if !iface.is_empty() {
+            out.push_str(&format!("set protocols mlag peer-link {}\n", iface));
+        }
+    }
+    out.push('\n');
+}
+
 /// PicOS string escaping — escape embedded double quotes and
 /// backslashes so the `"..."` literal stays valid. PicOS doesn't
 /// document a rich escape grammar beyond that, so we stop there.
@@ -428,6 +519,8 @@ mod tests {
             vlans,
             bgp: None,
             bgp_neighbors: vec![],
+            mstp_priority: None,
+            mlag: None,
         }
     }
 
@@ -444,6 +537,8 @@ mod tests {
             vlans: vec![],
             bgp: None,
             bgp_neighbors: vec![],
+            mstp_priority: None,
+            mlag: None,
         }
     }
 
@@ -469,6 +564,25 @@ mod tests {
             vlans: vec![],
             bgp,
             bgp_neighbors,
+            mstp_priority: None,
+            mlag: None,
+        }
+    }
+
+    fn fixture_with_mstp_mlag(
+        mstp_priority: Option<i32>,
+        mlag: Option<MlagContext>,
+    ) -> DeviceContext {
+        DeviceContext {
+            device_id: Uuid::nil(),
+            hostname: "CORE02".into(),
+            loopback: None,
+            management_ip: None,
+            vlans: vec![],
+            bgp: None,
+            bgp_neighbors: vec![],
+            mstp_priority,
+            mlag,
         }
     }
 
@@ -726,6 +840,85 @@ mod tests {
         // But the rest of the BGP section must still render.
         assert!(out.contains("local-as \"65112\""));
         assert!(out.contains("redistribute connected"));
+    }
+
+    #[test]
+    fn picos_emits_mstp_bridge_priority_when_allocated() {
+        let out = PicosRenderer::render(&fixture_with_mstp_mlag(Some(12288), None));
+        assert!(out.contains("set protocols spanning-tree mstp bridge-priority 12288"),
+            "MSTP line missing:\n{out}");
+    }
+
+    #[test]
+    fn picos_omits_mstp_section_when_no_allocation() {
+        let out = PicosRenderer::render(&fixture_with_mstp_mlag(None, None));
+        assert!(!out.contains("spanning-tree mstp"),
+            "no MSTP allocation → no MSTP line:\n{out}");
+    }
+
+    #[test]
+    fn picos_emits_full_mlag_block_when_both_fields_present() {
+        let ctx = fixture_with_mstp_mlag(None, Some(MlagContext {
+            domain_id: Some(1),
+            peer_link_interface: Some("ae-100".into()),
+        }));
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains("set protocols mlag domain 1"),
+            "MLAG domain line missing:\n{out}");
+        assert!(out.contains("set protocols mlag peer-link ae-100"),
+            "MLAG peer-link line missing:\n{out}");
+    }
+
+    #[test]
+    fn picos_emits_partial_mlag_when_only_domain_set() {
+        let ctx = fixture_with_mstp_mlag(None, Some(MlagContext {
+            domain_id: Some(7),
+            peer_link_interface: None,
+        }));
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains("set protocols mlag domain 7"),
+            "partial MLAG should still emit the domain line:\n{out}");
+        assert!(!out.contains("peer-link"),
+            "no interface → no peer-link line:\n{out}");
+    }
+
+    #[test]
+    fn picos_emits_partial_mlag_when_only_peer_link_set() {
+        let ctx = fixture_with_mstp_mlag(None, Some(MlagContext {
+            domain_id: None,
+            peer_link_interface: Some("ae-100".into()),
+        }));
+        let out = PicosRenderer::render(&ctx);
+        assert!(!out.contains("mlag domain"),
+            "no domain → no domain line:\n{out}");
+        assert!(out.contains("set protocols mlag peer-link ae-100"),
+            "peer-link line should still render without domain:\n{out}");
+    }
+
+    #[test]
+    fn picos_omits_mlag_block_when_mlag_context_empty_of_both_fields() {
+        let ctx = fixture_with_mstp_mlag(None, Some(MlagContext {
+            domain_id: None,
+            peer_link_interface: None,
+        }));
+        let out = PicosRenderer::render(&ctx);
+        assert!(!out.contains("protocols mlag"),
+            "empty MlagContext → no MLAG lines:\n{out}");
+    }
+
+    #[test]
+    fn picos_omits_mlag_peer_link_when_interface_is_empty_string() {
+        // Defensive: interface_name can be an empty string in legacy
+        // link rows where the port wasn't named — don't emit a
+        // "peer-link " line with nothing after it.
+        let ctx = fixture_with_mstp_mlag(None, Some(MlagContext {
+            domain_id: Some(1),
+            peer_link_interface: Some(String::new()),
+        }));
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains("mlag domain 1"));
+        assert!(!out.contains("peer-link "),
+            "empty interface string → no peer-link line:\n{out}");
     }
 
     #[test]
