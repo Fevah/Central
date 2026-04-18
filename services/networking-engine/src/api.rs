@@ -24,6 +24,9 @@ use crate::config_gen;
 use crate::dhcp_relay::{
     CreateDhcpRelayBody, DhcpRelayRepo, ListDhcpRelayQuery, UpdateDhcpRelayBody,
 };
+use crate::scope_grants::{
+    self, CreateScopeGrantBody, ListScopeGrantsQuery, ScopeGrantRepo,
+};
 use crate::change_sets::{
     AddItemBody, CancelBody, ChangeSetRepo, CreateChangeSetBody, DecisionBody,
     GetChangeSetQuery, ListChangeSetsQuery, SubmitBody,
@@ -143,6 +146,13 @@ pub fn build_router(state: AppState) -> Router {
         // Bulk edit (Phase 10) — same-value-for-all transactional
         // update across a selected set of rows; dryRun preview.
         .route("/api/net/devices/bulk-edit",                post(bulk_edit_devices_handler))
+        // Scope grants (Phase 10 RBAC foundation) — CRUD + resolver.
+        // Engine is available now but not-yet-blocking anywhere;
+        // per-endpoint enforcement lands in follow-on slices.
+        .route("/api/net/scope-grants",                     get(list_scope_grants).post(create_scope_grant))
+        .route("/api/net/scope-grants/:id",
+               get(get_scope_grant).delete(delete_scope_grant))
+        .route("/api/net/scope-grants/check",               get(check_permission_handler))
         .with_state(state)
 }
 
@@ -1196,4 +1206,69 @@ async fn bulk_edit_devices_handler(
         &s.pool, q.organization_id, &body, q.dry_run, user_id,
     ).await?;
     Ok(Json(result))
+}
+
+// ─── Scope grant handlers ────────────────────────────────────────────────
+
+async fn list_scope_grants(
+    State(s): State<AppState>,
+    Query(q): Query<ListScopeGrantsQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = ScopeGrantRepo::new(s.pool);
+    Ok(Json(repo.list(&q).await?))
+}
+
+async fn get_scope_grant(
+    State(s): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = ScopeGrantRepo::new(s.pool);
+    Ok(Json(repo.get(id, q.organization_id).await?))
+}
+
+async fn create_scope_grant(
+    State(s): State<AppState>,
+    headers: HeaderMap,
+    Json(body): Json<CreateScopeGrantBody>,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = ScopeGrantRepo::new(s.pool);
+    let user_id = header_user_id(&headers);
+    let out = repo.create(&body, user_id).await?;
+    Ok((StatusCode::CREATED, Json(out)))
+}
+
+async fn delete_scope_grant(
+    State(s): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = ScopeGrantRepo::new(s.pool);
+    let user_id = header_user_id(&headers);
+    repo.soft_delete(id, q.organization_id, user_id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CheckPermissionQuery {
+    organization_id: Uuid,
+    user_id: i32,
+    action: String,
+    entity_type: String,
+    entity_id: Option<Uuid>,
+}
+
+/// Dry-run the permission resolver without enforcing. Useful for UI
+/// feedback ("you'd be denied if you hit save") and for confirming
+/// a grant was set up correctly after creating it.
+async fn check_permission_handler(
+    State(s): State<AppState>,
+    Query(q): Query<CheckPermissionQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let decision = scope_grants::has_permission(
+        &s.pool, q.organization_id, q.user_id, &q.action, &q.entity_type, q.entity_id,
+    ).await?;
+    Ok(Json(decision))
 }

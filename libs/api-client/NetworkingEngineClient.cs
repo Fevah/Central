@@ -560,6 +560,55 @@ public class NetworkingEngineClient : IDisposable
             ?? throw new NetworkingEngineException(0, $"POST {path} returned null body");
     }
 
+    // ─── Scope grants (Phase 10 RBAC foundation) ─────────────────────────
+
+    /// <summary>List scope grants in the tenant, optionally narrowed
+    /// by userId / action / entityType. Engine is CRUD-ready today;
+    /// per-endpoint enforcement lands in follow-on slices.</summary>
+    public Task<List<ScopeGrantDto>> ListScopeGrantsAsync(Guid organizationId,
+        int? userId = null, string? action = null, string? entityType = null,
+        CancellationToken ct = default)
+    {
+        var qs = BuildQuery(("organizationId", organizationId.ToString()),
+                            ("userId", userId?.ToString()),
+                            ("action", action),
+                            ("entityType", entityType));
+        return GetAsync<List<ScopeGrantDto>>($"/api/net/scope-grants{qs}", ct);
+    }
+
+    public Task<ScopeGrantDto> GetScopeGrantAsync(Guid id, Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<ScopeGrantDto>(
+            $"/api/net/scope-grants/{id}?organizationId={organizationId}", ct);
+
+    public Task<ScopeGrantDto> CreateScopeGrantAsync(CreateScopeGrantRequest request,
+        CancellationToken ct = default)
+        => PostAsync<ScopeGrantDto>("/api/net/scope-grants", request, ct);
+
+    public async Task DeleteScopeGrantAsync(Guid id, Guid organizationId,
+        CancellationToken ct = default)
+    {
+        var resp = await _http.DeleteAsync(
+            $"/api/net/scope-grants/{id}?organizationId={organizationId}", ct);
+        await EnsureSuccessAsync(resp, ct);
+    }
+
+    /// <summary>Dry-run the permission resolver without enforcing —
+    /// useful for UI feedback ("save would be denied") and for
+    /// verifying a newly-created grant actually lets the right user
+    /// do the right thing.</summary>
+    public Task<PermissionDecisionDto> CheckPermissionAsync(Guid organizationId,
+        int userId, string action, string entityType, Guid? entityId = null,
+        CancellationToken ct = default)
+    {
+        var qs = BuildQuery(("organizationId", organizationId.ToString()),
+                            ("userId", userId.ToString()),
+                            ("action", action),
+                            ("entityType", entityType),
+                            ("entityId", entityId?.ToString()));
+        return GetAsync<PermissionDecisionDto>($"/api/net/scope-grants/check{qs}", ct);
+    }
+
     /// <summary>Bulk edit — apply the same field/value change to a set
     /// of devices in one transaction. Whitelisted fields: status,
     /// role_code, building_code, management_ip, notes. Any per-row
@@ -967,3 +1016,20 @@ public record BulkEditOutcomeDto(Guid Id, string Hostname, bool Ok, string? Erro
 /// summary-banner + per-row-list component.</summary>
 public record BulkEditResultDto(int Total, int Succeeded, int Failed,
     bool DryRun, bool Applied, List<BulkEditOutcomeDto> Outcomes);
+
+// ─── Scope grants (Phase 10 RBAC) ─────────────────────────────────────
+
+public record ScopeGrantDto(Guid Id, Guid OrganizationId, int UserId,
+    string Action, string EntityType, string ScopeType, Guid? ScopeEntityId,
+    string Status, int Version, DateTime CreatedAt, DateTime UpdatedAt,
+    string? Notes);
+
+public record CreateScopeGrantRequest(Guid OrganizationId, int UserId,
+    string Action, string EntityType, string ScopeType, Guid? ScopeEntityId = null,
+    string? Notes = null);
+
+/// <summary>Resolver decision. <c>MatchedGrantId</c> identifies which
+/// grant allowed the action when <c>Allowed=true</c> — lets UIs
+/// show "you have access via grant X" and lets audit log the
+/// specific grant that authorised a later action.</summary>
+public record PermissionDecisionDto(bool Allowed, Guid? MatchedGrantId);

@@ -28,6 +28,7 @@ pub mod naming;
 pub mod naming_overrides;
 pub mod naming_resolver;
 pub mod regenerate;
+pub mod scope_grants;
 pub mod server_fanout;
 pub mod tenant_config;
 pub mod validation;
