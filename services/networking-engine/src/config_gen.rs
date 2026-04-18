@@ -12,11 +12,12 @@
 //! ## Scope of the PicOS starter
 //!
 //! This slice emits the basic device-identity sections — hostname,
-//! loopback IP, VLANs the device terminates. Richer sections (BGP,
-//! MLAG peer-link, MSTP priority, VLAN trunks, port descriptions, FW
-//! zones) arrive as follow-on slices. The acceptance bar from the
-//! phase plan is "byte-for-byte match with pre-migration output" —
-//! met incrementally, section by section.
+//! loopback IP (`lo0`), management SVI (`vlan-152`), and the VLANs the
+//! device terminates. Richer sections (BGP, MLAG peer-link, MSTP
+//! priority, VLAN trunks, port descriptions, FW zones) arrive as
+//! follow-on slices. The acceptance bar from the phase plan is
+//! "byte-for-byte match with pre-migration output" — met incrementally,
+//! section by section.
 
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -87,16 +88,17 @@ fn sha256_hex(s: &str) -> String {
 /// (no DB access, just functions over this struct) makes tests easy
 /// and lets the pipeline parallelise the context fetch later.
 ///
-/// loopback + management_ip + device_id are populated for the follow-on
-/// sections (mgmt interface, loopback block, BGP router-id) — currently
-/// unused by the PicOS starter which only emits hostname + vlans.
-/// Keeping them in the struct so the next slice doesn't refactor.
+/// `loopback` / `management_ip` come back as Postgres inet text
+/// (e.g. `"10.255.91.2/32"`, `"10.11.152.2/24"`). The renderer splits
+/// them into address + prefix for the PicOS `set l3-interface` syntax.
+/// `device_id` is passed through so follow-on sections that need the
+/// id (BGP router-id derivation, port lookups) don't re-fetch.
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct DeviceContext {
     pub device_id: Uuid,
     pub hostname: String,
-    pub loopback: Option<String>,       // cidr text, e.g. "10.255.91.2/32"
+    pub loopback: Option<String>,
     pub management_ip: Option<String>,
     pub vlans: Vec<VlanLine>,
 }
@@ -113,31 +115,36 @@ async fn fetch_context(
     org_id: Uuid,
     device_id: Uuid,
 ) -> Result<DeviceContext, EngineError> {
-    // Device identity + loopback + mgmt ip in one query via LEFT JOIN.
-    let dev: Option<(String, Option<String>, Option<String>)> = sqlx::query_as(
-        "SELECT d.hostname,
-                lb.address::text AS loopback,
-                d.management_ip::text AS mgmt
+    let dev: Option<(String, Option<String>)> = sqlx::query_as(
+        "SELECT d.hostname, d.management_ip::text AS mgmt
            FROM net.device d
-           LEFT JOIN net.ip_address lb
-                  ON lb.id = d.asn_allocation_id       -- NOT the right join; see comment
-            AND lb.deleted_at IS NULL
           WHERE d.id = $1 AND d.organization_id = $2 AND d.deleted_at IS NULL")
         .bind(device_id)
         .bind(org_id)
         .fetch_optional(pool)
         .await?;
-    // The loopback column lookup above is WRONG as written — net.device
-    // doesn't currently carry a direct loopback_ip_address_id FK. The
-    // loopback is stored per-server (net.server.loopback_ip_address_id),
-    // not per-device. Devices carry asn_allocation_id but that's the
-    // ASN, not the IP.
-    //
-    // The right resolution is "find the LOOPBACK subnet for this
-    // device's building + pick the host entry whose assigned_to_id =
-    // device_id". That query lives in the full renderer; starter
-    // code emits the hostname section only and leaves loopback as None.
-    let (hostname, _, mgmt) = dev.ok_or_else(|| EngineError::container_not_found("device", device_id))?;
+    let (hostname, mgmt) = dev.ok_or_else(|| EngineError::container_not_found("device", device_id))?;
+
+    // Loopback: `net.device` has no direct FK to its loopback IP. Devices
+    // live in a LOOPBACK-coded subnet via net.ip_address.assigned_to_id
+    // (same convention ServerCreationService uses for server loopbacks).
+    // A device should only ever have one active loopback entry; LIMIT 1
+    // protects the renderer if the invariant is ever broken.
+    let loopback: Option<(String,)> = sqlx::query_as(
+        "SELECT ip.address::text
+           FROM net.ip_address ip
+           JOIN net.subnet s ON s.id = ip.subnet_id AND s.deleted_at IS NULL
+          WHERE ip.organization_id = $1
+            AND ip.assigned_to_id = $2
+            AND ip.assigned_to_type = 'Device'
+            AND s.subnet_code ILIKE 'LOOPBACK%'
+            AND ip.deleted_at IS NULL
+          ORDER BY ip.assigned_at ASC
+          LIMIT 1")
+        .bind(org_id)
+        .bind(device_id)
+        .fetch_optional(pool)
+        .await?;
 
     // VLANs the device terminates — for now, every VLAN in the tenant's
     // active rows. Real scoping (VLAN's scope_level / scope_entity_id
@@ -155,7 +162,7 @@ async fn fetch_context(
     Ok(DeviceContext {
         device_id,
         hostname,
-        loopback: None,   // see note above
+        loopback: loopback.map(|(addr,)| addr),
         management_ip: mgmt,
         vlans: vlan_rows.into_iter().map(|(vid, name, desc)| VlanLine {
             vlan_id: vid, display_name: name, description: desc,
@@ -181,9 +188,10 @@ impl Renderer for PicosRenderer {
         let mut out = String::with_capacity(256 + ctx.vlans.len() * 80);
         render_header(&mut out, ctx);
         render_system_section(&mut out, ctx);
+        render_loopback_section(&mut out, ctx);
+        render_management_interface_section(&mut out, ctx);
         render_vlans_section(&mut out, ctx);
-        // TODO(follow-on): render_loopback, render_mgmt_iface,
-        // render_bgp, render_mlag_peer, render_mstp, render_ports.
+        // TODO(follow-on): render_bgp, render_mlag_peer, render_mstp, render_ports.
         out
     }
 }
@@ -197,6 +205,40 @@ fn render_header(out: &mut String, ctx: &DeviceContext) {
 
 fn render_system_section(out: &mut String, ctx: &DeviceContext) {
     out.push_str(&format!("set system hostname \"{}\"\n", escape_picos(&ctx.hostname)));
+    out.push('\n');
+}
+
+/// Split a Postgres `inet` text value like `"10.255.91.2/32"` or
+/// `"10.11.152.2/24"` into (host, prefix). Returns `None` if the input
+/// can't be parsed — the renderer then skips the section rather than
+/// emitting a half-formed line.
+fn split_inet_text(s: &str) -> Option<(&str, u8)> {
+    let (host, rest) = s.split_once('/')?;
+    let prefix: u8 = rest.parse().ok()?;
+    if host.is_empty() { return None; }
+    Some((host, prefix))
+}
+
+fn render_loopback_section(out: &mut String, ctx: &DeviceContext) {
+    let Some(lb) = ctx.loopback.as_deref() else { return; };
+    let Some((host, prefix)) = split_inet_text(lb) else { return; };
+    // PicOS loopback uses the "lo0" alias under l3-interface.
+    out.push_str(&format!(
+        "set l3-interface loopback lo0 address {} prefix-length {}\n",
+        host, prefix));
+    out.push('\n');
+}
+
+fn render_management_interface_section(out: &mut String, ctx: &DeviceContext) {
+    let Some(mgmt) = ctx.management_ip.as_deref() else { return; };
+    let Some((host, prefix)) = split_inet_text(mgmt) else { return; };
+    // Management lives on the VLAN-152 SVI across every site in the
+    // Immunocore footprint (see CLAUDE.md — "VLAN 152: Devices").
+    // Richer sections (management-instance default-route, ssh allow-list)
+    // come in a follow-on slice.
+    out.push_str(&format!(
+        "set l3-interface vlan-interface vlan-152 address {} prefix-length {}\n",
+        host, prefix));
     out.push('\n');
 }
 
@@ -243,6 +285,20 @@ mod tests {
             loopback: None,
             management_ip: None,
             vlans,
+        }
+    }
+
+    fn fixture_with_addrs(
+        hostname: &str,
+        loopback: Option<&str>,
+        mgmt: Option<&str>,
+    ) -> DeviceContext {
+        DeviceContext {
+            device_id: Uuid::nil(),
+            hostname: hostname.into(),
+            loopback: loopback.map(Into::into),
+            management_ip: mgmt.map(Into::into),
+            vlans: vec![],
         }
     }
 
@@ -295,6 +351,61 @@ mod tests {
     fn escape_picos_leaves_normal_chars() {
         assert_eq!(escape_picos("Server LAN"), "Server LAN");
         assert_eq!(escape_picos("MEP-91-CORE02"), "MEP-91-CORE02");
+    }
+
+    #[test]
+    fn picos_emits_loopback_block_when_present() {
+        let ctx = fixture_with_addrs("CORE02", Some("10.255.91.2/32"), None);
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains("set l3-interface loopback lo0 address 10.255.91.2 prefix-length 32"),
+            "loopback line missing:\n{out}");
+    }
+
+    #[test]
+    fn picos_omits_loopback_block_when_absent() {
+        let out = PicosRenderer::render(&fixture_with_addrs("CORE02", None, None));
+        assert!(!out.contains("set l3-interface loopback"),
+            "no loopback IP in context → no loopback line:\n{out}");
+    }
+
+    #[test]
+    fn picos_emits_management_interface_when_present() {
+        let ctx = fixture_with_addrs("CORE02", None, Some("10.11.152.2/24"));
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains("set l3-interface vlan-interface vlan-152 address 10.11.152.2 prefix-length 24"),
+            "mgmt SVI line missing:\n{out}");
+    }
+
+    #[test]
+    fn picos_omits_management_interface_when_absent() {
+        let out = PicosRenderer::render(&fixture_with_addrs("CORE02", None, None));
+        assert!(!out.contains("vlan-interface vlan-152"),
+            "no mgmt IP in context → no VLAN-152 SVI line:\n{out}");
+    }
+
+    #[test]
+    fn picos_skips_loopback_if_inet_text_malformed() {
+        // Bare host with no "/prefix" — can't render a valid PicOS line,
+        // so the section should be skipped rather than emitting garbage.
+        let ctx = fixture_with_addrs("CORE02", Some("10.255.91.2"), None);
+        let out = PicosRenderer::render(&ctx);
+        assert!(!out.contains("set l3-interface loopback"),
+            "malformed loopback text should skip the section:\n{out}");
+    }
+
+    #[test]
+    fn split_inet_text_parses_standard_forms() {
+        assert_eq!(split_inet_text("10.255.91.2/32"), Some(("10.255.91.2", 32)));
+        assert_eq!(split_inet_text("10.11.152.2/24"), Some(("10.11.152.2", 24)));
+        assert_eq!(split_inet_text("192.168.0.1/8"),  Some(("192.168.0.1", 8)));
+    }
+
+    #[test]
+    fn split_inet_text_rejects_malformed() {
+        assert_eq!(split_inet_text("10.255.91.2"),      None); // no slash
+        assert_eq!(split_inet_text("10.255.91.2/abc"),  None); // non-numeric prefix
+        assert_eq!(split_inet_text("/32"),              None); // empty host
+        assert_eq!(split_inet_text(""),                 None);
     }
 
     #[test]

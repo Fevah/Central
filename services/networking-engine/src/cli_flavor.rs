@@ -264,7 +264,7 @@ mod tests {
     }
 
     #[test]
-    fn only_one_Ga_flavor_today() {
+    fn only_one_ga_flavor_today() {
         // Sanity — we claim PicOS is production; others are stubs. When
         // a second flavor gets a real renderer this test updates.
         let ga_count = FLAVORS.iter().filter(|f| f.status == "Ga").count();
