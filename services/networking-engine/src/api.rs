@@ -17,7 +17,7 @@ use uuid::Uuid;
 use crate::allocation::AllocationService;
 use crate::audit::{self, ListAuditQuery, VerifyChainQuery};
 use crate::change_sets::{
-    AddItemBody, ChangeSetRepo, CreateChangeSetBody, DecisionBody,
+    AddItemBody, CancelBody, ChangeSetRepo, CreateChangeSetBody, DecisionBody,
     GetChangeSetQuery, ListChangeSetsQuery, SubmitBody,
 };
 use crate::error::EngineError;
@@ -72,6 +72,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/change-sets/:id/items", post(add_change_set_item))
         .route("/api/net/change-sets/:id/submit", post(submit_change_set))
         .route("/api/net/change-sets/:id/decisions", post(record_decision))
+        .route("/api/net/change-sets/:id/cancel", post(cancel_change_set))
         .with_state(state)
 }
 
@@ -485,4 +486,18 @@ async fn record_decision(
         "Approver user id required — pass X-User-Id header."))?;
     let repo = ChangeSetRepo::new(s.pool);
     Ok(Json(repo.record_decision(id, q.organization_id, approver, &body).await?))
+}
+
+async fn cancel_change_set(
+    State(s): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+    // Body is optional — an empty POST is valid "cancel without a note".
+    body: Option<Json<CancelBody>>,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = ChangeSetRepo::new(s.pool);
+    let user_id = header_user_id(&headers);
+    let notes = body.and_then(|b| b.0.notes);
+    Ok(Json(repo.cancel(id, q.organization_id, user_id, notes.as_deref()).await?))
 }

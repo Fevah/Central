@@ -181,6 +181,12 @@ fn default_list_limit() -> i64 { 50 }
 #[serde(rename_all = "camelCase")]
 pub struct GetChangeSetQuery { pub organization_id: Uuid }
 
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CancelBody {
+    pub notes: Option<String>,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DecisionBody {
@@ -431,6 +437,69 @@ impl ChangeSetRepo {
 
         tx.commit().await?;
         row.into_dto()
+    }
+
+    /// Withdraw a Set before it's applied. Valid from any non-terminal
+    /// non-Applied state: `Draft`, `Submitted`, or `Approved`. `Applied`
+    /// Sets are reversed via `rollback`, not `cancel`.
+    pub async fn cancel(
+        &self,
+        set_id: Uuid,
+        org_id: Uuid,
+        user_id: Option<i32>,
+        notes: Option<&str>,
+    ) -> Result<ChangeSet, EngineError> {
+        let mut tx = self.pool.begin().await?;
+
+        // Transition via a WHERE clause listing the states that permit
+        // cancellation. Rejected / Applied / Cancelled / RolledBack all
+        // return 0 rows affected, which we surface as a clean error.
+        let row: Option<ChangeSetRow> = sqlx::query_as(
+            "UPDATE net.change_set
+                SET status       = 'Cancelled'::net.change_set_status,
+                    cancelled_at = now(),
+                    updated_at   = now(),
+                    updated_by   = $3,
+                    version      = version + 1
+              WHERE id = $1 AND organization_id = $2
+                AND status::text IN ('Draft','Submitted','Approved')
+                AND deleted_at IS NULL
+              RETURNING id, organization_id, title, description,
+                        status::text AS status, requested_by, requested_by_display,
+                        submitted_by, submitted_at, approved_at, applied_at,
+                        rolled_back_at, cancelled_at, required_approvals,
+                        correlation_id, version, created_at, updated_at")
+            .bind(set_id)
+            .bind(org_id)
+            .bind(user_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+        let row = row.ok_or_else(|| EngineError::bad_request(
+            "Change Set not cancellable — must be in Draft / Submitted / Approved. \
+             Applied Sets use rollback; terminal states cannot be cancelled."))?;
+
+        audit::append_tx(&mut tx, &AuditEvent {
+            organization_id: org_id,
+            source_service: "networking-engine",
+            entity_type: "ChangeSet",
+            entity_id: Some(row.id),
+            action: "Cancelled",
+            actor_user_id: user_id,
+            actor_display: None,
+            client_ip: None,
+            correlation_id: Some(row.correlation_id),
+            details: serde_json::json!({ "notes": notes }),
+        }).await?;
+
+        let item_count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*)::bigint FROM net.change_set_item
+              WHERE change_set_id = $1 AND deleted_at IS NULL")
+            .bind(set_id)
+            .fetch_one(&mut *tx)
+            .await?;
+
+        tx.commit().await?;
+        row.into_dto(item_count)
     }
 
     /// Record an approval or rejection decision. Rules:
