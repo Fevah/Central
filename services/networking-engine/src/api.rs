@@ -31,6 +31,7 @@ use crate::dhcp_relay::{
 use crate::scope_grants::{
     self, CreateScopeGrantBody, ListScopeGrantsQuery, ScopeGrantRepo,
 };
+use crate::search;
 use crate::change_sets::{
     AddItemBody, CancelBody, ChangeSetRepo, CreateChangeSetBody, DecisionBody,
     GetChangeSetQuery, ListChangeSetsQuery, SubmitBody,
@@ -150,6 +151,10 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/servers/import",                   post(import_servers_csv))
         .route("/api/net/dhcp-relay-targets/import",        post(import_dhcp_relay_targets_csv))
         .route("/api/net/links/import",                     post(import_links_csv))
+        // Global search (Phase 10) — tsvector-based full-text across
+        // 6 entity types. RBAC filters results post-fetch so the
+        // caller only sees rows they have read on.
+        .route("/api/net/search",                           get(global_search_handler))
         // XLSX round-trip (Phase 10) — xlsx is a pure transport
         // adapter over the CSV paths. Every entity gets .xlsx on
         // both sides symmetrically with the CSV surface.
@@ -1477,6 +1482,34 @@ async fn import_links_xlsx(
         &s.pool, q.organization_id, &csv, q.dry_run, user_id
     ).await?;
     Ok(Json(result))
+}
+
+async fn global_search_handler(
+    State(s): State<AppState>,
+    Query(q): Query<search::SearchQuery>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    let limit = search::clamp_search_limit(q.limit);
+    let entity_types = search::parse_entity_types(q.entity_types.as_deref());
+
+    let raw = search::global_search(
+        &s.pool, q.organization_id, &q.q, entity_types.as_ref(), limit,
+    ).await?;
+
+    // RBAC post-filter. Drop rows the caller can't read. Service
+    // calls (no X-User-Id) skip the check and see everything — same
+    // rule as the rest of the surface.
+    let Some(uid) = user_id else { return Ok(Json(raw)); };
+
+    let mut filtered = Vec::with_capacity(raw.len());
+    for r in raw {
+        let decision = scope_grants::has_permission(
+            &s.pool, q.organization_id, uid, "read", &r.entity_type, Some(r.id),
+        ).await?;
+        if decision.allowed { filtered.push(r); }
+    }
+    Ok(Json(filtered))
 }
 
 async fn import_dhcp_relay_xlsx(

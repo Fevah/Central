@@ -705,6 +705,25 @@ public class NetworkingEngineClient : IDisposable
             ?? throw new NetworkingEngineException(0, $"POST {path} returned null body");
     }
 
+    // ─── Global search (Phase 10) ────────────────────────────────────────
+
+    /// <summary>Full-text search across devices / vlans / subnets /
+    /// servers / links / dhcp-relay-targets. Results are ranked by
+    /// Postgres `ts_rank` + filtered to what the caller has read
+    /// permission on. Empty `q` returns an empty list.</summary>
+    public Task<List<SearchResultDto>> GlobalSearchAsync(Guid organizationId,
+        string q, IReadOnlyList<string>? entityTypes = null, int? limit = null,
+        CancellationToken ct = default)
+    {
+        var entityTypesParam = entityTypes is null or { Count: 0 }
+            ? null : string.Join(",", entityTypes);
+        var qs = BuildQuery(("organizationId", organizationId.ToString()),
+                            ("q", q),
+                            ("entityTypes", entityTypesParam),
+                            ("limit", limit?.ToString()));
+        return GetAsync<List<SearchResultDto>>($"/api/net/search{qs}", ct);
+    }
+
     // ─── XLSX round-trip (Phase 10) ──────────────────────────────────────
 
     /// <summary>Download a tenant's devices as an XLSX workbook.
@@ -1183,3 +1202,13 @@ public record CreateScopeGrantRequest(Guid OrganizationId, int UserId,
 /// show "you have access via grant X" and lets audit log the
 /// specific grant that authorised a later action.</summary>
 public record PermissionDecisionDto(bool Allowed, Guid? MatchedGrantId);
+
+// ─── Global search (Phase 10) ─────────────────────────────────────────
+
+/// <summary>One ranked hit from a global search. <c>EntityType</c>
+/// is one of Device / Vlan / Subnet / Server / Link /
+/// DhcpRelayTarget; <c>Label</c> is the human-facing display
+/// (e.g. hostname, "vlan 120 Servers"); <c>Rank</c> comes from
+/// Postgres ts_rank and is higher for better matches.</summary>
+public record SearchResultDto(string EntityType, Guid Id, string Label,
+    float Rank, string Snippet);
