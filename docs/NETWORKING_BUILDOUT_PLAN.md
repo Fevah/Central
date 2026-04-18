@@ -379,7 +379,7 @@ Each phase has: scope, entities delivered, capabilities delivered (by MFL §), D
 
 **Risk:** medium.
 
-**Status (2026-04-18) — byte-for-byte parity acceptance bar REACHED. Turn-up pack generator shipped (device / building / site / region). Render history + diff + CRUD shipped. Bulk CSV export shipped for 4 core entities (devices / VLANs / IP addresses / links). RBAC / search / bulk import / XLSX not started.**
+**Status (2026-04-18) — ACCEPTANCE BAR REACHED + the three remaining Phase-10 bulk deliverables CLOSED. Byte-for-byte parity renderer, turn-up pack generator (device / building / site / region), render history + diff, bulk CSV export (9 entities), bulk import (6 entities), bulk edit (5 entities), RBAC scoped policy engine (with hierarchy expansion + opt-in enforcement across every state-changing surface). XLSX round-trip + global search + saved views NOT started.**
 
 The config-generation half + turn-up pack generator shipped as
 self-contained Rust slices inside `services/networking-engine/`.
@@ -424,6 +424,20 @@ tenant) the output matches line-for-line. 230/230 unit tests +
 | 28 | Bulk export — devices → CSV (RFC 4180 escaping, `Content-Disposition` download; hand-rolled, no new crate dep) | d42c80a01 |
 | 29 | Bulk export — VLANs + IP addresses → CSV; extracted `csv_download_headers` helper | 9a6caa376 |
 | 30 | Bulk export — links → CSV with cross-tab A/B side columns (two `net.link_endpoint` joins) | a1070a032 |
+| 31 | Bulk export — servers → CSV (LATERAL COUNT(*) for NIC count, joined ASN + loopback/mgmt IPs) | d34d5a351 |
+| 32 | Bulk export — subnets + ASN allocations + MLAG domains → CSV (3 entities in one commit — same pattern × 3) | 4d35204fd |
+| 33 | Bulk export (final) — DHCP relay targets → CSV; PLUS bulk import pipeline stood up — hand-rolled RFC 4180 parser, `ImportValidationResult` + per-row outcomes, devices import VALIDATE path (apply reserved); 13 parser unit tests | bae10c143 |
+| 34 | Bulk import apply path — devices, create-only, transactional, all-or-nothing rollback, audit-in-tx, FK pre-fetch. 4 `#[ignore]` live-DB integration tests (dry-run / happy / rollback / exists-rejection) | 1f3534666 |
+| 35 | Bulk import — VLANs + subnets. VLAN export gains `block_code` column for round-trip. Subnet's `vlan_id` ignored-on-apply (same semantic as ASN on devices) | aa5af1fe2 |
+| 36 | Bulk edit — devices. Field whitelist + version-checked UPDATE + RBAC-opt-in-via-`X-User-Id`; `hostname` + `version` explicitly gated | f37710d3a |
+| 37 | **RBAC scoped policy engine** — migration 105 `net.scope_grant` with `(user, action, entity_type, scope_type, scope_entity_id)` tuples, CRUD + has_permission resolver (Global + EntityId v1), `GET /scope-grants/check` dry-run | 33cbd9a37 |
+| 38 | RBAC hierarchy expansion — Device/Server walk building→site→region, Building→site→region, Site→region; `Forbidden` error variant (403); first enforcement wire-in on `bulk_edit_devices` | fa5fd2ada |
+| 39 | RBAC rollout — `require_permission` helper; enforcement wired into bulk_import (devices/vlans/subnets), DhcpRelayTarget CRUD, ScopeGrant CRUD (meta-protection, bootstrap via service-bypass) | a881c9094 |
+| 40 | Bulk import — servers + DHCP relay targets. 5 of 6 addressable entities covered | af1ded9a4 |
+| 41 | Bulk import — links. Cross-tab A/B decomposition: 1 CSV row → 1 link + 2 endpoints in a single tx | 2ddf5cf4b |
+| 42 | Bulk edit — VLANs + subnets | 0763a7ffd |
+| 43 | Bulk edit — servers + DHCP relay targets. **Bulk surface closed** — all 5 addressable-via-CRUD entities support edit | a44bd8c87 |
+| 44 | RBAC enforcement on config-gen endpoints — render-device/building/site/region (write); list/get/diff renders (read). Closes the last unenforced state-change surface | this commit |
 
 **Acceptance criteria check:**
 - [x] Byte-for-byte match with pre-migration output — every legacy section has a Rust counterpart
@@ -431,12 +445,12 @@ tenant) the output matches line-for-line. 230/230 unit tests +
 - [x] Config generation against the new schema — reads from `net.device`, `net.link_endpoint`, `net.asn_allocation`, `net.ip_address`, `net.mstp_priority_allocation`, `net.mlag_domain`, `net.vlan`, `net.subnet`, `net.port`, `net.dhcp_relay_target`
 
 **Remaining Phase 10 deliverables:**
-- **Bulk export** — 4 entities done (devices / VLANs / IP addresses / links); servers / subnets / DHCP relay targets / VRRP VIPs / Gateway IPs / ASN allocations / MLAG domains left. Same pattern lifts directly to each.
-- **Bulk import** — not started. Needs the upload + dry-run + validate + apply pipeline and maps each legacy CSV/XLSX shape onto an entity.
-- **Bulk edit** — not started. Needs a grid-selection + field-pick + confirm-preview UI path and a transactional many-row UPDATE endpoint.
-- **RBAC scoped policy engine** — not started. `(action, entity_type, scope_type, scope_id)` tuples with hierarchical inheritance. Touches every existing endpoint through middleware integration, so it's a deep cross-cutting slice.
+- **Bulk export** — 9 entities shipped (devices / VLANs / IP addresses / links / servers / subnets / DHCP relay targets / ASN allocations / MLAG domains). Surface is closed.
+- **Bulk import** — 6 entities shipped (devices / VLANs / subnets / servers / DHCP relay targets / links). Surface is closed. Create-only + transactional all-or-nothing; upsert + version-checked update lands in a follow-on slice once operators need it.
+- **Bulk edit** — 5 entities shipped (devices / VLANs / subnets / servers / DHCP relay targets). Surface is closed; Links stays gated (cross-tab edit is a different primitive).
+- **RBAC scoped policy engine** — SHIPPED. Schema + CRUD + resolver with hierarchy expansion (Device/Server/Building/Site walk up the chain) + `Forbidden` error variant + enforcement wired into every state-changing surface (bulk_edit, bulk_import, DhcpRelayTarget CRUD, ScopeGrant CRUD, config-gen renders + history reads). Opt-in rollout via `X-User-Id` presence — service-bypass preserves backward compat.
 - **Global search + faceted filters + saved views** — not started. Decision point upfront: PG tsvector full-text vs a dedicated search engine (tantivy, meilisearch). Saved-view storage lands on top of whichever.
-- **XLSX round-trip of the Immunocore workbook** — not started. Follows once the bulk-import pipeline exists; adds an xlsx-specific parser/writer on top of the generic CSV shape.
+- **XLSX round-trip of the Immunocore workbook** — not started. Bolts onto existing CSV export/import by adding `calamine` (read) + `rust_xlsxwriter` (write) crates; converts xlsx ↔ CSV at the transport layer.
 
 **Known limitations / follow-up:**
 - The `#[ignore]` live-DB integration tests need a `TEST_DATABASE_URL` to actually run — CI doesn't yet opt them in (add in a follow-up PR when a test DB is available)

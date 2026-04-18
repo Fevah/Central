@@ -924,8 +924,12 @@ async fn render_device_config(
 ) -> Result<impl IntoResponse, EngineError> {
     // POST → render + persist to net.rendered_config (chains to the
     // previous render via previous_render_id so "what changed" is a
-    // two-row join rather than a full-text diff).
+    // two-row join rather than a full-text diff). RBAC: write:Device
+    // at the device's scope (hierarchy-expanded via the resolver).
     let rendered_by = header_user_id(&headers);
+    scope_grants::require_permission(
+        &s.pool, q.organization_id, rendered_by, "write", "Device", Some(device_id),
+    ).await?;
     Ok(Json(config_gen::render_device_persisted(
         &s.pool, q.organization_id, device_id, rendered_by
     ).await?))
@@ -941,7 +945,15 @@ async fn list_device_renders(
     State(s): State<AppState>,
     Path(device_id): Path<Uuid>,
     Query(q): Query<RenderListQuery>,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse, EngineError> {
+    // RBAC — reading render history is gated on read:Device at the
+    // target's scope (history reveals config content so it inherits
+    // the device's access control).
+    let user_id = header_user_id(&headers);
+    scope_grants::require_permission(
+        &s.pool, q.organization_id, user_id, "read", "Device", Some(device_id),
+    ).await?;
     let limit = config_gen::clamp_render_list_limit(q.limit);
     Ok(Json(config_gen::list_renders(&s.pool, q.organization_id, device_id, limit).await?))
 }
@@ -950,15 +962,32 @@ async fn get_render_by_id(
     State(s): State<AppState>,
     Path(render_id): Path<Uuid>,
     Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse, EngineError> {
-    Ok(Json(config_gen::get_render(&s.pool, q.organization_id, render_id).await?))
+    // Fetch the render first so we can resolve its device_id for the
+    // permission check. A bit wasteful when the caller isn't allowed
+    // (we load the record only to reject), but keeps the semantic
+    // clean: user needs read:Device on the device the render targets.
+    let record = config_gen::get_render(&s.pool, q.organization_id, render_id).await?;
+    let user_id = header_user_id(&headers);
+    scope_grants::require_permission(
+        &s.pool, q.organization_id, user_id, "read", "Device", Some(record.device_id),
+    ).await?;
+    Ok(Json(record))
 }
 
 async fn diff_render_by_id(
     State(s): State<AppState>,
     Path(render_id): Path<Uuid>,
     Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse, EngineError> {
+    // Diff reveals content — same read:Device gate as get_render.
+    let record = config_gen::get_render(&s.pool, q.organization_id, render_id).await?;
+    let user_id = header_user_id(&headers);
+    scope_grants::require_permission(
+        &s.pool, q.organization_id, user_id, "read", "Device", Some(record.device_id),
+    ).await?;
     Ok(Json(config_gen::diff_render(&s.pool, q.organization_id, render_id).await?))
 }
 
@@ -970,8 +999,14 @@ async fn render_building_configs(
 ) -> Result<impl IntoResponse, EngineError> {
     // POST → turn-up pack: render + persist every device in the
     // building; per-device errors surface in the result's `errors`
-    // array rather than aborting the whole pack.
+    // array rather than aborting the whole pack. RBAC: write:Building
+    // — treated as the authorising scope for rendering all devices
+    // in it. A user wanting to render a single device uses the
+    // single-device endpoint (finer-grained scope check).
     let rendered_by = header_user_id(&headers);
+    scope_grants::require_permission(
+        &s.pool, q.organization_id, rendered_by, "write", "Building", Some(building_id),
+    ).await?;
     Ok(Json(config_gen::render_building_persisted(
         &s.pool, q.organization_id, building_id, rendered_by
     ).await?))
@@ -984,8 +1019,13 @@ async fn render_site_configs(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, EngineError> {
     // Same fan-out semantics as building-level, one scope up:
-    // every device across every building in the site.
+    // every device across every building in the site. RBAC:
+    // write:Site — expands through hierarchy so a Region-scoped
+    // grant covers this too.
     let rendered_by = header_user_id(&headers);
+    scope_grants::require_permission(
+        &s.pool, q.organization_id, rendered_by, "write", "Site", Some(site_id),
+    ).await?;
     Ok(Json(config_gen::render_site_persisted(
         &s.pool, q.organization_id, site_id, rendered_by
     ).await?))
@@ -999,8 +1039,12 @@ async fn render_region_configs(
 ) -> Result<impl IntoResponse, EngineError> {
     // Whole-estate turn-up: every device across every site in the
     // region. For single-region tenants this renders the entire
-    // network in one call.
+    // network in one call. RBAC: write:Region at the target id, so
+    // only Global or explicit Region-scoped grants authorise.
     let rendered_by = header_user_id(&headers);
+    scope_grants::require_permission(
+        &s.pool, q.organization_id, rendered_by, "write", "Region", Some(region_id),
+    ).await?;
     Ok(Json(config_gen::render_region_persisted(
         &s.pool, q.organization_id, region_id, rendered_by
     ).await?))

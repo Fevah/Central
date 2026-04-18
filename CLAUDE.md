@@ -87,9 +87,14 @@ The config-gen + turn-up-pack halves of Phase 10 shipped as 28 self-contained Ru
 
 **Migrations shipped:** `102_net_cli_flavors.sql` (tenant CLI flavor state + render history table with SHA-256 chain), `103_net_dhcp_relay_targets.sql` (M:N VLAN × server IP with priority), `104_net_immunocore_seed_gateway_vrrp_dhcp.sql` (imports from `public.vrrp_config` + `public.dhcp_relay` + seeds mgmt-VLAN Gateways).
 
-**Bulk CSV export** (partial — 4 entities of ~10): `GET /api/net/devices/export`, `/vlans/export`, `/ip-addresses/export`, `/links/export` — RFC 4180 escaping, `Content-Disposition: attachment` download headers, joined-through display codes (e.g. `subnet_code` + `template_code` rather than UUIDs) so output round-trips cleanly through spreadsheets. Links use a cross-tab A/B shape matching legacy P2P/B2B/FW exports.
+**Bulk CSV surface (COMPLETE for Phase 10)**:
+- **Export** — 9 entities: devices / VLANs / IP addresses / links / servers / subnets / ASN allocations / MLAG domains / DHCP relay targets. RFC 4180 escaping, `Content-Disposition: attachment`, joined display codes for human-readable output.
+- **Import** — 6 entities: devices / VLANs / subnets / servers / DHCP relay targets / links. Create-only + transactional all-or-nothing. Links does cross-tab A/B decomposition (1 CSV row → 1 link + 2 endpoints). Validate-then-apply pipeline with per-row outcomes, hand-rolled RFC 4180 parser, dry-run default.
+- **Edit** — 5 entities: devices / VLANs / subnets / servers / DHCP relay targets. Same-value-for-all transactional updates with field whitelist + version-checked UPDATE. Dangerous fields (hostname, vlan_id tag, CIDR network) explicitly gated.
 
-**Phase 10 deliverables NOT started**: RBAC scoped policy engine, global search + faceted filters + saved views, bulk import + bulk edit, XLSX round-trip. Turn-up pack generator shipped (device / building / site / region scopes); bulk CSV export shipped for the 4 core entities with same pattern ready to lift to the rest.
+**RBAC scoped policy engine (COMPLETE for Phase 10)**: Migration 105 `net.scope_grant` with `(user_id, action, entity_type, scope_type, scope_entity_id)` tuples. Resolver matches Global + EntityId + hierarchy-expanded Region/Site/Building for Device/Server/Building/Site entity types. `GET /api/net/scope-grants/check` dry-runs the resolver for UI feedback. Enforcement wired into every state-changing surface (bulk_edit, bulk_import, DhcpRelayTarget CRUD, ScopeGrant CRUD, config-gen render + history endpoints). Opt-in rollout via `X-User-Id` header presence — service-bypass on missing header preserves backward compat during the rollout window.
+
+**Phase 10 deliverables NOT started**: global search + faceted filters + saved views; XLSX round-trip (bolts onto existing CSV pipeline).
 
 See `docs/NETWORKING_BUILDOUT_PLAN.md` §Phase 10 for the slice-by-slice commit table and acceptance-criteria check.
 
