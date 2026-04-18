@@ -33,14 +33,14 @@ public class NetworkingRibbonAuditTests
     }
 
     [Fact]
-    public void HasSixFunctionalGroupsPlusPanels()
+    public void HasSevenFunctionalGroupsPlusPanels()
     {
-        // Spec: Devices, Switches, Links, Routing, VLANs, Panels.
+        // Spec: Devices, Switches, Links, Routing, VLANs, Servers, Panels.
         var rb = new RibbonBuilder();
         NetworkingRibbonRegistrar.BuildRibbon(rb, 20);
         var groups = rb.Pages[0].Groups.Select(g => g.Header).ToList();
         Assert.Equal(
-            new[] { "Devices", "Switches", "Links", "Routing", "VLANs", "Panels" },
+            new[] { "Devices", "Switches", "Links", "Routing", "VLANs", "Servers", "Panels" },
             groups);
     }
 
@@ -89,6 +89,10 @@ public class NetworkingRibbonAuditTests
     [InlineData("Links",    "Build Config",    "links",    "action:build")]
     [InlineData("Routing",  "Sync BGP",        "bgp",      "action:syncSelected")]
     [InlineData("Routing",  "Sync All BGP",    "bgp",      "action:syncAll")]
+    [InlineData("Servers",  "New Server",      "servers",  "action:new")]
+    [InlineData("Servers",  "Edit Server",     "servers",  "action:edit")]
+    [InlineData("Servers",  "Delete Server",   "servers",  "action:delete")]
+    [InlineData("Servers",  "Ping NICs",       "servers",  "action:pingNics")]
     public void NavigateButton_PublishesCorrectTargetAndAction(
         string groupHeader, string buttonContent, string expectedPanel, string expectedAction)
     {
@@ -117,6 +121,7 @@ public class NetworkingRibbonAuditTests
         {
             ("Devices", "Refresh",       "devices"),
             ("VLANs",   "Refresh VLANs", "vlans"),
+            ("Servers", "Refresh",       "servers"),
         })
         {
             RefreshPanelMessage? captured = null;

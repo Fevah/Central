@@ -221,4 +221,9 @@ public static class P
     public const string NetLinksRead        = "net:links:read";
     public const string NetLinksWrite       = "net:links:write";
     public const string NetLinksDelete      = "net:links:delete";
+
+    // Networking engine — servers + NICs (Phase 6c+)
+    public const string NetServersRead      = "net:servers:read";
+    public const string NetServersWrite     = "net:servers:write";
+    public const string NetServersDelete    = "net:servers:delete";
 }

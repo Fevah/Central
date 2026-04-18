@@ -30,6 +30,7 @@ public static class NetworkingRibbonRegistrar
     public const string PanelLinks    = "links";
     public const string PanelBgp      = "bgp";
     public const string PanelVlans    = "vlans";
+    public const string PanelServers  = "servers";
 
     public static void BuildRibbon(IRibbonBuilder ribbon, int sortOrder)
     {
@@ -95,10 +96,29 @@ public static class NetworkingRibbonRegistrar
                             $"action:showDefault:{isOn.ToString().ToLowerInvariant()}")));
             });
 
+            // ── Servers (Phase 6c) ──────────────────────────────────────
+            // "New Server" kicks off the creation flow which allocates
+            // ASN + loopback + 4 NICs per the server_profile — handled
+            // on the WPF side once the Servers panel lands (Phase 6f).
+            page.AddGroup("Servers", group =>
+            {
+                group.AddButton("New Server",    P.NetServersWrite,  "AddItem_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelServers, "action:new")));
+                group.AddButton("Edit Server",   P.NetServersWrite,  "EditItem_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelServers, "action:edit")));
+                group.AddButton("Delete Server", P.NetServersDelete, "Delete_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelServers, "action:delete")));
+                group.AddButton("Ping NICs",     P.NetServersWrite,  "Refresh_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelServers, "action:pingNics")));
+                group.AddButton("Refresh",       P.NetServersRead,   "Refresh_16x16",
+                    () => PanelMessageBus.Publish(new RefreshPanelMessage(PanelServers)));
+            });
+
             page.AddGroup("Panels", group =>
             {
                 group.AddCheckButton("Hierarchy",      panelId: "HierarchyPanel");
                 group.AddCheckButton("Pools",          panelId: "PoolsPanel");
+                group.AddCheckButton("Servers",        panelId: "ServersPanel");
                 group.AddCheckButton("IPAM",           panelId: "DevicesPanel");
                 group.AddCheckButton("Device Details", panelId: "DeviceDetailPanel");
                 group.AddCheckButton("Switches",       panelId: "SwitchesPanel");

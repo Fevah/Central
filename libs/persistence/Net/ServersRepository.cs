@@ -83,6 +83,76 @@ public class ServersRepository
         return await GetOneAsync(sql, id, orgId, ReadProfile, ct);
     }
 
+    public async Task<Guid> CreateProfileAsync(ServerProfile e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO net.server_profile (organization_id, profile_code, display_name, description,
+                                            nic_count, default_loopback_prefix, naming_template, color_hint,
+                                            status, lock_state, notes, tags, external_refs,
+                                            created_by, updated_by)
+            VALUES (@org, @code, @name, @desc, @nics, @pfx, @tpl, @color,
+                    @status::net.entity_status, @lock::net.lock_state,
+                    @notes, @tags::jsonb, @refs::jsonb, @uid, @uid)
+            RETURNING id";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        BindProfileWrite(cmd, e, userId);
+        return (Guid)(await cmd.ExecuteScalarAsync(ct))!;
+    }
+
+    public async Task<int> UpdateProfileAsync(ServerProfile e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE net.server_profile SET
+                profile_code             = @code,
+                display_name             = @name,
+                description              = @desc,
+                nic_count                = @nics,
+                default_loopback_prefix  = @pfx,
+                naming_template          = @tpl,
+                color_hint               = @color,
+                status                   = @status::net.entity_status,
+                lock_state               = @lock::net.lock_state,
+                lock_reason              = @lreason,
+                notes                    = @notes,
+                tags                     = @tags::jsonb,
+                external_refs            = @refs::jsonb,
+                updated_at               = now(),
+                updated_by               = @uid,
+                version                  = version + 1
+            WHERE id = @id AND organization_id = @org AND version = @ver AND deleted_at IS NULL
+            RETURNING version";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", e.Id);
+        cmd.Parameters.AddWithValue("ver", e.Version);
+        cmd.Parameters.AddWithValue("lreason", (object?)e.LockReason ?? DBNull.Value);
+        BindProfileWrite(cmd, e, userId);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int v ? v : throw new ConcurrencyException(e.Id, e.Version);
+    }
+
+    public Task<bool> SoftDeleteProfileAsync(Guid id, Guid orgId, int? userId, CancellationToken ct = default)
+        => SoftDeleteAsync("net.server_profile", id, orgId, userId, ct);
+
+    private static void BindProfileWrite(NpgsqlCommand cmd, ServerProfile e, int? userId)
+    {
+        cmd.Parameters.AddWithValue("org", e.OrganizationId);
+        cmd.Parameters.AddWithValue("code", e.ProfileCode);
+        cmd.Parameters.AddWithValue("name", e.DisplayName);
+        cmd.Parameters.AddWithValue("desc", (object?)e.Description ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("nics", e.NicCount);
+        cmd.Parameters.AddWithValue("pfx", e.DefaultLoopbackPrefix);
+        cmd.Parameters.AddWithValue("tpl", e.NamingTemplate);
+        cmd.Parameters.AddWithValue("color", (object?)e.ColorHint ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("status", e.Status.ToString());
+        cmd.Parameters.AddWithValue("lock", e.LockState.ToString());
+        cmd.Parameters.AddWithValue("notes", (object?)e.Notes ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("tags", e.Tags.ToJsonString());
+        cmd.Parameters.AddWithValue("refs", e.ExternalRefs.ToJsonString());
+        cmd.Parameters.AddWithValue("uid", (object?)userId ?? DBNull.Value);
+    }
+
     private static ServerProfile ReadProfile(NpgsqlDataReader r)
     {
         var e = new ServerProfile
@@ -145,6 +215,119 @@ public class ServersRepository
         return await GetOneAsync(sql, id, orgId, ReadServer, ct);
     }
 
+    public async Task<Guid> CreateServerAsync(Server e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO net.server
+                (organization_id, server_profile_id, building_id, room_id, rack_id,
+                 asn_allocation_id, loopback_ip_address_id, hostname, server_code, display_name,
+                 hardware_model, serial_number, mac_address, firmware_version,
+                 management_ip, ssh_username, ssh_port,
+                 legacy_server_id,
+                 status, lock_state, notes, tags, external_refs, created_by, updated_by)
+            VALUES
+                (@org, @prof, @bld, @room, @rack, @asn, @loop, @host, @code, @name,
+                 @hw, @sn, @mac::macaddr, @fw,
+                 @mip::inet, @sshuser, @sshport, @legacy,
+                 @status::net.entity_status, @lock::net.lock_state,
+                 @notes, @tags::jsonb, @refs::jsonb, @uid, @uid)
+            RETURNING id";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        BindServerWrite(cmd, e, userId);
+        return (Guid)(await cmd.ExecuteScalarAsync(ct))!;
+    }
+
+    public async Task<int> UpdateServerAsync(Server e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE net.server SET
+                server_profile_id      = @prof,
+                building_id            = @bld,
+                room_id                = @room,
+                rack_id                = @rack,
+                asn_allocation_id      = @asn,
+                loopback_ip_address_id = @loop,
+                hostname               = @host,
+                server_code            = @code,
+                display_name           = @name,
+                hardware_model         = @hw,
+                serial_number          = @sn,
+                mac_address            = @mac::macaddr,
+                firmware_version       = @fw,
+                management_ip          = @mip::inet,
+                ssh_username           = @sshuser,
+                ssh_port               = @sshport,
+                legacy_server_id       = @legacy,
+                status                 = @status::net.entity_status,
+                lock_state             = @lock::net.lock_state,
+                lock_reason            = @lreason,
+                notes                  = @notes,
+                tags                   = @tags::jsonb,
+                external_refs          = @refs::jsonb,
+                updated_at             = now(),
+                updated_by             = @uid,
+                version                = version + 1
+            WHERE id = @id AND organization_id = @org AND version = @ver AND deleted_at IS NULL
+            RETURNING version";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", e.Id);
+        cmd.Parameters.AddWithValue("ver", e.Version);
+        cmd.Parameters.AddWithValue("lreason", (object?)e.LockReason ?? DBNull.Value);
+        BindServerWrite(cmd, e, userId);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int v ? v : throw new ConcurrencyException(e.Id, e.Version);
+    }
+
+    public Task<bool> SoftDeleteServerAsync(Guid id, Guid orgId, int? userId, CancellationToken ct = default)
+        => SoftDeleteAsync("net.server", id, orgId, userId, ct);
+
+    /// <summary>Fast-path ping probe update; skips version bump for the same reason as Device.RecordPingAsync.</summary>
+    public async Task RecordPingAsync(Guid id, Guid orgId, bool ok, decimal? latencyMs,
+        CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE net.server SET
+                last_ping_at = now(), last_ping_ok = @ok, last_ping_ms = @ms
+            WHERE id = @id AND organization_id = @org AND deleted_at IS NULL";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", id);
+        cmd.Parameters.AddWithValue("org", orgId);
+        cmd.Parameters.AddWithValue("ok", ok);
+        cmd.Parameters.AddWithValue("ms", (object?)latencyMs ?? DBNull.Value);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    private static void BindServerWrite(NpgsqlCommand cmd, Server e, int? userId)
+    {
+        cmd.Parameters.AddWithValue("org", e.OrganizationId);
+        cmd.Parameters.AddWithValue("prof", (object?)e.ServerProfileId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("bld", (object?)e.BuildingId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("room", (object?)e.RoomId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("rack", (object?)e.RackId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("asn", (object?)e.AsnAllocationId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("loop", (object?)e.LoopbackIpAddressId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("host", e.Hostname);
+        cmd.Parameters.AddWithValue("code", (object?)e.ServerCode ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("name", (object?)e.DisplayName ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("hw", (object?)e.HardwareModel ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("sn", (object?)e.SerialNumber ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("mac", (object?)e.MacAddress ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("fw", (object?)e.FirmwareVersion ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("mip", (object?)e.ManagementIp ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("sshuser", (object?)e.SshUsername ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("sshport", (object?)e.SshPort ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("legacy", (object?)e.LegacyServerId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("status", e.Status.ToString());
+        cmd.Parameters.AddWithValue("lock", e.LockState.ToString());
+        cmd.Parameters.AddWithValue("notes", (object?)e.Notes ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("tags", e.Tags.ToJsonString());
+        cmd.Parameters.AddWithValue("refs", e.ExternalRefs.ToJsonString());
+        cmd.Parameters.AddWithValue("uid", (object?)userId ?? DBNull.Value);
+    }
+
     private static Server ReadServer(NpgsqlDataReader r)
     {
         var e = new Server
@@ -202,6 +385,89 @@ public class ServersRepository
         var list = new List<ServerNic>();
         while (await r.ReadAsync(ct)) list.Add(ReadNic(r));
         return list;
+    }
+
+    public async Task<Guid> CreateNicAsync(ServerNic e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO net.server_nic
+                (organization_id, server_id, nic_index, target_port_id, target_device_id,
+                 ip_address_id, subnet_id, vlan_id, mlag_side,
+                 nic_name, mac_address, admin_up,
+                 status, lock_state, notes, tags, external_refs,
+                 created_by, updated_by)
+            VALUES
+                (@org, @srv, @idx, @port, @dev, @ip, @subnet, @vlan, @side,
+                 @nname, @mac::macaddr, @up,
+                 @status::net.entity_status, @lock::net.lock_state,
+                 @notes, @tags::jsonb, @refs::jsonb, @uid, @uid)
+            RETURNING id";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        BindNicWrite(cmd, e, userId);
+        return (Guid)(await cmd.ExecuteScalarAsync(ct))!;
+    }
+
+    public async Task<int> UpdateNicAsync(ServerNic e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE net.server_nic SET
+                server_id        = @srv,
+                nic_index        = @idx,
+                target_port_id   = @port,
+                target_device_id = @dev,
+                ip_address_id    = @ip,
+                subnet_id        = @subnet,
+                vlan_id          = @vlan,
+                mlag_side        = @side,
+                nic_name         = @nname,
+                mac_address      = @mac::macaddr,
+                admin_up         = @up,
+                status           = @status::net.entity_status,
+                lock_state       = @lock::net.lock_state,
+                lock_reason      = @lreason,
+                notes            = @notes,
+                tags             = @tags::jsonb,
+                external_refs    = @refs::jsonb,
+                updated_at       = now(),
+                updated_by       = @uid,
+                version          = version + 1
+            WHERE id = @id AND organization_id = @org AND version = @ver AND deleted_at IS NULL
+            RETURNING version";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", e.Id);
+        cmd.Parameters.AddWithValue("ver", e.Version);
+        cmd.Parameters.AddWithValue("lreason", (object?)e.LockReason ?? DBNull.Value);
+        BindNicWrite(cmd, e, userId);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int v ? v : throw new ConcurrencyException(e.Id, e.Version);
+    }
+
+    public Task<bool> SoftDeleteNicAsync(Guid id, Guid orgId, int? userId, CancellationToken ct = default)
+        => SoftDeleteAsync("net.server_nic", id, orgId, userId, ct);
+
+    private static void BindNicWrite(NpgsqlCommand cmd, ServerNic e, int? userId)
+    {
+        cmd.Parameters.AddWithValue("org", e.OrganizationId);
+        cmd.Parameters.AddWithValue("srv", e.ServerId);
+        cmd.Parameters.AddWithValue("idx", e.NicIndex);
+        cmd.Parameters.AddWithValue("port", (object?)e.TargetPortId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("dev", (object?)e.TargetDeviceId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("ip", (object?)e.IpAddressId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("subnet", (object?)e.SubnetId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("vlan", (object?)e.VlanId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("side",
+            e.MlagSide == MlagSide.None ? (object)DBNull.Value : e.MlagSide.ToString());
+        cmd.Parameters.AddWithValue("nname", (object?)e.NicName ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("mac", (object?)e.MacAddress ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("up", e.AdminUp);
+        cmd.Parameters.AddWithValue("status", e.Status.ToString());
+        cmd.Parameters.AddWithValue("lock", e.LockState.ToString());
+        cmd.Parameters.AddWithValue("notes", (object?)e.Notes ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("tags", e.Tags.ToJsonString());
+        cmd.Parameters.AddWithValue("refs", e.ExternalRefs.ToJsonString());
+        cmd.Parameters.AddWithValue("uid", (object?)userId ?? DBNull.Value);
     }
 
     private static ServerNic ReadNic(NpgsqlDataReader r)
@@ -266,5 +532,19 @@ public class ServersRepository
         cmd.Parameters.AddWithValue("org", orgId);
         await using var r = await cmd.ExecuteReaderAsync(ct);
         return await r.ReadAsync(ct) ? reader(r) : null;
+    }
+
+    private async Task<bool> SoftDeleteAsync(string table, Guid id, Guid orgId, int? userId, CancellationToken ct)
+    {
+        var sql = $@"
+            UPDATE {table}
+            SET deleted_at = now(), deleted_by = @uid, version = version + 1
+            WHERE id = @id AND organization_id = @org AND deleted_at IS NULL";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", id);
+        cmd.Parameters.AddWithValue("org", orgId);
+        cmd.Parameters.AddWithValue("uid", (object?)userId ?? DBNull.Value);
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
     }
 }

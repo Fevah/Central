@@ -36,6 +36,11 @@ Buttons whose `OnClick` produces an `IPanelMessage`. The `Panels` group below is
 | Routing | Sync All BGP | `bgp:sync` | Navigate | `bgp` | `action:syncAll` |
 | VLANs | Refresh VLANs | `vlans:read` | Refresh | `vlans` | — |
 | VLANs | Show Default VLAN (toggle) | `vlans:read` | Navigate | `vlans` | `action:showDefault:{true\|false}` |
+| Servers | New Server | `net:servers:write` | Navigate | `servers` | `action:new` |
+| Servers | Edit Server | `net:servers:write` | Navigate | `servers` | `action:edit` |
+| Servers | Delete Server | `net:servers:delete` | Navigate | `servers` | `action:delete` |
+| Servers | Ping NICs | `net:servers:write` | Navigate | `servers` | `action:pingNics` |
+| Servers | Refresh | `net:servers:read` | Refresh | `servers` | — |
 
 ## Panels group (CheckButtons)
 
@@ -45,6 +50,7 @@ Buttons whose `OnClick` produces an `IPanelMessage`. The `Panels` group below is
 |---|---|---|
 | Hierarchy | `HierarchyPanel` | net.* hierarchy tree (Phase 2c) |
 | Pools | `PoolsPanel` | net.* pool tree with utilisation (Phase 3f) |
+| Servers | `ServersPanel` | net.server grid (Phase 6f — panel not yet built) |
 | IPAM | `DevicesPanel` | Legacy device grid |
 | Device Details | `DeviceDetailPanel` | Legacy device detail view |
 | Switches | `SwitchesPanel` | Legacy switch grid |
