@@ -257,9 +257,48 @@ Each phase has: scope, entities delivered, capabilities delivered (by MFL §), D
 
 ---
 
+### Phase 6.5 — Engine port to Rust (architectural pivot, 2026-04-18)
+
+**Decision:** All core-engine services (allocation, IP carving, naming resolution, dual-write reconciliation, server fan-out) WILL run as Rust services, not .NET. Phases 1-6 currently ship those services in `libs/persistence/Net/` (C#). They must be ported to a new `services/networking-engine/` Rust crate before continuing to Phase 7, otherwise Phase 7's naming-template resolver lands on top of an engine that is itself due for replacement, doubling the rework.
+
+**Why this changes:** Architecture docs already list 7 planned Rust services (auth, admin, gateway, task, storage, sync, audit). The Networking engine belongs in the same plane — high-throughput allocation under advisory lock, IP arithmetic (UInt128 for v6), and trigger-driven reconciliation are exactly the workloads Rust was chosen for elsewhere in the platform. Continuing to add C# services for the *core engine* drifts away from the target shape.
+
+**Scope to port (was C#, will be Rust):**
+- `AllocationService` (ASN / VLAN / MLAG, advisory lock, shelf cool-down)
+- `IpAllocationService` + `IpMath` + `IpMath6` (v4 long + v6 UInt128 carvers)
+- `ServerCreationService` (4-NIC fan-out, ASN + loopback + MLAG-paired cores)
+- Naming services (`LinkNamingService`, `DeviceNamingService`, `ServerNamingService`) — and Phase 7's `NamingTemplateResolver` ships in Rust from day one
+- Dual-write reconciliation logic (currently lives in PG triggers, but the C# repos will be replaced by Rust HTTP/gRPC handlers that the desktop calls)
+
+**Stays in .NET (boundary line):**
+- WPF panels in `modules/networking/` — UI is .NET/WPF and isn't moving
+- Persistence repositories used purely as DB shims by the API layer can stay until Rust replaces them, but no new .NET allocation/naming logic is added — strictly a thin read shim during transition
+- Validation helpers (`HierarchyValidation`, `PoolValidation`, etc.) — these are pure functions used by both WPF dialogs and tests; if needed in the Rust service they get reimplemented there. No shared crate.
+- Tests: C# integration tests stay green against the Rust service via HTTP/gRPC stubs during port; ported Rust services get their own `cargo test` suite.
+
+**Deliverables:**
+- New crate `services/networking-engine/` (Axum + sqlx + Postgres). Modelled on the existing `services/tenant-provisioner/` Rust crate as the reference for layout, sqlx setup, and K8s deployment.
+- Endpoints: `/api/net/allocate/{asn|vlan|mlag|ip}`, `/api/net/allocate/retire`, `/api/net/servers/create-with-fanout`, `/api/net/naming/{link|device|server}/preview`.
+- Port the FNV-1a `StableHash` (NOT Rust's default hasher — must match the existing PG advisory-lock keys so Rust + legacy C# callers serialise on the same lock during the transition window).
+- Containerfile + K8s manifest under `infra/k8s/base/networking-engine.yaml`. Image to `192.168.56.10:30500/central/networking-engine:latest`.
+- C# `ApiClient.NetworkingEngine` typed wrapper so existing call-sites switch with one DI swap.
+- Parity test: existing Phase 3c / Phase 5f / Phase 6e suites must pass against the Rust service unchanged (hit it via the typed client).
+
+**Sequencing:**
+- Port BEFORE Phase 7. Phase 7's `NamingTemplateResolver` is built directly in Rust inside `services/networking-engine/` with overrides resolved server-side — never lands in C# at all.
+- Phases 8+ (governance, validation, RBAC, search) continue to plan the engine-side as Rust, the UI-side as .NET/WPF.
+
+**Acceptance:** All Phase 1-6 integration tests stay green when redirected at the Rust service; advisory locks serialise correctly across both Rust + leftover .NET callers (verify with concurrent allocation soak test); image deploys to local K8s; desktop can allocate via the new service end-to-end.
+
+**Risk:** high — but lower than carrying the divergence forward. Mitigated by porting one slice at a time (allocation first, then IP carver, then fan-out, then naming) and keeping the C# tests as the parity oracle during the cutover.
+
+---
+
 ### Phase 7 — Naming template engine
 
 **Scope:** Generalise the per-type `naming_template` pattern (already shipping on `link_type` and `device_role` — see Phase 5a/5e and Chunk A) into a full scope-resolution engine with a UI, and extend it to the tiers that don't yet carry templates.
+
+**Implementation language:** Rust. Lives inside `services/networking-engine/` (delivered in Phase 6.5). The C# `LinkNamingService` / `DeviceNamingService` / `ServerNamingService` get retired in the same PR as Phase 7 lands; the WPF dialogs call the new service via the typed `ApiClient.NetworkingEngine` wrapper.
 
 **Already landed** (in earlier phases, not waiting for Phase 7):
 - `net.link_type.naming_template` + `LinkNamingService` — Phase 5a + 5e
