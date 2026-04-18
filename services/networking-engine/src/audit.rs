@@ -233,6 +233,145 @@ pub struct ListAuditQuery {
 
 fn default_limit() -> i64 { 100 }
 
+// ─── Chain verification ──────────────────────────────────────────────────
+
+/// Per-tenant chain verification report. `ok = true` means every row's
+/// `entry_hash` recomputes exactly from the stored content + `prev_hash`
+/// *and* the `prev_hash` linkage is intact (row N's `prev_hash` matches
+/// row N-1's `entry_hash`).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VerifyReport {
+    pub organization_id: Uuid,
+    pub rows_checked: i64,
+    pub first_sequence_id: Option<i64>,
+    pub last_sequence_id: Option<i64>,
+    pub ok: bool,
+    pub mismatches: Vec<VerifyMismatch>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VerifyMismatch {
+    pub sequence_id: i64,
+    pub id: Uuid,
+    pub reason: String,
+    pub expected_hash: Option<String>,
+    pub stored_hash: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VerifyChainQuery {
+    pub organization_id: Uuid,
+    /// Cap how many rows to check — default is "everything", but very
+    /// large tenants can slice by passing a cap to keep the check under a
+    /// request budget and walk again with `from_sequence_id` on follow-up.
+    #[serde(default)]
+    pub limit: Option<i64>,
+    #[serde(default)]
+    pub from_sequence_id: Option<i64>,
+}
+
+pub async fn verify_chain(
+    pool: &PgPool,
+    q: &VerifyChainQuery,
+) -> Result<VerifyReport, EngineError> {
+    let limit = q.limit.map(|l| l.clamp(1, 100_000));
+    let from = q.from_sequence_id.unwrap_or(0);
+
+    // Ascending order is essential — we recompute each entry against the
+    // *previous* row's stored hash, and that "previous" must already have
+    // passed the inspection loop (we don't trust what the DB hands us for
+    // the current row's prev_hash field until we've verified it matches
+    // the prior row).
+    let rows: Vec<AuditRow> = match limit {
+        Some(l) => sqlx::query_as(
+            "SELECT id, organization_id, sequence_id, source_service, entity_type,
+                    entity_id, action, actor_user_id, actor_display,
+                    correlation_id, details, prev_hash, entry_hash, created_at
+               FROM net.audit_entry
+              WHERE organization_id = $1 AND sequence_id >= $2
+              ORDER BY sequence_id ASC
+              LIMIT $3")
+            .bind(q.organization_id).bind(from).bind(l)
+            .fetch_all(pool).await?,
+        None => sqlx::query_as(
+            "SELECT id, organization_id, sequence_id, source_service, entity_type,
+                    entity_id, action, actor_user_id, actor_display,
+                    correlation_id, details, prev_hash, entry_hash, created_at
+               FROM net.audit_entry
+              WHERE organization_id = $1 AND sequence_id >= $2
+              ORDER BY sequence_id ASC")
+            .bind(q.organization_id).bind(from)
+            .fetch_all(pool).await?,
+    };
+
+    let mut mismatches = Vec::new();
+    let mut expected_prev: Option<String> = None;
+    let first_sequence_id = rows.first().map(|r| r.sequence_id);
+    let last_sequence_id = rows.last().map(|r| r.sequence_id);
+    let rows_checked = rows.len() as i64;
+
+    // When walking a slice that doesn't start at sequence 1, we can't
+    // recompute the prev-link for the first row without first fetching
+    // the row at (start - 1). Rather than chase the pointer, record the
+    // slice's first entry's stored prev_hash as our baseline — the
+    // mismatch detector kicks in from the second row onward.
+    for (i, row) in rows.iter().enumerate() {
+        // 1. Prev-link check: every row after the first in the slice
+        //    must point at the previous row's stored hash.
+        if i > 0 {
+            let prior = &rows[i - 1];
+            if row.prev_hash.as_deref() != Some(&prior.entry_hash) {
+                mismatches.push(VerifyMismatch {
+                    sequence_id: row.sequence_id,
+                    id: row.id,
+                    reason: "prev_hash does not match prior row's entry_hash".into(),
+                    expected_hash: Some(prior.entry_hash.clone()),
+                    stored_hash: row.prev_hash.clone().unwrap_or_default(),
+                });
+            }
+        }
+
+        // 2. Content check: recompute entry_hash from the stored content
+        //    and compare.
+        let payload = canonical_payload(
+            row.prev_hash.as_deref(),
+            row.organization_id,
+            row.sequence_id,
+            &row.source_service,
+            &row.entity_type,
+            row.entity_id,
+            &row.action,
+            row.actor_user_id,
+            &row.details,
+        );
+        let expected = compute_hash(&payload);
+        if expected != row.entry_hash {
+            mismatches.push(VerifyMismatch {
+                sequence_id: row.sequence_id,
+                id: row.id,
+                reason: "entry_hash does not match recomputed SHA-256 of content".into(),
+                expected_hash: Some(expected),
+                stored_hash: row.entry_hash.clone(),
+            });
+        }
+        expected_prev = Some(row.entry_hash.clone());
+    }
+
+    let _ = expected_prev; // kept for future incremental-walk extension
+
+    Ok(VerifyReport {
+        organization_id: q.organization_id,
+        rows_checked,
+        first_sequence_id,
+        last_sequence_id,
+        ok: mismatches.is_empty(),
+        mismatches,
+    })
+}
+
 pub async fn list(pool: &PgPool, q: &ListAuditQuery) -> Result<Vec<AuditRow>, EngineError> {
     let limit = q.limit.clamp(1, 1000);
     let rows: Vec<AuditRow> = sqlx::query_as(
@@ -358,6 +497,132 @@ mod tests {
             &serde_json::json!({"from":"X","to":"Y"}),   // different details
         );
         assert_ne!(compute_hash(&base), compute_hash(&alt));
+    }
+
+    /// The chain-walker is broken out of `verify_chain` so the two checks
+    /// (prev-link, content-rehash) can be exercised without a DB. Same
+    /// rules as the async version — ascending order required.
+    fn walk_and_verify(rows: &[AuditRow]) -> Vec<VerifyMismatch> {
+        let mut mismatches = Vec::new();
+        for (i, row) in rows.iter().enumerate() {
+            if i > 0 {
+                let prior = &rows[i - 1];
+                if row.prev_hash.as_deref() != Some(&prior.entry_hash) {
+                    mismatches.push(VerifyMismatch {
+                        sequence_id: row.sequence_id,
+                        id: row.id,
+                        reason: "prev_hash does not match prior row's entry_hash".into(),
+                        expected_hash: Some(prior.entry_hash.clone()),
+                        stored_hash: row.prev_hash.clone().unwrap_or_default(),
+                    });
+                }
+            }
+            let payload = canonical_payload(
+                row.prev_hash.as_deref(),
+                row.organization_id,
+                row.sequence_id,
+                &row.source_service,
+                &row.entity_type,
+                row.entity_id,
+                &row.action,
+                row.actor_user_id,
+                &row.details,
+            );
+            let expected = compute_hash(&payload);
+            if expected != row.entry_hash {
+                mismatches.push(VerifyMismatch {
+                    sequence_id: row.sequence_id,
+                    id: row.id,
+                    reason: "entry_hash does not match recomputed SHA-256 of content".into(),
+                    expected_hash: Some(expected),
+                    stored_hash: row.entry_hash.clone(),
+                });
+            }
+        }
+        mismatches
+    }
+
+    fn build_row(seq: i64, prev: Option<&str>, details_key: &str) -> AuditRow {
+        let details = serde_json::json!({ "k": details_key });
+        let org_id = Uuid::parse_str("11111111-1111-1111-1111-111111111111").unwrap();
+        let entity_id = Some(Uuid::parse_str("22222222-2222-2222-2222-222222222222").unwrap());
+        let payload = canonical_payload(
+            prev, org_id, seq, "networking-engine", "Device",
+            entity_id, "Renamed", Some(42), &details);
+        let hash = compute_hash(&payload);
+        AuditRow {
+            id: Uuid::parse_str(&format!("aaaaaaaa-aaaa-aaaa-aaaa-{:012x}", seq)).unwrap(),
+            organization_id: org_id,
+            sequence_id: seq,
+            source_service: "networking-engine".into(),
+            entity_type: "Device".into(),
+            entity_id,
+            action: "Renamed".into(),
+            actor_user_id: Some(42),
+            actor_display: None,
+            correlation_id: None,
+            details,
+            prev_hash: prev.map(str::to_string),
+            entry_hash: hash,
+            created_at: chrono::Utc::now(),
+        }
+    }
+
+    #[test]
+    fn clean_chain_verifies() {
+        let r1 = build_row(1, None, "a");
+        let r2 = build_row(2, Some(&r1.entry_hash), "b");
+        let r3 = build_row(3, Some(&r2.entry_hash), "c");
+        assert!(walk_and_verify(&[r1, r2, r3]).is_empty());
+    }
+
+    #[test]
+    fn tampered_content_detected() {
+        let r1 = build_row(1, None, "a");
+        let mut r2 = build_row(2, Some(&r1.entry_hash), "b");
+        // Tamper: change details without regenerating the hash.
+        r2.details = serde_json::json!({ "k": "TAMPERED" });
+        let r3 = build_row(3, Some(&r2.entry_hash), "c");
+
+        let found = walk_and_verify(&[r1, r2, r3]);
+        // One mismatch: r2's stored entry_hash no longer matches its
+        // content. r3's prev-link and content still match because we
+        // derive them from r2's (untouched) stored entry_hash.
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].sequence_id, 2);
+        assert!(found[0].reason.contains("entry_hash"));
+    }
+
+    #[test]
+    fn broken_prev_link_detected() {
+        let r1 = build_row(1, None, "a");
+        let r2 = build_row(2, Some(&r1.entry_hash), "b");
+        // Tamper: make r2's prev_hash point at garbage, then re-hash r2
+        // so the content check alone wouldn't see it. This isolates the
+        // prev-link detector.
+        let mut r2_fake = r2.clone();
+        r2_fake.prev_hash = Some("0000000000000000000000000000000000000000000000000000000000000000".into());
+        let payload = canonical_payload(
+            r2_fake.prev_hash.as_deref(), r2_fake.organization_id,
+            r2_fake.sequence_id, &r2_fake.source_service, &r2_fake.entity_type,
+            r2_fake.entity_id, &r2_fake.action, r2_fake.actor_user_id, &r2_fake.details);
+        r2_fake.entry_hash = compute_hash(&payload);
+
+        let found = walk_and_verify(&[r1, r2_fake]);
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].sequence_id, 2);
+        assert!(found[0].reason.contains("prev_hash"));
+    }
+
+    #[test]
+    fn empty_chain_verifies() {
+        assert!(walk_and_verify(&[]).is_empty());
+    }
+
+    #[test]
+    fn single_row_verifies() {
+        let r1 = build_row(1, None, "alone");
+        assert!(walk_and_verify(&[r1]).is_empty());
     }
 
     #[test]

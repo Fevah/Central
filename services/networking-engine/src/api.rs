@@ -15,7 +15,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::allocation::AllocationService;
-use crate::audit::{self, ListAuditQuery};
+use crate::audit::{self, ListAuditQuery, VerifyChainQuery};
 use crate::error::EngineError;
 use crate::ip_allocation::IpAllocationService;
 use crate::models::{PoolScopeLevel, ShelfResourceType};
@@ -24,7 +24,7 @@ use crate::naming_overrides::{
     CreateOverrideBody, ListOverridesQuery, NamingOverrideRepo, UpdateOverrideBody,
 };
 use crate::naming_resolver::{NamingResolver, ResolveRequest};
-use crate::regenerate::{self, RegeneratePreviewRequest};
+use crate::regenerate::{self, RegenerateApplyRequest, RegeneratePreviewRequest};
 use crate::server_fanout::{ServerCreationRequest, ServerCreationService};
 use crate::tenant_config::{TenantConfigRepo, UpsertTenantConfigBody};
 
@@ -58,8 +58,10 @@ pub fn build_router(state: AppState) -> Router {
         // Tenant naming config (Phase 7b) + regenerate preview (Phase 7c)
         .route("/api/net/naming/tenant-config", get(get_tenant_config).put(upsert_tenant_config))
         .route("/api/net/naming/regenerate/preview", post(regenerate_preview))
+        .route("/api/net/naming/regenerate/apply", post(regenerate_apply))
         // Audit (Phase 8 foundation)
         .route("/api/net/audit", get(list_audit))
+        .route("/api/net/audit/verify", get(verify_audit_chain))
         .with_state(state)
 }
 
@@ -383,4 +385,18 @@ async fn list_audit(
     Query(q): Query<ListAuditQuery>,
 ) -> Result<impl IntoResponse, EngineError> {
     Ok(Json(audit::list(&s.pool, &q).await?))
+}
+
+async fn verify_audit_chain(
+    State(s): State<AppState>,
+    Query(q): Query<VerifyChainQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    Ok(Json(audit::verify_chain(&s.pool, &q).await?))
+}
+
+async fn regenerate_apply(
+    State(s): State<AppState>,
+    Json(req): Json<RegenerateApplyRequest>,
+) -> Result<impl IntoResponse, EngineError> {
+    Ok(Json(regenerate::apply(&s.pool, &req).await?))
 }

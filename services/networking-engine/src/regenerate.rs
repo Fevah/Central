@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::audit::{self, AuditEvent};
 use crate::error::EngineError;
 use crate::naming::{
     expand_device, expand_link, expand_server,
@@ -447,6 +448,171 @@ async fn preview_servers(
 
     let total = items.len();
     Ok(RegeneratePreviewResponse { items, total, would_change })
+}
+
+// ─── Apply ────────────────────────────────────────────────────────────────
+
+/// Apply the regenerate preview — actually rename the entities. Each rename
+/// is its own transaction (entity UPDATE + audit append) so a failure on
+/// row 47 doesn't roll back rows 1-46. Admins can re-run apply to pick up
+/// the remaining rows (they'll simply be no-ops for entities already at
+/// their proposed name).
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RegenerateApplyRequest {
+    pub organization_id: Uuid,
+    pub entity_type: String,
+    pub subtype_code: Option<String>,
+    pub scope_level: Option<String>,
+    pub scope_entity_id: Option<Uuid>,
+    /// Optional — if set, restrict the apply to only these entity IDs.
+    /// Lets admins preview, untick rows in the UI, and apply only the
+    /// curated subset. Empty or omitted means "every row the preview
+    /// would have returned with `wouldChange = true`".
+    #[serde(default)]
+    pub only_ids: Option<Vec<Uuid>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RegenerateApplyResponse {
+    pub renamed: Vec<RegenerateItem>,
+    pub skipped: Vec<RegenerateItem>,
+    pub failed: Vec<RegenerateApplyFailure>,
+    pub renamed_count: usize,
+    pub failed_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RegenerateApplyFailure {
+    pub id: Uuid,
+    pub current_name: String,
+    pub proposed_name: String,
+    pub error: String,
+}
+
+pub async fn apply(
+    pool: &PgPool,
+    req: &RegenerateApplyRequest,
+) -> Result<RegenerateApplyResponse, EngineError> {
+    let only_ids: Option<std::collections::HashSet<Uuid>> =
+        req.only_ids.as_ref().map(|v| v.iter().copied().collect());
+
+    // Start with the preview surface so applies share the naming
+    // resolution + context-building code. No chance of drift between
+    // what admins see in the UI and what actually runs.
+    let preview_req = RegeneratePreviewRequest {
+        organization_id: req.organization_id,
+        entity_type: req.entity_type.clone(),
+        subtype_code: req.subtype_code.clone(),
+        scope_level: req.scope_level.clone(),
+        scope_entity_id: req.scope_entity_id,
+    };
+    let preview = preview(pool, &preview_req).await?;
+
+    let mut renamed = Vec::new();
+    let mut skipped = Vec::new();
+    let mut failed = Vec::new();
+
+    for item in preview.items {
+        if !item.would_change {
+            skipped.push(item);
+            continue;
+        }
+        if let Some(ids) = &only_ids {
+            if !ids.contains(&item.id) {
+                skipped.push(item);
+                continue;
+            }
+        }
+
+        match rename_one(pool, req.entity_type.as_str(), &item, req.organization_id).await {
+            Ok(()) => renamed.push(item),
+            Err(e) => failed.push(RegenerateApplyFailure {
+                id: item.id,
+                current_name: item.current_name,
+                proposed_name: item.proposed_name,
+                error: e.to_string(),
+            }),
+        }
+    }
+
+    let renamed_count = renamed.len();
+    let failed_count = failed.len();
+    Ok(RegenerateApplyResponse {
+        renamed, skipped, failed, renamed_count, failed_count,
+    })
+}
+
+async fn rename_one(
+    pool: &PgPool,
+    entity_type: &str,
+    item: &RegenerateItem,
+    org_id: Uuid,
+) -> Result<(), EngineError> {
+    match entity_type {
+        "Device" => rename_device(pool, item, org_id).await,
+        // Link + Server apply land as incremental adds once Phase 8
+        // governance decides whether bulk renames need Change Set
+        // approval — deferring the code keeps us from shipping something
+        // that immediately gets rewritten.
+        other => Err(EngineError::bad_request(format!(
+            "Apply not yet supported for entity_type '{other}'. Device only in this slice."))),
+    }
+}
+
+async fn rename_device(
+    pool: &PgPool,
+    item: &RegenerateItem,
+    org_id: Uuid,
+) -> Result<(), EngineError> {
+    let mut tx = pool.begin().await?;
+
+    // Optimistic UPDATE — if another writer changed the device between
+    // the preview and the apply, we bail rather than overwrite. Caller
+    // re-previews and re-applies.
+    let updated: Option<(Uuid, String, i32)> = sqlx::query_as(
+        "UPDATE net.device
+            SET hostname   = $3,
+                updated_at = now(),
+                version    = version + 1
+          WHERE id = $1 AND organization_id = $2
+            AND hostname = $4
+            AND deleted_at IS NULL
+          RETURNING id, hostname, version")
+        .bind(item.id)
+        .bind(org_id)
+        .bind(&item.proposed_name)
+        .bind(&item.current_name)
+        .fetch_optional(&mut *tx)
+        .await?;
+
+    let Some((_, _, new_version)) = updated else {
+        return Err(EngineError::bad_request(format!(
+            "Device {} not found, already renamed, or deleted — re-preview and retry.", item.id)));
+    };
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "Device",
+        entity_id: Some(item.id),
+        action: "Renamed",
+        actor_user_id: None,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: None,
+        details: serde_json::json!({
+            "from": item.current_name,
+            "to": item.proposed_name,
+            "template_source": item.template_source,
+            "new_version": new_version,
+        }),
+    }).await?;
+
+    tx.commit().await?;
+    Ok(())
 }
 
 pub(crate) fn validate_scope_filter(req: &RegeneratePreviewRequest) -> Result<(), EngineError> {
