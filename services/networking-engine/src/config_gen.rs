@@ -114,6 +114,19 @@ pub struct DeviceContext {
     /// LOOPBACK-coded subnets are filtered out at fetch time because
     /// `render_loopback_section` already handles them.
     pub l3_svis: Vec<L3SviLine>,
+    /// Per-port description lines. Sourced from `net.link_endpoint`
+    /// rows where this device is the endpoint and `interface_name` is
+    /// populated — that's where the link-naming service writes the
+    /// auto-generated "P2P-peer" / "B2B-building" description when a
+    /// link is wired. Unused ports (no link) don't appear here; they
+    /// don't need a description line.
+    pub port_descriptions: Vec<PortDescriptionLine>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PortDescriptionLine {
+    pub interface_name: String,
+    pub description: String,
 }
 
 #[derive(Debug, Clone)]
@@ -308,6 +321,27 @@ async fn fetch_context(
         .fetch_optional(pool)
         .await?;
 
+    // Port descriptions: one row per link endpoint this device
+    // terminates that names an interface. Description comes from the
+    // link-naming service (see net.link_type.naming_template). Rows
+    // with empty descriptions are filtered in Rust after fetch so the
+    // catalog decision "should this port have a description?" stays
+    // in one place rather than duplicated in SQL.
+    let port_desc_rows: Vec<(String, Option<String>)> = sqlx::query_as(
+        r#"SELECT le.interface_name, le.description
+             FROM net.link_endpoint le
+             JOIN net.link l ON l.id = le.link_id AND l.deleted_at IS NULL
+            WHERE le.organization_id = $1
+              AND le.device_id       = $2
+              AND le.deleted_at      IS NULL
+              AND le.interface_name  IS NOT NULL
+              AND le.interface_name <> ''
+            ORDER BY le.interface_name"#)
+        .bind(org_id)
+        .bind(device_id)
+        .fetch_all(pool)
+        .await?;
+
     // L3 SVI lines: every ip_address assigned to this device whose
     // subnet is wired to a VLAN, minus the loopback (rendered
     // separately). The management IP currently emits via its own
@@ -375,6 +409,13 @@ async fn fetch_context(
         l3_svis: svi_rows.into_iter()
             .map(|(vid, addr)| L3SviLine { vlan_id: vid, address: addr })
             .collect(),
+        port_descriptions: port_desc_rows.into_iter()
+            .filter_map(|(iface, desc)| {
+                let desc = desc.unwrap_or_default();
+                if desc.is_empty() { return None; }
+                Some(PortDescriptionLine { interface_name: iface, description: desc })
+            })
+            .collect(),
     })
 }
 
@@ -403,7 +444,9 @@ impl Renderer for PicosRenderer {
         render_bgp_scalar_section(&mut out, ctx);
         render_mstp_section(&mut out, ctx);
         render_mlag_section(&mut out, ctx);
-        // TODO(follow-on): render_ports, render_vrrp, render_dhcp_relay,
+        render_port_descriptions_section(&mut out, ctx);
+        // TODO(follow-on): port trunk/access rules (native-vlan +
+        // port-mode + vlan members), render_vrrp, render_dhcp_relay,
         // render_static_routes, render_lldp.
         out
     }
@@ -503,6 +546,21 @@ fn render_bgp_scalar_section(out: &mut String, ctx: &DeviceContext) {
     out.push('\n');
 }
 
+/// Port description lines. PicOS uses the fixed keyword
+/// `gigabit-ethernet` regardless of the port's actual speed — the
+/// interface name prefix (`xe-` / `ge-` / `et-`) carries the speed
+/// semantics. The description is escape_picos'd so link-naming output
+/// that happens to contain a quote can't break the config block.
+fn render_port_descriptions_section(out: &mut String, ctx: &DeviceContext) {
+    if ctx.port_descriptions.is_empty() { return; }
+    for p in &ctx.port_descriptions {
+        out.push_str(&format!(
+            "set interface gigabit-ethernet {} description \"{}\"\n",
+            p.interface_name, escape_picos(&p.description)));
+    }
+    out.push('\n');
+}
+
 fn render_l3_svi_section(out: &mut String, ctx: &DeviceContext) {
     if ctx.l3_svis.is_empty() { return; }
     for svi in &ctx.l3_svis {
@@ -573,6 +631,7 @@ mod tests {
             mstp_priority: None,
             mlag: None,
             l3_svis: vec![],
+            port_descriptions: vec![],
         }
     }
 
@@ -592,6 +651,7 @@ mod tests {
             mstp_priority: None,
             mlag: None,
             l3_svis: vec![],
+            port_descriptions: vec![],
         }
     }
 
@@ -620,6 +680,7 @@ mod tests {
             mstp_priority: None,
             mlag: None,
             l3_svis: vec![],
+            port_descriptions: vec![],
         }
     }
 
@@ -635,6 +696,23 @@ mod tests {
             mstp_priority: None,
             mlag: None,
             l3_svis: svis,
+            port_descriptions: vec![],
+        }
+    }
+
+    fn fixture_with_ports(ports: Vec<PortDescriptionLine>) -> DeviceContext {
+        DeviceContext {
+            device_id: Uuid::nil(),
+            hostname: "CORE02".into(),
+            loopback: None,
+            management_ip: None,
+            vlans: vec![],
+            bgp: None,
+            bgp_neighbors: vec![],
+            mstp_priority: None,
+            mlag: None,
+            l3_svis: vec![],
+            port_descriptions: ports,
         }
     }
 
@@ -653,6 +731,7 @@ mod tests {
             mstp_priority,
             mlag,
             l3_svis: vec![],
+            port_descriptions: vec![],
         }
     }
 
@@ -910,6 +989,59 @@ mod tests {
         // But the rest of the BGP section must still render.
         assert!(out.contains("local-as \"65112\""));
         assert!(out.contains("redistribute connected"));
+    }
+
+    #[test]
+    fn picos_emits_port_description_lines_with_gigabit_ethernet_keyword() {
+        // PicOS uses the fixed keyword regardless of speed — xe-/ge-/et-
+        // prefix in the interface name carries the actual media type.
+        let ctx = fixture_with_ports(vec![
+            PortDescriptionLine { interface_name: "xe-1/1/20".into(), description: "P2P-MEP-92-CORE01".into() },
+            PortDescriptionLine { interface_name: "ge-1/1/12".into(), description: "Prox01-Trunk".into() },
+        ]);
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains(r#"set interface gigabit-ethernet xe-1/1/20 description "P2P-MEP-92-CORE01""#),
+            "10G port description line missing:\n{out}");
+        assert!(out.contains(r#"set interface gigabit-ethernet ge-1/1/12 description "Prox01-Trunk""#),
+            "1G port description line missing:\n{out}");
+    }
+
+    #[test]
+    fn picos_omits_port_description_section_when_empty() {
+        let out = PicosRenderer::render(&fixture_with_ports(vec![]));
+        assert!(!out.contains("set interface gigabit-ethernet"),
+            "no port rows → no port description lines:\n{out}");
+    }
+
+    #[test]
+    fn picos_port_description_escapes_quotes_in_description() {
+        let ctx = fixture_with_ports(vec![
+            PortDescriptionLine {
+                interface_name: "xe-1/1/20".into(),
+                description: r#"trunk "to" server01"#.into(),
+            },
+        ]);
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains(r#"description "trunk \"to\" server01""#),
+            "description quotes must be escaped:\n{out}");
+    }
+
+    #[test]
+    fn picos_emits_port_descriptions_in_interface_name_order() {
+        // Fetch query ORDER BYs interface_name; the renderer must
+        // preserve that order so diffs against prior generations stay
+        // stable.
+        let ctx = fixture_with_ports(vec![
+            PortDescriptionLine { interface_name: "ge-1/1/1".into(),  description: "a".into() },
+            PortDescriptionLine { interface_name: "xe-1/1/10".into(), description: "b".into() },
+            PortDescriptionLine { interface_name: "xe-1/1/20".into(), description: "c".into() },
+        ]);
+        let out = PicosRenderer::render(&ctx);
+        let p1  = out.find("ge-1/1/1 ").expect("ge-1/1/1 present");
+        let p10 = out.find("xe-1/1/10").expect("xe-1/1/10 present");
+        let p20 = out.find("xe-1/1/20").expect("xe-1/1/20 present");
+        assert!(p1 < p10 && p10 < p20,
+            "port lines must stay in caller-provided order:\n{out}");
     }
 
     #[test]
