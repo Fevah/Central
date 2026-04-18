@@ -81,6 +81,8 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/change-sets/:id/rollback", post(rollback_change_set))
         // Lock-state management (Phase 8f)
         .route("/api/net/locks/:table/:id", axum::routing::patch(set_entity_lock))
+        // Device list (thin read — powers WPF pickers)
+        .route("/api/net/devices", get(list_devices))
         // Validation rules (Phase 9a)
         .route("/api/net/validation/rules", get(list_validation_rules))
         .route("/api/net/validation/rules/:code", axum::routing::put(set_validation_rule_config))
@@ -453,6 +455,45 @@ async fn export_audit(
             &format!("attachment; filename=\"{filename}\""))
             .unwrap_or(axum::http::HeaderValue::from_static("attachment")));
     Ok(resp)
+}
+
+// ─── Device list (thin read) ─────────────────────────────────────────────
+
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct DeviceListRow {
+    id: Uuid,
+    hostname: String,
+    role_code: Option<String>,
+    building_code: Option<String>,
+    status: String,
+    version: i32,
+}
+
+async fn list_devices(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    // Thin list used by the WPF device-picker for Change Set Rename /
+    // Update / Delete items. Includes role_code + building_code for
+    // human-readable disambiguation in the picker, without forcing
+    // callers to do a second round-trip per row.
+    let rows: Vec<DeviceListRow> = sqlx::query_as(
+        "SELECT d.id, d.hostname,
+                r.role_code,
+                b.building_code,
+                d.status::text AS status,
+                d.version
+           FROM net.device d
+           LEFT JOIN net.device_role r ON r.id = d.device_role_id
+           LEFT JOIN net.building    b ON b.id = d.building_id
+          WHERE d.organization_id = $1 AND d.deleted_at IS NULL
+          ORDER BY d.hostname
+          LIMIT 5000")
+        .bind(q.organization_id)
+        .fetch_all(&s.pool)
+        .await?;
+    Ok(Json(rows))
 }
 
 async fn regenerate_apply(

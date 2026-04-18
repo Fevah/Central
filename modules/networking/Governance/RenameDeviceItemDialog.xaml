@@ -1,0 +1,67 @@
+<dxc:DXWindow x:Class="Central.Module.Networking.Governance.RenameDeviceItemDialog"
+              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+              xmlns:dxc="http://schemas.devexpress.com/winfx/2008/xaml/core"
+              xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+              Title="Rename Device (Add Item)"
+              Width="640" Height="520"
+              WindowStartupLocation="CenterOwner"
+              ResizeMode="CanResize"
+              MinWidth="520" MinHeight="420">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" x:Name="HeaderLabel"
+                   FontWeight="SemiBold" Foreground="#D0D0D0"
+                   Margin="0,0,0,8"/>
+
+        <TextBlock Grid.Row="1" Text="Filter" Foreground="#B0B0B0"/>
+        <TextBox   Grid.Row="2" x:Name="FilterBox"
+                   TextChanged="OnFilterChanged"
+                   Margin="0,4,0,8"/>
+
+        <TextBlock Grid.Row="3" Text="Select device" Foreground="#B0B0B0"/>
+        <dxg:GridControl Grid.Row="4" x:Name="DevicesGrid"
+                         AutoGenerateColumns="None" SelectionMode="Row"
+                         ShowBorder="True"
+                         Margin="0,4,0,8">
+            <dxg:GridControl.View>
+                <dxg:TableView AutoWidth="True" ShowIndicator="False"
+                               AllowEditing="False"
+                               RowDoubleClick="OnRowDoubleClick"/>
+            </dxg:GridControl.View>
+            <dxg:GridControl.Columns>
+                <dxg:GridColumn FieldName="Hostname"     Header="Hostname"   Width="220"/>
+                <dxg:GridColumn FieldName="RoleCode"     Header="Role"       Width="90"/>
+                <dxg:GridColumn FieldName="BuildingCode" Header="Building"   Width="100"/>
+                <dxg:GridColumn FieldName="Status"       Header="Status"     Width="80"/>
+                <dxg:GridColumn FieldName="Version"      Header="v"          Width="40"/>
+            </dxg:GridControl.Columns>
+        </dxg:GridControl>
+
+        <TextBlock Grid.Row="5" Text="New hostname" Foreground="#B0B0B0"/>
+        <TextBox   Grid.Row="6" x:Name="NewHostnameBox"
+                   Margin="0,4,0,8"/>
+
+        <TextBlock Grid.Row="7" x:Name="ErrorLabel"
+                   Foreground="#E06464" TextWrapping="Wrap"
+                   Margin="0,0,0,8" Visibility="Collapsed"/>
+
+        <StackPanel Grid.Row="8" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Cancel" Width="90" Margin="0,0,8,0"
+                    Click="OnCancel" IsCancel="True"/>
+            <Button x:Name="OkButton" Content="Add Rename Item" Width="160"
+                    Click="OnOk" IsDefault="True"/>
+        </StackPanel>
+    </Grid>
+</dxc:DXWindow>

@@ -87,6 +87,9 @@ public partial class ChangeSetsListPanel : UserControl
             case "action:addItem":
                 RunWithSelection("add an item to", OpenAddItemDialog);
                 break;
+            case "action:renameDevice":
+                RunWithSelection("add a device rename to", OpenRenameDeviceDialog);
+                break;
             case "action:submit":
                 RunWithSelection("Submit", OpenSubmitDialog);
                 break;
@@ -207,19 +210,35 @@ public partial class ChangeSetsListPanel : UserControl
 
     private void OpenAddItemDialog(ChangeSetRow row)
     {
-        if (row.Status != "Draft")
-        {
-            MessageBox.Show(
-                $"Items can only be added to a Change Set in Draft. " +
-                $"This set is {row.Status}.\n\nCancel + re-draft, or submit as-is.",
-                "Set not in Draft", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
+        if (!RequireDraft(row)) return;
         var dialog = new AddChangeSetItemDialog(_baseUrl!, _tenantId, _actorUserId, row)
         {
             Owner = Window.GetWindow(this),
         };
         if (dialog.ShowDialog() == true) _ = ReloadAsync();
+    }
+
+    /// <summary>Convenience variant of AddItem for the common Device/Rename
+    /// case. Drops the JSON textareas in favour of a device picker + a
+    /// new-hostname textbox. Same underlying AddChangeSetItemAsync call.</summary>
+    private void OpenRenameDeviceDialog(ChangeSetRow row)
+    {
+        if (!RequireDraft(row)) return;
+        var dialog = new RenameDeviceItemDialog(_baseUrl!, _tenantId, _actorUserId, row)
+        {
+            Owner = Window.GetWindow(this),
+        };
+        if (dialog.ShowDialog() == true) _ = ReloadAsync();
+    }
+
+    private bool RequireDraft(ChangeSetRow row)
+    {
+        if (row.Status == "Draft") return true;
+        MessageBox.Show(
+            $"Items can only be added to a Change Set in Draft. " +
+            $"This set is {row.Status}.\n\nCancel + re-draft, or submit as-is.",
+            "Set not in Draft", MessageBoxButton.OK, MessageBoxImage.Information);
+        return false;
     }
 
     // ─── Submit ─────────────────────────────────────────────────────────

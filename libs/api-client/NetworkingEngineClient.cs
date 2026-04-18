@@ -197,6 +197,13 @@ public class NetworkingEngineClient : IDisposable
         => GetAsync<List<ApprovalDto>>(
             $"/api/net/change-sets/{setId}/decisions?organizationId={organizationId}", ct);
 
+    // ─── Device list (WPF picker read) ──────────────────────────────────
+
+    public Task<List<DeviceListRowDto>> ListDevicesAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<DeviceListRowDto>>(
+            $"/api/net/devices?organizationId={organizationId}", ct);
+
     public Task<ChangeSetDto> CancelChangeSetAsync(Guid setId, Guid organizationId,
         string? notes = null, CancellationToken ct = default)
         => PostAsync<ChangeSetDto>(
@@ -582,3 +589,7 @@ public record ViolationDto(string RuleCode, string Severity, string EntityType,
 // Locks
 public record LockChangeResultDto(Guid Id, string LockState, string? LockReason,
     int? LockedBy, DateTime? LockedAt, int Version);
+
+// Device list (picker)
+public record DeviceListRowDto(Guid Id, string Hostname, string? RoleCode,
+    string? BuildingCode, string Status, int Version);
