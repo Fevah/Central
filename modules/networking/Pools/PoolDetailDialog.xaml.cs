@@ -5,10 +5,12 @@ using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using System.Windows;
 using Central.Engine.Net;
+using Central.Engine.Net.Dialogs;
 using Central.Engine.Net.Hierarchy;
 using Central.Engine.Net.Pools;
 using Central.Persistence.Net;
 using DevExpress.Xpf.Core;
+using PoolValidationMode = Central.Engine.Net.Dialogs.PoolValidation.Mode;
 
 namespace Central.Module.Networking.Pools;
 
@@ -369,10 +371,8 @@ public partial class PoolDetailDialog : DXWindow
         p.AsnLast = ToInt64(AsnLastBox.EditValue);
         p.AsnKind = Enum.TryParse<AsnKind>(AsnKindCombo.EditValue as string, out var k) ? k : AsnKind.Private2;
         p.Notes = Nullable(NotesBox.Text);
-        if (string.IsNullOrEmpty(p.PoolCode) || string.IsNullOrEmpty(p.DisplayName))
-            throw new InvalidOperationException("Code and display name are required.");
-        if (p.AsnFirst > p.AsnLast)
-            throw new InvalidOperationException("First ASN must be <= last ASN.");
+        var asnPoolErrors = PoolValidation.ValidateAsnPool(p);
+        if (asnPoolErrors.Count > 0) throw new InvalidOperationException(asnPoolErrors[0]);
 
         SeedBase(p);
         SavedId = _mode == Mode.New
@@ -394,16 +394,10 @@ public partial class PoolDetailDialog : DXWindow
         b.ScopeLevel = Enum.TryParse<PoolScopeLevel>(ScopeLevelCombo.EditValue as string, out var s)
             ? s : PoolScopeLevel.Free;
         b.Notes = Nullable(NotesBox.Text);
-        if (_mode == Mode.New)
-        {
-            if (ParentCombo.EditValue is not Guid poolId || poolId == Guid.Empty)
-                throw new InvalidOperationException("ASN pool is required.");
+        if (_mode == Mode.New && ParentCombo.EditValue is Guid poolId && poolId != Guid.Empty)
             b.PoolId = poolId;
-        }
-        if (string.IsNullOrEmpty(b.BlockCode))
-            throw new InvalidOperationException("Code is required.");
-        if (b.AsnFirst > b.AsnLast)
-            throw new InvalidOperationException("First ASN must be <= last ASN.");
+        var asnBlockErrors = PoolValidation.ValidateAsnBlock(b, _mode == Mode.New ? PoolValidationMode.New : PoolValidationMode.Edit);
+        if (asnBlockErrors.Count > 0) throw new InvalidOperationException(asnBlockErrors[0]);
 
         SeedBase(b);
         SavedId = _mode == Mode.New
@@ -423,10 +417,8 @@ public partial class PoolDetailDialog : DXWindow
         p.AddressFamily = (IpFamilyCombo.EditValue as string) == "V6"
             ? IpAddressFamily.V6 : IpAddressFamily.V4;
         p.Notes = Nullable(NotesBox.Text);
-        if (string.IsNullOrEmpty(p.PoolCode) || string.IsNullOrEmpty(p.DisplayName))
-            throw new InvalidOperationException("Code and display name are required.");
-        if (string.IsNullOrEmpty(p.Network))
-            throw new InvalidOperationException("Network (CIDR) is required.");
+        var ipPoolErrors = PoolValidation.ValidateIpPool(p);
+        if (ipPoolErrors.Count > 0) throw new InvalidOperationException(ipPoolErrors[0]);
 
         SeedBase(p);
         SavedId = _mode == Mode.New
@@ -445,10 +437,8 @@ public partial class PoolDetailDialog : DXWindow
         p.VlanFirst = (int)ToInt64(VlanFirstBox.EditValue);
         p.VlanLast = (int)ToInt64(VlanLastBox.EditValue);
         p.Notes = Nullable(NotesBox.Text);
-        if (string.IsNullOrEmpty(p.PoolCode) || string.IsNullOrEmpty(p.DisplayName))
-            throw new InvalidOperationException("Code and display name are required.");
-        if (p.VlanFirst > p.VlanLast)
-            throw new InvalidOperationException("First VLAN must be <= last VLAN.");
+        var vlanPoolErrors = PoolValidation.ValidateVlanPool(p);
+        if (vlanPoolErrors.Count > 0) throw new InvalidOperationException(vlanPoolErrors[0]);
 
         SeedBase(p);
         SavedId = _mode == Mode.New
@@ -469,16 +459,10 @@ public partial class PoolDetailDialog : DXWindow
         b.ScopeLevel = Enum.TryParse<PoolScopeLevel>(ScopeLevelCombo.EditValue as string, out var s)
             ? s : PoolScopeLevel.Free;
         b.Notes = Nullable(NotesBox.Text);
-        if (_mode == Mode.New)
-        {
-            if (ParentCombo.EditValue is not Guid poolId || poolId == Guid.Empty)
-                throw new InvalidOperationException("VLAN pool is required.");
-            b.PoolId = poolId;
-        }
-        if (string.IsNullOrEmpty(b.BlockCode))
-            throw new InvalidOperationException("Code is required.");
-        if (b.VlanFirst > b.VlanLast)
-            throw new InvalidOperationException("First VLAN must be <= last VLAN.");
+        if (_mode == Mode.New && ParentCombo.EditValue is Guid vlanPoolId && vlanPoolId != Guid.Empty)
+            b.PoolId = vlanPoolId;
+        var vlanBlockErrors = PoolValidation.ValidateVlanBlock(b, _mode == Mode.New ? PoolValidationMode.New : PoolValidationMode.Edit);
+        if (vlanBlockErrors.Count > 0) throw new InvalidOperationException(vlanBlockErrors[0]);
 
         SeedBase(b);
         SavedId = _mode == Mode.New
@@ -498,10 +482,8 @@ public partial class PoolDetailDialog : DXWindow
         t.Description = Nullable(VlanTemplateDescBox.Text);
         t.IsDefault = VlanTemplateDefaultCheck.IsChecked == true;
         t.Notes = Nullable(NotesBox.Text);
-        if (string.IsNullOrEmpty(t.TemplateCode) || string.IsNullOrEmpty(t.DisplayName))
-            throw new InvalidOperationException("Code and display name are required.");
-        if (string.IsNullOrEmpty(t.VlanRole))
-            throw new InvalidOperationException("VLAN role is required (drives config generation).");
+        var vlanTplErrors = PoolValidation.ValidateVlanTemplate(t);
+        if (vlanTplErrors.Count > 0) throw new InvalidOperationException(vlanTplErrors[0]);
 
         SeedBase(t);
         SavedId = _mode == Mode.New
@@ -520,10 +502,8 @@ public partial class PoolDetailDialog : DXWindow
         p.DomainFirst = (int)ToInt64(MlagFirstBox.EditValue);
         p.DomainLast = (int)ToInt64(MlagLastBox.EditValue);
         p.Notes = Nullable(NotesBox.Text);
-        if (string.IsNullOrEmpty(p.PoolCode) || string.IsNullOrEmpty(p.DisplayName))
-            throw new InvalidOperationException("Code and display name are required.");
-        if (p.DomainFirst > p.DomainLast)
-            throw new InvalidOperationException("First domain must be <= last domain.");
+        var mlagErrors = PoolValidation.ValidateMlagPool(p);
+        if (mlagErrors.Count > 0) throw new InvalidOperationException(mlagErrors[0]);
 
         SeedBase(p);
         SavedId = _mode == Mode.New

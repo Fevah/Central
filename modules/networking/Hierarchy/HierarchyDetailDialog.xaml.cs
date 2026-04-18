@@ -5,10 +5,12 @@ using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using System.Windows;
 using Central.Engine.Net;
+using Central.Engine.Net.Dialogs;
 using Central.Engine.Net.Hierarchy;
 using Central.Persistence.Net;
 using DevExpress.Xpf.Core;
 using Region = Central.Engine.Net.Hierarchy.Region;
+using ValidationMode = Central.Engine.Net.Dialogs.HierarchyValidation.Mode;
 
 namespace Central.Module.Networking.Hierarchy;
 
@@ -393,8 +395,8 @@ public partial class HierarchyDetailDialog : DXWindow
         r.LockState = ParseLock();
         r.B2bMeshPolicy = B2bPolicyCombo.EditValue as string ?? "None";
         r.Notes = NullableText(NotesBox.Text);
-        if (string.IsNullOrEmpty(r.RegionCode) || string.IsNullOrEmpty(r.DisplayName))
-            throw new InvalidOperationException("Code and display name are required.");
+        var regionErrors = HierarchyValidation.ValidateRegion(r);
+        if (regionErrors.Count > 0) throw new InvalidOperationException(regionErrors[0]);
 
         if (_mode == Mode.New)
         {
@@ -422,16 +424,11 @@ public partial class HierarchyDetailDialog : DXWindow
         s.MaxBuildings = IntOrNull(SiteMaxBuildings.EditValue);
         s.Notes = NullableText(NotesBox.Text);
 
-        if (_mode == Mode.New)
-        {
-            if (ParentCombo.EditValue is Guid regionId && regionId != Guid.Empty)
-                s.RegionId = regionId;
-            else
-                throw new InvalidOperationException("Region is required.");
-        }
+        if (_mode == Mode.New && ParentCombo.EditValue is Guid regionId && regionId != Guid.Empty)
+            s.RegionId = regionId;
 
-        if (string.IsNullOrEmpty(s.SiteCode) || string.IsNullOrEmpty(s.DisplayName))
-            throw new InvalidOperationException("Code and display name are required.");
+        var siteErrors = HierarchyValidation.ValidateSite(s, _mode == Mode.New ? ValidationMode.New : ValidationMode.Edit);
+        if (siteErrors.Count > 0) throw new InvalidOperationException(siteErrors[0]);
 
         if (_mode == Mode.New)
         {
@@ -459,16 +456,11 @@ public partial class HierarchyDetailDialog : DXWindow
         b.IsReserved = ReservedCheck.IsChecked == true;
         b.Notes = NullableText(NotesBox.Text);
 
-        if (_mode == Mode.New)
-        {
-            if (ParentCombo.EditValue is Guid siteId && siteId != Guid.Empty)
-                b.SiteId = siteId;
-            else
-                throw new InvalidOperationException("Site is required.");
-        }
+        if (_mode == Mode.New && ParentCombo.EditValue is Guid siteId && siteId != Guid.Empty)
+            b.SiteId = siteId;
 
-        if (string.IsNullOrEmpty(b.BuildingCode) || string.IsNullOrEmpty(b.DisplayName))
-            throw new InvalidOperationException("Code and display name are required.");
+        var buildingErrors = HierarchyValidation.ValidateBuilding(b, _mode == Mode.New ? ValidationMode.New : ValidationMode.Edit);
+        if (buildingErrors.Count > 0) throw new InvalidOperationException(buildingErrors[0]);
 
         if (_mode == Mode.New)
         {
@@ -494,16 +486,11 @@ public partial class HierarchyDetailDialog : DXWindow
         f.MaxRooms = IntOrNull(FloorMaxRooms.EditValue);
         f.Notes = NullableText(NotesBox.Text);
 
-        if (_mode == Mode.New)
-        {
-            if (ParentCombo.EditValue is Guid buildingId && buildingId != Guid.Empty)
-                f.BuildingId = buildingId;
-            else
-                throw new InvalidOperationException("Building is required.");
-        }
+        if (_mode == Mode.New && ParentCombo.EditValue is Guid buildingId && buildingId != Guid.Empty)
+            f.BuildingId = buildingId;
 
-        if (string.IsNullOrEmpty(f.FloorCode))
-            throw new InvalidOperationException("Code is required.");
+        var floorErrors = HierarchyValidation.ValidateFloor(f, _mode == Mode.New ? ValidationMode.New : ValidationMode.Edit);
+        if (floorErrors.Count > 0) throw new InvalidOperationException(floorErrors[0]);
 
         if (_mode == Mode.New)
         {
@@ -529,16 +516,11 @@ public partial class HierarchyDetailDialog : DXWindow
         r.EnvironmentalNotes = NullableText(RoomEnvNotesBox.Text);
         r.Notes = NullableText(NotesBox.Text);
 
-        if (_mode == Mode.New)
-        {
-            if (ParentCombo.EditValue is Guid floorId && floorId != Guid.Empty)
-                r.FloorId = floorId;
-            else
-                throw new InvalidOperationException("Floor is required.");
-        }
+        if (_mode == Mode.New && ParentCombo.EditValue is Guid floorId && floorId != Guid.Empty)
+            r.FloorId = floorId;
 
-        if (string.IsNullOrEmpty(r.RoomCode))
-            throw new InvalidOperationException("Code is required.");
+        var roomErrors = HierarchyValidation.ValidateRoom(r, _mode == Mode.New ? ValidationMode.New : ValidationMode.Edit);
+        if (roomErrors.Count > 0) throw new InvalidOperationException(roomErrors[0]);
 
         if (_mode == Mode.New)
         {
@@ -565,16 +547,11 @@ public partial class HierarchyDetailDialog : DXWindow
         k.MaxDevices = IntOrNull(RackMaxDevices.EditValue);
         k.Notes = NullableText(NotesBox.Text);
 
-        if (_mode == Mode.New)
-        {
-            if (ParentCombo.EditValue is Guid roomId && roomId != Guid.Empty)
-                k.RoomId = roomId;
-            else
-                throw new InvalidOperationException("Room is required.");
-        }
+        if (_mode == Mode.New && ParentCombo.EditValue is Guid roomId && roomId != Guid.Empty)
+            k.RoomId = roomId;
 
-        if (string.IsNullOrEmpty(k.RackCode))
-            throw new InvalidOperationException("Code is required.");
+        var rackErrors = HierarchyValidation.ValidateRack(k, _mode == Mode.New ? ValidationMode.New : ValidationMode.Edit);
+        if (rackErrors.Count > 0) throw new InvalidOperationException(rackErrors[0]);
 
         if (_mode == Mode.New)
         {
