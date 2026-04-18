@@ -575,6 +575,13 @@ pub struct DeviceContext {
     /// from their parent). Port_mode is NOT filtered — QoS applies
     /// regardless of L2/L3 role.
     pub port_qos_bindings: Vec<String>,
+    /// Default-route next-hop (bare host, no `/prefix`). Resolved from
+    /// the `net.ip_address` row with `assigned_to_type = 'Gateway'`
+    /// in whichever subnet contains `management_ip`. `None` when the
+    /// tenant hasn't seeded a Gateway row for that subnet — the
+    /// renderer then skips the static route line entirely rather
+    /// than guessing from a `.254` convention.
+    pub default_gateway: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -785,6 +792,30 @@ async fn fetch_context(
         .fetch_all(pool)
         .await?;
 
+    // Default-route next-hop: look for an `assigned_to_type = 'Gateway'`
+    // ip_address row in the subnet whose `network` contains the
+    // device's management IP. Tenants without seeded Gateway rows
+    // get `None` here and the static-route section skips; no
+    // `.254` convention baked into the renderer.
+    let default_gateway: Option<(String,)> = if mgmt.is_some() {
+        sqlx::query_as(
+            r#"SELECT host(ip.address)
+                 FROM net.ip_address ip
+                 JOIN net.subnet s ON s.id = ip.subnet_id AND s.deleted_at IS NULL
+                WHERE ip.organization_id  = $1
+                  AND ip.assigned_to_type = 'Gateway'
+                  AND ip.deleted_at       IS NULL
+                  AND s.network >>= (
+                      SELECT management_ip FROM net.device
+                       WHERE id = $2 AND organization_id = $1 AND deleted_at IS NULL)
+                ORDER BY ip.assigned_at ASC
+                LIMIT 1"#)
+            .bind(org_id)
+            .bind(device_id)
+            .fetch_optional(pool)
+            .await?
+    } else { None };
+
     // MSTP priority — unique per (org, device) so one row or none.
     let mstp: Option<(i32,)> = sqlx::query_as(
         "SELECT priority
@@ -960,6 +991,7 @@ async fn fetch_context(
             })
             .collect(),
         port_qos_bindings: port_qos_rows.into_iter().map(|(n,)| n).collect(),
+        default_gateway: default_gateway.map(|(g,)| g),
     })
 }
 
@@ -993,6 +1025,7 @@ impl Renderer for PicosRenderer {
         render_mstp_section(&mut out, ctx);
         render_mlag_section(&mut out, ctx);
         render_ports_section(&mut out, ctx);
+        render_static_route_section(&mut out, ctx);
         render_lldp_section(&mut out, ctx);
         // TODO(follow-on): render_vrrp (needs net.vrrp_*),
         // render_dhcp_relay (needs DHCP-role server discovery),
@@ -1141,6 +1174,22 @@ fn render_port_qos_bindings_section(out: &mut String, ctx: &DeviceContext) {
             "set class-of-service interface {} scheduler-profile \"qos-flex-profile\"\n",
             iface));
     }
+    out.push('\n');
+}
+
+/// Static default route — single line pointing at the mgmt-VLAN
+/// gateway. Only emitted when the fetch layer resolved a Gateway
+/// IP from a `net.ip_address` row (via `assigned_to_type = 'Gateway'`
+/// in the subnet containing the device's management IP). Tenants
+/// that haven't seeded Gateway rows simply skip this line — no
+/// `.254` convention baked into the renderer.
+///
+/// Position: legacy step 14 — after the port section (so mgmt-
+/// traffic policy lands after per-port setup) and before LLDP
+/// (which is always last).
+fn render_static_route_section(out: &mut String, ctx: &DeviceContext) {
+    let Some(gw) = ctx.default_gateway.as_deref() else { return; };
+    out.push_str(&format!("set protocols static route 0.0.0.0/0 next-hop {}\n", gw));
     out.push('\n');
 }
 
@@ -1409,6 +1458,7 @@ mod tests {
             port_descriptions: vec![],
             port_l2_rules: vec![],
             port_qos_bindings: vec![],
+            default_gateway: None,
         }
     }
 
@@ -1431,6 +1481,7 @@ mod tests {
             port_descriptions: vec![],
             port_l2_rules: vec![],
             port_qos_bindings: vec![],
+            default_gateway: None,
         }
     }
 
@@ -1462,6 +1513,7 @@ mod tests {
             port_descriptions: vec![],
             port_l2_rules: vec![],
             port_qos_bindings: vec![],
+            default_gateway: None,
         }
     }
 
@@ -1480,6 +1532,7 @@ mod tests {
             port_descriptions: vec![],
             port_l2_rules: vec![],
             port_qos_bindings: vec![],
+            default_gateway: None,
         }
     }
 
@@ -1498,6 +1551,7 @@ mod tests {
             port_descriptions: ports,
             port_l2_rules: vec![],
             port_qos_bindings: vec![],
+            default_gateway: None,
         }
     }
 
@@ -1519,6 +1573,7 @@ mod tests {
             port_descriptions: vec![],
             port_l2_rules: vec![],
             port_qos_bindings: vec![],
+            default_gateway: None,
         }
     }
 
@@ -1537,6 +1592,7 @@ mod tests {
             port_descriptions: vec![],
             port_l2_rules: rules,
             port_qos_bindings: vec![],
+            default_gateway: None,
         }
     }
 
@@ -1558,6 +1614,7 @@ mod tests {
             port_descriptions: descs,
             port_l2_rules: l2s,
             port_qos_bindings: vec![],
+            default_gateway: None,
         }
     }
 
@@ -1576,6 +1633,26 @@ mod tests {
             port_descriptions: vec![],
             port_l2_rules: vec![],
             port_qos_bindings: ports.into_iter().map(String::from).collect(),
+            default_gateway: None,
+        }
+    }
+
+    fn fixture_with_gateway(gateway: Option<&str>) -> DeviceContext {
+        DeviceContext {
+            device_id: Uuid::nil(),
+            hostname: "CORE02".into(),
+            loopback: None,
+            management_ip: None,
+            vlans: vec![],
+            bgp: None,
+            bgp_neighbors: vec![],
+            mstp_priority: None,
+            mlag: None,
+            l3_svis: vec![],
+            port_descriptions: vec![],
+            port_l2_rules: vec![],
+            port_qos_bindings: vec![],
+            default_gateway: gateway.map(String::from),
         }
     }
 
@@ -1597,6 +1674,7 @@ mod tests {
             port_descriptions: vec![],
             port_l2_rules: vec![],
             port_qos_bindings: vec![],
+            default_gateway: None,
         }
     }
 
@@ -2096,6 +2174,36 @@ mod tests {
         let loopback   = out.find("loopback lo0").expect("loopback present");
         assert!(ip_routing < qos_first && qos_first < loopback,
             "QoS must sit between ip routing and loopback:\n{out}");
+    }
+
+    #[test]
+    fn picos_emits_static_default_route_when_gateway_resolved() {
+        let out = PicosRenderer::render(&fixture_with_gateway(Some("10.11.152.254")));
+        assert!(out.contains("set protocols static route 0.0.0.0/0 next-hop 10.11.152.254"),
+            "static default route line missing:\n{out}");
+    }
+
+    #[test]
+    fn picos_omits_static_default_route_when_no_gateway_seeded() {
+        // Tenants without a Gateway ip_address row in the mgmt subnet
+        // shouldn't see a static route line at all — no `.254`
+        // fallback convention.
+        let out = PicosRenderer::render(&fixture_with_gateway(None));
+        assert!(!out.contains("protocols static route"),
+            "no gateway → no static route line:\n{out}");
+    }
+
+    #[test]
+    fn picos_static_route_lands_after_ports_and_before_lldp() {
+        // Legacy step 14 — after port config (so mgmt-traffic policy
+        // sits below per-port rules) and before the LLDP step-15
+        // closer.
+        let ctx = fixture_with_gateway(Some("10.11.152.254"));
+        let out = PicosRenderer::render(&ctx);
+        let static_route = out.find("protocols static route").expect("static route present");
+        let lldp         = out.find("protocols lldp enable").expect("lldp present");
+        assert!(static_route < lldp,
+            "static default route must come before LLDP:\n{out}");
     }
 
     #[test]
