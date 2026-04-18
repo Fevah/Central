@@ -564,6 +564,137 @@ impl ChangeSetRepo {
         })
     }
 
+    /// Roll back an Applied Set — walk items in reverse order and reverse
+    /// each one. Per-item transaction (same as apply) so partial failures
+    /// don't lose progress. Transitions Applied → RolledBack when every
+    /// reversible item is reversed.
+    ///
+    /// The reversal is shallow: Device / Rename becomes a rename from
+    /// `after.hostname` back to `before.hostname`. More-destructive
+    /// reversals (undelete a row, revert a multi-field update) arrive
+    /// in follow-on slices; unknown combinations surface as per-item
+    /// RollbackNotImplemented and leave the Set at Applied.
+    ///
+    /// Note: this is a forward rollback — we make a NEW audit entry for
+    /// each reverse operation (action = 'RolledBack'), we never mutate
+    /// or hide the original apply entries. The forensic chain stays
+    /// intact: admins see the rename out + the rename back + the Set
+    /// transitioning Applied -> RolledBack, all threaded by
+    /// correlation_id.
+    pub async fn rollback(
+        &self,
+        set_id: Uuid,
+        org_id: Uuid,
+        user_id: Option<i32>,
+    ) -> Result<RollbackResult, EngineError> {
+        let mut guard_tx = self.pool.begin().await?;
+        let parent: Option<ChangeSetRow> = sqlx::query_as(
+            "SELECT id, organization_id, title, description,
+                    status::text AS status, requested_by, requested_by_display,
+                    submitted_by, submitted_at, approved_at, applied_at,
+                    rolled_back_at, cancelled_at, required_approvals,
+                    correlation_id, version, created_at, updated_at
+               FROM net.change_set
+              WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
+              FOR UPDATE")
+            .bind(set_id)
+            .bind(org_id)
+            .fetch_optional(&mut *guard_tx)
+            .await?;
+        let parent = parent
+            .ok_or_else(|| EngineError::container_not_found("change_set", set_id))?;
+        let status = ChangeSetStatus::from_db(&parent.status)?;
+        if status != ChangeSetStatus::Applied {
+            return Err(EngineError::bad_request(format!(
+                "Cannot roll back a Change Set in status '{}'. Only Applied \
+                 Sets are rollable.", status.as_str())));
+        }
+        guard_tx.commit().await?;
+        let correlation_id = parent.correlation_id;
+
+        // Reverse order — rollback walks from last-applied to first-applied
+        // so dependencies are torn down in the opposite order to setup.
+        let items: Vec<ChangeSetItemRow> = sqlx::query_as(
+            "SELECT id, change_set_id, item_order, entity_type, entity_id,
+                    action::text AS action, before_json, after_json,
+                    expected_version, applied_at, apply_error, notes, created_at
+               FROM net.change_set_item
+              WHERE change_set_id = $1 AND deleted_at IS NULL
+              ORDER BY item_order DESC")
+            .bind(set_id)
+            .fetch_all(&self.pool)
+            .await?;
+
+        let mut outcomes = Vec::with_capacity(items.len());
+        for item_row in items {
+            let was_applied = item_row.applied_at.is_some();
+            let item = item_row.into_dto()?;
+            if !was_applied {
+                // Item never applied (either Set apply was partial, or the
+                // item was added but the prior apply errored on it). Mark as
+                // a no-op rollback — nothing to reverse.
+                outcomes.push(RollbackItemOutcome {
+                    item_id: item.id, item_order: item.item_order,
+                    success: true, error: None, skipped: true,
+                });
+                continue;
+            }
+            let outcome = rollback_one(&self.pool, &item, org_id, correlation_id, user_id).await;
+            outcomes.push(outcome);
+        }
+
+        let all_ok = outcomes.iter().all(|o| o.success);
+        let final_set = if all_ok {
+            let mut tx = self.pool.begin().await?;
+            let row: ChangeSetRow = sqlx::query_as(
+                "UPDATE net.change_set
+                    SET status         = 'RolledBack'::net.change_set_status,
+                        rolled_back_at = now(),
+                        updated_at     = now(),
+                        updated_by     = $3,
+                        version        = version + 1
+                  WHERE id = $1 AND organization_id = $2
+                    AND status = 'Applied'::net.change_set_status
+                  RETURNING id, organization_id, title, description,
+                            status::text AS status, requested_by, requested_by_display,
+                            submitted_by, submitted_at, approved_at, applied_at,
+                            rolled_back_at, cancelled_at, required_approvals,
+                            correlation_id, version, created_at, updated_at")
+                .bind(set_id)
+                .bind(org_id)
+                .bind(user_id)
+                .fetch_one(&mut *tx)
+                .await?;
+            audit::append_tx(&mut tx, &AuditEvent {
+                organization_id: org_id,
+                source_service: "networking-engine",
+                entity_type: "ChangeSet",
+                entity_id: Some(set_id),
+                action: "RolledBack",
+                actor_user_id: user_id,
+                actor_display: None,
+                client_ip: None,
+                correlation_id: Some(correlation_id),
+                details: serde_json::json!({ "items_reverted": outcomes.iter().filter(|o| !o.skipped).count() }),
+            }).await?;
+            tx.commit().await?;
+            row
+        } else {
+            parent
+        };
+
+        let item_count = outcomes.len() as i64;
+        let reverted_count = outcomes.iter().filter(|o| o.success && !o.skipped).count();
+        let failed_count = outcomes.iter().filter(|o| !o.success).count();
+
+        Ok(RollbackResult {
+            change_set: final_set.into_dto(item_count)?,
+            outcomes,
+            reverted_count,
+            failed_count,
+        })
+    }
+
     /// Withdraw a Set before it's applied. Valid from any non-terminal
     /// non-Applied state: `Draft`, `Submitted`, or `Approved`. `Applied`
     /// Sets are reversed via `rollback`, not `cancel`.
@@ -1038,6 +1169,137 @@ async fn apply_device_rename(
         details: serde_json::json!({
             "from": item.before_json.as_ref().and_then(|b| b.get("hostname")),
             "to": new_hostname,
+            "new_version": new_version,
+            "change_set_item_id": item.id,
+        }),
+    }).await?;
+
+    tx.commit().await?;
+    Ok(())
+}
+
+// ─── Rollback execution ──────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RollbackResult {
+    pub change_set: ChangeSet,
+    pub outcomes: Vec<RollbackItemOutcome>,
+    pub reverted_count: usize,
+    pub failed_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RollbackItemOutcome {
+    pub item_id: Uuid,
+    pub item_order: i32,
+    pub success: bool,
+    pub error: Option<String>,
+    /// True when this item was never applied — nothing to reverse.
+    pub skipped: bool,
+}
+
+async fn rollback_one(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> RollbackItemOutcome {
+    let result = dispatch_rollback(pool, item, org_id, correlation_id, user_id).await;
+    match result {
+        Ok(()) => RollbackItemOutcome {
+            item_id: item.id, item_order: item.item_order,
+            success: true, error: None, skipped: false,
+        },
+        Err(e) => RollbackItemOutcome {
+            item_id: item.id, item_order: item.item_order,
+            success: false, error: Some(e.to_string()), skipped: false,
+        },
+    }
+}
+
+async fn dispatch_rollback(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    match (item.entity_type.as_str(), item.action) {
+        ("Device", ChangeSetAction::Rename) =>
+            rollback_device_rename(pool, item, org_id, correlation_id, user_id).await,
+        (et, act) => Err(EngineError::bad_request(format!(
+            "Rollback not yet implemented for ({et}, {}). Device/Rename is \
+             the only concrete path in this slice.", act.as_str()))),
+    }
+}
+
+async fn rollback_device_rename(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    let entity_id = item.entity_id.ok_or_else(|| EngineError::bad_request(
+        "Device/Rename item is missing entity_id"))?;
+    let before = item.before_json.as_ref().ok_or_else(|| EngineError::bad_request(
+        "Device/Rename rollback requires before_json — the original Set was drafted without one"))?;
+    let after = item.after_json.as_ref().ok_or_else(|| EngineError::bad_request(
+        "Device/Rename rollback requires after_json"))?;
+    let original_hostname = before.get("hostname").and_then(|v| v.as_str()).ok_or_else(||
+        EngineError::bad_request("before_json.hostname is required for Device/Rename rollback"))?;
+    let applied_hostname = after.get("hostname").and_then(|v| v.as_str()).ok_or_else(||
+        EngineError::bad_request("after_json.hostname is required for Device/Rename rollback"))?;
+
+    let mut tx = pool.begin().await?;
+
+    // Only reverse if the device still carries the hostname we applied.
+    // If some other rename moved it to a third value since apply, bail —
+    // a surprise revert to an unrelated-looking hostname would astonish.
+    let reverted: Option<(String, i32)> = sqlx::query_as(
+        "UPDATE net.device
+            SET hostname = $3, updated_at = now(), version = version + 1
+          WHERE id = $1 AND organization_id = $2
+            AND hostname = $4 AND deleted_at IS NULL
+          RETURNING hostname, version")
+        .bind(entity_id)
+        .bind(org_id)
+        .bind(original_hostname)
+        .bind(applied_hostname)
+        .fetch_optional(&mut *tx)
+        .await?;
+    let (_, new_version) = reverted.ok_or_else(|| EngineError::bad_request(format!(
+        "Device {entity_id} hostname no longer matches the applied value \
+         '{applied_hostname}' — rollback aborted to avoid surprising change. \
+         Someone may have renamed it again since apply.")))?;
+
+    // Clear applied_at on the item so a subsequent re-apply re-executes
+    // it cleanly. Don't touch apply_error unless a new failure arrives.
+    sqlx::query(
+        "UPDATE net.change_set_item
+            SET applied_at = NULL, updated_at = now()
+          WHERE id = $1 AND organization_id = $2")
+        .bind(item.id)
+        .bind(org_id)
+        .execute(&mut *tx)
+        .await?;
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "Device",
+        entity_id: Some(entity_id),
+        action: "RolledBack",
+        actor_user_id: user_id,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: Some(correlation_id),
+        details: serde_json::json!({
+            "from": applied_hostname,
+            "to": original_hostname,
             "new_version": new_version,
             "change_set_item_id": item.id,
         }),
