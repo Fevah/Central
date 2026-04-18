@@ -16,6 +16,7 @@ use sqlx::{PgPool, Postgres, Transaction};
 use std::collections::HashSet;
 use uuid::Uuid;
 
+use crate::audit::{self, AuditEvent};
 use crate::error::EngineError;
 use crate::hash::stable_hash;
 use crate::models::{AsnAllocation, MlagDomain, PoolScopeLevel, ReservationShelfEntry, ShelfResourceType, Vlan};
@@ -200,6 +201,12 @@ impl AllocationService {
             return Err(EngineError::bad_request("cooldown cannot be negative"));
         }
 
+        // Transactional: the shelf insert and the audit append succeed
+        // together or both roll back. If the audit chain can't be
+        // written (e.g. DB full, tenant lock contention) we fail the
+        // retire too — better than a silently-unauditable mutation.
+        let mut tx = self.pool.begin().await?;
+
         let row: (Uuid, chrono::DateTime<chrono::Utc>, chrono::DateTime<chrono::Utc>) = sqlx::query_as(
             "INSERT INTO net.reservation_shelf
                 (organization_id, resource_type, resource_key, pool_id, block_id,
@@ -217,8 +224,32 @@ impl AllocationService {
             .bind(cooldown)
             .bind(reason)
             .bind(user_id)
-            .fetch_one(&self.pool)
+            .fetch_one(&mut *tx)
             .await?;
+
+        let details = serde_json::json!({
+            "resource_type": resource_type.as_db_str(),
+            "resource_key": resource_key,
+            "pool_id": pool_id,
+            "block_id": block_id,
+            "cooldown_seconds": cooldown.num_seconds(),
+            "reason": reason,
+            "available_after": row.2,
+        });
+        audit::append_tx(&mut tx, &AuditEvent {
+            organization_id: org_id,
+            source_service: "networking-engine",
+            entity_type: "ReservationShelf",
+            entity_id: Some(row.0),
+            action: "Retired",
+            actor_user_id: user_id,
+            actor_display: None,
+            client_ip: None,
+            correlation_id: None,
+            details,
+        }).await?;
+
+        tx.commit().await?;
 
         Ok(ReservationShelfEntry {
             id: row.0,

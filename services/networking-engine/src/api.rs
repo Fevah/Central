@@ -15,6 +15,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::allocation::AllocationService;
+use crate::audit::{self, ListAuditQuery};
 use crate::error::EngineError;
 use crate::ip_allocation::IpAllocationService;
 use crate::models::{PoolScopeLevel, ShelfResourceType};
@@ -57,6 +58,8 @@ pub fn build_router(state: AppState) -> Router {
         // Tenant naming config (Phase 7b) + regenerate preview (Phase 7c)
         .route("/api/net/naming/tenant-config", get(get_tenant_config).put(upsert_tenant_config))
         .route("/api/net/naming/regenerate/preview", post(regenerate_preview))
+        // Audit (Phase 8 foundation)
+        .route("/api/net/audit", get(list_audit))
         .with_state(state)
 }
 
@@ -371,4 +374,13 @@ async fn regenerate_preview(
     Json(req): Json<RegeneratePreviewRequest>,
 ) -> Result<impl IntoResponse, EngineError> {
     Ok(Json(regenerate::preview(&s.pool, &req).await?))
+}
+
+// ─── Audit (Phase 8 foundation) ──────────────────────────────────────────
+
+async fn list_audit(
+    State(s): State<AppState>,
+    Query(q): Query<ListAuditQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    Ok(Json(audit::list(&s.pool, &q).await?))
 }

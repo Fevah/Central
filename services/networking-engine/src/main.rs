@@ -12,6 +12,7 @@
 
 mod allocation;
 mod api;
+mod audit;
 mod error;
 mod hash;
 mod ip_allocation;

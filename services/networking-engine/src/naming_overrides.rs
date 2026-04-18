@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::audit::{self, AuditEvent};
 use crate::error::EngineError;
 
 #[derive(Debug, Clone, Serialize, sqlx::FromRow)]
@@ -71,6 +72,7 @@ impl NamingOverrideRepo {
     ) -> Result<NamingOverride, EngineError> {
         validate_scope(&body.scope_level, body.scope_entity_id)?;
 
+        let mut tx = self.pool.begin().await?;
         let row: NamingOverride = sqlx::query_as(
             "INSERT INTO net.naming_template_override
                 (organization_id, entity_type, subtype_code, scope_level,
@@ -90,8 +92,30 @@ impl NamingOverrideRepo {
             .bind(&body.naming_template)
             .bind(body.notes.as_deref())
             .bind(user_id)
-            .fetch_one(&self.pool)
+            .fetch_one(&mut *tx)
             .await?;
+
+        let details = serde_json::json!({
+            "entity_type": row.entity_type,
+            "subtype_code": row.subtype_code,
+            "scope_level": row.scope_level,
+            "scope_entity_id": row.scope_entity_id,
+            "naming_template": row.naming_template,
+        });
+        audit::append_tx(&mut tx, &AuditEvent {
+            organization_id: row.organization_id,
+            source_service: "networking-engine",
+            entity_type: "NamingOverride",
+            entity_id: Some(row.id),
+            action: "Created",
+            actor_user_id: user_id,
+            actor_display: None,
+            client_ip: None,
+            correlation_id: None,
+            details,
+        }).await?;
+
+        tx.commit().await?;
         Ok(row)
     }
 
@@ -137,6 +161,24 @@ impl NamingOverrideRepo {
         body: &UpdateOverrideBody,
         user_id: Option<i32>,
     ) -> Result<NamingOverride, EngineError> {
+        let mut tx = self.pool.begin().await?;
+
+        // Before-snapshot for audit diff; acceptable to do this outside a
+        // serialisable isolation level because the UPDATE below is
+        // version-checked — a concurrent writer who wins leaves us with
+        // a "no rows affected" failure, not a silent overwrite.
+        let before: Option<NamingOverride> = sqlx::query_as(
+            "SELECT id, organization_id, entity_type, subtype_code,
+                    scope_level, scope_entity_id, naming_template,
+                    status::text AS status, version, created_at,
+                    updated_at, notes
+               FROM net.naming_template_override
+              WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL")
+            .bind(id)
+            .bind(org_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+
         // Optimistic concurrency: WHERE version = ? AND bump version.
         let row: Option<NamingOverride> = sqlx::query_as(
             "UPDATE net.naming_template_override
@@ -159,10 +201,36 @@ impl NamingOverrideRepo {
             .bind(body.notes.as_deref())
             .bind(user_id)
             .bind(body.version)
-            .fetch_optional(&self.pool)
+            .fetch_optional(&mut *tx)
             .await?;
-        row.ok_or_else(|| EngineError::bad_request(format!(
-            "Override {id} not found, already updated by another caller, or wrong tenant.")))
+        let row = row.ok_or_else(|| EngineError::bad_request(format!(
+            "Override {id} not found, already updated by another caller, or wrong tenant.")))?;
+
+        let details = serde_json::json!({
+            "before": before.as_ref().map(|b| serde_json::json!({
+                "naming_template": b.naming_template,
+                "notes": b.notes,
+            })),
+            "after": {
+                "naming_template": row.naming_template,
+                "notes": row.notes,
+            },
+        });
+        audit::append_tx(&mut tx, &AuditEvent {
+            organization_id: org_id,
+            source_service: "networking-engine",
+            entity_type: "NamingOverride",
+            entity_id: Some(row.id),
+            action: "Updated",
+            actor_user_id: user_id,
+            actor_display: None,
+            client_ip: None,
+            correlation_id: None,
+            details,
+        }).await?;
+
+        tx.commit().await?;
+        Ok(row)
     }
 
     pub async fn delete(
@@ -171,6 +239,7 @@ impl NamingOverrideRepo {
         org_id: Uuid,
         user_id: Option<i32>,
     ) -> Result<(), EngineError> {
+        let mut tx = self.pool.begin().await?;
         let rows = sqlx::query(
             "UPDATE net.naming_template_override
                 SET deleted_at = now(), deleted_by = $3
@@ -178,11 +247,24 @@ impl NamingOverrideRepo {
             .bind(id)
             .bind(org_id)
             .bind(user_id)
-            .execute(&self.pool)
+            .execute(&mut *tx)
             .await?;
         if rows.rows_affected() == 0 {
             return Err(EngineError::container_not_found("naming_template_override", id));
         }
+        audit::append_tx(&mut tx, &AuditEvent {
+            organization_id: org_id,
+            source_service: "networking-engine",
+            entity_type: "NamingOverride",
+            entity_id: Some(id),
+            action: "Deleted",
+            actor_user_id: user_id,
+            actor_display: None,
+            client_ip: None,
+            correlation_id: None,
+            details: serde_json::json!({}),
+        }).await?;
+        tx.commit().await?;
         Ok(())
     }
 }
