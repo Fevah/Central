@@ -122,6 +122,21 @@ pub struct DeviceContext {
     /// link is wired. Unused ports (no link) don't appear here; they
     /// don't need a description line.
     pub port_descriptions: Vec<PortDescriptionLine>,
+    /// L2 posture per port — port-mode + optional native-vlan-id.
+    /// Sourced from `net.port` for ports with `port_mode` set to
+    /// `access` or `trunk` (routed ports don't emit `family
+    /// ethernet-switching` lines; unset ports are skipped). Separate
+    /// from `port_descriptions` today — interleaving the two by
+    /// interface name is a byte-parity future concern.
+    pub port_l2_rules: Vec<PortL2Line>,
+}
+
+#[derive(Debug, Clone)]
+pub struct PortL2Line {
+    pub interface_name: String,
+    /// Always either `"access"` or `"trunk"`; SQL filters the rest.
+    pub port_mode: String,
+    pub native_vlan_id: Option<i32>,
 }
 
 #[derive(Debug, Clone)]
@@ -362,6 +377,23 @@ async fn fetch_context(
         .fetch_optional(pool)
         .await?;
 
+    // Port L2 rules: port-mode + native-vlan for every port set to
+    // access/trunk. Routed ports are intentionally excluded — they
+    // don't emit family ethernet-switching lines; their L3 config
+    // lands via SVIs / BGP / loopback sections.
+    let port_l2_rows: Vec<(String, String, Option<i32>)> = sqlx::query_as(
+        r#"SELECT interface_name, port_mode, native_vlan_id
+             FROM net.port
+            WHERE organization_id = $1
+              AND device_id       = $2
+              AND deleted_at      IS NULL
+              AND port_mode       IN ('access','trunk')
+            ORDER BY interface_name"#)
+        .bind(org_id)
+        .bind(device_id)
+        .fetch_all(pool)
+        .await?;
+
     // Port descriptions: one row per link endpoint this device
     // terminates that names an interface. Description comes from the
     // link-naming service (see net.link_type.naming_template). Rows
@@ -457,6 +489,11 @@ async fn fetch_context(
                 Some(PortDescriptionLine { interface_name: iface, description: desc })
             })
             .collect(),
+        port_l2_rules: port_l2_rows.into_iter()
+            .map(|(iface, mode, native)| PortL2Line {
+                interface_name: iface, port_mode: mode, native_vlan_id: native,
+            })
+            .collect(),
     })
 }
 
@@ -486,9 +523,10 @@ impl Renderer for PicosRenderer {
         render_mstp_section(&mut out, ctx);
         render_mlag_section(&mut out, ctx);
         render_port_descriptions_section(&mut out, ctx);
-        // TODO(follow-on): port trunk/access rules (native-vlan +
-        // port-mode + vlan members), render_vrrp, render_dhcp_relay,
-        // render_static_routes, render_lldp.
+        render_port_l2_rules_section(&mut out, ctx);
+        // TODO(follow-on): vlan members range on trunks, render_vrrp,
+        // render_dhcp_relay, render_static_routes, render_lldp,
+        // render_qos_preset.
         out
     }
 }
@@ -628,6 +666,26 @@ fn render_bgp_scalar_section(out: &mut String, ctx: &DeviceContext) {
     out.push('\n');
 }
 
+/// Port L2 rules. Emits `native-vlan-id` first (when set) then
+/// `port-mode` — matching the legacy `ConfigBuilderService` order
+/// so diffs against prior generations stay readable. `gigabit-ethernet`
+/// is the fixed PicOS keyword regardless of physical speed (same as
+/// the description section).
+fn render_port_l2_rules_section(out: &mut String, ctx: &DeviceContext) {
+    if ctx.port_l2_rules.is_empty() { return; }
+    for p in &ctx.port_l2_rules {
+        if let Some(vid) = p.native_vlan_id {
+            out.push_str(&format!(
+                "set interface gigabit-ethernet {} family ethernet-switching native-vlan-id {}\n",
+                p.interface_name, vid));
+        }
+        out.push_str(&format!(
+            "set interface gigabit-ethernet {} family ethernet-switching port-mode \"{}\"\n",
+            p.interface_name, p.port_mode));
+    }
+    out.push('\n');
+}
+
 /// Port description lines. PicOS uses the fixed keyword
 /// `gigabit-ethernet` regardless of the port's actual speed — the
 /// interface name prefix (`xe-` / `ge-` / `et-`) carries the speed
@@ -714,6 +772,7 @@ mod tests {
             mlag: None,
             l3_svis: vec![],
             port_descriptions: vec![],
+            port_l2_rules: vec![],
         }
     }
 
@@ -734,6 +793,7 @@ mod tests {
             mlag: None,
             l3_svis: vec![],
             port_descriptions: vec![],
+            port_l2_rules: vec![],
         }
     }
 
@@ -763,6 +823,7 @@ mod tests {
             mlag: None,
             l3_svis: vec![],
             port_descriptions: vec![],
+            port_l2_rules: vec![],
         }
     }
 
@@ -779,6 +840,7 @@ mod tests {
             mlag: None,
             l3_svis: svis,
             port_descriptions: vec![],
+            port_l2_rules: vec![],
         }
     }
 
@@ -795,6 +857,24 @@ mod tests {
             mlag: None,
             l3_svis: vec![],
             port_descriptions: ports,
+            port_l2_rules: vec![],
+        }
+    }
+
+    fn fixture_with_l2_rules(rules: Vec<PortL2Line>) -> DeviceContext {
+        DeviceContext {
+            device_id: Uuid::nil(),
+            hostname: "CORE02".into(),
+            loopback: None,
+            management_ip: None,
+            vlans: vec![],
+            bgp: None,
+            bgp_neighbors: vec![],
+            mstp_priority: None,
+            mlag: None,
+            l3_svis: vec![],
+            port_descriptions: vec![],
+            port_l2_rules: rules,
         }
     }
 
@@ -814,6 +894,7 @@ mod tests {
             mlag,
             l3_svis: vec![],
             port_descriptions: vec![],
+            port_l2_rules: vec![],
         }
     }
 
@@ -1167,6 +1248,65 @@ mod tests {
         );
         assert_eq!(out, "MEP-91-Core",
             "unparseable device_code should leave {{instance}} empty");
+    }
+
+    #[test]
+    fn picos_emits_trunk_port_with_native_vlan() {
+        let ctx = fixture_with_l2_rules(vec![
+            PortL2Line { interface_name: "xe-1/1/20".into(), port_mode: "trunk".into(), native_vlan_id: Some(120) },
+        ]);
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains(r#"set interface gigabit-ethernet xe-1/1/20 family ethernet-switching native-vlan-id 120"#),
+            "native-vlan-id line missing:\n{out}");
+        assert!(out.contains(r#"set interface gigabit-ethernet xe-1/1/20 family ethernet-switching port-mode "trunk""#),
+            "port-mode trunk line missing:\n{out}");
+    }
+
+    #[test]
+    fn picos_emits_access_port_with_native_vlan() {
+        let ctx = fixture_with_l2_rules(vec![
+            PortL2Line { interface_name: "ge-1/1/5".into(), port_mode: "access".into(), native_vlan_id: Some(101) },
+        ]);
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains(r#"set interface gigabit-ethernet ge-1/1/5 family ethernet-switching native-vlan-id 101"#),
+            "access native-vlan line missing:\n{out}");
+        assert!(out.contains(r#"set interface gigabit-ethernet ge-1/1/5 family ethernet-switching port-mode "access""#),
+            "port-mode access line missing:\n{out}");
+    }
+
+    #[test]
+    fn picos_emits_port_mode_without_native_vlan_when_unset() {
+        // A trunk port with no native VLAN set → emit port-mode only.
+        let ctx = fixture_with_l2_rules(vec![
+            PortL2Line { interface_name: "xe-1/1/1".into(), port_mode: "trunk".into(), native_vlan_id: None },
+        ]);
+        let out = PicosRenderer::render(&ctx);
+        assert!(!out.contains("native-vlan-id"),
+            "no native_vlan_id → no native-vlan-id line:\n{out}");
+        assert!(out.contains(r#"port-mode "trunk""#),
+            "port-mode line should still render:\n{out}");
+    }
+
+    #[test]
+    fn picos_emits_native_vlan_before_port_mode_for_byte_parity() {
+        // Legacy ConfigBuilderService emits native-vlan-id first, then
+        // port-mode. Preserve that order so regenerated configs diff
+        // cleanly against previously-shipped output.
+        let ctx = fixture_with_l2_rules(vec![
+            PortL2Line { interface_name: "xe-1/1/20".into(), port_mode: "trunk".into(), native_vlan_id: Some(120) },
+        ]);
+        let out = PicosRenderer::render(&ctx);
+        let nat = out.find("native-vlan-id").expect("native-vlan-id present");
+        let mode = out.find("port-mode").expect("port-mode present");
+        assert!(nat < mode,
+            "native-vlan-id must precede port-mode for this interface:\n{out}");
+    }
+
+    #[test]
+    fn picos_omits_port_l2_section_when_empty() {
+        let out = PicosRenderer::render(&fixture_with_l2_rules(vec![]));
+        assert!(!out.contains("family ethernet-switching"),
+            "no L2 rules in context → no ethernet-switching lines:\n{out}");
     }
 
     #[test]
