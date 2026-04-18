@@ -22,7 +22,7 @@ use crate::change_sets::{
 };
 use crate::error::EngineError;
 use crate::ip_allocation::IpAllocationService;
-use crate::locks::{self, SetLockBody};
+use crate::locks::{self, ListLockedQuery, SetLockBody};
 use crate::models::{PoolScopeLevel, ShelfResourceType};
 use crate::naming::{self, DeviceNamingContext, LinkNamingContext, ServerNamingContext};
 use crate::naming_overrides::{
@@ -81,6 +81,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/change-sets/:id/apply", post(apply_change_set))
         .route("/api/net/change-sets/:id/rollback", post(rollback_change_set))
         // Lock-state management (Phase 8f)
+        .route("/api/net/locks", get(list_locked))
         .route("/api/net/locks/:table/:id", axum::routing::patch(set_entity_lock))
         // Device list (thin read — powers WPF pickers)
         .route("/api/net/devices", get(list_devices))
@@ -652,6 +653,13 @@ async fn set_entity_lock(
 ) -> Result<impl IntoResponse, EngineError> {
     let user_id = header_user_id(&headers);
     Ok(Json(locks::set_lock(&s.pool, &table, id, q.organization_id, &body, user_id).await?))
+}
+
+async fn list_locked(
+    State(s): State<AppState>,
+    Query(q): Query<ListLockedQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    Ok(Json(locks::list_locked(&s.pool, &q).await?))
 }
 
 // ─── Validation (Phase 9a) ───────────────────────────────────────────────

@@ -48,6 +48,36 @@ pub struct SetLockBody {
     pub lock_reason: Option<String>,
 }
 
+/// Flat projection of a locked row for the WPF Locks grid. Same shape
+/// for every numbering table so the frontend renders them uniformly —
+/// the `table` column disambiguates which net.* table the id refers to,
+/// and the `display_label` column gives a human-readable identifier
+/// (hostname / cidr / vlan-id / etc) so admins don't have to chase
+/// the UUID.
+#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct LockedRow {
+    pub id: Uuid,
+    pub table_name: String,     // asn_allocation / vlan / mlag_domain / subnet / ip_address
+    pub display_label: String,  // best available human name for the row
+    pub lock_state: String,
+    pub lock_reason: Option<String>,
+    pub locked_by: Option<i32>,
+    pub locked_at: Option<DateTime<Utc>>,
+    pub version: i32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListLockedQuery {
+    pub organization_id: Uuid,
+    /// Optional — restrict to one table. None = all 5 tables.
+    pub table: Option<String>,
+    /// Optional — filter by state. None = HardLock + Immutable +
+    /// SoftLock (everything except Open, which is every other row).
+    pub lock_state: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LockChangeResult {
@@ -74,6 +104,69 @@ pub fn validate_transition(current: LockState, next: LockState) -> Result<(), En
             "Immutable rows are terminal — the lock cannot be loosened."));
     }
     Ok(())
+}
+
+/// List every non-Open row across the five numbering tables that lock
+/// enforcement attaches to. Filters: optional table (one of the five)
+/// and optional lock_state (else: HardLock + Immutable + SoftLock, i.e.
+/// everything that isn't the default Open).
+///
+/// Projection is uniform — one row shape regardless of source table —
+/// so the WPF grid binds a single set of columns. The `table` column
+/// tells the caller which net.* row the id refers to when they want
+/// to change state.
+pub async fn list_locked(
+    pool: &PgPool,
+    q: &ListLockedQuery,
+) -> Result<Vec<LockedRow>, EngineError> {
+    // Whitelist — same set as set_lock. A bogus `table` query parameter
+    // falls through to "no results" rather than an error since this is
+    // a read endpoint; set_lock is the mutating one and that enforces
+    // the whitelist hard.
+    let tables = match q.table.as_deref() {
+        Some(t) if matches!(t,
+            "asn_allocation" | "vlan" | "mlag_domain" | "subnet" | "ip_address") => vec![t.to_string()],
+        Some(_) => return Ok(Vec::new()),
+        None => vec![
+            "asn_allocation".into(), "vlan".into(), "mlag_domain".into(),
+            "subnet".into(), "ip_address".into(),
+        ],
+    };
+
+    // Runtime-built UNION ALL across the selected tables. Each SELECT
+    // picks a display label appropriate for that entity kind:
+    //   asn_allocation  asn::text
+    //   vlan            'VLAN ' || vlan_id::text
+    //   mlag_domain     'domain ' || domain_id::text
+    //   subnet          subnet_code || ' (' || network::text || ')'
+    //   ip_address      address::text
+    let mut unions: Vec<String> = Vec::with_capacity(tables.len());
+    for t in &tables {
+        let label_expr = match t.as_str() {
+            "asn_allocation" => "asn::text",
+            "vlan"           => "'VLAN ' || vlan_id::text",
+            "mlag_domain"    => "'domain ' || domain_id::text",
+            "subnet"         => "subnet_code || ' (' || network::text || ')'",
+            "ip_address"     => "address::text",
+            _ => unreachable!(),
+        };
+        unions.push(format!(
+            "SELECT id, '{t}' AS table_name, ({label_expr}) AS display_label,
+                    lock_state::text AS lock_state, lock_reason, locked_by, locked_at, version
+               FROM net.{t}
+              WHERE organization_id = $1
+                AND deleted_at IS NULL
+                AND lock_state::text <> 'Open'
+                AND ($2::text IS NULL OR lock_state::text = $2)"));
+    }
+    let sql = unions.join("\n            UNION ALL\n") + "\n         ORDER BY lock_state, table_name, display_label";
+
+    let rows: Vec<LockedRow> = sqlx::query_as(&sql)
+        .bind(q.organization_id)
+        .bind(q.lock_state.as_deref())
+        .fetch_all(pool)
+        .await?;
+    Ok(rows)
 }
 
 /// Update lock_state + lock_reason + locked_by/at on a net.* table row.

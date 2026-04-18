@@ -328,6 +328,19 @@ public class NetworkingEngineClient : IDisposable
         return SendAsync<LockChangeResultDto>(req, ct);
     }
 
+    /// <summary>List every non-Open row across the five lock-enforced
+    /// numbering tables (asn_allocation / vlan / mlag_domain / subnet /
+    /// ip_address). Pass <paramref name="table"/> to narrow to one; pass
+    /// <paramref name="lockState"/> to filter by specific state.</summary>
+    public Task<List<LockedRowDto>> ListLockedAsync(Guid organizationId,
+        string? table = null, string? lockState = null, CancellationToken ct = default)
+    {
+        var qs = BuildQuery(("organizationId", organizationId.ToString()),
+                            ("table", table),
+                            ("lockState", lockState));
+        return GetAsync<List<LockedRowDto>>($"/api/net/locks{qs}", ct);
+    }
+
     // ─── Transport helpers ──────────────────────────────────────────────
 
     private static string BuildQuery(params (string key, string? value)[] parts)
@@ -605,6 +618,10 @@ public record ViolationDto(string RuleCode, string Severity, string EntityType,
 // Locks
 public record LockChangeResultDto(Guid Id, string LockState, string? LockReason,
     int? LockedBy, DateTime? LockedAt, int Version);
+
+public record LockedRowDto(Guid Id, string TableName, string DisplayLabel,
+    string LockState, string? LockReason, int? LockedBy, DateTime? LockedAt,
+    int Version);
 
 // Device list (picker)
 public record DeviceListRowDto(Guid Id, string Hostname, string? RoleCode,

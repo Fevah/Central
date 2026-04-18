@@ -33,19 +33,20 @@ public class NetworkingRibbonAuditTests
     }
 
     [Fact]
-    public void HasTenFunctionalGroupsPlusPanels()
+    public void HasElevenFunctionalGroupsPlusPanels()
     {
         // Spec: Devices, Switches, Links, Routing, VLANs, Servers,
-        // Governance, Validation, Audit, Panels. Audit group added
-        // alongside the standalone audit viewer panel — filter +
-        // verify-chain + export CSV against the tenant's net.audit_entry
-        // stream (Rust-backed, correlation-id threaded).
+        // Governance, Validation, Locks, Audit, Panels.
+        // Locks group: Phase 8f trigger-backed HardLock / Immutable
+        // enforcement needs an admin-facing path to apply it; the
+        // Locks panel lists currently-locked rows + its ribbon lets
+        // admins Change State or Clear Lock on the selection.
         var rb = new RibbonBuilder();
         NetworkingRibbonRegistrar.BuildRibbon(rb, 20);
         var groups = rb.Pages[0].Groups.Select(g => g.Header).ToList();
         Assert.Equal(
             new[] { "Devices", "Switches", "Links", "Routing", "VLANs",
-                    "Servers", "Governance", "Validation", "Audit", "Panels" },
+                    "Servers", "Governance", "Validation", "Locks", "Audit", "Panels" },
             groups);
     }
 
@@ -114,6 +115,8 @@ public class NetworkingRibbonAuditTests
     [InlineData("Audit",      "Run Query",        "audit",      "action:runQuery")]
     [InlineData("Audit",      "Verify Chain",     "audit",      "action:verifyChain")]
     [InlineData("Audit",      "Export CSV",       "audit",      "action:exportCsv")]
+    [InlineData("Locks",      "Change State",     "locks",      "action:changeState")]
+    [InlineData("Locks",      "Clear Lock",       "locks",      "action:clearLock")]
     public void NavigateButton_PublishesCorrectTargetAndAction(
         string groupHeader, string buttonContent, string expectedPanel, string expectedAction)
     {

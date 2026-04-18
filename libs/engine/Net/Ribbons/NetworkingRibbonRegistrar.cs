@@ -34,6 +34,7 @@ public static class NetworkingRibbonRegistrar
     public const string PanelChangeSets = "changesets";
     public const string PanelValidation = "validation";
     public const string PanelAudit      = "audit";
+    public const string PanelLocks      = "locks";
 
     public static void BuildRibbon(IRibbonBuilder ribbon, int sortOrder)
     {
@@ -166,6 +167,21 @@ public static class NetworkingRibbonRegistrar
                     () => PanelMessageBus.Publish(new RefreshPanelMessage(PanelValidation)));
             });
 
+            // ── Locks (Phase 8f) ─────────────────────────────────────────
+            // Lifecycle lock state management — the engine's trigger-backed
+            // HardLock / Immutable enforcement is meaningless without a
+            // way for admins to apply it. Actions are Change Lock State
+            // (pick from dropdown) and Clear Lock (set back to Open).
+            page.AddGroup("Locks", group =>
+            {
+                group.AddButton("Change State",    P.ChangeSetsWrite,   "EditItem_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelLocks, "action:changeState")));
+                group.AddButton("Clear Lock",      P.ChangeSetsWrite,   "Cancel_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelLocks, "action:clearLock")));
+                group.AddButton("Refresh",         P.ChangeSetsRead,    "Refresh_16x16",
+                    () => PanelMessageBus.Publish(new RefreshPanelMessage(PanelLocks)));
+            });
+
             // ── Audit (Phase 9) ──────────────────────────────────────────
             // Tenant-wide audit browser. Filters + verify-chain + export.
             page.AddGroup("Audit", group =>
@@ -188,6 +204,7 @@ public static class NetworkingRibbonRegistrar
                 group.AddCheckButton("Change Sets",    panelId: "ChangeSetsPanel");
                 group.AddCheckButton("Validation",     panelId: "ValidationPanel");
                 group.AddCheckButton("Audit",          panelId: "AuditPanel");
+                group.AddCheckButton("Locks",          panelId: "LocksPanel");
                 group.AddCheckButton("IPAM",           panelId: "DevicesPanel");
                 group.AddCheckButton("Device Details", panelId: "DeviceDetailPanel");
                 group.AddCheckButton("Switches",       panelId: "SwitchesPanel");

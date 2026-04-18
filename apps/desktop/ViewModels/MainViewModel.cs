@@ -349,6 +349,12 @@ public class MainViewModel : INotifyPropertyChanged
     private bool _isAuditPanelOpen;
     public bool IsAuditPanelOpen { get => _isAuditPanelOpen; set { _isAuditPanelOpen = value; OnPropertyChanged(); } }
 
+    /// <summary>Phase-8f lock-state management — lists currently
+    /// non-Open rows across the five numbering tables + drives the
+    /// PATCH-lock endpoint.</summary>
+    private bool _isLocksPanelOpen;
+    public bool IsLocksPanelOpen { get => _isLocksPanelOpen; set { _isLocksPanelOpen = value; OnPropertyChanged(); } }
+
     private bool _isSettingsPanelOpen;
     public bool IsSettingsPanelOpen
     {

@@ -22,6 +22,7 @@
     xmlns:govViews="clr-namespace:Central.Module.Networking.Governance;assembly=Central.Module.Networking"
     xmlns:valViews="clr-namespace:Central.Module.Networking.Validation;assembly=Central.Module.Networking"
     xmlns:audViews="clr-namespace:Central.Module.Networking.Audit;assembly=Central.Module.Networking"
+    xmlns:lockViews="clr-namespace:Central.Module.Networking.Locks;assembly=Central.Module.Networking"
     xmlns:admViews="clr-namespace:Central.Module.Global.Admin;assembly=Central.Module.Global"
     xmlns:sdViews="clr-namespace:Central.Module.ServiceDesk.Views;assembly=Central.Module.ServiceDesk"
     xmlns:taskViews="clr-namespace:Central.Module.Projects;assembly=Central.Module.Projects"
@@ -604,6 +605,10 @@
                                            Glyph="{dx:DXImage Image=History_16x16}"
                                            RibbonStyle="SmallWithText"
                                            IsChecked="{Binding IsAuditPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Locks"
+                                           Glyph="{dx:DXImage Image=Lock_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsLocksPanelOpen, Mode=TwoWay}" />
                         <dxb:BarCheckItem  Content="Devices"
                                            Glyph="{dx:DXImage Image=Grid_16x16}"
                                            RibbonStyle="SmallWithText"
@@ -1243,6 +1248,13 @@
                                         Caption="Audit"
                                         AllowClose="True">
                         <audViews:AuditViewerPanel x:Name="AuditViewerPanelView" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- Locks Panel (Phase 8f lock-state management — Rust-backed) -->
+                    <dxdo:DocumentPanel x:Name="LocksPanel"
+                                        Caption="Locks"
+                                        AllowClose="True">
+                        <lockViews:LocksPanel x:Name="LocksPanelView" />
                     </dxdo:DocumentPanel>
 
                     <!-- Devices Panel (extracted to Module.Devices) -->

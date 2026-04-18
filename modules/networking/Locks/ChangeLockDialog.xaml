@@ -1,0 +1,55 @@
+<dxc:DXWindow x:Class="Central.Module.Networking.Locks.ChangeLockDialog"
+              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+              xmlns:dxc="http://schemas.devexpress.com/winfx/2008/xaml/core"
+              xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+              Title="Change Lock State"
+              Width="500" Height="340"
+              WindowStartupLocation="CenterOwner"
+              ResizeMode="NoResize">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" x:Name="HeaderLabel"
+                   FontWeight="SemiBold" Foreground="#D0D0D0"
+                   Margin="0,0,0,4"/>
+        <TextBlock Grid.Row="1" x:Name="CurrentLabel" Foreground="#909090"
+                   FontSize="11" Margin="0,0,0,10"/>
+
+        <TextBlock Grid.Row="2" Text="New state" Margin="0,0,0,4" Foreground="#B0B0B0"/>
+        <dxe:ComboBoxEdit Grid.Row="3" x:Name="StateCombo" IsTextEditable="False" Margin="0,0,0,8">
+            <dxe:ComboBoxEdit.Items>
+                <dxe:ComboBoxEditItem Content="Open"/>
+                <dxe:ComboBoxEditItem Content="SoftLock"/>
+                <dxe:ComboBoxEditItem Content="HardLock"/>
+                <dxe:ComboBoxEditItem Content="Immutable"/>
+            </dxe:ComboBoxEdit.Items>
+        </dxe:ComboBoxEdit>
+
+        <TextBlock Grid.Row="4" Text="Reason (optional)" Foreground="#B0B0B0"/>
+        <TextBox   Grid.Row="5" x:Name="ReasonBox"
+                   AcceptsReturn="True" TextWrapping="Wrap"
+                   VerticalScrollBarVisibility="Auto"
+                   Margin="0,4,0,8"/>
+
+        <TextBlock Grid.Row="6" x:Name="ErrorLabel" Foreground="#E06464"
+                   TextWrapping="Wrap" Margin="0,0,0,8"
+                   Visibility="Collapsed"/>
+
+        <StackPanel Grid.Row="7" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Cancel" Width="90" Margin="0,0,8,0"
+                    Click="OnCancel" IsCancel="True"/>
+            <Button x:Name="OkButton" Content="Apply" Width="90"
+                    Click="OnOk" IsDefault="True"/>
+        </StackPanel>
+    </Grid>
+</dxc:DXWindow>
