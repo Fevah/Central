@@ -39,6 +39,20 @@ The attribute and functionality specs describe a different product. The current 
 | **Never break the customer's data** | Immunocore's existing tables keep serving the current WPF panels until the phase that migrates them. Dual-write or shadow-read during transitions if needed. |
 | **Every phase ships independently** | Phase N delivers working features at the end. No "big bang" where months of work lands at once. |
 | **Validation before UI** | Every phase lands its validation rules before exposing the UI that depends on them. Empty / half-validated states are hidden. |
+| **Every entity-type row carries a `naming_template`** | Whenever a phase introduces a new *-type table (catalog rows that describe a family of entities — `link_type`, `device_role`, `server_profile`, future `wan_circuit_type`, etc.), that table carries a `varchar(255) naming_template` column + a matching `XNamingService` expanding the tokens against a context record. Operators edit templates via REST without schema churn; separators are literal text. See Chunk A (`net.device_role.naming_template`, `DeviceNamingService`) and Phase 5a/5e (`net.link_type.naming_template`, `LinkNamingService`) for the reference implementation. |
+
+---
+
+### Per-phase checklist (mandatory for Phase 6 onwards)
+
+Every phase that introduces a new entity-type row MUST tick these before its commit:
+
+- [ ] `naming_template varchar(255)` column on the *-type catalog table, seeded with a sensible per-row default (see Chunk A migration 093 as the reference pattern).
+- [ ] `XNamingService` static class + `XNamingContext` record with the recognised-token list documented in the XML summary. Unknown tokens pass through verbatim; empty values collapse to `""`; unmatched braces emit tail unchanged.
+- [ ] Unit tests covering happy path + missing tokens + padding/format quirks (zero-pad instance counters, etc.).
+- [ ] CRUD REST endpoints — the naming template is editable through the same `POST/PUT` path as the rest of the *-type row.
+- [ ] Ribbon + panel action audit: every `BarButtonItem` / `BarCheckItem` the phase adds either has a wired handler with a test, or gets deleted. No `() => { }` placeholders landing in a commit.
+- [ ] Dialog factory tests for any new DX window (`ForNew…`, `ForEdit…`) — confirm validation paths + save-success paths against a live DB fixture.
 
 ---
 
@@ -86,6 +100,9 @@ The hard constraint: **don't lose Immunocore's data**. Their operational network
 ---
 
 ## 5. Phased rollout
+
+> **Note on pull-forward chunks**: some small cross-cutting pieces land mid-phase as lettered chunks (e.g. Chunk A — device naming templates, commit 3c8da8a6e) rather than waiting for their "official" phase. The phase they were pulled from is marked with an **Already landed** callout so the sequencing story stays accurate.
+
 
 Each phase has: scope, entities delivered, capabilities delivered (by MFL §), DB migrations, API endpoints, UI panels, validation rules, acceptance criteria, risk.
 
@@ -230,21 +247,25 @@ Each phase has: scope, entities delivered, capabilities delivered (by MFL §), D
 
 ### Phase 7 — Naming template engine
 
-**Scope:** Replace hardcoded name generation with the token-grammar engine.
+**Scope:** Generalise the per-type `naming_template` pattern (already shipping on `link_type` and `device_role` — see Phase 5a/5e and Chunk A) into a full scope-resolution engine with a UI, and extend it to the tiers that don't yet carry templates.
 
-**Deliverables:**
-- Entities: `naming_template`, `naming_template_validation_rule`.
-- Migration `105_net_naming.sql`.
-- Token grammar resolver service (C#): `{organization_code}`, `{region_code}`, `{site_code}`, `{building_code}`, `{building_octet}`, `{role_code}`, `{sequence_number:nn}`, etc.
-- Scoped resolution: Role → Building → Site → Region → Global, first match wins.
-- Preview-before-commit API.
-- UI panel in Admin for managing templates.
+**Already landed** (in earlier phases, not waiting for Phase 7):
+- `net.link_type.naming_template` + `LinkNamingService` — Phase 5a + 5e
+- `net.device_role.naming_template` + `DeviceNamingService` — Chunk A (commit 3c8da8a6e)
+
+**Phase 7 deliverables** (remaining):
+- Extend the pattern to any *-type tables introduced by Phases 6 / 13 / 14+ that don't yet carry it (per the "Per-phase checklist" invariant above — most should land already compliant).
+- Migration `105_net_naming_overrides.sql`: scoped override table `net.naming_template_override` keyed by `(entity_type, scope_level, scope_entity_id)` so a specific building can override its region's default without touching other buildings.
+- Scope-resolution service: Role → Building → Site → Region → Global, first match wins. Shared token set: `{organization_code}`, `{region_code}`, `{site_code}`, `{building_code}`, `{building_octet}`, `{role_code}`, `{rack_code}`, `{sequence_number:nn}`, `{instance}`.
+- Preview-before-commit REST: `POST /api/net/naming/preview` returns the expanded string for a proposed (type, context) pair without writing.
+- Admin UI panel for managing templates + per-scope overrides. Includes a "regenerate" action that re-derives names for existing entities using the latest template (stamps an audit entry each time).
+- Per-tenant default separator flag — `net.tenant_naming_config.default_separator` (e.g. `-` vs `_`) applied when a template is first created; existing templates stay untouched.
 
 **MFL covered:** § 36.
 
-**Acceptance:** every entity's business code regenerable identically from a template; override requires audit entry; new tenant's buildings get their own scope without leaking to Immunocore's.
+**Acceptance:** every entity's business code regenerable identically from its template; override requires audit entry; new tenant's buildings get their own scope without leaking to Immunocore's. Existing link + device naming continues to work byte-for-byte (Phase 5f parity test must stay green).
 
-**Risk:** low-medium.
+**Risk:** low. The heavy lifting (per-type templates + services) already shipped; Phase 7 is scope resolution + UI.
 
 ---
 
