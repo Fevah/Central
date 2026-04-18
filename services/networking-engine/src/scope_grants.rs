@@ -298,6 +298,33 @@ pub async fn has_permission(
     })
 }
 
+/// Enforce a permission check, returning `Ok(())` on pass and a
+/// `EngineError::Forbidden` on deny. Service-to-service callers
+/// that don't pass a `user_id` BYPASS enforcement entirely —
+/// matches the rollout strategy used by the handlers themselves,
+/// so preserving backward compat during the RBAC transition comes
+/// down to "don't set X-User-Id on the service's own calls".
+///
+/// Most handlers want this wrapper instead of raw `has_permission`
+/// because the `Option<user_id>`-to-`Result<()>` flow is boilerplate
+/// that's easy to get wrong (forgetting the bypass, not mapping to
+/// Forbidden, etc.).
+pub async fn require_permission(
+    pool: &PgPool,
+    org_id: Uuid,
+    user_id: Option<i32>,
+    action: &str,
+    entity_type: &str,
+    entity_id: Option<Uuid>,
+) -> Result<(), EngineError> {
+    let Some(uid) = user_id else { return Ok(()); };
+    let decision = has_permission(pool, org_id, uid, action, entity_type, entity_id).await?;
+    if !decision.allowed {
+        return Err(EngineError::forbidden(uid, action, entity_type));
+    }
+    Ok(())
+}
+
 /// Resolved hierarchy codes for an entity. Any field may be None
 /// when the entity isn't linked to that tier (e.g. a device without
 /// a building, or a building without a site).

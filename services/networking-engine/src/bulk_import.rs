@@ -43,6 +43,7 @@ use uuid::Uuid;
 
 use crate::audit::{self, AuditEvent};
 use crate::error::EngineError;
+use crate::scope_grants;
 
 // ─── Parser ──────────────────────────────────────────────────────────────
 
@@ -225,6 +226,15 @@ pub async fn import_devices(
     dry_run: bool,
     user_id: Option<i32>,
 ) -> Result<ImportValidationResult, EngineError> {
+    // RBAC — creates require Global write:Device because the entity
+    // doesn't exist yet, so hierarchy-scoped grants can't resolve
+    // against it. Fine-grained "create in Building X" permissions
+    // need a separate design (check write on Building X? or a new
+    // 'create' action?). Strictness is the safe default.
+    scope_grants::require_permission(
+        pool, org_id, user_id, "write", "Device", None,
+    ).await?;
+
     let rows = parse_csv(body)?;
     if rows.is_empty() {
         return Ok(ImportValidationResult {
@@ -482,6 +492,9 @@ pub async fn import_vlans(
     dry_run: bool,
     user_id: Option<i32>,
 ) -> Result<ImportValidationResult, EngineError> {
+    scope_grants::require_permission(
+        pool, org_id, user_id, "write", "Vlan", None,
+    ).await?;
     let rows = parse_csv(body)?;
     if rows.is_empty() {
         return Ok(ImportValidationResult {
@@ -718,6 +731,9 @@ pub async fn import_subnets(
     dry_run: bool,
     user_id: Option<i32>,
 ) -> Result<ImportValidationResult, EngineError> {
+    scope_grants::require_permission(
+        pool, org_id, user_id, "write", "Subnet", None,
+    ).await?;
     let rows = parse_csv(body)?;
     if rows.is_empty() {
         return Ok(ImportValidationResult {

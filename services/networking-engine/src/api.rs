@@ -1001,7 +1001,12 @@ async fn render_region_configs(
 async fn list_dhcp_relay(
     State(s): State<AppState>,
     Query(q): Query<ListDhcpRelayQuery>,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    scope_grants::require_permission(
+        &s.pool, q.organization_id, user_id, "read", "DhcpRelayTarget", None,
+    ).await?;
     let repo = DhcpRelayRepo::new(s.pool);
     Ok(Json(repo.list(&q).await?))
 }
@@ -1010,7 +1015,12 @@ async fn get_dhcp_relay(
     State(s): State<AppState>,
     Path(id): Path<Uuid>,
     Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    scope_grants::require_permission(
+        &s.pool, q.organization_id, user_id, "read", "DhcpRelayTarget", Some(id),
+    ).await?;
     let repo = DhcpRelayRepo::new(s.pool);
     Ok(Json(repo.get(id, q.organization_id).await?))
 }
@@ -1020,8 +1030,11 @@ async fn create_dhcp_relay(
     headers: HeaderMap,
     Json(body): Json<CreateDhcpRelayBody>,
 ) -> Result<impl IntoResponse, EngineError> {
-    let repo = DhcpRelayRepo::new(s.pool);
     let user_id = header_user_id(&headers);
+    scope_grants::require_permission(
+        &s.pool, body.organization_id, user_id, "write", "DhcpRelayTarget", None,
+    ).await?;
+    let repo = DhcpRelayRepo::new(s.pool);
     let out = repo.create(&body, user_id).await?;
     Ok((StatusCode::CREATED, Json(out)))
 }
@@ -1033,8 +1046,11 @@ async fn update_dhcp_relay(
     headers: HeaderMap,
     Json(body): Json<UpdateDhcpRelayBody>,
 ) -> Result<impl IntoResponse, EngineError> {
-    let repo = DhcpRelayRepo::new(s.pool);
     let user_id = header_user_id(&headers);
+    scope_grants::require_permission(
+        &s.pool, q.organization_id, user_id, "write", "DhcpRelayTarget", Some(id),
+    ).await?;
+    let repo = DhcpRelayRepo::new(s.pool);
     Ok(Json(repo.update(id, q.organization_id, &body, user_id).await?))
 }
 
@@ -1044,8 +1060,11 @@ async fn delete_dhcp_relay(
     Query(q): Query<OrgQuery>,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, EngineError> {
-    let repo = DhcpRelayRepo::new(s.pool);
     let user_id = header_user_id(&headers);
+    scope_grants::require_permission(
+        &s.pool, q.organization_id, user_id, "delete", "DhcpRelayTarget", Some(id),
+    ).await?;
+    let repo = DhcpRelayRepo::new(s.pool);
     repo.soft_delete(id, q.organization_id, user_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
@@ -1213,7 +1232,17 @@ async fn bulk_edit_devices_handler(
 async fn list_scope_grants(
     State(s): State<AppState>,
     Query(q): Query<ListScopeGrantsQuery>,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse, EngineError> {
+    // Meta-protection: reading the grant catalog itself is gated
+    // on read:ScopeGrant. Without this, a user with no grants could
+    // inspect the whole auth table (which is both a privacy leak
+    // — "who else has access?" — and a recon step towards privilege
+    // escalation via other paths).
+    let user_id = header_user_id(&headers);
+    scope_grants::require_permission(
+        &s.pool, q.organization_id, user_id, "read", "ScopeGrant", None,
+    ).await?;
     let repo = ScopeGrantRepo::new(s.pool);
     Ok(Json(repo.list(&q).await?))
 }
@@ -1222,7 +1251,12 @@ async fn get_scope_grant(
     State(s): State<AppState>,
     Path(id): Path<Uuid>,
     Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    scope_grants::require_permission(
+        &s.pool, q.organization_id, user_id, "read", "ScopeGrant", Some(id),
+    ).await?;
     let repo = ScopeGrantRepo::new(s.pool);
     Ok(Json(repo.get(id, q.organization_id).await?))
 }
@@ -1232,8 +1266,16 @@ async fn create_scope_grant(
     headers: HeaderMap,
     Json(body): Json<CreateScopeGrantBody>,
 ) -> Result<impl IntoResponse, EngineError> {
-    let repo = ScopeGrantRepo::new(s.pool);
+    // Meta-protection on create is CRITICAL: without gating, any
+    // tenant user could elevate themselves to Global write on
+    // everything by POSTing their own grant. write:ScopeGrant is
+    // the bootstrap permission the root admin grants to themselves
+    // (directly in the DB, or via a break-glass service path).
     let user_id = header_user_id(&headers);
+    scope_grants::require_permission(
+        &s.pool, body.organization_id, user_id, "write", "ScopeGrant", None,
+    ).await?;
+    let repo = ScopeGrantRepo::new(s.pool);
     let out = repo.create(&body, user_id).await?;
     Ok((StatusCode::CREATED, Json(out)))
 }
@@ -1244,8 +1286,11 @@ async fn delete_scope_grant(
     Query(q): Query<OrgQuery>,
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, EngineError> {
-    let repo = ScopeGrantRepo::new(s.pool);
     let user_id = header_user_id(&headers);
+    scope_grants::require_permission(
+        &s.pool, q.organization_id, user_id, "delete", "ScopeGrant", Some(id),
+    ).await?;
+    let repo = ScopeGrantRepo::new(s.pool);
     repo.soft_delete(id, q.organization_id, user_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }

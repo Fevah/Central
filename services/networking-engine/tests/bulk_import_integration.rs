@@ -12,6 +12,7 @@
 //! on machines without a live DB.
 
 use networking_engine::bulk_import;
+use networking_engine::scope_grants::{CreateScopeGrantBody, ScopeGrantRepo};
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use std::env;
 use uuid::Uuid;
@@ -133,7 +134,10 @@ async fn apply_happy_path_inserts_all_rows_and_commits() {
          IT-B-CORE01,Core,IT-B,IT-S,10.99.0.1/24,65100,Active,1\r\n\
          IT-B-CORE02,Core,IT-B,IT-S,10.99.0.2/24,65101,Active,1\r\n");
     let result = bulk_import::import_devices(
-        &fx.pool, fx.org_id, &csv, /*dry_run=*/false, Some(7),
+        &fx.pool, fx.org_id, &csv, /*dry_run=*/false,
+        // None = service-call RBAC bypass. This test is about the
+        // import-apply happy path, not auth; auth tests are below.
+        None,
     ).await.expect("apply");
 
     assert_eq!(result.total_rows, 2);
@@ -254,7 +258,8 @@ async fn vlan_import_happy_path_commits() {
          120,Servers,Servers LAN,Free,,{b},Active\r\n",
         b = fx.block_code);
     let result = bulk_import::import_vlans(
-        &fx.tenant.pool, fx.tenant.org_id, &csv, false, Some(9),
+        // None = service-call RBAC bypass (auth tests live below).
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, None,
     ).await.expect("apply");
     assert_eq!(result.valid, 2);
     assert!(result.applied);
@@ -342,4 +347,97 @@ async fn apply_rejects_existing_hostname_as_row_error() {
         "outcome should explain the duplicate: {:?}", result.outcomes[0].errors);
     assert_eq!(fx.count_devices().await, 1,
         "no new device should have been added");
+}
+
+// ─── RBAC enforcement ────────────────────────────────────────────────────
+//
+// Each bulk_import entity-point now requires `write:entity_type` when
+// an X-User-Id is present. None (service calls) bypasses so internal
+// seeding flows still work.
+
+#[tokio::test]
+#[ignore]
+async fn device_import_forbidden_without_write_grant() {
+    let Some(pool) = pool_or_skip("device_import_forbidden_without_write_grant").await else { return; };
+    let fx = TenantFixture::new(pool).await.expect("fixture");
+
+    let csv = format!("{HEADER}IT-B-CORE99,Core,IT-B,IT-S,10.99.0.9/24,65199,Active,1\r\n");
+    let err = bulk_import::import_devices(
+        &fx.pool, fx.org_id, &csv, false, Some(42)
+    ).await.unwrap_err().to_string();
+    assert!(err.contains("Forbidden"), "expected Forbidden err: {err}");
+    assert_eq!(fx.count_devices().await, 0,
+        "denied import must not touch DB");
+}
+
+#[tokio::test]
+#[ignore]
+async fn device_import_allowed_with_global_write_grant() {
+    let Some(pool) = pool_or_skip("device_import_allowed_with_global_write_grant").await else { return; };
+    let fx = TenantFixture::new(pool).await.expect("fixture");
+
+    ScopeGrantRepo::new(fx.pool.clone()).create(&CreateScopeGrantBody {
+        organization_id: fx.org_id,
+        user_id: 42,
+        action: "write".into(),
+        entity_type: "Device".into(),
+        scope_type: "Global".into(),
+        scope_entity_id: None,
+        notes: None,
+    }, Some(99)).await.expect("seed grant");
+
+    let csv = format!("{HEADER}IT-B-CORE50,Core,IT-B,IT-S,10.99.0.5/24,65150,Active,1\r\n");
+    let result = bulk_import::import_devices(
+        &fx.pool, fx.org_id, &csv, false, Some(42)
+    ).await.expect("allowed import");
+    assert!(result.applied);
+    assert_eq!(fx.count_devices().await, 1);
+}
+
+#[tokio::test]
+#[ignore]
+async fn vlan_import_forbidden_without_write_vlan_grant() {
+    let Some(pool) = pool_or_skip("vlan_import_forbidden_without_write_vlan_grant").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    let csv = format!("{VLAN_HEADER}101,IT,,Free,,{},Active\r\n", fx.block_code);
+    let err = bulk_import::import_vlans(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, Some(42)
+    ).await.unwrap_err().to_string();
+    assert!(err.contains("Forbidden"), "expected Forbidden err: {err}");
+    assert_eq!(fx.count_vlans().await, 0);
+
+    // Sanity: a write:Device grant must NOT authorise a VLAN import —
+    // entity_type dimension of the grant tuple matters.
+    ScopeGrantRepo::new(fx.tenant.pool.clone()).create(&CreateScopeGrantBody {
+        organization_id: fx.tenant.org_id,
+        user_id: 42,
+        action: "write".into(),
+        entity_type: "Device".into(),    // wrong entity_type for this import
+        scope_type: "Global".into(),
+        scope_entity_id: None,
+        notes: None,
+    }, Some(99)).await.expect("seed wrong-entity-type grant");
+
+    let err = bulk_import::import_vlans(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, Some(42)
+    ).await.unwrap_err().to_string();
+    assert!(err.contains("Forbidden"),
+        "write:Device grant must not authorise Vlan import: {err}");
+}
+
+#[tokio::test]
+#[ignore]
+async fn subnet_import_forbidden_without_write_subnet_grant() {
+    let Some(pool) = pool_or_skip("subnet_import_forbidden_without_write_subnet_grant").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    let csv = format!(
+        "{SUBNET_HEADER}BI-SUB,Subnet X,10.99.1.0/24,,{p},Free,Active\r\n",
+        p = fx.pool_code);
+    let err = bulk_import::import_subnets(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, Some(42)
+    ).await.unwrap_err().to_string();
+    assert!(err.contains("Forbidden"), "err: {err}");
+    assert_eq!(fx.count_subnets().await, 0);
 }
