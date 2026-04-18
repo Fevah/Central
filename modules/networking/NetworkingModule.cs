@@ -1,5 +1,6 @@
 using Central.Engine.Auth;
 using Central.Engine.Modules;
+using Central.Engine.Net.Ribbons;
 using Central.Engine.Shell;
 using Central.Engine.Widgets;
 using Central.Module.Networking.Dashboards;
@@ -38,73 +39,16 @@ public class NetworkingModule : IModule, IModuleRibbon, IModulePanels
         DashboardContributionRegistry.Register(new NetworkingDashboardContribution());
     }
 
+    /// <summary>
+    /// Ribbon registration delegates to
+    /// <see cref="NetworkingRibbonRegistrar.BuildRibbon"/> so the button
+    /// list stays in a net10.0 assembly the test project can reference.
+    /// See <c>NetworkingRibbonAuditTests</c> for the audit that asserts
+    /// every button here publishes a message through
+    /// <see cref="PanelMessageBus"/>.
+    /// </summary>
     public void RegisterRibbon(IRibbonBuilder ribbon)
-    {
-        ribbon.AddPage("Networking", SortOrder, page =>
-        {
-            // ── Devices (IPAM) ─────────────────────────────────────────────
-            page.AddGroup("Devices", group =>
-            {
-                group.AddButton("New Device",    P.DevicesWrite,  "AddItem_16x16",
-                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("devices", "action:new")));
-                group.AddButton("Delete Device", P.DevicesDelete, "Delete_16x16",
-                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("devices", "action:delete")));
-                group.AddButton("Refresh",       P.DevicesRead,   "Refresh_16x16",
-                    () => PanelMessageBus.Publish(new RefreshPanelMessage("devices")));
-                group.AddButton("Export",        P.DevicesExport, "ExportFile_16x16",
-                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("devices", "action:export")));
-            });
-
-            // ── Switches ───────────────────────────────────────────────────
-            page.AddGroup("Switches", group =>
-            {
-                group.AddButton("New Switch",    P.SwitchesWrite,  null, () => { });
-                group.AddButton("Edit Switch",   P.SwitchesWrite,  null, () => { });
-                group.AddButton("Delete Switch", P.SwitchesDelete, null, () => { });
-                group.AddButton("Ping All",      P.SwitchesPing,   null, () => { });
-                group.AddButton("Ping Selected", P.SwitchesPing,   null, () => { });
-                group.AddButton("Sync Config",   P.SwitchesSync,   null, () => { });
-            });
-
-            // ── Links ──────────────────────────────────────────────────────
-            page.AddGroup("Links", group =>
-            {
-                group.AddButton("New Link",     P.LinksWrite,  null, () => { });
-                group.AddButton("Delete Link",  P.LinksDelete, null, () => { });
-                group.AddButton("Build Config", P.LinksRead,   null, () => { });
-            });
-
-            // ── Routing ────────────────────────────────────────────────────
-            page.AddGroup("Routing", group =>
-            {
-                group.AddButton("Sync BGP",     P.BgpSync, null, () => { });
-                group.AddButton("Sync All BGP", P.BgpSync, null, () => { });
-            });
-
-            // ── VLANs ──────────────────────────────────────────────────────
-            page.AddGroup("VLANs", group =>
-            {
-                group.AddButton("Refresh VLANs", P.VlansRead, null, () => { });
-                group.AddToggleButton("Show Default VLAN", P.VlansRead, isOn => { });
-            });
-
-            // ── Panels (everything networking exposes as a dockable panel) ──
-            page.AddGroup("Panels", group =>
-            {
-                group.AddCheckButton("Hierarchy",   panelId: "HierarchyPanel");
-                group.AddCheckButton("Pools",       panelId: "PoolsPanel");
-                group.AddCheckButton("IPAM",        panelId: "DevicesPanel");
-                group.AddCheckButton("Device Details", panelId: "DeviceDetailPanel");
-                group.AddCheckButton("Switches",    panelId: "SwitchesPanel");
-                group.AddCheckButton("Switch Details", panelId: "SwitchDetailPanel");
-                group.AddCheckButton("P2P",         panelId: "P2PPanel");
-                group.AddCheckButton("B2B",         panelId: "B2BPanel");
-                group.AddCheckButton("FW",          panelId: "FWPanel");
-                group.AddCheckButton("BGP",         panelId: "BgpPanel");
-                group.AddCheckButton("VLANs",       panelId: "VlanPanel");
-            });
-        });
-    }
+        => NetworkingRibbonRegistrar.BuildRibbon(ribbon, SortOrder);
 
     public void RegisterPanels(IPanelBuilder panels)
     {
