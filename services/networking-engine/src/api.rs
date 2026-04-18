@@ -104,6 +104,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/devices/:id/render-config",        post(render_device_config))
         .route("/api/net/devices/:id/renders",              get(list_device_renders))
         .route("/api/net/renders/:id",                      get(get_render_by_id))
+        .route("/api/net/renders/:id/diff",                 get(diff_render_by_id))
         // Building-level turn-up pack: fan-out render + persist
         .route("/api/net/buildings/:id/render-configs",     post(render_building_configs))
         .with_state(state)
@@ -895,6 +896,14 @@ async fn get_render_by_id(
     Query(q): Query<OrgQuery>,
 ) -> Result<impl IntoResponse, EngineError> {
     Ok(Json(config_gen::get_render(&s.pool, q.organization_id, render_id).await?))
+}
+
+async fn diff_render_by_id(
+    State(s): State<AppState>,
+    Path(render_id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    Ok(Json(config_gen::diff_render(&s.pool, q.organization_id, render_id).await?))
 }
 
 async fn render_building_configs(

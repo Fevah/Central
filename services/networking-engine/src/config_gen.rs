@@ -48,6 +48,30 @@ pub struct RenderedConfigSummary {
     pub rendered_by: Option<i32>,
 }
 
+/// "What changed since last render" for a given render id — derived
+/// from the `previous_render_id` chain so the response is symmetric
+/// with how the history accumulated. Line-level set diff (no
+/// context, no LCS ordering) — PicOS configs are `set`-style where
+/// each line stands alone, so set semantics capture the operator's
+/// question ("which lines appeared / disappeared?") without pulling
+/// in a full diff crate.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RenderDiff {
+    pub render_id: Uuid,
+    pub previous_render_id: Option<Uuid>,
+    /// Lines present in current but not in previous, in current-body
+    /// order so the result reads top-to-bottom.
+    pub added: Vec<String>,
+    /// Lines present in previous but not in current, in previous-body
+    /// order.
+    pub removed: Vec<String>,
+    /// Count of lines present in BOTH — useful as a rough "how much
+    /// of the config is stable" signal without shipping the whole
+    /// unchanged body.
+    pub unchanged_count: i32,
+}
+
 /// One building render "turn-up pack" — every device in the building
 /// rendered + persisted + chained in one call. Per-device errors are
 /// tolerated (a broken naming template on device 17 doesn't block
@@ -319,6 +343,72 @@ pub async fn list_renders(
         id, device_id: dev, flavor_code: flavor, body_sha256: sha, line_count: lines,
         render_duration_ms: dur, previous_render_id: prev, rendered_at: at, rendered_by: by,
     }).collect())
+}
+
+/// Pure line-set diff between two config bodies. Preserves
+/// current-body order in `added` and previous-body order in
+/// `removed`. Blank lines are kept in the sets (they contribute to
+/// unchanged_count when both bodies have the same blank-line count
+/// as any other duplicate line would).
+///
+/// Complexity O(n + m) where n = lines in current, m = lines in
+/// previous. No allocations beyond the two line HashSets and the
+/// output vecs.
+pub fn compute_line_diff(current_body: &str, previous_body: &str) -> (Vec<String>, Vec<String>, i32) {
+    use std::collections::HashSet;
+    let current_lines: Vec<&str>  = current_body.lines().collect();
+    let previous_lines: Vec<&str> = previous_body.lines().collect();
+    let current_set:  HashSet<&str> = current_lines.iter().copied().collect();
+    let previous_set: HashSet<&str> = previous_lines.iter().copied().collect();
+
+    let added: Vec<String> = current_lines.iter()
+        .filter(|l| !previous_set.contains(*l))
+        .map(|s| s.to_string())
+        .collect();
+    let removed: Vec<String> = previous_lines.iter()
+        .filter(|l| !current_set.contains(*l))
+        .map(|s| s.to_string())
+        .collect();
+    // Unchanged = lines present in BOTH sets. Duplicate lines within
+    // one body collapse to a single set entry — that's fine for the
+    // "roughly how stable" signal we want here.
+    let unchanged_count = current_set.intersection(&previous_set).count() as i32;
+    (added, removed, unchanged_count)
+}
+
+/// Load a render by id + its immediate predecessor, compute the
+/// line-level diff, and return a structured result. First-ever
+/// renders (no previous_render_id) return an empty diff with the
+/// entire body counted as `added`, so callers don't need to special-
+/// case "no prior history".
+pub async fn diff_render(
+    pool: &PgPool,
+    org_id: Uuid,
+    render_id: Uuid,
+) -> Result<RenderDiff, EngineError> {
+    let current = get_render(pool, org_id, render_id).await?;
+    let Some(prev_id) = current.previous_render_id else {
+        // First render for this (device, flavor) chain — nothing to
+        // diff against. Treat every line as "added" so operators see
+        // the full config content in the UI without special-casing.
+        let added: Vec<String> = current.body.lines().map(String::from).collect();
+        return Ok(RenderDiff {
+            render_id: current.id,
+            previous_render_id: None,
+            added,
+            removed: vec![],
+            unchanged_count: 0,
+        });
+    };
+    let previous = get_render(pool, org_id, prev_id).await?;
+    let (added, removed, unchanged_count) = compute_line_diff(&current.body, &previous.body);
+    Ok(RenderDiff {
+        render_id: current.id,
+        previous_render_id: Some(previous.id),
+        added,
+        removed,
+        unchanged_count,
+    })
 }
 
 /// Fetch one render by id, scoped by tenant so cross-tenant reads
@@ -2346,6 +2436,79 @@ mod tests {
         assert!(out.contains("mlag domain 1"));
         assert!(!out.contains("peer-link "),
             "empty interface string → no peer-link line:\n{out}");
+    }
+
+    #[test]
+    fn compute_line_diff_identifies_added_and_removed_lines() {
+        let previous = "set system hostname \"A\"\nset ip routing enable true\n";
+        let current  = "set system hostname \"B\"\nset ip routing enable true\n";
+        let (added, removed, unchanged) = compute_line_diff(current, previous);
+        assert_eq!(added,   vec![r#"set system hostname "B""#]);
+        assert_eq!(removed, vec![r#"set system hostname "A""#]);
+        assert_eq!(unchanged, 1, "the ip routing line is stable");
+    }
+
+    #[test]
+    fn compute_line_diff_preserves_body_order_in_added_and_removed() {
+        // Current body: ip routing → mgmt-IP → lldp  (changed)
+        // Previous body: ip routing → lldp          (baseline)
+        // Current is missing no lines; adds one in the middle.
+        // Added output should list the new line in current-body order.
+        let previous = "a\nc\n";
+        let current  = "a\nb\nc\n";
+        let (added, removed, unchanged) = compute_line_diff(current, previous);
+        assert_eq!(added, vec!["b"]);
+        assert_eq!(removed, Vec::<String>::new());
+        assert_eq!(unchanged, 2);
+    }
+
+    #[test]
+    fn compute_line_diff_returns_empty_when_bodies_identical() {
+        let body = "x\ny\nz\n";
+        let (added, removed, unchanged) = compute_line_diff(body, body);
+        assert!(added.is_empty());
+        assert!(removed.is_empty());
+        assert_eq!(unchanged, 3, "all three distinct lines are unchanged");
+    }
+
+    #[test]
+    fn compute_line_diff_handles_full_replacement() {
+        let previous = "old1\nold2\n";
+        let current  = "new1\nnew2\n";
+        let (added, removed, unchanged) = compute_line_diff(current, previous);
+        assert_eq!(added,   vec!["new1", "new2"]);
+        assert_eq!(removed, vec!["old1", "old2"]);
+        assert_eq!(unchanged, 0);
+    }
+
+    #[test]
+    fn compute_line_diff_handles_empty_previous() {
+        // No previous body → every current line is "added", zero
+        // unchanged. Matches the first-ever-render contract in
+        // diff_render (which short-circuits before calling this, but
+        // the helper should still behave correctly if ever called
+        // directly with an empty previous).
+        let (added, removed, unchanged) = compute_line_diff("a\nb\n", "");
+        assert_eq!(added, vec!["a", "b"]);
+        assert!(removed.is_empty());
+        assert_eq!(unchanged, 0);
+    }
+
+    #[test]
+    fn render_diff_serialises_camelcase_and_keeps_empty_arrays() {
+        let d = RenderDiff {
+            render_id: Uuid::nil(),
+            previous_render_id: None,
+            added: vec!["x".into()],
+            removed: vec![],
+            unchanged_count: 0,
+        };
+        let json = serde_json::to_string(&d).expect("serialises");
+        assert!(json.contains("\"renderId\""));
+        assert!(json.contains("\"previousRenderId\":null"));
+        assert!(json.contains("\"unchangedCount\":0"));
+        assert!(json.contains("\"removed\":[]"),
+            "empty arrays must serialise as [] not omitted:\n{json}");
     }
 
     #[test]
