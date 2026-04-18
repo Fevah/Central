@@ -28,8 +28,37 @@ pub enum EngineError {
     #[error("Bad request: {0}")]
     BadRequest(String),
 
+    /// Lock-state trigger rejected the write. `message` carries the
+    /// trigger's RAISE EXCEPTION text so the UI can surface exactly
+    /// what the DB said.
+    #[error("Lock violation: {message}")]
+    LockViolation { message: String },
+
     #[error("Database error: {0}")]
-    Db(#[from] sqlx::Error),
+    Db(sqlx::Error),
+}
+
+impl From<sqlx::Error> for EngineError {
+    /// Promote specific Postgres error codes to typed variants before
+    /// falling through to the generic `Db` bucket. Today the only code we
+    /// recognise is `check_violation` (23514) emitted by the lock-state
+    /// trigger in migration 100 — we match on that plus a substring of
+    /// the trigger's message text so we don't hijack unrelated CHECK
+    /// constraints from schema `CHECK (...)` clauses.
+    fn from(e: sqlx::Error) -> Self {
+        if let sqlx::Error::Database(ref db) = e {
+            if db.code().as_deref() == Some("23514") {
+                let msg = db.message();
+                if msg.contains("lock_state")
+                    || msg.contains("Immutable")
+                    || msg.contains("HardLock")
+                {
+                    return EngineError::LockViolation { message: msg.to_string() };
+                }
+            }
+        }
+        EngineError::Db(e)
+    }
 }
 
 impl EngineError {
@@ -61,6 +90,7 @@ impl EngineError {
             Self::RangeViolation { .. } => StatusCode::UNPROCESSABLE_ENTITY,
             Self::BadCidr(_) => StatusCode::UNPROCESSABLE_ENTITY,
             Self::BadRequest(_) => StatusCode::BAD_REQUEST,
+            Self::LockViolation { .. } => StatusCode::CONFLICT,
             Self::Db(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -73,6 +103,7 @@ impl EngineError {
             Self::RangeViolation { .. } => "range_violation",
             Self::BadCidr(_) => "bad_cidr",
             Self::BadRequest(_) => "bad_request",
+            Self::LockViolation { .. } => "lock_violation",
             Self::Db(_) => "db_error",
         }
     }

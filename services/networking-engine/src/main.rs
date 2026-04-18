@@ -19,6 +19,7 @@ mod hash;
 mod ip_allocation;
 mod ip_math;
 mod ip_math6;
+mod locks;
 mod models;
 mod naming;
 mod naming_overrides;

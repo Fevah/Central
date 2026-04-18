@@ -22,6 +22,7 @@ use crate::change_sets::{
 };
 use crate::error::EngineError;
 use crate::ip_allocation::IpAllocationService;
+use crate::locks::{self, SetLockBody};
 use crate::models::{PoolScopeLevel, ShelfResourceType};
 use crate::naming::{self, DeviceNamingContext, LinkNamingContext, ServerNamingContext};
 use crate::naming_overrides::{
@@ -75,6 +76,8 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/change-sets/:id/cancel", post(cancel_change_set))
         .route("/api/net/change-sets/:id/apply", post(apply_change_set))
         .route("/api/net/change-sets/:id/rollback", post(rollback_change_set))
+        // Lock-state management (Phase 8f)
+        .route("/api/net/locks/:table/:id", axum::routing::patch(set_entity_lock))
         .with_state(state)
 }
 
@@ -524,4 +527,17 @@ async fn rollback_change_set(
     let repo = ChangeSetRepo::new(s.pool);
     let user_id = header_user_id(&headers);
     Ok(Json(repo.rollback(id, q.organization_id, user_id).await?))
+}
+
+// ─── Lock state (Phase 8f) ───────────────────────────────────────────────
+
+async fn set_entity_lock(
+    State(s): State<AppState>,
+    Path((table, id)): Path<(String, Uuid)>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+    Json(body): Json<SetLockBody>,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    Ok(Json(locks::set_lock(&s.pool, &table, id, q.organization_id, &body, user_id).await?))
 }
