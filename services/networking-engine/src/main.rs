@@ -21,7 +21,9 @@ mod models;
 mod naming;
 mod naming_overrides;
 mod naming_resolver;
+mod regenerate;
 mod server_fanout;
+mod tenant_config;
 
 use anyhow::Result;
 use std::env;

@@ -23,7 +23,9 @@ use crate::naming_overrides::{
     CreateOverrideBody, ListOverridesQuery, NamingOverrideRepo, UpdateOverrideBody,
 };
 use crate::naming_resolver::{NamingResolver, ResolveRequest};
+use crate::regenerate::{self, RegeneratePreviewRequest};
 use crate::server_fanout::{ServerCreationRequest, ServerCreationService};
+use crate::tenant_config::{TenantConfigRepo, UpsertTenantConfigBody};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -52,6 +54,9 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/naming/overrides", get(list_overrides).post(create_override))
         .route("/api/net/naming/overrides/:id",
                get(get_override).put(update_override).delete(delete_override))
+        // Tenant naming config (Phase 7b) + regenerate preview (Phase 7c)
+        .route("/api/net/naming/tenant-config", get(get_tenant_config).put(upsert_tenant_config))
+        .route("/api/net/naming/regenerate/preview", post(regenerate_preview))
         .with_state(state)
 }
 
@@ -336,4 +341,34 @@ async fn delete_override(
     let user_id = header_user_id(&headers);
     repo.delete(id, q.organization_id, user_id).await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+// ─── Tenant naming config (Phase 7b) ─────────────────────────────────────
+
+async fn get_tenant_config(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = TenantConfigRepo::new(s.pool);
+    Ok(Json(repo.get(q.organization_id).await?))
+}
+
+async fn upsert_tenant_config(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+    Json(body): Json<UpsertTenantConfigBody>,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = TenantConfigRepo::new(s.pool);
+    let user_id = header_user_id(&headers);
+    Ok(Json(repo.upsert(q.organization_id, &body, user_id).await?))
+}
+
+// ─── Regenerate preview (Phase 7c) ───────────────────────────────────────
+
+async fn regenerate_preview(
+    State(s): State<AppState>,
+    Json(req): Json<RegeneratePreviewRequest>,
+) -> Result<impl IntoResponse, EngineError> {
+    Ok(Json(regenerate::preview(&s.pool, &req).await?))
 }
