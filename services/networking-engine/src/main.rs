@@ -10,29 +10,8 @@
 //! (shared FNV-1a StableHash) so the two codepaths serialise together during
 //! the cutover window.
 
-mod allocation;
-mod api;
-mod audit;
-mod change_sets;
-mod cli_flavor;
-mod config_gen;
-mod dhcp_relay;
-mod error;
-mod hash;
-mod ip_allocation;
-mod ip_math;
-mod ip_math6;
-mod locks;
-mod models;
-mod naming;
-mod naming_overrides;
-mod naming_resolver;
-mod regenerate;
-mod server_fanout;
-mod tenant_config;
-mod validation;
-
 use anyhow::Result;
+use networking_engine::api;
 use std::env;
 use tracing_subscriber::{EnvFilter, fmt};
 
