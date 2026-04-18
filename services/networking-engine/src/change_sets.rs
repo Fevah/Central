@@ -1116,10 +1116,14 @@ async fn dispatch_apply(
             apply_asn_create(pool, item, org_id, correlation_id, user_id).await,
         ("MlagDomain", ChangeSetAction::Create) =>
             apply_mlag_create(pool, item, org_id, correlation_id, user_id).await,
+        ("Subnet", ChangeSetAction::Create) =>
+            apply_subnet_create(pool, item, org_id, correlation_id, user_id).await,
+        ("IpAddress", ChangeSetAction::Create) =>
+            apply_ip_create(pool, item, org_id, correlation_id, user_id).await,
         (et, act) => Err(EngineError::bad_request(format!(
             "Apply not yet implemented for ({et}, {}). Device covers all 4 \
              actions; Link / Server cover Rename; Vlan / AsnAllocation / \
-             MlagDomain cover Create.", act.as_str()))),
+             MlagDomain / Subnet / IpAddress cover Create.", act.as_str()))),
     }
 }
 
@@ -1396,6 +1400,10 @@ async fn dispatch_rollback(
             rollback_asn_create(pool, item, org_id, correlation_id, user_id).await,
         ("MlagDomain", ChangeSetAction::Create) =>
             rollback_mlag_create(pool, item, org_id, correlation_id, user_id).await,
+        ("Subnet", ChangeSetAction::Create) =>
+            rollback_subnet_create(pool, item, org_id, correlation_id, user_id).await,
+        ("IpAddress", ChangeSetAction::Create) =>
+            rollback_ip_create(pool, item, org_id, correlation_id, user_id).await,
         (et, act) => Err(EngineError::bad_request(format!(
             "Rollback not yet implemented for ({et}, {}).", act.as_str()))),
     }
@@ -2167,6 +2175,7 @@ async fn rollback_device_delete(
 // which would confuse the audit trail.
 
 use crate::allocation::AllocationService;
+use crate::ip_allocation::IpAllocationService;
 use crate::models::{PoolScopeLevel, ShelfResourceType};
 
 fn parse_scope_level(s: &str) -> Result<PoolScopeLevel, EngineError> {
@@ -2550,6 +2559,271 @@ async fn rollback_mlag_create(
         org_id, ShelfResourceType::Mlag, &mlag_num.to_string(),
         chrono::Duration::minutes(5),
         Some(pool_id), None,
+        Some("change set rolled back"), user_id).await;
+
+    Ok(())
+}
+
+// ─── Subnet + IP allocation Create executors ─────────────────────────────
+//
+// Subnets carve a CIDR out of an ip_pool; IP addresses allocate the next
+// free host inside a subnet. Both go through IpAllocationService so the
+// GIST EXCLUDE overlap constraint + advisory-lock semantics stay unified.
+//
+// Shelf resource keys: subnets store the CIDR string, ips the address.
+// Both retire with a 5-minute cool-down on rollback.
+
+async fn apply_subnet_create(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    let after = item.after_json.as_ref().ok_or_else(|| EngineError::bad_request(
+        "Subnet/Create is missing after_json"))?;
+    let pool_id = read_uuid(after, "poolId", "pool_id").ok_or_else(||
+        EngineError::bad_request("after_json.poolId is required"))?;
+    let prefix_length = after.as_object()
+        .and_then(|o| o.get("prefixLength").or_else(|| o.get("prefix_length")))
+        .and_then(|v| v.as_i64())
+        .and_then(|n| u32::try_from(n).ok())
+        .ok_or_else(|| EngineError::bad_request(
+            "after_json.prefixLength is required and must be 0..128"))?;
+    let subnet_code = read_string(after, "subnetCode", "subnet_code").ok_or_else(||
+        EngineError::bad_request("after_json.subnetCode is required"))?;
+    let display_name = read_string(after, "displayName", "display_name").ok_or_else(||
+        EngineError::bad_request("after_json.displayName is required"))?;
+    let scope_level = parse_scope_level(
+        &read_string(after, "scopeLevel", "scope_level").unwrap_or_else(|| "Free".into()))?;
+    let scope_entity_id = read_uuid(after, "scopeEntityId", "scope_entity_id");
+    let parent_subnet_id = read_uuid(after, "parentSubnetId", "parent_subnet_id");
+
+    let svc = IpAllocationService::new(pool.clone());
+    let subnet = svc.allocate_subnet(
+        pool_id, org_id, prefix_length, &subnet_code, &display_name,
+        scope_level, scope_entity_id, parent_subnet_id, user_id).await?;
+
+    let mut tx = pool.begin().await?;
+    sqlx::query(
+        "UPDATE net.change_set_item
+            SET entity_id = $3, applied_at = now(), apply_error = NULL,
+                updated_at = now()
+          WHERE id = $1 AND organization_id = $2")
+        .bind(item.id).bind(org_id).bind(subnet.id)
+        .execute(&mut *tx).await?;
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "Subnet",
+        entity_id: Some(subnet.id),
+        action: "Created",
+        actor_user_id: user_id,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: Some(correlation_id),
+        details: serde_json::json!({
+            "pool_id": pool_id,
+            "subnet_code": subnet.subnet_code,
+            "network": subnet.network,
+            "prefix_length": prefix_length,
+            "change_set_item_id": item.id,
+        }),
+    }).await?;
+    tx.commit().await?;
+    Ok(())
+}
+
+async fn rollback_subnet_create(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    let entity_id = item.entity_id.ok_or_else(|| EngineError::bad_request(
+        "Subnet/Create rollback: item has no entity_id."))?;
+
+    // Grab CIDR + pool so we can shelf the carved range.
+    let row: Option<(String, Uuid)> = sqlx::query_as(
+        "SELECT network::text, pool_id FROM net.subnet
+          WHERE id = $1 AND organization_id = $2")
+        .bind(entity_id).bind(org_id).fetch_optional(pool).await?;
+    let (cidr, pool_id) = row.ok_or_else(|| EngineError::bad_request(format!(
+        "Subnet {entity_id} not found.")))?;
+
+    let mut tx = pool.begin().await?;
+    let affected = sqlx::query(
+        "UPDATE net.subnet
+            SET deleted_at = now(), deleted_by = $3,
+                updated_at = now(), updated_by = $3, version = version + 1
+          WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL")
+        .bind(entity_id).bind(org_id).bind(user_id)
+        .execute(&mut *tx).await?;
+    if affected.rows_affected() == 0 {
+        return Err(EngineError::bad_request(format!(
+            "Subnet {entity_id} already deleted.")));
+    }
+
+    sqlx::query(
+        "UPDATE net.change_set_item
+            SET applied_at = NULL, updated_at = now()
+          WHERE id = $1 AND organization_id = $2")
+        .bind(item.id).bind(org_id).execute(&mut *tx).await?;
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "Subnet",
+        entity_id: Some(entity_id),
+        action: "RolledBack",
+        actor_user_id: user_id,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: Some(correlation_id),
+        details: serde_json::json!({
+            "original_action": "Create",
+            "reverse_action": "SoftDelete",
+            "network": cidr,
+            "pool_id": pool_id,
+            "change_set_item_id": item.id,
+        }),
+    }).await?;
+    tx.commit().await?;
+
+    // Shelf the CIDR so a racing apply doesn't re-carve the same range
+    // under a different subnet_code in the same window. 5-min cooldown —
+    // enough to cover admin "oh shit, undo" flow without holding the
+    // space forever.
+    let svc = AllocationService::new(pool.clone());
+    let _ = svc.retire(
+        org_id, ShelfResourceType::Subnet, &cidr,
+        chrono::Duration::minutes(5),
+        Some(pool_id), None,
+        Some("change set rolled back"), user_id).await;
+
+    Ok(())
+}
+
+async fn apply_ip_create(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    let after = item.after_json.as_ref().ok_or_else(|| EngineError::bad_request(
+        "IpAddress/Create is missing after_json"))?;
+    let subnet_id = read_uuid(after, "subnetId", "subnet_id").ok_or_else(||
+        EngineError::bad_request("after_json.subnetId is required"))?;
+    let assigned_to_type = read_string(after, "assignedToType", "assigned_to_type");
+    let assigned_to_id = read_uuid(after, "assignedToId", "assigned_to_id");
+
+    let svc = IpAllocationService::new(pool.clone());
+    let ip = svc.allocate_next_ip(
+        subnet_id, org_id,
+        assigned_to_type.as_deref(), assigned_to_id, user_id).await?;
+
+    let mut tx = pool.begin().await?;
+    sqlx::query(
+        "UPDATE net.change_set_item
+            SET entity_id = $3, applied_at = now(), apply_error = NULL,
+                updated_at = now()
+          WHERE id = $1 AND organization_id = $2")
+        .bind(item.id).bind(org_id).bind(ip.id)
+        .execute(&mut *tx).await?;
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "IpAddress",
+        entity_id: Some(ip.id),
+        action: "Created",
+        actor_user_id: user_id,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: Some(correlation_id),
+        details: serde_json::json!({
+            "subnet_id": subnet_id,
+            "address": ip.address,
+            "assigned_to_type": assigned_to_type,
+            "assigned_to_id": assigned_to_id,
+            "change_set_item_id": item.id,
+        }),
+    }).await?;
+    tx.commit().await?;
+    Ok(())
+}
+
+async fn rollback_ip_create(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    let entity_id = item.entity_id.ok_or_else(|| EngineError::bad_request(
+        "IpAddress/Create rollback: item has no entity_id."))?;
+
+    let row: Option<(String, Uuid)> = sqlx::query_as(
+        "SELECT address::text, subnet_id FROM net.ip_address
+          WHERE id = $1 AND organization_id = $2")
+        .bind(entity_id).bind(org_id).fetch_optional(pool).await?;
+    let (address, subnet_id) = row.ok_or_else(|| EngineError::bad_request(format!(
+        "IpAddress {entity_id} not found.")))?;
+
+    // Some Postgres cidr casts produce "10.0.0.1/32" — strip prefix so the
+    // shelf key matches what the allocator will check for.
+    let bare_addr = match address.find('/') {
+        Some(i) => &address[..i],
+        None => &address,
+    };
+
+    let mut tx = pool.begin().await?;
+    let affected = sqlx::query(
+        "UPDATE net.ip_address
+            SET deleted_at = now(), deleted_by = $3,
+                updated_at = now(), updated_by = $3, version = version + 1
+          WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL")
+        .bind(entity_id).bind(org_id).bind(user_id)
+        .execute(&mut *tx).await?;
+    if affected.rows_affected() == 0 {
+        return Err(EngineError::bad_request(format!(
+            "IpAddress {entity_id} already deleted.")));
+    }
+
+    sqlx::query(
+        "UPDATE net.change_set_item
+            SET applied_at = NULL, updated_at = now()
+          WHERE id = $1 AND organization_id = $2")
+        .bind(item.id).bind(org_id).execute(&mut *tx).await?;
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "IpAddress",
+        entity_id: Some(entity_id),
+        action: "RolledBack",
+        actor_user_id: user_id,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: Some(correlation_id),
+        details: serde_json::json!({
+            "original_action": "Create",
+            "reverse_action": "SoftDelete",
+            "address": bare_addr,
+            "subnet_id": subnet_id,
+            "change_set_item_id": item.id,
+        }),
+    }).await?;
+    tx.commit().await?;
+
+    let svc = AllocationService::new(pool.clone());
+    let _ = svc.retire(
+        org_id, ShelfResourceType::Ip, bare_addr,
+        chrono::Duration::minutes(5),
+        None, None,
         Some("change set rolled back"), user_id).await;
 
     Ok(())
