@@ -108,6 +108,8 @@ public class NetworkingRibbonAuditTests
     [InlineData("Governance", "Cancel",           "changesets", "action:cancel")]
     [InlineData("Governance", "Details",          "changesets", "action:details")]
     [InlineData("Governance", "Rename Device",    "changesets", "action:renameDevice")]
+    [InlineData("Governance", "Update Device",    "changesets", "action:updateDevice")]
+    [InlineData("Governance", "Delete Device",    "changesets", "action:deleteDevice")]
     [InlineData("Validation", "Run All",          "validation", "action:runAll")]
     [InlineData("Validation", "Run Selected",     "validation", "action:runSelected")]
     [InlineData("Validation", "Edit Rule",        "validation", "action:editRule")]

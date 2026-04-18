@@ -90,6 +90,12 @@ public partial class ChangeSetsListPanel : UserControl
             case "action:renameDevice":
                 RunWithSelection("add a device rename to", OpenRenameDeviceDialog);
                 break;
+            case "action:updateDevice":
+                RunWithSelection("add a device update to", OpenUpdateDeviceDialog);
+                break;
+            case "action:deleteDevice":
+                RunWithSelection("add a device delete to", OpenDeleteDeviceDialog);
+                break;
             case "action:submit":
                 RunWithSelection("Submit", OpenSubmitDialog);
                 break;
@@ -225,6 +231,26 @@ public partial class ChangeSetsListPanel : UserControl
     {
         if (!RequireDraft(row)) return;
         var dialog = new RenameDeviceItemDialog(_baseUrl!, _tenantId, _actorUserId, row)
+        {
+            Owner = Window.GetWindow(this),
+        };
+        if (dialog.ShowDialog() == true) _ = ReloadAsync();
+    }
+
+    private void OpenUpdateDeviceDialog(ChangeSetRow row)
+    {
+        if (!RequireDraft(row)) return;
+        var dialog = new UpdateDeviceItemDialog(_baseUrl!, _tenantId, _actorUserId, row)
+        {
+            Owner = Window.GetWindow(this),
+        };
+        if (dialog.ShowDialog() == true) _ = ReloadAsync();
+    }
+
+    private void OpenDeleteDeviceDialog(ChangeSetRow row)
+    {
+        if (!RequireDraft(row)) return;
+        var dialog = new DeleteDeviceItemDialog(_baseUrl!, _tenantId, _actorUserId, row)
         {
             Owner = Window.GetWindow(this),
         };
