@@ -23,6 +23,13 @@ public class AuthContext : IAuthContext
         private set { _currentUser = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsAuthenticated)); }
     }
 
+    private Guid _currentTenantId = Guid.Empty;
+    public Guid CurrentTenantId
+    {
+        get => _currentTenantId;
+        set { _currentTenantId = value; OnPropertyChanged(); }
+    }
+
     public AuthStates AuthState
     {
         get => _authState;

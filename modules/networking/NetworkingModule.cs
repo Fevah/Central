@@ -37,6 +37,14 @@ public class NetworkingModule : IModule, IModuleRibbon, IModulePanels
         // both sections in one step.
         DashboardContributionRegistry.Register(new DevicesDashboardContribution());
         DashboardContributionRegistry.Register(new NetworkingDashboardContribution());
+        // Governance tile — Phase 8+ Change Set queue state + audit
+        // pulse. Silently hides for tenants without net.change_set /
+        // net.audit_entry migrated, and stays invisible until the
+        // tenant id resolves on login (see
+        // GovernanceDashboardContribution.BuildCardsAsync for the
+        // guard). Gated by P.ChangeSetsRead so the section simply
+        // doesn't render for users without the claim.
+        DashboardContributionRegistry.Register(new GovernanceDashboardContribution());
     }
 
     /// <summary>

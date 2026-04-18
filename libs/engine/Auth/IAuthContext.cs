@@ -12,6 +12,13 @@ public interface IAuthContext : INotifyPropertyChanged
     /// <summary>Current logged-in user. Null if not authenticated.</summary>
     AuthUser? CurrentUser { get; }
 
+    /// <summary>Current tenant (organization) id. Guid.Empty when not yet
+    /// resolved or when running outside the platform (e.g. a test
+    /// harness that bypasses the login flow). Consumers that need
+    /// tenant-scoped queries should check for Empty before issuing a
+    /// query that would otherwise return zero rows.</summary>
+    Guid CurrentTenantId { get; }
+
     /// <summary>Current authentication state.</summary>
     AuthStates AuthState { get; }
 

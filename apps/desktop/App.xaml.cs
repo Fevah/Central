@@ -273,6 +273,10 @@ public partial class App : System.Windows.Application
                     var userId2 = AuthContext.Instance.CurrentUser?.Id ?? 0;
                     var tenantId = userId2 > 0 ? await LookupUserTenantIdAsync(Dsn, userId2) : Guid.Empty;
                     CurrentTenantId = tenantId;
+                    // Hoist into AuthContext so dashboard contributions +
+                    // other engine-side consumers can read it without
+                    // depending on the app assembly.
+                    AuthContext.Instance.CurrentTenantId = tenantId;
                     gate = tenantId != Guid.Empty
                         ? await Central.Desktop.Auth.DbModuleLicenseGate.CreateForTenantAsync(Dsn, tenantId)
                         : new AllowAllModuleGate();

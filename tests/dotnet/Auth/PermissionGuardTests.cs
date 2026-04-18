@@ -18,6 +18,7 @@ public class PermissionGuardTests
 
         public AuthUser? CurrentUser => new AuthUser { Username = "test" };
         public AuthStates AuthState => AuthStates.Password;
+        public Guid CurrentTenantId => Guid.Empty;
         public IReadOnlySet<string> AllowedSites => _sites;
         public bool IsAuthenticated => true;
         public bool IsSuperAdmin => false;
