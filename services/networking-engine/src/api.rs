@@ -859,6 +859,13 @@ async fn render_device_config(
     State(s): State<AppState>,
     Path(device_id): Path<Uuid>,
     Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
 ) -> Result<impl IntoResponse, EngineError> {
-    Ok(Json(config_gen::render_device(&s.pool, q.organization_id, device_id).await?))
+    // POST → render + persist to net.rendered_config (chains to the
+    // previous render via previous_render_id so "what changed" is a
+    // two-row join rather than a full-text diff).
+    let rendered_by = header_user_id(&headers);
+    Ok(Json(config_gen::render_device_persisted(
+        &s.pool, q.organization_id, device_id, rendered_by
+    ).await?))
 }

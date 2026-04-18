@@ -39,11 +39,29 @@ pub struct RenderedConfig {
     pub body_sha256: String,
     pub line_count: i32,
     pub rendered_at: DateTime<Utc>,
+    /// Row id in `net.rendered_config` once persisted; `None` for
+    /// in-memory / dry-run renders that skip the write.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<Uuid>,
+    /// Previous render's id for this (org, device, flavor) — points at
+    /// the immediately-prior row so "what changed since last render"
+    /// is a two-row join rather than a full-text diff every time.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub previous_render_id: Option<Uuid>,
+    /// Wall-clock milliseconds from start of `render_device*` to
+    /// completion (fetch + render combined). `None` on the in-memory
+    /// path where nobody's watching the clock.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub render_duration_ms: Option<i32>,
 }
 
 /// Resolve the device's flavor and dispatch to its renderer. Returns a
-/// `RenderedConfig` the caller can persist to `net.rendered_config` or
-/// just display.
+/// `RenderedConfig` in memory **without** writing to
+/// `net.rendered_config` — use this for dry-run / preview flows where
+/// the caller doesn't want to pollute render history. `id` /
+/// `previous_render_id` / `render_duration_ms` on the returned struct
+/// stay `None`. For the production "render + persist + chain" path
+/// call `render_device_persisted`.
 pub async fn render_device(
     pool: &PgPool,
     org_id: Uuid,
@@ -63,6 +81,70 @@ pub async fn render_device(
     Ok(build_result(device_id, flavor, body))
 }
 
+/// Render **and** persist to `net.rendered_config`, chaining to the
+/// previous render for this (org, device, flavor). Returns the
+/// persisted row's id + previous-id + measured duration populated on
+/// the returned struct. Use this from the REST `POST` handler and
+/// other places where render history is part of the audit trail.
+pub async fn render_device_persisted(
+    pool: &PgPool,
+    org_id: Uuid,
+    device_id: Uuid,
+    rendered_by: Option<i32>,
+) -> Result<RenderedConfig, EngineError> {
+    let started = std::time::Instant::now();
+    let mut rc = render_device(pool, org_id, device_id).await?;
+    rc.render_duration_ms = Some(started.elapsed().as_millis().min(i32::MAX as u128) as i32);
+    persist_render(pool, org_id, rendered_by, &mut rc).await?;
+    Ok(rc)
+}
+
+/// Insert a row into `net.rendered_config` and fill
+/// `rc.id` + `rc.previous_render_id` from the result. Looks up the
+/// previous render for this (org, device, flavor) via the
+/// `ix_rendered_config_device` index so the chain stays cheap.
+async fn persist_render(
+    pool: &PgPool,
+    org_id: Uuid,
+    rendered_by: Option<i32>,
+    rc: &mut RenderedConfig,
+) -> Result<(), EngineError> {
+    let prev: Option<(Uuid,)> = sqlx::query_as(
+        "SELECT id FROM net.rendered_config
+          WHERE organization_id = $1 AND device_id = $2 AND flavor_code = $3
+            AND deleted_at IS NULL
+          ORDER BY rendered_at DESC
+          LIMIT 1")
+        .bind(org_id)
+        .bind(rc.device_id)
+        .bind(&rc.flavor_code)
+        .fetch_optional(pool)
+        .await?;
+    let previous_render_id = prev.map(|(id,)| id);
+
+    let row: (Uuid,) = sqlx::query_as(
+        "INSERT INTO net.rendered_config
+            (organization_id, device_id, flavor_code, body, body_sha256,
+             line_count, render_duration_ms, previous_render_id, rendered_by)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+          RETURNING id")
+        .bind(org_id)
+        .bind(rc.device_id)
+        .bind(&rc.flavor_code)
+        .bind(&rc.body)
+        .bind(&rc.body_sha256)
+        .bind(rc.line_count)
+        .bind(rc.render_duration_ms)
+        .bind(previous_render_id)
+        .bind(rendered_by)
+        .fetch_one(pool)
+        .await?;
+
+    rc.id = Some(row.0);
+    rc.previous_render_id = previous_render_id;
+    Ok(())
+}
+
 fn build_result(device_id: Uuid, flavor: &'static FlavorMeta, body: String) -> RenderedConfig {
     let line_count = body.lines().count() as i32;
     let sha = sha256_hex(&body);
@@ -73,6 +155,9 @@ fn build_result(device_id: Uuid, flavor: &'static FlavorMeta, body: String) -> R
         body_sha256: sha,
         line_count,
         rendered_at: Utc::now(),
+        id: None,
+        previous_render_id: None,
+        render_duration_ms: None,
     }
 }
 
@@ -2075,6 +2160,44 @@ mod tests {
         assert!(out.contains("mlag domain 1"));
         assert!(!out.contains("peer-link "),
             "empty interface string → no peer-link line:\n{out}");
+    }
+
+    #[test]
+    fn build_result_leaves_persistence_fields_unset_on_dry_run() {
+        // render_device (dry-run path) routes through build_result and
+        // must NOT fill the persistence-only fields — those get
+        // populated by persist_render during render_device_persisted.
+        let body = "set system hostname \"x\"\n".to_string();
+        let r = build_result(
+            Uuid::nil(),
+            cli_flavor::find_flavor("PicOS").unwrap(),
+            body,
+        );
+        assert!(r.id.is_none(), "id stays None on dry-run render");
+        assert!(r.previous_render_id.is_none(),
+            "previous_render_id stays None on dry-run render");
+        assert!(r.render_duration_ms.is_none(),
+            "render_duration_ms stays None on dry-run render");
+    }
+
+    #[test]
+    fn rendered_config_serde_skips_none_persistence_fields() {
+        // Dry-run results serialise cleanly to JSON without dangling
+        // `"id": null` keys — the camelCase API surface should only
+        // show persistence fields when they're actually populated.
+        let body = "x\n".to_string();
+        let r = build_result(
+            Uuid::nil(),
+            cli_flavor::find_flavor("PicOS").unwrap(),
+            body,
+        );
+        let json = serde_json::to_string(&r).expect("serializes");
+        assert!(!json.contains("\"id\""),            "id should skip: {json}");
+        assert!(!json.contains("previousRenderId"),  "previousRenderId should skip: {json}");
+        assert!(!json.contains("renderDurationMs"),  "renderDurationMs should skip: {json}");
+        // But the core fields stay present.
+        assert!(json.contains("\"deviceId\""));
+        assert!(json.contains("\"flavorCode\":\"PicOS\""));
     }
 
     #[test]
