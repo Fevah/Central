@@ -560,6 +560,23 @@ public class NetworkingEngineClient : IDisposable
             ?? throw new NetworkingEngineException(0, $"POST {path} returned null body");
     }
 
+    /// <summary>Bulk edit — apply the same field/value change to a set
+    /// of devices in one transaction. Whitelisted fields: status,
+    /// role_code, building_code, management_ip, notes. Any per-row
+    /// failure rolls back the whole batch; dryRun=true previews.
+    /// </summary>
+    public async Task<BulkEditResultDto> BulkEditDevicesAsync(Guid organizationId,
+        IReadOnlyList<Guid> deviceIds, string field, string value,
+        bool dryRun = true, CancellationToken ct = default)
+    {
+        var url = $"/api/net/devices/bulk-edit?organizationId={organizationId}&dryRun={(dryRun ? "true" : "false")}";
+        var resp = await _http.PostAsJsonAsync(url,
+            new { deviceIds, field, value }, Json, ct);
+        await EnsureSuccessAsync(resp, ct);
+        return (await resp.Content.ReadFromJsonAsync<BulkEditResultDto>(Json, ct))
+            ?? throw new NetworkingEngineException(0, "POST bulk-edit returned null body");
+    }
+
     // ─── Transport helpers ──────────────────────────────────────────────
 
     private static string BuildQuery(params (string key, string? value)[] parts)
@@ -937,3 +954,16 @@ public record ImportRowOutcomeDto(int RowNumber, bool Ok, List<string> Errors, s
 /// the per-row outcomes so UIs can drive a summary banner.</summary>
 public record ImportValidationResultDto(int TotalRows, int Valid, int Invalid,
     bool DryRun, bool Applied, List<ImportRowOutcomeDto> Outcomes);
+
+// ─── Bulk edit (Phase 10) ──────────────────────────────────────────────
+
+/// <summary>Per-row outcome for a bulk edit. Single-string Error
+/// field (not a list) because bulk-edit changes one column per row
+/// so there's at most one reason it could fail per row.</summary>
+public record BulkEditOutcomeDto(Guid Id, string Hostname, bool Ok, string? Error);
+
+/// <summary>Response envelope for a bulk-edit request. Matches the
+/// import-validation shape closely so UIs can drive both with one
+/// summary-banner + per-row-list component.</summary>
+public record BulkEditResultDto(int Total, int Succeeded, int Failed,
+    bool DryRun, bool Applied, List<BulkEditOutcomeDto> Outcomes);

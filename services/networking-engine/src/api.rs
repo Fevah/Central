@@ -16,6 +16,7 @@ use uuid::Uuid;
 
 use crate::allocation::AllocationService;
 use crate::audit::{self, ExportQuery, ListAuditQuery, VerifyChainQuery};
+use crate::bulk_edit::{self, BulkEditDevicesBody, BulkEditQuery};
 use crate::bulk_export;
 use crate::bulk_import;
 use crate::cli_flavor::{self, ListFlavorsQuery, SetFlavorConfigBody};
@@ -139,6 +140,9 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/devices/import",                   post(import_devices_csv))
         .route("/api/net/vlans/import",                     post(import_vlans_csv))
         .route("/api/net/subnets/import",                   post(import_subnets_csv))
+        // Bulk edit (Phase 10) — same-value-for-all transactional
+        // update across a selected set of rows; dryRun preview.
+        .route("/api/net/devices/bulk-edit",                post(bulk_edit_devices_handler))
         .with_state(state)
 }
 
@@ -1177,6 +1181,19 @@ async fn import_subnets_csv(
     let user_id = header_user_id(&headers);
     let result = bulk_import::import_subnets(
         &s.pool, q.organization_id, &body, q.dry_run, user_id
+    ).await?;
+    Ok(Json(result))
+}
+
+async fn bulk_edit_devices_handler(
+    State(s): State<AppState>,
+    Query(q): Query<BulkEditQuery>,
+    headers: HeaderMap,
+    Json(body): Json<BulkEditDevicesBody>,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    let result = bulk_edit::bulk_edit_devices(
+        &s.pool, q.organization_id, &body, q.dry_run, user_id,
     ).await?;
     Ok(Json(result))
 }
