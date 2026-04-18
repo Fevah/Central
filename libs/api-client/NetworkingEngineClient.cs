@@ -547,6 +547,25 @@ public class NetworkingEngineClient : IDisposable
         string csvBody, bool dryRun = true, CancellationToken ct = default)
         => PostCsvAsync("/api/net/subnets/import", organizationId, csvBody, dryRun, ct);
 
+    /// <summary>Bulk import servers. Required: hostname; optional:
+    /// profile_code, building_code, management_ip, status. ASN +
+    /// loopback + NIC count are accepted-for-reference-but-ignored-
+    /// on-apply (same semantic as ASN on the device importer —
+    /// operators wire them up via the allocation service or CRUD).</summary>
+    public Task<ImportValidationResultDto> ImportServersCsvAsync(Guid organizationId,
+        string csvBody, bool dryRun = true, CancellationToken ct = default)
+        => PostCsvAsync("/api/net/servers/import", organizationId, csvBody, dryRun, ct);
+
+    /// <summary>Bulk import DHCP relay targets. Required: vlan_id
+    /// (must exist in the tenant's VLAN catalog), server_ip. First-
+    /// wins when multiple blocks have the same numeric vlan_id —
+    /// operators in multi-block tenants should use the CRUD panel
+    /// for fine-grained control until a block-qualifier column
+    /// lands.</summary>
+    public Task<ImportValidationResultDto> ImportDhcpRelayTargetsCsvAsync(Guid organizationId,
+        string csvBody, bool dryRun = true, CancellationToken ct = default)
+        => PostCsvAsync("/api/net/dhcp-relay-targets/import", organizationId, csvBody, dryRun, ct);
+
     /// <summary>Shared transport for every `*/import` POST — keeps
     /// the three entity-specific helpers to one line each.</summary>
     private async Task<ImportValidationResultDto> PostCsvAsync(string path,

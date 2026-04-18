@@ -916,6 +916,421 @@ fn validate_subnet_row(
     }
 }
 
+// ─── Server import ───────────────────────────────────────────────────────
+
+/// Column order mirrors `bulk_export::export_servers_csv`.
+///
+/// nic_count is reference-only (driven by the server_profile; the
+/// import ignores what the CSV says). asn is reference-only too —
+/// same "ignored on apply" semantic as devices (allocating ASN
+/// needs the allocation service + a block choice, which the bulk-
+/// import flow doesn't do).
+const SERVER_COLUMNS: &[&str] = &[
+    "hostname", "profile_code", "building_code", "asn",
+    "loopback_ip", "management_ip", "nic_count", "status",
+];
+
+pub async fn import_servers(
+    pool: &PgPool,
+    org_id: Uuid,
+    body: &str,
+    dry_run: bool,
+    user_id: Option<i32>,
+) -> Result<ImportValidationResult, EngineError> {
+    scope_grants::require_permission(
+        pool, org_id, user_id, "write", "Server", None,
+    ).await?;
+
+    let rows = parse_csv(body)?;
+    if rows.is_empty() {
+        return Ok(ImportValidationResult {
+            total_rows: 0, valid: 0, invalid: 0,
+            dry_run, applied: false, outcomes: vec![],
+        });
+    }
+
+    let header = &rows[0];
+    if header.len() != SERVER_COLUMNS.len()
+        || !header.iter().zip(SERVER_COLUMNS).all(|(a,b)| a.eq_ignore_ascii_case(b))
+    {
+        return Err(EngineError::bad_request(format!(
+            "server import header must be: {}", SERVER_COLUMNS.join(","))));
+    }
+
+    let profile_rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, profile_code FROM net.server_profile
+          WHERE organization_id = $1 AND deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let profile_codes: std::collections::HashSet<String> =
+        profile_rows.iter().map(|(_, c)| c.clone()).collect();
+    let profile_code_to_id: std::collections::HashMap<String, Uuid> =
+        profile_rows.into_iter().map(|(id, c)| (c, id)).collect();
+
+    let building_rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, building_code FROM net.building
+          WHERE organization_id = $1 AND deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let building_codes: std::collections::HashSet<String> =
+        building_rows.iter().map(|(_, c)| c.clone()).collect();
+    let building_code_to_id: std::collections::HashMap<String, Uuid> =
+        building_rows.into_iter().map(|(id, c)| (c, id)).collect();
+
+    let existing_rows: Vec<(String,)> = sqlx::query_as(
+        "SELECT hostname FROM net.server
+          WHERE organization_id = $1 AND deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let existing_hostnames: std::collections::HashSet<String> =
+        existing_rows.into_iter().map(|(h,)| h).collect();
+
+    let mut outcomes: Vec<ImportRowOutcome> = Vec::with_capacity(rows.len().saturating_sub(1));
+    for (i, row) in rows.iter().enumerate().skip(1) {
+        let row_number = i + 1;
+        let mut outcome = validate_server_row(row, row_number, &profile_codes, &building_codes);
+        if outcome.ok && existing_hostnames.contains(&outcome.identifier) {
+            outcome.ok = false;
+            outcome.errors.push(
+                "server with this hostname already exists — update mode not yet supported"
+                .to_string());
+        }
+        outcomes.push(outcome);
+    }
+
+    let valid   = outcomes.iter().filter(|o| o.ok).count();
+    let invalid = outcomes.len() - valid;
+    if dry_run || invalid > 0 {
+        return Ok(ImportValidationResult {
+            total_rows: outcomes.len(),
+            valid, invalid,
+            dry_run, applied: false, outcomes,
+        });
+    }
+
+    let mut tx = pool.begin().await?;
+    for (outcome_idx, row) in rows.iter().enumerate().skip(1).map(|(_, r)| r).enumerate() {
+        let hostname      = row[0].trim();
+        let profile_code  = row[1].trim();
+        let building_code = row[2].trim();
+        let management_ip = row[5].trim();   // row[3]=asn, row[4]=loopback (ignored)
+        let status        = row[7].trim();
+
+        let profile_id  = if profile_code.is_empty()  { None } else { profile_code_to_id.get(profile_code).copied() };
+        let building_id = if building_code.is_empty() { None } else { building_code_to_id.get(building_code).copied() };
+        let status_val  = if status.is_empty() { "Planned" } else { status };
+        let mgmt_ip_opt: Option<&str> = if management_ip.is_empty() { None } else { Some(management_ip) };
+
+        let insert_result: Result<(Uuid,), sqlx::Error> = sqlx::query_as(
+            "INSERT INTO net.server
+                (organization_id, server_profile_id, building_id,
+                 hostname, management_ip, status, created_by, updated_by)
+             VALUES ($1, $2, $3, $4, $5::inet, $6::net.entity_status, $7, $7)
+             RETURNING id")
+            .bind(org_id)
+            .bind(profile_id)
+            .bind(building_id)
+            .bind(hostname)
+            .bind(mgmt_ip_opt)
+            .bind(status_val)
+            .bind(user_id)
+            .fetch_one(&mut *tx).await;
+
+        let server_id = match insert_result {
+            Ok((id,)) => id,
+            Err(e) => {
+                let o = &mut outcomes[outcome_idx];
+                o.ok = false;
+                o.errors.push(format!("database INSERT failed: {e}"));
+                return Ok(ImportValidationResult {
+                    total_rows: outcomes.len(),
+                    valid: outcomes.iter().filter(|o| o.ok).count(),
+                    invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                    dry_run: false, applied: false, outcomes,
+                });
+            }
+        };
+
+        audit::append_tx(&mut tx, &AuditEvent {
+            organization_id: org_id,
+            source_service: "networking-engine",
+            entity_type: "Server",
+            entity_id: Some(server_id),
+            action: "Created",
+            actor_user_id: user_id,
+            actor_display: None, client_ip: None, correlation_id: None,
+            details: serde_json::json!({
+                "source": "bulk_import",
+                "hostname": hostname,
+                "profile_code": profile_code,
+                "building_code": building_code,
+            }),
+        }).await?;
+    }
+    tx.commit().await?;
+
+    Ok(ImportValidationResult {
+        total_rows: outcomes.len(),
+        valid, invalid: 0,
+        dry_run: false, applied: true, outcomes,
+    })
+}
+
+fn validate_server_row(
+    row: &[String],
+    row_number: usize,
+    profile_codes: &std::collections::HashSet<String>,
+    building_codes: &std::collections::HashSet<String>,
+) -> ImportRowOutcome {
+    let mut errors = Vec::new();
+    if row.len() != SERVER_COLUMNS.len() {
+        errors.push(format!("expected {} columns, got {}", SERVER_COLUMNS.len(), row.len()));
+        return ImportRowOutcome {
+            row_number, ok: false, errors,
+            identifier: row.first().cloned().unwrap_or_default(),
+        };
+    }
+    let hostname      = row[0].trim();
+    let profile_code  = row[1].trim();
+    let building_code = row[2].trim();
+    let management_ip = row[5].trim();
+    let status        = row[7].trim();
+
+    if hostname.is_empty() {
+        errors.push("hostname is required".into());
+    }
+    if !profile_code.is_empty() && !profile_codes.contains(profile_code) {
+        errors.push(format!(
+            "profile_code '{profile_code}' not found in this tenant's server_profile catalog"));
+    }
+    if !building_code.is_empty() && !building_codes.contains(building_code) {
+        errors.push(format!(
+            "building_code '{building_code}' not found in this tenant's building catalog"));
+    }
+    if !management_ip.is_empty() {
+        let ip_part = management_ip.split('/').next().unwrap_or(management_ip);
+        if ip_part.parse::<std::net::IpAddr>().is_err() {
+            errors.push(format!("management_ip '{management_ip}' is not a valid IP address"));
+        }
+    }
+    if !status.is_empty() &&
+        !matches!(status, "Planned"|"Reserved"|"Active"|"Deprecated"|"Retired")
+    {
+        errors.push(format!("status '{status}' must be Planned/Reserved/Active/Deprecated/Retired"));
+    }
+
+    ImportRowOutcome {
+        row_number,
+        ok: errors.is_empty(),
+        errors,
+        identifier: hostname.to_string(),
+    }
+}
+
+// ─── DHCP relay target import ────────────────────────────────────────────
+
+/// Column order mirrors `bulk_export::export_dhcp_relay_targets_csv`.
+///
+/// `linked_ip_address_id` is accepted but ignored on apply — resolving
+/// it would require a separate lookup on net.ip_address that the
+/// import flow doesn't need today (the CSV is the source of truth
+/// for the server_ip, and operators wire linkage via the CRUD panel
+/// when they care about it).
+const DHCP_RELAY_COLUMNS: &[&str] = &[
+    "vlan_id", "server_ip", "priority", "linked_ip_address_id", "notes", "status",
+];
+
+pub async fn import_dhcp_relay_targets(
+    pool: &PgPool,
+    org_id: Uuid,
+    body: &str,
+    dry_run: bool,
+    user_id: Option<i32>,
+) -> Result<ImportValidationResult, EngineError> {
+    scope_grants::require_permission(
+        pool, org_id, user_id, "write", "DhcpRelayTarget", None,
+    ).await?;
+
+    let rows = parse_csv(body)?;
+    if rows.is_empty() {
+        return Ok(ImportValidationResult {
+            total_rows: 0, valid: 0, invalid: 0,
+            dry_run, applied: false, outcomes: vec![],
+        });
+    }
+
+    let header = &rows[0];
+    if header.len() != DHCP_RELAY_COLUMNS.len()
+        || !header.iter().zip(DHCP_RELAY_COLUMNS).all(|(a,b)| a.eq_ignore_ascii_case(b))
+    {
+        return Err(EngineError::bad_request(format!(
+            "dhcp relay target import header must be: {}", DHCP_RELAY_COLUMNS.join(","))));
+    }
+
+    // Pre-fetch VLANs (numeric vlan_id → uuid) + existing targets
+    // for dup detection. VLANs may have the same numeric id across
+    // blocks — we key on (org, vlan_id) so multi-block tenants
+    // that happen to reuse a number land on the first match; that
+    // limitation is the same one the subnet importer has and lands
+    // in a follow-on slice.
+    let vlan_rows: Vec<(Uuid, i32)> = sqlx::query_as(
+        "SELECT id, vlan_id FROM net.vlan
+          WHERE organization_id = $1 AND deleted_at IS NULL
+          ORDER BY vlan_id")
+        .bind(org_id).fetch_all(pool).await?;
+    let mut vlan_numeric_to_id: std::collections::HashMap<i32, Uuid> = std::collections::HashMap::new();
+    for (id, n) in vlan_rows {
+        // First-wins on duplicate numeric vlan_ids.
+        vlan_numeric_to_id.entry(n).or_insert(id);
+    }
+
+    let existing_pairs: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT vlan_id, host(server_ip) FROM net.dhcp_relay_target
+          WHERE organization_id = $1 AND deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let existing_pairs: std::collections::HashSet<String> =
+        existing_pairs.into_iter().map(|(vid, ip)| format!("{vid}|{ip}")).collect();
+
+    let mut outcomes: Vec<ImportRowOutcome> = Vec::with_capacity(rows.len().saturating_sub(1));
+    for (i, row) in rows.iter().enumerate().skip(1) {
+        let row_number = i + 1;
+        outcomes.push(validate_dhcp_relay_row(row, row_number, &vlan_numeric_to_id, &existing_pairs));
+    }
+
+    let valid   = outcomes.iter().filter(|o| o.ok).count();
+    let invalid = outcomes.len() - valid;
+    if dry_run || invalid > 0 {
+        return Ok(ImportValidationResult {
+            total_rows: outcomes.len(),
+            valid, invalid,
+            dry_run, applied: false, outcomes,
+        });
+    }
+
+    let mut tx = pool.begin().await?;
+    for (outcome_idx, row) in rows.iter().enumerate().skip(1).map(|(_, r)| r).enumerate() {
+        let vlan_numeric: i32 = row[0].trim().parse().unwrap_or(0);
+        let server_ip  = row[1].trim();
+        let priority: i32 = row[2].trim().parse().unwrap_or(10);
+        // row[3]=linked_ip_address_id ignored on apply
+        let notes      = row[4].trim();
+        // row[5]=status not bound — INSERT defaults to Active
+
+        let vlan_uuid = vlan_numeric_to_id.get(&vlan_numeric).copied()
+            .expect("validator enforced VLAN exists");
+        let notes_opt: Option<&str> = if notes.is_empty() { None } else { Some(notes) };
+
+        let insert_result: Result<(Uuid,), sqlx::Error> = sqlx::query_as(
+            "INSERT INTO net.dhcp_relay_target
+                (organization_id, vlan_id, server_ip, priority, notes,
+                 status, lock_state, created_by, updated_by)
+             VALUES ($1, $2, $3::inet, $4, $5,
+                     'Active'::net.entity_status, 'Open'::net.lock_state, $6, $6)
+             RETURNING id")
+            .bind(org_id)
+            .bind(vlan_uuid)
+            .bind(server_ip)
+            .bind(priority)
+            .bind(notes_opt)
+            .bind(user_id)
+            .fetch_one(&mut *tx).await;
+
+        let target_id = match insert_result {
+            Ok((id,)) => id,
+            Err(e) => {
+                let o = &mut outcomes[outcome_idx];
+                o.ok = false;
+                o.errors.push(format!("database INSERT failed: {e}"));
+                return Ok(ImportValidationResult {
+                    total_rows: outcomes.len(),
+                    valid: outcomes.iter().filter(|o| o.ok).count(),
+                    invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                    dry_run: false, applied: false, outcomes,
+                });
+            }
+        };
+
+        audit::append_tx(&mut tx, &AuditEvent {
+            organization_id: org_id,
+            source_service: "networking-engine",
+            entity_type: "DhcpRelayTarget",
+            entity_id: Some(target_id),
+            action: "Created",
+            actor_user_id: user_id,
+            actor_display: None, client_ip: None, correlation_id: None,
+            details: serde_json::json!({
+                "source": "bulk_import",
+                "vlan_id": vlan_numeric,
+                "server_ip": server_ip,
+            }),
+        }).await?;
+    }
+    tx.commit().await?;
+
+    Ok(ImportValidationResult {
+        total_rows: outcomes.len(),
+        valid, invalid: 0,
+        dry_run: false, applied: true, outcomes,
+    })
+}
+
+fn validate_dhcp_relay_row(
+    row: &[String],
+    row_number: usize,
+    vlan_numeric_to_id: &std::collections::HashMap<i32, Uuid>,
+    existing_pairs: &std::collections::HashSet<String>,
+) -> ImportRowOutcome {
+    let mut errors = Vec::new();
+    if row.len() != DHCP_RELAY_COLUMNS.len() {
+        errors.push(format!("expected {} columns, got {}", DHCP_RELAY_COLUMNS.len(), row.len()));
+        return ImportRowOutcome {
+            row_number, ok: false, errors,
+            identifier: row.first().cloned().unwrap_or_default(),
+        };
+    }
+    let vlan_str   = row[0].trim();
+    let server_ip  = row[1].trim();
+    let priority   = row[2].trim();
+
+    let vlan_parse = vlan_str.parse::<i32>().ok();
+    match vlan_parse {
+        None => errors.push(format!("vlan_id '{vlan_str}' is not a valid integer")),
+        Some(n) if !(1..=4094).contains(&n) =>
+            errors.push(format!("vlan_id {n} is outside the 1-4094 range")),
+        Some(n) if !vlan_numeric_to_id.contains_key(&n) =>
+            errors.push(format!(
+                "vlan_id {n} not found in this tenant's vlan catalog — create the VLAN first")),
+        _ => {}
+    }
+    if server_ip.is_empty() {
+        errors.push("server_ip is required".into());
+    } else {
+        let ip_part = server_ip.split('/').next().unwrap_or(server_ip);
+        if ip_part.parse::<std::net::IpAddr>().is_err() {
+            errors.push(format!("server_ip '{server_ip}' is not a valid IP address"));
+        }
+    }
+    if !priority.is_empty() {
+        match priority.parse::<i32>() {
+            Ok(p) if p < 0 => errors.push(format!("priority '{p}' must be non-negative")),
+            Ok(_) => {}
+            Err(_) => errors.push(format!("priority '{priority}' is not a valid integer")),
+        }
+    }
+    if let (Some(n), true) = (vlan_parse, !server_ip.is_empty()) {
+        let key = format!("{}|{}", vlan_numeric_to_id.get(&n)
+            .copied().unwrap_or_else(Uuid::nil), server_ip);
+        if existing_pairs.contains(&key) {
+            errors.push(format!(
+                "dhcp relay target for vlan {n} + server_ip {server_ip} already exists"));
+        }
+    }
+
+    ImportRowOutcome {
+        row_number,
+        ok: errors.is_empty(),
+        errors,
+        identifier: format!("{vlan_str}|{server_ip}"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

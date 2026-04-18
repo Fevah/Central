@@ -441,3 +441,170 @@ async fn subnet_import_forbidden_without_write_subnet_grant() {
     assert!(err.contains("Forbidden"), "err: {err}");
     assert_eq!(fx.count_subnets().await, 0);
 }
+
+// ─── Server + DHCP relay target import tests ──────────────────────────────
+//
+// The tests above already exercise the devices / vlans / subnets
+// entities. These add coverage for server + dhcp-relay-target —
+// the last two of the core 9 import-eligible entities.
+
+/// Extends PoolsFixture with a server_profile + seeded VLAN so
+/// server + dhcp-relay-target imports can resolve their FKs.
+struct FullFixture {
+    pools: PoolsFixture,
+    profile_code: String,
+    vlan_numeric: i32,
+}
+
+impl FullFixture {
+    async fn new(pool: PgPool) -> sqlx::Result<Self> {
+        let pools = PoolsFixture::new(pool).await?;
+
+        // Server profile — profile_code must be unique per tenant.
+        sqlx::query(
+            "INSERT INTO net.server_profile (organization_id, profile_code,
+                                             display_name, nic_count, naming_template)
+             VALUES ($1, 'BI-SP', 'BI Server Profile', 4,
+                     '{building_code}-SRV{instance}')")
+            .bind(pools.tenant.org_id).execute(&pools.tenant.pool).await?;
+
+        // A VLAN row (not just a block) for dhcp-relay-target tests.
+        let (vlan_pool_id,): (Uuid,) = sqlx::query_as(
+            "SELECT id FROM net.vlan_pool
+              WHERE organization_id = $1 AND pool_code = 'BI-VP'")
+            .bind(pools.tenant.org_id).fetch_one(&pools.tenant.pool).await?;
+        let (vlan_block_id,): (Uuid,) = sqlx::query_as(
+            "SELECT id FROM net.vlan_block
+              WHERE organization_id = $1 AND block_code = 'BI-VB'")
+            .bind(pools.tenant.org_id).fetch_one(&pools.tenant.pool).await?;
+        sqlx::query(
+            "INSERT INTO net.vlan (organization_id, pool_id, block_id,
+                                   vlan_id, display_name, scope_level, status)
+             VALUES ($1, $2, $3, 120, 'BI-VLAN', 'Free', 'Active')")
+            .bind(pools.tenant.org_id).bind(vlan_pool_id).bind(vlan_block_id)
+            .execute(&pools.tenant.pool).await?;
+
+        Ok(Self { pools, profile_code: "BI-SP".into(), vlan_numeric: 120 })
+    }
+
+    async fn count_servers(&self) -> i64 {
+        let (n,): (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM net.server
+              WHERE organization_id = $1 AND deleted_at IS NULL")
+            .bind(self.pools.tenant.org_id).fetch_one(&self.pools.tenant.pool).await.unwrap();
+        n
+    }
+
+    async fn count_dhcp_relay_targets(&self) -> i64 {
+        let (n,): (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM net.dhcp_relay_target
+              WHERE organization_id = $1 AND deleted_at IS NULL")
+            .bind(self.pools.tenant.org_id).fetch_one(&self.pools.tenant.pool).await.unwrap();
+        n
+    }
+}
+
+const SERVER_HEADER: &str = "hostname,profile_code,building_code,asn,loopback_ip,management_ip,nic_count,status\r\n";
+const DHCP_HEADER:   &str = "vlan_id,server_ip,priority,linked_ip_address_id,notes,status\r\n";
+
+#[tokio::test]
+#[ignore]
+async fn server_import_happy_path_commits() {
+    let Some(pool) = pool_or_skip("server_import_happy_path_commits").await else { return; };
+    let fx = FullFixture::new(pool).await.expect("fixture");
+
+    let csv = format!(
+        "{SERVER_HEADER}\
+         SRV-A,{p},IT-B,,,10.88.0.1,4,Active\r\n\
+         SRV-B,{p},IT-B,,,10.88.0.2,4,Active\r\n",
+        p = fx.profile_code);
+    let result = bulk_import::import_servers(
+        &fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, None,
+    ).await.expect("apply");
+    assert_eq!(result.valid, 2);
+    assert!(result.applied);
+    assert_eq!(fx.count_servers().await, 2);
+}
+
+#[tokio::test]
+#[ignore]
+async fn server_import_rejects_duplicate_hostname() {
+    let Some(pool) = pool_or_skip("server_import_rejects_duplicate_hostname").await else { return; };
+    let fx = FullFixture::new(pool).await.expect("fixture");
+
+    let csv = format!("{SERVER_HEADER}SRV-X,{p},IT-B,,,,4,Active\r\n", p = fx.profile_code);
+    bulk_import::import_servers(&fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, None)
+        .await.expect("seed apply");
+    let result = bulk_import::import_servers(&fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, None)
+        .await.expect("re-apply");
+    assert_eq!(result.invalid, 1);
+    assert!(!result.applied);
+    assert!(result.outcomes[0].errors.iter().any(|e| e.contains("already exists")),
+        "duplicate hostname must surface: {:?}", result.outcomes[0].errors);
+    assert_eq!(fx.count_servers().await, 1);
+}
+
+#[tokio::test]
+#[ignore]
+async fn server_import_forbidden_without_grant() {
+    let Some(pool) = pool_or_skip("server_import_forbidden_without_grant").await else { return; };
+    let fx = FullFixture::new(pool).await.expect("fixture");
+
+    let csv = format!("{SERVER_HEADER}SRV-Z,{p},IT-B,,,,4,Active\r\n", p = fx.profile_code);
+    let err = bulk_import::import_servers(
+        &fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, Some(42),
+    ).await.unwrap_err().to_string();
+    assert!(err.contains("Forbidden"), "err: {err}");
+    assert_eq!(fx.count_servers().await, 0);
+}
+
+#[tokio::test]
+#[ignore]
+async fn dhcp_relay_import_happy_path_commits() {
+    let Some(pool) = pool_or_skip("dhcp_relay_import_happy_path_commits").await else { return; };
+    let fx = FullFixture::new(pool).await.expect("fixture");
+
+    let csv = format!(
+        "{DHCP_HEADER}\
+         {v},10.11.120.10,10,,,Active\r\n\
+         {v},10.11.120.11,20,,,Active\r\n",
+        v = fx.vlan_numeric);
+    let result = bulk_import::import_dhcp_relay_targets(
+        &fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, None,
+    ).await.expect("apply");
+    assert_eq!(result.valid, 2);
+    assert!(result.applied);
+    assert_eq!(fx.count_dhcp_relay_targets().await, 2);
+}
+
+#[tokio::test]
+#[ignore]
+async fn dhcp_relay_import_rejects_unknown_vlan_id() {
+    let Some(pool) = pool_or_skip("dhcp_relay_import_rejects_unknown_vlan_id").await else { return; };
+    let fx = FullFixture::new(pool).await.expect("fixture");
+
+    // VLAN 999 isn't in this tenant — rejected with a clear message.
+    let csv = format!("{DHCP_HEADER}999,10.11.99.10,10,,,Active\r\n");
+    let result = bulk_import::import_dhcp_relay_targets(
+        &fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, None,
+    ).await.expect("apply");
+    assert_eq!(result.invalid, 1);
+    assert!(!result.applied);
+    assert!(result.outcomes[0].errors.iter().any(|e| e.contains("vlan catalog")),
+        "unknown vlan should surface: {:?}", result.outcomes[0].errors);
+    assert_eq!(fx.count_dhcp_relay_targets().await, 0);
+}
+
+#[tokio::test]
+#[ignore]
+async fn dhcp_relay_import_forbidden_without_grant() {
+    let Some(pool) = pool_or_skip("dhcp_relay_import_forbidden_without_grant").await else { return; };
+    let fx = FullFixture::new(pool).await.expect("fixture");
+
+    let csv = format!("{DHCP_HEADER}{},10.11.120.99,10,,,Active\r\n", fx.vlan_numeric);
+    let err = bulk_import::import_dhcp_relay_targets(
+        &fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, Some(42),
+    ).await.unwrap_err().to_string();
+    assert!(err.contains("Forbidden"), "err: {err}");
+    assert_eq!(fx.count_dhcp_relay_targets().await, 0);
+}
