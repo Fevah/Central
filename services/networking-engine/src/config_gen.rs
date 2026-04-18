@@ -620,6 +620,13 @@ fn render_management_interface_section(out: &mut String, ctx: &DeviceContext) {
 
 fn render_vlans_section(out: &mut String, ctx: &DeviceContext) {
     if ctx.vlans.is_empty() { return; }
+    // VLANs bound to an SVI emit an extra `l3-interface "vlan-N"` line
+    // right after their description — this is the PicOS declaration
+    // that binds the L2 VLAN to the L3 interface of the same number.
+    // Cross the two lists by vlan_id so VLANs without an SVI (pure L2
+    // trunks) don't get a dangling binding.
+    let svi_vlans: std::collections::HashSet<i32> =
+        ctx.l3_svis.iter().map(|s| s.vlan_id).collect();
     for v in &ctx.vlans {
         // PicOS: set vlans vlan-id N description "..."
         // We always emit vlan-id + description; name is PicOS's
@@ -629,6 +636,11 @@ fn render_vlans_section(out: &mut String, ctx: &DeviceContext) {
             "set vlans vlan-id {} description \"{}\"\n",
             v.vlan_id,
             escape_picos(v.description.as_deref().unwrap_or(&v.display_name))));
+        if svi_vlans.contains(&v.vlan_id) {
+            out.push_str(&format!(
+                "set vlans vlan-id {} l3-interface \"vlan-{}\"\n",
+                v.vlan_id, v.vlan_id));
+        }
     }
     out.push('\n');
 }
@@ -857,6 +869,26 @@ mod tests {
             mlag: None,
             l3_svis: vec![],
             port_descriptions: ports,
+            port_l2_rules: vec![],
+        }
+    }
+
+    fn fixture_with_vlans_and_svis(
+        vlans: Vec<VlanLine>,
+        svis: Vec<L3SviLine>,
+    ) -> DeviceContext {
+        DeviceContext {
+            device_id: Uuid::nil(),
+            hostname: "CORE02".into(),
+            loopback: None,
+            management_ip: None,
+            vlans,
+            bgp: None,
+            bgp_neighbors: vec![],
+            mstp_priority: None,
+            mlag: None,
+            l3_svis: svis,
+            port_descriptions: vec![],
             port_l2_rules: vec![],
         }
     }
@@ -1248,6 +1280,82 @@ mod tests {
         );
         assert_eq!(out, "MEP-91-Core",
             "unparseable device_code should leave {{instance}} empty");
+    }
+
+    #[test]
+    fn picos_emits_vlan_svi_binding_when_svi_present() {
+        let ctx = fixture_with_vlans_and_svis(
+            vec![
+                VlanLine { vlan_id: 101, display_name: "IT".into(), description: None },
+            ],
+            vec![
+                L3SviLine { vlan_id: 101, address: "10.11.101.2/24".into() },
+            ],
+        );
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains(r#"set vlans vlan-id 101 description "IT""#),
+            "VLAN description missing:\n{out}");
+        assert!(out.contains(r#"set vlans vlan-id 101 l3-interface "vlan-101""#),
+            "VLAN→SVI binding line missing:\n{out}");
+    }
+
+    #[test]
+    fn picos_omits_svi_binding_when_vlan_has_no_svi() {
+        // Pure L2 trunk VLAN (no SVI) → no l3-interface binding line.
+        let ctx = fixture_with_vlans_and_svis(
+            vec![
+                VlanLine { vlan_id: 500, display_name: "L2-only".into(), description: None },
+            ],
+            vec![],
+        );
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains(r#"set vlans vlan-id 500 description "L2-only""#));
+        assert!(!out.contains("vlan-id 500 l3-interface"),
+            "VLAN without SVI should not get the binding line:\n{out}");
+    }
+
+    #[test]
+    fn picos_emits_binding_only_for_vlans_that_have_a_matching_svi() {
+        // Mixed set: 101 has an SVI, 500 is pure L2. Binding emits only
+        // for 101.
+        let ctx = fixture_with_vlans_and_svis(
+            vec![
+                VlanLine { vlan_id: 101, display_name: "IT".into(), description: None },
+                VlanLine { vlan_id: 500, display_name: "L2".into(), description: None },
+            ],
+            vec![
+                L3SviLine { vlan_id: 101, address: "10.11.101.2/24".into() },
+            ],
+        );
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains("vlan-id 101 l3-interface"),
+            "101 should get binding:\n{out}");
+        assert!(!out.contains("vlan-id 500 l3-interface"),
+            "500 should NOT get binding:\n{out}");
+    }
+
+    #[test]
+    fn picos_vlan_binding_lands_right_after_its_own_description() {
+        // Order matters: for VLAN N, the binding line must sit between
+        // that VLAN's description line and the NEXT VLAN's description
+        // line. Otherwise diffing against prior output becomes messy.
+        let ctx = fixture_with_vlans_and_svis(
+            vec![
+                VlanLine { vlan_id: 101, display_name: "IT".into(), description: None },
+                VlanLine { vlan_id: 120, display_name: "Servers".into(), description: None },
+            ],
+            vec![
+                L3SviLine { vlan_id: 101, address: "10.11.101.2/24".into() },
+                L3SviLine { vlan_id: 120, address: "10.11.120.2/24".into() },
+            ],
+        );
+        let out = PicosRenderer::render(&ctx);
+        let desc_101    = out.find(r#"vlan-id 101 description"#).expect("101 desc");
+        let bind_101    = out.find(r#"vlan-id 101 l3-interface"#).expect("101 binding");
+        let desc_120    = out.find(r#"vlan-id 120 description"#).expect("120 desc");
+        let bind_120    = out.find(r#"vlan-id 120 l3-interface"#).expect("120 binding");
+        assert!(desc_101 < bind_101 && bind_101 < desc_120 && desc_120 < bind_120,
+            "each binding must sit between its own description and the next:\n{out}");
     }
 
     #[test]
