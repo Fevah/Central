@@ -87,7 +87,9 @@ The config-gen + turn-up-pack halves of Phase 10 shipped as 28 self-contained Ru
 
 **Migrations shipped:** `102_net_cli_flavors.sql` (tenant CLI flavor state + render history table with SHA-256 chain), `103_net_dhcp_relay_targets.sql` (M:N VLAN × server IP with priority), `104_net_immunocore_seed_gateway_vrrp_dhcp.sql` (imports from `public.vrrp_config` + `public.dhcp_relay` + seeds mgmt-VLAN Gateways).
 
-**Phase 10 deliverables NOT started**: RBAC scoped policy engine, global search + faceted filters + saved views, bulk edit / import / export, XLSX round-trip of the Immunocore workbook. Turn-up pack generator shipped (device / building / site / region scopes).
+**Bulk CSV export** (partial — 4 entities of ~10): `GET /api/net/devices/export`, `/vlans/export`, `/ip-addresses/export`, `/links/export` — RFC 4180 escaping, `Content-Disposition: attachment` download headers, joined-through display codes (e.g. `subnet_code` + `template_code` rather than UUIDs) so output round-trips cleanly through spreadsheets. Links use a cross-tab A/B shape matching legacy P2P/B2B/FW exports.
+
+**Phase 10 deliverables NOT started**: RBAC scoped policy engine, global search + faceted filters + saved views, bulk import + bulk edit, XLSX round-trip. Turn-up pack generator shipped (device / building / site / region scopes); bulk CSV export shipped for the 4 core entities with same pattern ready to lift to the rest.
 
 See `docs/NETWORKING_BUILDOUT_PLAN.md` §Phase 10 for the slice-by-slice commit table and acceptance-criteria check.
 

@@ -379,7 +379,7 @@ Each phase has: scope, entities delivered, capabilities delivered (by MFL §), D
 
 **Risk:** medium.
 
-**Status (2026-04-18) — byte-for-byte parity acceptance bar REACHED. Turn-up pack generator shipped (device / building / site / region). Render history + diff + CRUD shipped. RBAC / search / bulk / XLSX not started.**
+**Status (2026-04-18) — byte-for-byte parity acceptance bar REACHED. Turn-up pack generator shipped (device / building / site / region). Render history + diff + CRUD shipped. Bulk CSV export shipped for 4 core entities (devices / VLANs / IP addresses / links). RBAC / search / bulk import / XLSX not started.**
 
 The config-generation half + turn-up pack generator shipped as
 self-contained Rust slices inside `services/networking-engine/`.
@@ -421,13 +421,22 @@ tenant) the output matches line-for-line. 230/230 unit tests +
 | 25 | Live-DB integration test harness (`#[ignore]` opt-in, skip-when-no-env, per-test tenant UUID isolation) | 1d4659617 |
 | 26 | Region-level turn-up pack — whole-estate render | 3fed2991e |
 | 27 | C# `NetworkingEngineClient` surface for all Phase 10 endpoints + DTOs | bcb9ad26d |
+| 28 | Bulk export — devices → CSV (RFC 4180 escaping, `Content-Disposition` download; hand-rolled, no new crate dep) | d42c80a01 |
+| 29 | Bulk export — VLANs + IP addresses → CSV; extracted `csv_download_headers` helper | 9a6caa376 |
+| 30 | Bulk export — links → CSV with cross-tab A/B side columns (two `net.link_endpoint` joins) | a1070a032 |
 
 **Acceptance criteria check:**
 - [x] Byte-for-byte match with pre-migration output — every legacy section has a Rust counterpart
 - [x] Turn-up pack generator — device / building / site / region scopes all ship; per-device error tolerance
 - [x] Config generation against the new schema — reads from `net.device`, `net.link_endpoint`, `net.asn_allocation`, `net.ip_address`, `net.mstp_priority_allocation`, `net.mlag_domain`, `net.vlan`, `net.subnet`, `net.port`, `net.dhcp_relay_target`
 
-**Remaining Phase 10 deliverables NOT started:** RBAC scoped policy engine `(action, entity_type, scope_type, scope_id)`, global search + faceted filters + saved views, bulk edit / import / export, XLSX round-trip of the Immunocore workbook. Those are four genuinely separate feature surfaces; each warrants its own buildout slice.
+**Remaining Phase 10 deliverables:**
+- **Bulk export** — 4 entities done (devices / VLANs / IP addresses / links); servers / subnets / DHCP relay targets / VRRP VIPs / Gateway IPs / ASN allocations / MLAG domains left. Same pattern lifts directly to each.
+- **Bulk import** — not started. Needs the upload + dry-run + validate + apply pipeline and maps each legacy CSV/XLSX shape onto an entity.
+- **Bulk edit** — not started. Needs a grid-selection + field-pick + confirm-preview UI path and a transactional many-row UPDATE endpoint.
+- **RBAC scoped policy engine** — not started. `(action, entity_type, scope_type, scope_id)` tuples with hierarchical inheritance. Touches every existing endpoint through middleware integration, so it's a deep cross-cutting slice.
+- **Global search + faceted filters + saved views** — not started. Decision point upfront: PG tsvector full-text vs a dedicated search engine (tantivy, meilisearch). Saved-view storage lands on top of whichever.
+- **XLSX round-trip of the Immunocore workbook** — not started. Follows once the bulk-import pipeline exists; adds an xlsx-specific parser/writer on top of the generic CSV shape.
 
 **Known limitations / follow-up:**
 - The `#[ignore]` live-DB integration tests need a `TEST_DATABASE_URL` to actually run — CI doesn't yet opt them in (add in a follow-up PR when a test DB is available)
