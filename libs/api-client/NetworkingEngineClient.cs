@@ -364,6 +364,130 @@ public class NetworkingEngineClient : IDisposable
         return GetAsync<List<LockedRowDto>>($"/api/net/locks{qs}", ct);
     }
 
+    // ─── CLI flavors + Config Generation (Phase 10) ──────────────────────
+
+    /// <summary>List the multi-vendor CLI flavor catalog with this tenant's
+    /// per-flavor enable + is_default state. Used by the admin flavor picker
+    /// panel — PicOS is Ga today, the rest are stubs.</summary>
+    public Task<List<CliFlavorConfigDto>> ListCliFlavorsAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<CliFlavorConfigDto>>(
+            $"/api/net/cli-flavors?organizationId={organizationId}", ct);
+
+    /// <summary>Upsert the tenant's config for one flavor. Setting
+    /// <paramref name="isDefault"/> to true clears the flag on any other
+    /// row for the same tenant (partial-unique index enforces one
+    /// default per tenant).</summary>
+    public async Task SetCliFlavorConfigAsync(Guid organizationId, string flavorCode,
+        bool? enabled = null, bool? isDefault = null, string? notes = null,
+        CancellationToken ct = default)
+    {
+        var resp = await _http.PutAsJsonAsync(
+            $"/api/net/cli-flavors/{Uri.EscapeDataString(flavorCode)}?organizationId={organizationId}",
+            new { enabled, isDefault, notes }, Json, ct);
+        await EnsureSuccessAsync(resp, ct);
+    }
+
+    /// <summary>Render + persist one device's config. Writes a new row
+    /// to net.rendered_config chained to the previous render; returns
+    /// the RenderedConfigDto with id + previousRenderId populated.</summary>
+    public Task<RenderedConfigDto> RenderDeviceConfigAsync(Guid deviceId,
+        Guid organizationId, CancellationToken ct = default)
+        => PostAsync<RenderedConfigDto>(
+            $"/api/net/devices/{deviceId}/render-config?organizationId={organizationId}",
+            new { }, ct);
+
+    /// <summary>Recent renders for a device — body NOT included, summaries
+    /// only. Limit clamps to [1, 500] server-side (default 50).</summary>
+    public Task<List<RenderedConfigSummaryDto>> ListDeviceRendersAsync(Guid deviceId,
+        Guid organizationId, int? limit = null, CancellationToken ct = default)
+    {
+        var qs = BuildQuery(("organizationId", organizationId.ToString()),
+                            ("limit", limit?.ToString()));
+        return GetAsync<List<RenderedConfigSummaryDto>>(
+            $"/api/net/devices/{deviceId}/renders{qs}", ct);
+    }
+
+    /// <summary>Fetch one render by id with full body — for the diff /
+    /// view-one flow.</summary>
+    public Task<RenderedConfigRecordDto> GetRenderAsync(Guid renderId,
+        Guid organizationId, CancellationToken ct = default)
+        => GetAsync<RenderedConfigRecordDto>(
+            $"/api/net/renders/{renderId}?organizationId={organizationId}", ct);
+
+    /// <summary>"What changed since last render" — added/removed line
+    /// lists against the previous_render_id chain entry. First-ever
+    /// render returns the whole body as added with zero removed.</summary>
+    public Task<RenderDiffDto> DiffRenderAsync(Guid renderId, Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<RenderDiffDto>(
+            $"/api/net/renders/{renderId}/diff?organizationId={organizationId}", ct);
+
+    /// <summary>Turn-up pack: render + persist every device in a building.
+    /// Per-device errors are tolerated — one broken naming template can't
+    /// block the other N-1 devices.</summary>
+    public Task<BuildingRenderResultDto> RenderBuildingConfigsAsync(Guid buildingId,
+        Guid organizationId, CancellationToken ct = default)
+        => PostAsync<BuildingRenderResultDto>(
+            $"/api/net/buildings/{buildingId}/render-configs?organizationId={organizationId}",
+            new { }, ct);
+
+    /// <summary>Site-level turn-up pack. Counters roll up across
+    /// buildings; devices ordered (building_code, hostname).</summary>
+    public Task<SiteRenderResultDto> RenderSiteConfigsAsync(Guid siteId,
+        Guid organizationId, CancellationToken ct = default)
+        => PostAsync<SiteRenderResultDto>(
+            $"/api/net/sites/{siteId}/render-configs?organizationId={organizationId}",
+            new { }, ct);
+
+    /// <summary>Whole-estate render — every device across every site.
+    /// For single-region tenants this is the greenfield deployment
+    /// call.</summary>
+    public Task<RegionRenderResultDto> RenderRegionConfigsAsync(Guid regionId,
+        Guid organizationId, CancellationToken ct = default)
+        => PostAsync<RegionRenderResultDto>(
+            $"/api/net/regions/{regionId}/render-configs?organizationId={organizationId}",
+            new { }, ct);
+
+    // ─── DHCP relay targets (Phase 10) ───────────────────────────────────
+
+    public Task<List<DhcpRelayTargetDto>> ListDhcpRelayTargetsAsync(Guid organizationId,
+        Guid? vlanId = null, CancellationToken ct = default)
+    {
+        var qs = BuildQuery(("organizationId", organizationId.ToString()),
+                            ("vlanId", vlanId?.ToString()));
+        return GetAsync<List<DhcpRelayTargetDto>>($"/api/net/dhcp-relay-targets{qs}", ct);
+    }
+
+    public Task<DhcpRelayTargetDto> GetDhcpRelayTargetAsync(Guid id, Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<DhcpRelayTargetDto>(
+            $"/api/net/dhcp-relay-targets/{id}?organizationId={organizationId}", ct);
+
+    public Task<DhcpRelayTargetDto> CreateDhcpRelayTargetAsync(
+        CreateDhcpRelayTargetRequest request, CancellationToken ct = default)
+        => PostAsync<DhcpRelayTargetDto>("/api/net/dhcp-relay-targets", request, ct);
+
+    public async Task<DhcpRelayTargetDto> UpdateDhcpRelayTargetAsync(Guid id,
+        Guid organizationId, int priority, Guid? ipAddressId, string? notes, int version,
+        CancellationToken ct = default)
+    {
+        var resp = await _http.PutAsJsonAsync(
+            $"/api/net/dhcp-relay-targets/{id}?organizationId={organizationId}",
+            new { priority, ipAddressId, notes, version }, Json, ct);
+        await EnsureSuccessAsync(resp, ct);
+        return (await resp.Content.ReadFromJsonAsync<DhcpRelayTargetDto>(Json, ct))
+            ?? throw new NetworkingEngineException(0, "PUT returned null body");
+    }
+
+    public async Task DeleteDhcpRelayTargetAsync(Guid id, Guid organizationId,
+        CancellationToken ct = default)
+    {
+        var resp = await _http.DeleteAsync(
+            $"/api/net/dhcp-relay-targets/{id}?organizationId={organizationId}", ct);
+        await EnsureSuccessAsync(resp, ct);
+    }
+
     // ─── Transport helpers ──────────────────────────────────────────────
 
     private static string BuildQuery(params (string key, string? value)[] parts)
@@ -666,3 +790,53 @@ public record MlagPoolDto(Guid Id, string PoolCode, string DisplayName,
 // admin wants to carve, so pre-computation would be misleading
 public record IpPoolDto(Guid Id, string PoolCode, string DisplayName,
     string Network, int Family);
+
+// ─── Config Generation / CLI flavors (Phase 10) ────────────────────────
+
+public record CliFlavorConfigDto(string Code, string DisplayName, string Vendor,
+    string? Description, string Status, bool DefaultEnabled,
+    bool Enabled, bool IsDefault, string? Notes);
+
+/// <summary>Dry-run or persisted render response. `Id`,
+/// `PreviousRenderId`, `RenderDurationMs` populate only on the
+/// persisted (`POST`) path — on in-memory dry-runs they come back null.</summary>
+public record RenderedConfigDto(Guid DeviceId, string FlavorCode, string Body,
+    string BodySha256, int LineCount, DateTime RenderedAt,
+    Guid? Id, Guid? PreviousRenderId, int? RenderDurationMs);
+
+/// <summary>Lightweight list row — no body.</summary>
+public record RenderedConfigSummaryDto(Guid Id, Guid DeviceId, string FlavorCode,
+    string BodySha256, int LineCount, int? RenderDurationMs,
+    Guid? PreviousRenderId, DateTime RenderedAt, int? RenderedBy);
+
+/// <summary>Full record including body — for the diff / view-one flow.</summary>
+public record RenderedConfigRecordDto(Guid Id, Guid DeviceId, string FlavorCode,
+    string Body, string BodySha256, int LineCount, int? RenderDurationMs,
+    Guid? PreviousRenderId, DateTime RenderedAt, int? RenderedBy);
+
+/// <summary>Line-level set diff between this render and its chain
+/// predecessor. First-ever render returns whole body as `Added`.</summary>
+public record RenderDiffDto(Guid RenderId, Guid? PreviousRenderId,
+    List<string> Added, List<string> Removed, int UnchangedCount);
+
+public record DeviceRenderErrorDto(Guid DeviceId, string Hostname, string Error);
+
+public record BuildingRenderResultDto(Guid BuildingId, string? BuildingCode,
+    int TotalDevices, int Succeeded, int Failed,
+    List<RenderedConfigDto> Renders, List<DeviceRenderErrorDto> Errors);
+
+public record SiteRenderResultDto(Guid SiteId, string? SiteCode,
+    int TotalDevices, int Succeeded, int Failed,
+    List<RenderedConfigDto> Renders, List<DeviceRenderErrorDto> Errors);
+
+public record RegionRenderResultDto(Guid RegionId, string? RegionCode,
+    int TotalDevices, int Succeeded, int Failed,
+    List<RenderedConfigDto> Renders, List<DeviceRenderErrorDto> Errors);
+
+public record DhcpRelayTargetDto(Guid Id, Guid OrganizationId, Guid VlanId,
+    string ServerIp, Guid? IpAddressId, int Priority, string Status,
+    int Version, DateTime CreatedAt, DateTime UpdatedAt, string? Notes);
+
+public record CreateDhcpRelayTargetRequest(Guid OrganizationId, Guid VlanId,
+    string ServerIp, Guid? IpAddressId = null, int Priority = 10,
+    string? Notes = null);
