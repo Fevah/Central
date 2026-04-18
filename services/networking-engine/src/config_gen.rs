@@ -129,6 +129,12 @@ pub struct DeviceContext {
     /// from `port_descriptions` today — interleaving the two by
     /// interface name is a byte-parity future concern.
     pub port_l2_rules: Vec<PortL2Line>,
+    /// Interface names that should get the QoS classifier +
+    /// scheduler-profile binding — every physical port on the device.
+    /// Breakout sub-interfaces are filtered out at fetch (they inherit
+    /// from their parent). Port_mode is NOT filtered — QoS applies
+    /// regardless of L2/L3 role.
+    pub port_qos_bindings: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -377,6 +383,25 @@ async fn fetch_context(
         .fetch_optional(pool)
         .await?;
 
+    // Port QoS bindings: classifier + scheduler-profile apply to
+    // every physical port regardless of L2/L3 role. Breakout children
+    // inherit from their parent so we exclude them via
+    // breakout_parent_id IS NULL — this also matches the legacy
+    // ConfigBuilderService enumeration which only touched parent
+    // interface numbers, not .1..4 sub-interfaces.
+    let port_qos_rows: Vec<(String,)> = sqlx::query_as(
+        r#"SELECT interface_name
+             FROM net.port
+            WHERE organization_id   = $1
+              AND device_id         = $2
+              AND deleted_at        IS NULL
+              AND breakout_parent_id IS NULL
+            ORDER BY interface_name"#)
+        .bind(org_id)
+        .bind(device_id)
+        .fetch_all(pool)
+        .await?;
+
     // Port L2 rules: port-mode + native-vlan for every port set to
     // access/trunk. Routed ports are intentionally excluded — they
     // don't emit family ethernet-switching lines; their L3 config
@@ -494,6 +519,7 @@ async fn fetch_context(
                 interface_name: iface, port_mode: mode, native_vlan_id: native,
             })
             .collect(),
+        port_qos_bindings: port_qos_rows.into_iter().map(|(n,)| n).collect(),
     })
 }
 
@@ -517,6 +543,7 @@ impl Renderer for PicosRenderer {
         render_system_section(&mut out, ctx);
         render_ip_routing_section(&mut out, ctx);
         render_qos_preset_section(&mut out, ctx);
+        render_port_qos_bindings_section(&mut out, ctx);
         render_loopback_section(&mut out, ctx);
         render_management_interface_section(&mut out, ctx);
         render_vlans_section(&mut out, ctx);
@@ -637,6 +664,23 @@ const QOS_PRESET_LINES: &[&str] = &[
     "set class-of-service scheduler-profile qos-flex-profile forwarding-class fc-bulk scheduler \"sched-bulk\"",
     "set class-of-service scheduler-profile qos-flex-profile forwarding-class fc-best-effort scheduler \"sched-best-effort\"",
 ];
+
+/// Per-port QoS bindings — one classifier + one scheduler-profile
+/// line per physical port on the device. Positioned right after the
+/// fixed QoS preset so the classifier / scheduler-profile names
+/// referenced here are already defined earlier in the file.
+fn render_port_qos_bindings_section(out: &mut String, ctx: &DeviceContext) {
+    if ctx.port_qos_bindings.is_empty() { return; }
+    for iface in &ctx.port_qos_bindings {
+        out.push_str(&format!(
+            "set class-of-service interface {} classifier \"qos-dscp-classifier\"\n",
+            iface));
+        out.push_str(&format!(
+            "set class-of-service interface {} scheduler-profile \"qos-flex-profile\"\n",
+            iface));
+    }
+    out.push('\n');
+}
 
 /// LLDP enable — same universal-today, toggle-tomorrow stance as
 /// `render_ip_routing_section`. Legacy emits this as the last
@@ -889,6 +933,7 @@ mod tests {
             l3_svis: vec![],
             port_descriptions: vec![],
             port_l2_rules: vec![],
+            port_qos_bindings: vec![],
         }
     }
 
@@ -910,6 +955,7 @@ mod tests {
             l3_svis: vec![],
             port_descriptions: vec![],
             port_l2_rules: vec![],
+            port_qos_bindings: vec![],
         }
     }
 
@@ -940,6 +986,7 @@ mod tests {
             l3_svis: vec![],
             port_descriptions: vec![],
             port_l2_rules: vec![],
+            port_qos_bindings: vec![],
         }
     }
 
@@ -957,6 +1004,7 @@ mod tests {
             l3_svis: svis,
             port_descriptions: vec![],
             port_l2_rules: vec![],
+            port_qos_bindings: vec![],
         }
     }
 
@@ -974,6 +1022,7 @@ mod tests {
             l3_svis: vec![],
             port_descriptions: ports,
             port_l2_rules: vec![],
+            port_qos_bindings: vec![],
         }
     }
 
@@ -994,6 +1043,7 @@ mod tests {
             l3_svis: svis,
             port_descriptions: vec![],
             port_l2_rules: vec![],
+            port_qos_bindings: vec![],
         }
     }
 
@@ -1011,6 +1061,25 @@ mod tests {
             l3_svis: vec![],
             port_descriptions: vec![],
             port_l2_rules: rules,
+            port_qos_bindings: vec![],
+        }
+    }
+
+    fn fixture_with_qos_bindings(ports: Vec<&str>) -> DeviceContext {
+        DeviceContext {
+            device_id: Uuid::nil(),
+            hostname: "CORE02".into(),
+            loopback: None,
+            management_ip: None,
+            vlans: vec![],
+            bgp: None,
+            bgp_neighbors: vec![],
+            mstp_priority: None,
+            mlag: None,
+            l3_svis: vec![],
+            port_descriptions: vec![],
+            port_l2_rules: vec![],
+            port_qos_bindings: ports.into_iter().map(String::from).collect(),
         }
     }
 
@@ -1031,6 +1100,7 @@ mod tests {
             l3_svis: vec![],
             port_descriptions: vec![],
             port_l2_rules: vec![],
+            port_qos_bindings: vec![],
         }
     }
 
@@ -1384,6 +1454,66 @@ mod tests {
         );
         assert_eq!(out, "MEP-91-Core",
             "unparseable device_code should leave {{instance}} empty");
+    }
+
+    #[test]
+    fn picos_emits_qos_bindings_two_lines_per_port() {
+        let ctx = fixture_with_qos_bindings(vec!["xe-1/1/1", "xe-1/1/2"]);
+        let out = PicosRenderer::render(&ctx);
+        for iface in ["xe-1/1/1", "xe-1/1/2"] {
+            let classifier = format!(
+                r#"set class-of-service interface {} classifier "qos-dscp-classifier""#, iface);
+            let sched_prof = format!(
+                r#"set class-of-service interface {} scheduler-profile "qos-flex-profile""#, iface);
+            assert!(out.contains(&classifier), "classifier binding missing for {iface}:\n{out}");
+            assert!(out.contains(&sched_prof), "scheduler-profile binding missing for {iface}:\n{out}");
+        }
+    }
+
+    #[test]
+    fn picos_qos_binding_count_is_exactly_twice_the_port_count() {
+        let ctx = fixture_with_qos_bindings(vec!["xe-1/1/1", "xe-1/1/2", "xe-1/1/3"]);
+        let out = PicosRenderer::render(&ctx);
+        let binding_lines = out.lines()
+            .filter(|l| l.starts_with("set class-of-service interface "))
+            .count();
+        assert_eq!(binding_lines, 6,
+            "3 ports × 2 binding lines each = 6, got {binding_lines}:\n{out}");
+    }
+
+    #[test]
+    fn picos_qos_bindings_emit_in_caller_provided_order() {
+        // Fetch query ORDER BYs interface_name; renderer must preserve.
+        let ctx = fixture_with_qos_bindings(vec!["ge-1/1/1", "xe-1/1/10", "xe-1/1/20"]);
+        let out = PicosRenderer::render(&ctx);
+        let p1  = out.find("interface ge-1/1/1 classifier").expect("ge-1/1/1 present");
+        let p10 = out.find("interface xe-1/1/10 classifier").expect("xe-1/1/10 present");
+        let p20 = out.find("interface xe-1/1/20 classifier").expect("xe-1/1/20 present");
+        assert!(p1 < p10 && p10 < p20,
+            "QoS binding lines must stay in caller-provided order:\n{out}");
+    }
+
+    #[test]
+    fn picos_qos_bindings_land_right_after_the_preset_block() {
+        // The binding lines reference "qos-dscp-classifier" + "qos-flex-profile"
+        // which are declared in the preset — PicOS is forgiving about
+        // forward references but diff readability wants them adjacent.
+        let ctx = fixture_with_qos_bindings(vec!["xe-1/1/1"]);
+        let out = PicosRenderer::render(&ctx);
+        let preset_last = out.find(r#"scheduler "sched-best-effort""#).expect("preset present");
+        let binding_first = out.find("set class-of-service interface ").expect("binding present");
+        assert!(preset_last < binding_first,
+            "QoS bindings must come AFTER the preset:\n{out}");
+    }
+
+    #[test]
+    fn picos_omits_qos_bindings_when_no_ports() {
+        let out = PicosRenderer::render(&fixture_with_qos_bindings(vec![]));
+        assert!(!out.contains("set class-of-service interface "),
+            "no ports → no binding lines:\n{out}");
+        // Preset must still render.
+        assert!(out.contains("set class-of-service forwarding-class"),
+            "preset should still render even with no port bindings:\n{out}");
     }
 
     #[test]
