@@ -192,6 +192,11 @@ public class NetworkingEngineClient : IDisposable
             $"/api/net/change-sets/{setId}/decisions?organizationId={organizationId}",
             new { decision, approverDisplay, notes }, ct);
 
+    public Task<List<ApprovalDto>> ListApprovalsAsync(Guid setId, Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<ApprovalDto>>(
+            $"/api/net/change-sets/{setId}/decisions?organizationId={organizationId}", ct);
+
     public Task<ChangeSetDto> CancelChangeSetAsync(Guid setId, Guid organizationId,
         string? notes = null, CancellationToken ct = default)
         => PostAsync<ChangeSetDto>(

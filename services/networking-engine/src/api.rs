@@ -75,7 +75,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/change-sets/:id", get(get_change_set))
         .route("/api/net/change-sets/:id/items", post(add_change_set_item))
         .route("/api/net/change-sets/:id/submit", post(submit_change_set))
-        .route("/api/net/change-sets/:id/decisions", post(record_decision))
+        .route("/api/net/change-sets/:id/decisions", post(record_decision).get(list_decisions))
         .route("/api/net/change-sets/:id/cancel", post(cancel_change_set))
         .route("/api/net/change-sets/:id/apply", post(apply_change_set))
         .route("/api/net/change-sets/:id/rollback", post(rollback_change_set))
@@ -536,6 +536,15 @@ async fn record_decision(
         "Approver user id required — pass X-User-Id header."))?;
     let repo = ChangeSetRepo::new(s.pool);
     Ok(Json(repo.record_decision(id, q.organization_id, approver, &body).await?))
+}
+
+async fn list_decisions(
+    State(s): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = ChangeSetRepo::new(s.pool);
+    Ok(Json(repo.list_approvals(id, q.organization_id).await?))
 }
 
 async fn cancel_change_set(

@@ -323,6 +323,37 @@ impl ChangeSetRepo {
             .collect()
     }
 
+    /// Every approval decision recorded on a Change Set, chronologically.
+    /// Used by the WPF detail dialog's Approvals tab and by forensic
+    /// queries that want a quick "who decided what" view without walking
+    /// the audit log.
+    pub async fn list_approvals(
+        &self,
+        set_id: Uuid,
+        org_id: Uuid,
+    ) -> Result<Vec<ApprovalRow>, EngineError> {
+        // Guard: the set must belong to this tenant. Without this, an
+        // approval id leakage would let a probe across tenants confirm
+        // the existence of specific set ids.
+        let exists: Option<(Uuid,)> = sqlx::query_as(
+            "SELECT id FROM net.change_set
+              WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL")
+            .bind(set_id).bind(org_id).fetch_optional(&self.pool).await?;
+        if exists.is_none() {
+            return Err(EngineError::container_not_found("change_set", set_id));
+        }
+
+        let rows: Vec<ApprovalRowDb> = sqlx::query_as(
+            "SELECT id, change_set_id, approver_user_id, approver_display,
+                    decision::text AS decision, decided_at, notes
+               FROM net.change_set_approval
+              WHERE change_set_id = $1 AND organization_id = $2
+              ORDER BY decided_at ASC")
+            .bind(set_id).bind(org_id).fetch_all(&self.pool).await?;
+
+        rows.into_iter().map(|r| r.into_dto()).collect()
+    }
+
     pub async fn get(&self, id: Uuid, org_id: Uuid) -> Result<(ChangeSet, Vec<ChangeSetItem>), EngineError> {
         let row: Option<ChangeSetRow> = sqlx::query_as(
             "SELECT id, organization_id, title, description,
