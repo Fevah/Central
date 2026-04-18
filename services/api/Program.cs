@@ -326,6 +326,9 @@ app.MapGroup("/api/net").WithTags("Net Pools").MapNetPoolEndpoints();
 // Networking engine — devices (Phase 4c)
 app.MapGroup("/api/net").WithTags("Net Devices").MapNetDeviceEndpoints();
 
+// Networking engine — unified links (Phase 5c)
+app.MapGroup("/api/net").WithTags("Net Links").MapNetLinkEndpoints();
+
 // Email integration (Phase 20)
 app.MapGroup("/api/email").WithTags("Email").MapEmailEndpoints();  // Tracking endpoints are anonymous
 

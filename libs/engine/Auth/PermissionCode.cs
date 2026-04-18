@@ -216,4 +216,9 @@ public static class P
     public const string NetDevicesRead      = "net:devices:read";
     public const string NetDevicesWrite     = "net:devices:write";
     public const string NetDevicesDelete    = "net:devices:delete";
+
+    // Networking engine — unified links (Phase 5c+)
+    public const string NetLinksRead        = "net:links:read";
+    public const string NetLinksWrite       = "net:links:write";
+    public const string NetLinksDelete      = "net:links:delete";
 }

@@ -87,6 +87,74 @@ public class LinksRepository
         return await GetOneAsync(sql, id, orgId, ReadLinkType, ct);
     }
 
+    public async Task<Guid> CreateTypeAsync(LinkType e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO net.link_type (organization_id, type_code, display_name, description,
+                                       naming_template, required_endpoints, color_hint,
+                                       status, lock_state, notes, tags, external_refs,
+                                       created_by, updated_by)
+            VALUES (@org, @code, @name, @desc, @tpl, @req, @color,
+                    @status::net.entity_status, @lock::net.lock_state,
+                    @notes, @tags::jsonb, @refs::jsonb, @uid, @uid)
+            RETURNING id";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        BindTypeWrite(cmd, e, userId);
+        return (Guid)(await cmd.ExecuteScalarAsync(ct))!;
+    }
+
+    public async Task<int> UpdateTypeAsync(LinkType e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE net.link_type SET
+                type_code          = @code,
+                display_name       = @name,
+                description        = @desc,
+                naming_template    = @tpl,
+                required_endpoints = @req,
+                color_hint         = @color,
+                status             = @status::net.entity_status,
+                lock_state         = @lock::net.lock_state,
+                lock_reason        = @lreason,
+                notes              = @notes,
+                tags               = @tags::jsonb,
+                external_refs      = @refs::jsonb,
+                updated_at         = now(),
+                updated_by         = @uid,
+                version            = version + 1
+            WHERE id = @id AND organization_id = @org AND version = @ver AND deleted_at IS NULL
+            RETURNING version";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", e.Id);
+        cmd.Parameters.AddWithValue("ver", e.Version);
+        cmd.Parameters.AddWithValue("lreason", (object?)e.LockReason ?? DBNull.Value);
+        BindTypeWrite(cmd, e, userId);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int v ? v : throw new ConcurrencyException(e.Id, e.Version);
+    }
+
+    public Task<bool> SoftDeleteTypeAsync(Guid id, Guid orgId, int? userId, CancellationToken ct = default)
+        => SoftDeleteAsync("net.link_type", id, orgId, userId, ct);
+
+    private static void BindTypeWrite(NpgsqlCommand cmd, LinkType e, int? userId)
+    {
+        cmd.Parameters.AddWithValue("org", e.OrganizationId);
+        cmd.Parameters.AddWithValue("code", e.TypeCode);
+        cmd.Parameters.AddWithValue("name", e.DisplayName);
+        cmd.Parameters.AddWithValue("desc", (object?)e.Description ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("tpl", e.NamingTemplate);
+        cmd.Parameters.AddWithValue("req", e.RequiredEndpoints);
+        cmd.Parameters.AddWithValue("color", (object?)e.ColorHint ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("status", e.Status.ToString());
+        cmd.Parameters.AddWithValue("lock", e.LockState.ToString());
+        cmd.Parameters.AddWithValue("notes", (object?)e.Notes ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("tags", e.Tags.ToJsonString());
+        cmd.Parameters.AddWithValue("refs", e.ExternalRefs.ToJsonString());
+        cmd.Parameters.AddWithValue("uid", (object?)userId ?? DBNull.Value);
+    }
+
     private static LinkType ReadLinkType(NpgsqlDataReader r)
     {
         var e = new LinkType
@@ -149,6 +217,84 @@ public class LinksRepository
         return await GetOneAsync(sql, id, orgId, ReadLink, ct);
     }
 
+    public async Task<Guid> CreateLinkAsync(Link e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO net.link (organization_id, link_type_id, building_id, link_code,
+                                  display_name, description, vlan_id, subnet_id, config_json,
+                                  legacy_link_kind, legacy_link_id,
+                                  status, lock_state, notes, tags, external_refs,
+                                  created_by, updated_by)
+            VALUES (@org, @type, @bld, @code, @name, @desc, @vlan, @subnet, @cfg::jsonb,
+                    @legkind, @legid,
+                    @status::net.entity_status, @lock::net.lock_state,
+                    @notes, @tags::jsonb, @refs::jsonb, @uid, @uid)
+            RETURNING id";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        BindLinkWrite(cmd, e, userId);
+        return (Guid)(await cmd.ExecuteScalarAsync(ct))!;
+    }
+
+    public async Task<int> UpdateLinkAsync(Link e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE net.link SET
+                link_type_id     = @type,
+                building_id      = @bld,
+                link_code        = @code,
+                display_name     = @name,
+                description      = @desc,
+                vlan_id          = @vlan,
+                subnet_id        = @subnet,
+                config_json      = @cfg::jsonb,
+                legacy_link_kind = @legkind,
+                legacy_link_id   = @legid,
+                status           = @status::net.entity_status,
+                lock_state       = @lock::net.lock_state,
+                lock_reason      = @lreason,
+                notes            = @notes,
+                tags             = @tags::jsonb,
+                external_refs    = @refs::jsonb,
+                updated_at       = now(),
+                updated_by       = @uid,
+                version          = version + 1
+            WHERE id = @id AND organization_id = @org AND version = @ver AND deleted_at IS NULL
+            RETURNING version";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", e.Id);
+        cmd.Parameters.AddWithValue("ver", e.Version);
+        cmd.Parameters.AddWithValue("lreason", (object?)e.LockReason ?? DBNull.Value);
+        BindLinkWrite(cmd, e, userId);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int v ? v : throw new ConcurrencyException(e.Id, e.Version);
+    }
+
+    public Task<bool> SoftDeleteLinkAsync(Guid id, Guid orgId, int? userId, CancellationToken ct = default)
+        => SoftDeleteAsync("net.link", id, orgId, userId, ct);
+
+    private static void BindLinkWrite(NpgsqlCommand cmd, Link e, int? userId)
+    {
+        cmd.Parameters.AddWithValue("org", e.OrganizationId);
+        cmd.Parameters.AddWithValue("type", e.LinkTypeId);
+        cmd.Parameters.AddWithValue("bld", (object?)e.BuildingId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("code", e.LinkCode);
+        cmd.Parameters.AddWithValue("name", (object?)e.DisplayName ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("desc", (object?)e.Description ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("vlan", (object?)e.VlanId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("subnet", (object?)e.SubnetId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("cfg", e.ConfigJson.ToJsonString());
+        cmd.Parameters.AddWithValue("legkind", (object?)e.LegacyLinkKind ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("legid", (object?)e.LegacyLinkId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("status", e.Status.ToString());
+        cmd.Parameters.AddWithValue("lock", e.LockState.ToString());
+        cmd.Parameters.AddWithValue("notes", (object?)e.Notes ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("tags", e.Tags.ToJsonString());
+        cmd.Parameters.AddWithValue("refs", e.ExternalRefs.ToJsonString());
+        cmd.Parameters.AddWithValue("uid", (object?)userId ?? DBNull.Value);
+    }
+
     private static Link ReadLink(NpgsqlDataReader r)
     {
         var e = new Link
@@ -199,6 +345,79 @@ public class LinksRepository
         return list;
     }
 
+    public async Task<Guid> CreateEndpointAsync(LinkEndpoint e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            INSERT INTO net.link_endpoint (organization_id, link_id, endpoint_order,
+                                           device_id, port_id, ip_address_id, vlan_id,
+                                           interface_name, description,
+                                           status, lock_state, notes, tags, external_refs,
+                                           created_by, updated_by)
+            VALUES (@org, @link, @ord, @dev, @port, @ip, @vlan, @iface, @desc,
+                    @status::net.entity_status, @lock::net.lock_state,
+                    @notes, @tags::jsonb, @refs::jsonb, @uid, @uid)
+            RETURNING id";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        BindEndpointWrite(cmd, e, userId);
+        return (Guid)(await cmd.ExecuteScalarAsync(ct))!;
+    }
+
+    public async Task<int> UpdateEndpointAsync(LinkEndpoint e, int? userId = null, CancellationToken ct = default)
+    {
+        const string sql = @"
+            UPDATE net.link_endpoint SET
+                link_id        = @link,
+                endpoint_order = @ord,
+                device_id      = @dev,
+                port_id        = @port,
+                ip_address_id  = @ip,
+                vlan_id        = @vlan,
+                interface_name = @iface,
+                description    = @desc,
+                status         = @status::net.entity_status,
+                lock_state     = @lock::net.lock_state,
+                lock_reason    = @lreason,
+                notes          = @notes,
+                tags           = @tags::jsonb,
+                external_refs  = @refs::jsonb,
+                updated_at     = now(),
+                updated_by     = @uid,
+                version        = version + 1
+            WHERE id = @id AND organization_id = @org AND version = @ver AND deleted_at IS NULL
+            RETURNING version";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", e.Id);
+        cmd.Parameters.AddWithValue("ver", e.Version);
+        cmd.Parameters.AddWithValue("lreason", (object?)e.LockReason ?? DBNull.Value);
+        BindEndpointWrite(cmd, e, userId);
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int v ? v : throw new ConcurrencyException(e.Id, e.Version);
+    }
+
+    public Task<bool> SoftDeleteEndpointAsync(Guid id, Guid orgId, int? userId, CancellationToken ct = default)
+        => SoftDeleteAsync("net.link_endpoint", id, orgId, userId, ct);
+
+    private static void BindEndpointWrite(NpgsqlCommand cmd, LinkEndpoint e, int? userId)
+    {
+        cmd.Parameters.AddWithValue("org", e.OrganizationId);
+        cmd.Parameters.AddWithValue("link", e.LinkId);
+        cmd.Parameters.AddWithValue("ord", e.EndpointOrder);
+        cmd.Parameters.AddWithValue("dev", (object?)e.DeviceId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("port", (object?)e.PortId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("ip", (object?)e.IpAddressId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("vlan", (object?)e.VlanId ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("iface", (object?)e.InterfaceName ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("desc", (object?)e.Description ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("status", e.Status.ToString());
+        cmd.Parameters.AddWithValue("lock", e.LockState.ToString());
+        cmd.Parameters.AddWithValue("notes", (object?)e.Notes ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("tags", e.Tags.ToJsonString());
+        cmd.Parameters.AddWithValue("refs", e.ExternalRefs.ToJsonString());
+        cmd.Parameters.AddWithValue("uid", (object?)userId ?? DBNull.Value);
+    }
+
     private static LinkEndpoint ReadEndpoint(NpgsqlDataReader r)
     {
         var e = new LinkEndpoint
@@ -243,5 +462,19 @@ public class LinksRepository
         cmd.Parameters.AddWithValue("org", orgId);
         await using var r = await cmd.ExecuteReaderAsync(ct);
         return await r.ReadAsync(ct) ? reader(r) : null;
+    }
+
+    private async Task<bool> SoftDeleteAsync(string table, Guid id, Guid orgId, int? userId, CancellationToken ct)
+    {
+        var sql = $@"
+            UPDATE {table}
+            SET deleted_at = now(), deleted_by = @uid, version = version + 1
+            WHERE id = @id AND organization_id = @org AND deleted_at IS NULL";
+        await using var conn = await OpenAsync(ct);
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", id);
+        cmd.Parameters.AddWithValue("org", orgId);
+        cmd.Parameters.AddWithValue("uid", (object?)userId ?? DBNull.Value);
+        return await cmd.ExecuteNonQueryAsync(ct) > 0;
     }
 }
