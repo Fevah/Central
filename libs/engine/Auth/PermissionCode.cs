@@ -226,4 +226,16 @@ public static class P
     public const string NetServersRead      = "net:servers:read";
     public const string NetServersWrite     = "net:servers:write";
     public const string NetServersDelete    = "net:servers:delete";
+
+    // Networking governance — Change Sets, approvals, apply/rollback (Phase 8+).
+    // ChangeSetsRead lets admins see the queue; ChangeSetsWrite creates +
+    // submits + cancels; ChangeSetsApprove records approve/reject decisions
+    // (separated so a tenant can gate approval rights to a smaller group);
+    // ChangeSetsApply + ChangeSetsRollback are the most powerful — they
+    // actually mutate tenant data, so they get their own codes.
+    public const string ChangeSetsRead      = "net:changesets:read";
+    public const string ChangeSetsWrite     = "net:changesets:write";
+    public const string ChangeSetsApprove   = "net:changesets:approve";
+    public const string ChangeSetsApply     = "net:changesets:apply";
+    public const string ChangeSetsRollback  = "net:changesets:rollback";
 }

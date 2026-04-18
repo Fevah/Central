@@ -11,6 +11,10 @@
   <ItemGroup>
     <ProjectReference Include="..\..\libs\engine\Central.Engine.csproj" />
     <ProjectReference Include="..\..\libs\persistence\Central.Persistence.csproj" />
+    <!-- ApiClient brings NetworkingEngineClient (Phase 6.5+ HTTP wrapper for
+         the Rust networking-engine service). The Governance panel consumes
+         it; future Rust-backed panels will too. -->
+    <ProjectReference Include="..\..\libs\api-client\Central.ApiClient.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="DevExpress.Wpf.Grid" Version="25.2.6" />

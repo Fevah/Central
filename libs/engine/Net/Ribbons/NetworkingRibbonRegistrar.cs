@@ -31,6 +31,7 @@ public static class NetworkingRibbonRegistrar
     public const string PanelBgp      = "bgp";
     public const string PanelVlans    = "vlans";
     public const string PanelServers  = "servers";
+    public const string PanelChangeSets = "changesets";
 
     public static void BuildRibbon(IRibbonBuilder ribbon, int sortOrder)
     {
@@ -114,11 +115,35 @@ public static class NetworkingRibbonRegistrar
                     () => PanelMessageBus.Publish(new RefreshPanelMessage(PanelServers)));
             });
 
+            // ── Governance (Phase 8) ─────────────────────────────────────
+            // Change Sets are the policy gate for any mutation that wants
+            // approval. Creation / submission / decisions publish through
+            // the same PanelMessageBus as the rest of the ribbon so the
+            // panel picks them up.
+            page.AddGroup("Governance", group =>
+            {
+                group.AddButton("New Change Set",  P.ChangeSetsWrite,   "AddItem_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelChangeSets, "action:new")));
+                group.AddButton("Submit",          P.ChangeSetsWrite,   "Submit_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelChangeSets, "action:submit")));
+                group.AddButton("Approve / Reject", P.ChangeSetsApprove, "Apply_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelChangeSets, "action:decide")));
+                group.AddButton("Apply",           P.ChangeSetsApply,   "ApplyStyle_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelChangeSets, "action:apply")));
+                group.AddButton("Rollback",        P.ChangeSetsRollback, "Undo_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelChangeSets, "action:rollback")));
+                group.AddButton("Cancel",          P.ChangeSetsWrite,   "Close_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelChangeSets, "action:cancel")));
+                group.AddButton("Refresh",         P.ChangeSetsRead,    "Refresh_16x16",
+                    () => PanelMessageBus.Publish(new RefreshPanelMessage(PanelChangeSets)));
+            });
+
             page.AddGroup("Panels", group =>
             {
                 group.AddCheckButton("Hierarchy",      panelId: "HierarchyPanel");
                 group.AddCheckButton("Pools",          panelId: "PoolsPanel");
                 group.AddCheckButton("Servers",        panelId: "ServersPanel");
+                group.AddCheckButton("Change Sets",    panelId: "ChangeSetsPanel");
                 group.AddCheckButton("IPAM",           panelId: "DevicesPanel");
                 group.AddCheckButton("Device Details", panelId: "DeviceDetailPanel");
                 group.AddCheckButton("Switches",       panelId: "SwitchesPanel");

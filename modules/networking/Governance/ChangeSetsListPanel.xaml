@@ -1,0 +1,49 @@
+<UserControl x:Class="Central.Module.Networking.Governance.ChangeSetsListPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             Background="Transparent">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header: count + status breakdown + last-refresh -->
+        <Border Grid.Row="0" BorderBrush="#333" BorderThickness="0,0,0,1" Padding="8,4">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Change Sets" FontWeight="SemiBold" Foreground="#D0D0D0"/>
+                <TextBlock Text=" · " Foreground="#707070"/>
+                <TextBlock x:Name="StatusLabel" Foreground="#909090"/>
+            </StackPanel>
+        </Border>
+
+        <dxg:GridControl x:Name="Grid" Grid.Row="1"
+                         AutoGenerateColumns="None"
+                         SelectionMode="Row"
+                         ShowBorder="False">
+            <dxg:GridControl.View>
+                <dxg:TableView AutoWidth="True"
+                               ShowIndicator="False"
+                               ShowGroupPanel="True"
+                               AllowEditing="False"/>
+            </dxg:GridControl.View>
+            <dxg:GridControl.Columns>
+                <dxg:GridColumn FieldName="Title"              Header="Title"          Width="260"/>
+                <dxg:GridColumn FieldName="Status"             Header="Status"         Width="100"/>
+                <dxg:GridColumn FieldName="ItemCount"          Header="Items"          Width="60"/>
+                <dxg:GridColumn FieldName="RequestedByDisplay" Header="Requested By"   Width="140"/>
+                <dxg:GridColumn FieldName="RequiredApprovals"  Header="Req'd Approvals" Width="100"/>
+                <dxg:GridColumn FieldName="CreatedAt"          Header="Created"        Width="140"/>
+                <dxg:GridColumn FieldName="SubmittedAt"        Header="Submitted"      Width="140" Visible="False"/>
+                <dxg:GridColumn FieldName="ApprovedAt"         Header="Approved"       Width="140" Visible="False"/>
+                <dxg:GridColumn FieldName="AppliedAt"          Header="Applied"        Width="140"/>
+                <dxg:GridColumn FieldName="RolledBackAt"       Header="Rolled Back"    Width="140" Visible="False"/>
+                <dxg:GridColumn FieldName="CancelledAt"        Header="Cancelled"      Width="140" Visible="False"/>
+                <dxg:GridColumn FieldName="LastActivityAt"     Header="Last Activity"  Width="140"/>
+                <dxg:GridColumn FieldName="AgeMinutes"         Header="Age (min)"      Width="80"/>
+                <dxg:GridColumn FieldName="Version"            Header="v"              Width="40"/>
+            </dxg:GridControl.Columns>
+        </dxg:GridControl>
+    </Grid>
+</UserControl>

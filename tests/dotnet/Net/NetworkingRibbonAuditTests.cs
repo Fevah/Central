@@ -33,14 +33,17 @@ public class NetworkingRibbonAuditTests
     }
 
     [Fact]
-    public void HasSevenFunctionalGroupsPlusPanels()
+    public void HasEightFunctionalGroupsPlusPanels()
     {
-        // Spec: Devices, Switches, Links, Routing, VLANs, Servers, Panels.
+        // Spec: Devices, Switches, Links, Routing, VLANs, Servers, Governance, Panels.
+        // Governance added in Phase 8 — surfaces Change Set actions
+        // (new / submit / decide / apply / rollback / cancel / refresh).
         var rb = new RibbonBuilder();
         NetworkingRibbonRegistrar.BuildRibbon(rb, 20);
         var groups = rb.Pages[0].Groups.Select(g => g.Header).ToList();
         Assert.Equal(
-            new[] { "Devices", "Switches", "Links", "Routing", "VLANs", "Servers", "Panels" },
+            new[] { "Devices", "Switches", "Links", "Routing", "VLANs",
+                    "Servers", "Governance", "Panels" },
             groups);
     }
 
