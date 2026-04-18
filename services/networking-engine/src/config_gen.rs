@@ -109,6 +109,18 @@ pub struct DeviceContext {
     /// renderer emits whatever is stored without re-validating.
     pub mstp_priority: Option<i32>,
     pub mlag: Option<MlagContext>,
+    /// L3 VLAN interfaces (SVIs) terminated on this device. Each entry
+    /// is one `net.ip_address` row whose subnet is linked to a VLAN.
+    /// LOOPBACK-coded subnets are filtered out at fetch time because
+    /// `render_loopback_section` already handles them.
+    pub l3_svis: Vec<L3SviLine>,
+}
+
+#[derive(Debug, Clone)]
+pub struct L3SviLine {
+    pub vlan_id: i32,
+    /// Postgres inet text, e.g. `"10.11.101.2/24"`.
+    pub address: String,
 }
 
 /// MLAG peer-link state derived from:
@@ -296,6 +308,30 @@ async fn fetch_context(
         .fetch_optional(pool)
         .await?;
 
+    // L3 SVI lines: every ip_address assigned to this device whose
+    // subnet is wired to a VLAN, minus the loopback (rendered
+    // separately). The management IP currently emits via its own
+    // section sourced from net.device.management_ip; if the same
+    // address also lives in net.ip_address for the mgmt VLAN, PicOS
+    // accepts the duplicate (last-write-wins on the identical line).
+    // Once mgmt migrates fully to net.ip_address, the dedicated
+    // render_management_interface_section can be dropped.
+    let svi_rows: Vec<(i32, String)> = sqlx::query_as(
+        r#"SELECT v.vlan_id, ip.address::text
+             FROM net.ip_address ip
+             JOIN net.subnet s ON s.id = ip.subnet_id AND s.deleted_at IS NULL
+             JOIN net.vlan   v ON v.id = s.vlan_id     AND v.deleted_at IS NULL
+            WHERE ip.organization_id   = $1
+              AND ip.assigned_to_id    = $2
+              AND ip.assigned_to_type  = 'Device'
+              AND ip.deleted_at        IS NULL
+              AND s.subnet_code NOT ILIKE 'LOOPBACK%'
+            ORDER BY v.vlan_id, ip.address"#)
+        .bind(org_id)
+        .bind(device_id)
+        .fetch_all(pool)
+        .await?;
+
     // VLANs the device terminates — for now, every VLAN in the tenant's
     // active rows. Real scoping (VLAN's scope_level / scope_entity_id
     // intersects device's building) comes in a follow-on slice.
@@ -336,6 +372,9 @@ async fn fetch_context(
             domain_id: dom,
             peer_link_interface: iface,
         }),
+        l3_svis: svi_rows.into_iter()
+            .map(|(vid, addr)| L3SviLine { vlan_id: vid, address: addr })
+            .collect(),
     })
 }
 
@@ -360,6 +399,7 @@ impl Renderer for PicosRenderer {
         render_loopback_section(&mut out, ctx);
         render_management_interface_section(&mut out, ctx);
         render_vlans_section(&mut out, ctx);
+        render_l3_svi_section(&mut out, ctx);
         render_bgp_scalar_section(&mut out, ctx);
         render_mstp_section(&mut out, ctx);
         render_mlag_section(&mut out, ctx);
@@ -463,6 +503,17 @@ fn render_bgp_scalar_section(out: &mut String, ctx: &DeviceContext) {
     out.push('\n');
 }
 
+fn render_l3_svi_section(out: &mut String, ctx: &DeviceContext) {
+    if ctx.l3_svis.is_empty() { return; }
+    for svi in &ctx.l3_svis {
+        let Some((host, prefix)) = split_inet_text(&svi.address) else { continue; };
+        out.push_str(&format!(
+            "set l3-interface vlan-interface vlan-{} address {} prefix-length {}\n",
+            svi.vlan_id, host, prefix));
+    }
+    out.push('\n');
+}
+
 fn render_mstp_section(out: &mut String, ctx: &DeviceContext) {
     let Some(prio) = ctx.mstp_priority else { return; };
     out.push_str(&format!(
@@ -521,6 +572,7 @@ mod tests {
             bgp_neighbors: vec![],
             mstp_priority: None,
             mlag: None,
+            l3_svis: vec![],
         }
     }
 
@@ -539,6 +591,7 @@ mod tests {
             bgp_neighbors: vec![],
             mstp_priority: None,
             mlag: None,
+            l3_svis: vec![],
         }
     }
 
@@ -566,6 +619,22 @@ mod tests {
             bgp_neighbors,
             mstp_priority: None,
             mlag: None,
+            l3_svis: vec![],
+        }
+    }
+
+    fn fixture_with_svis(svis: Vec<L3SviLine>) -> DeviceContext {
+        DeviceContext {
+            device_id: Uuid::nil(),
+            hostname: "CORE02".into(),
+            loopback: None,
+            management_ip: None,
+            vlans: vec![],
+            bgp: None,
+            bgp_neighbors: vec![],
+            mstp_priority: None,
+            mlag: None,
+            l3_svis: svis,
         }
     }
 
@@ -583,6 +652,7 @@ mod tests {
             bgp_neighbors: vec![],
             mstp_priority,
             mlag,
+            l3_svis: vec![],
         }
     }
 
@@ -840,6 +910,57 @@ mod tests {
         // But the rest of the BGP section must still render.
         assert!(out.contains("local-as \"65112\""));
         assert!(out.contains("redistribute connected"));
+    }
+
+    #[test]
+    fn picos_emits_l3_svi_lines_for_each_subnet() {
+        let ctx = fixture_with_svis(vec![
+            L3SviLine { vlan_id: 101, address: "10.11.101.2/24".into() },
+            L3SviLine { vlan_id: 120, address: "10.11.120.2/24".into() },
+        ]);
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains("set l3-interface vlan-interface vlan-101 address 10.11.101.2 prefix-length 24"),
+            "vlan-101 SVI missing:\n{out}");
+        assert!(out.contains("set l3-interface vlan-interface vlan-120 address 10.11.120.2 prefix-length 24"),
+            "vlan-120 SVI missing:\n{out}");
+    }
+
+    #[test]
+    fn picos_omits_l3_svi_section_when_empty() {
+        let out = PicosRenderer::render(&fixture_with_svis(vec![]));
+        // Only the header + hostname should be present; no SVI lines.
+        assert!(!out.contains("set l3-interface vlan-interface"),
+            "no SVIs in context → no SVI lines:\n{out}");
+    }
+
+    #[test]
+    fn picos_skips_malformed_svi_inet_but_emits_others() {
+        let ctx = fixture_with_svis(vec![
+            L3SviLine { vlan_id: 101, address: "bogus".into() },
+            L3SviLine { vlan_id: 120, address: "10.11.120.2/24".into() },
+        ]);
+        let out = PicosRenderer::render(&ctx);
+        assert!(!out.contains("vlan-101"),
+            "malformed vlan-101 entry should be skipped:\n{out}");
+        assert!(out.contains("vlan-interface vlan-120 address 10.11.120.2 prefix-length 24"),
+            "vlan-120 should still render:\n{out}");
+    }
+
+    #[test]
+    fn picos_emits_svi_lines_in_vlan_id_order() {
+        // The fetch query ORDER BYs vlan_id; if the fixture is given a
+        // pre-sorted list the renderer must preserve that order.
+        let ctx = fixture_with_svis(vec![
+            L3SviLine { vlan_id: 82,  address: "10.11.82.2/24".into() },
+            L3SviLine { vlan_id: 101, address: "10.11.101.2/24".into() },
+            L3SviLine { vlan_id: 120, address: "10.11.120.2/24".into() },
+        ]);
+        let out = PicosRenderer::render(&ctx);
+        let p82  = out.find("vlan-82 ").expect("vlan-82 present");
+        let p101 = out.find("vlan-101").expect("vlan-101 present");
+        let p120 = out.find("vlan-120").expect("vlan-120 present");
+        assert!(p82 < p101 && p101 < p120,
+            "SVI lines must stay in vlan_id order:\n{out}");
     }
 
     #[test]
