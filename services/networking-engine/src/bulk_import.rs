@@ -41,6 +41,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
 
+use crate::audit::{self, AuditEvent};
 use crate::error::EngineError;
 
 // ─── Parser ──────────────────────────────────────────────────────────────
@@ -192,26 +193,38 @@ const DEVICE_COLUMNS: &[&str] = &[
     "management_ip", "asn", "status", "version",
 ];
 
-/// Parse + per-row validate a CSV import payload of devices. When
-/// `dry_run = true` (the default) no DB mutation happens — validate
-/// only, returning the structured outcome so operators see every
-/// problem at once.
+/// Parse + per-row validate (and, when `dry_run = false`, apply) a
+/// CSV import payload of devices. Same return shape for both modes so
+/// UI callers get a consistent response to drive the summary banner.
 ///
-/// Apply mode is not wired yet; the handler rejects `dryRun=false`
-/// with a clear error rather than half-implementing the mutation
-/// path. That lands in a follow-on slice once the validation shape
-/// is proven against real legacy data.
+/// ## Apply semantics
+///
+/// **Create-only.** Rows whose hostname already exists in the
+/// tenant render as failed outcomes ("device exists — update mode
+/// not yet supported"). Update-on-upsert lands in a follow-on slice
+/// once we've decided how to surface the optimistic-concurrency
+/// `version` column from the CSV (today it's informational only —
+/// the export emits it but apply ignores it).
+///
+/// **Transactional.** If ANY row fails the INSERT (e.g. a DB
+/// constraint bites despite validation), the whole transaction
+/// rolls back and `applied = false` comes back. That matches the
+/// spreadsheet-import mental model: one bad row fails the whole
+/// file; operators fix the file and retry.
+///
+/// **ASN ignored on apply.** The CSV carries an `asn` column for
+/// human reference, but resolving it to an `asn_allocation_id` FK
+/// requires choosing a block + calling the allocation service —
+/// which the bulk-import flow doesn't do. Operators use the
+/// allocation CRUD panel for ASN assignments; the imported device
+/// starts with `asn_allocation_id = NULL`.
 pub async fn import_devices(
     pool: &PgPool,
     org_id: Uuid,
     body: &str,
     dry_run: bool,
+    user_id: Option<i32>,
 ) -> Result<ImportValidationResult, EngineError> {
-    if !dry_run {
-        return Err(EngineError::bad_request(
-            "device import apply mode is not yet implemented — pass dryRun=true for validation-only"));
-    }
-
     let rows = parse_csv(body)?;
     if rows.is_empty() {
         return Ok(ImportValidationResult {
@@ -233,33 +246,148 @@ pub async fn import_devices(
 
     // Pre-fetch the tenant's role codes + building codes so per-row
     // foreign-key validation stays one query-per-import rather than
-    // one query-per-row.
-    let role_codes: Vec<(String,)> = sqlx::query_as(
-        "SELECT role_code FROM net.device_role
+    // one query-per-row. For apply mode we also need the code→uuid
+    // mapping to actually INSERT; build both shapes from the same
+    // query result.
+    let role_rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, role_code FROM net.device_role
           WHERE organization_id = $1 AND deleted_at IS NULL")
         .bind(org_id).fetch_all(pool).await?;
     let role_codes: std::collections::HashSet<String> =
-        role_codes.into_iter().map(|(c,)| c).collect();
+        role_rows.iter().map(|(_, c)| c.clone()).collect();
+    let role_code_to_id: std::collections::HashMap<String, Uuid> =
+        role_rows.into_iter().map(|(id, c)| (c, id)).collect();
 
-    let building_codes: Vec<(String,)> = sqlx::query_as(
-        "SELECT building_code FROM net.building
+    let building_rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, building_code FROM net.building
           WHERE organization_id = $1 AND deleted_at IS NULL")
         .bind(org_id).fetch_all(pool).await?;
     let building_codes: std::collections::HashSet<String> =
-        building_codes.into_iter().map(|(c,)| c).collect();
+        building_rows.iter().map(|(_, c)| c.clone()).collect();
+    let building_code_to_id: std::collections::HashMap<String, Uuid> =
+        building_rows.into_iter().map(|(id, c)| (c, id)).collect();
 
-    let mut outcomes = Vec::with_capacity(rows.len().saturating_sub(1));
+    // Existing hostname set — used to surface "already exists" as a
+    // per-row error rather than letting the INSERT blow up later.
+    let existing_rows: Vec<(String,)> = sqlx::query_as(
+        "SELECT hostname FROM net.device
+          WHERE organization_id = $1 AND deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let existing_hostnames: std::collections::HashSet<String> =
+        existing_rows.into_iter().map(|(h,)| h).collect();
+
+    let mut outcomes: Vec<ImportRowOutcome> = Vec::with_capacity(rows.len().saturating_sub(1));
     for (i, row) in rows.iter().enumerate().skip(1) {
         let row_number = i + 1;   // 1-based, header is row 1
-        outcomes.push(validate_device_row(row, row_number, &role_codes, &building_codes));
+        let mut outcome = validate_device_row(row, row_number, &role_codes, &building_codes);
+        // Create-only semantics: a row is only valid for apply if
+        // its hostname is new. Flag this here (not in
+        // validate_device_row) so dry-run still shows the same
+        // per-field validation — but we don't want apply to INSERT
+        // an existing hostname.
+        if outcome.ok && existing_hostnames.contains(&outcome.identifier) {
+            outcome.ok = false;
+            outcome.errors.push(
+                "device with this hostname already exists — update mode not yet supported (delete + re-import if intended)"
+                .to_string());
+        }
+        outcomes.push(outcome);
     }
 
     let valid   = outcomes.iter().filter(|o| o.ok).count();
     let invalid = outcomes.len() - valid;
+
+    // Dry-run or any invalid row → return without touching the DB.
+    if dry_run || invalid > 0 {
+        return Ok(ImportValidationResult {
+            total_rows: outcomes.len(),
+            valid, invalid,
+            dry_run, applied: false,
+            outcomes,
+        });
+    }
+
+    // Apply path — every row passed validation, so INSERT them all
+    // inside one transaction. If ANY INSERT fails the whole tx
+    // rolls back and we surface the failing row via its outcome.
+    let mut tx = pool.begin().await?;
+    for (outcome_idx, row) in rows.iter().enumerate().skip(1).map(|(_, r)| r).enumerate() {
+        let hostname      = row[0].trim();
+        let role_code     = row[1].trim();
+        let building_code = row[2].trim();
+        let management_ip = row[4].trim();
+        let status        = row[6].trim();
+
+        let role_id     = if role_code.is_empty()     { None } else { role_code_to_id.get(role_code).copied() };
+        let building_id = if building_code.is_empty() { None } else { building_code_to_id.get(building_code).copied() };
+        let status_val  = if status.is_empty() { "Planned" } else { status };
+        // inet accepts either bare host or host/prefix; bind the
+        // string and let Postgres parse, so "10.11.152.2" and
+        // "10.11.152.2/24" both land correctly.
+        let mgmt_ip_opt: Option<&str> = if management_ip.is_empty() { None } else { Some(management_ip) };
+
+        // Insert. If the DB rejects (constraint we didn't pre-check
+        // for, enum coercion, etc.) propagate as a typed row-level
+        // failure + rollback the whole tx.
+        let insert_result: Result<(Uuid,), sqlx::Error> = sqlx::query_as(
+            "INSERT INTO net.device
+                (organization_id, device_role_id, building_id,
+                 hostname, management_ip, status, created_by, updated_by)
+             VALUES
+                ($1, $2, $3, $4, $5::inet, $6::net.entity_status, $7, $7)
+             RETURNING id")
+            .bind(org_id)
+            .bind(role_id)
+            .bind(building_id)
+            .bind(hostname)
+            .bind(mgmt_ip_opt)
+            .bind(status_val)
+            .bind(user_id)
+            .fetch_one(&mut *tx).await;
+
+        let device_id = match insert_result {
+            Ok((id,)) => id,
+            Err(e) => {
+                // Rollback tx (by dropping it implicitly when we
+                // return — sqlx rolls back on Drop) and mark this
+                // row failed in the outcomes.
+                let o = &mut outcomes[outcome_idx];
+                o.ok = false;
+                o.errors.push(format!("database INSERT failed: {e}"));
+                return Ok(ImportValidationResult {
+                    total_rows: outcomes.len(),
+                    valid: outcomes.iter().filter(|o| o.ok).count(),
+                    invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                    dry_run: false, applied: false,
+                    outcomes,
+                });
+            }
+        };
+
+        audit::append_tx(&mut tx, &AuditEvent {
+            organization_id: org_id,
+            source_service: "networking-engine",
+            entity_type: "Device",
+            entity_id: Some(device_id),
+            action: "Created",
+            actor_user_id: user_id,
+            actor_display: None,
+            client_ip: None,
+            correlation_id: None,
+            details: serde_json::json!({
+                "source": "bulk_import",
+                "hostname": hostname,
+                "role_code": role_code,
+                "building_code": building_code,
+            }),
+        }).await?;
+    }
+    tx.commit().await?;
+
     Ok(ImportValidationResult {
         total_rows: outcomes.len(),
-        valid, invalid,
-        dry_run, applied: false,
+        valid, invalid: 0,
+        dry_run: false, applied: true,
         outcomes,
     })
 }

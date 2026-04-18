@@ -1138,6 +1138,7 @@ async fn export_dhcp_relay_targets(
 async fn import_devices_csv(
     State(s): State<AppState>,
     Query(q): Query<bulk_import::ImportQuery>,
+    headers: HeaderMap,
     body: String,
 ) -> Result<impl IntoResponse, EngineError> {
     // Accept CSV as the raw POST body (Content-Type text/csv or
@@ -1145,6 +1146,9 @@ async fn import_devices_csv(
     // means operators can `curl --data-binary @devices.csv` without
     // multipart gymnastics; file-upload UIs still work because the
     // browser's FormData upload handlers will also produce text.
-    let result = bulk_import::import_devices(&s.pool, q.organization_id, &body, q.dry_run).await?;
+    let user_id = header_user_id(&headers);
+    let result = bulk_import::import_devices(
+        &s.pool, q.organization_id, &body, q.dry_run, user_id
+    ).await?;
     Ok(Json(result))
 }
