@@ -5,7 +5,7 @@
 use axum::{
     extract::{Path, State, Query},
     http::{HeaderMap, StatusCode},
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
@@ -15,7 +15,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::allocation::AllocationService;
-use crate::audit::{self, ListAuditQuery, VerifyChainQuery};
+use crate::audit::{self, ExportQuery, ListAuditQuery, VerifyChainQuery};
 use crate::change_sets::{
     AddItemBody, CancelBody, ChangeSetRepo, CreateChangeSetBody, DecisionBody,
     GetChangeSetQuery, ListChangeSetsQuery, SubmitBody,
@@ -69,6 +69,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/audit", get(list_audit))
         .route("/api/net/audit/verify", get(verify_audit_chain))
         .route("/api/net/audit/entity/:entity_type/:entity_id", get(entity_audit_timeline))
+        .route("/api/net/audit/export", get(export_audit))
         // Change Sets (Phase 8a)
         .route("/api/net/change-sets", get(list_change_sets).post(create_change_set))
         .route("/api/net/change-sets/:id", get(get_change_set))
@@ -431,6 +432,27 @@ async fn entity_audit_timeline(
 ) -> Result<impl IntoResponse, EngineError> {
     Ok(Json(audit::entity_timeline(
         &s.pool, q.organization_id, &entity_type, entity_id, q.limit).await?))
+}
+
+async fn export_audit(
+    State(s): State<AppState>,
+    Query(q): Query<ExportQuery>,
+) -> Result<Response, EngineError> {
+    let (body, content_type) = audit::export(&s.pool, &q).await?;
+    let filename = match q.format {
+        audit::ExportFormat::Csv => "audit.csv",
+        audit::ExportFormat::Ndjson => "audit.ndjson",
+    };
+    let mut resp = body.into_response();
+    resp.headers_mut().insert(
+        axum::http::header::CONTENT_TYPE,
+        axum::http::HeaderValue::from_static(content_type));
+    resp.headers_mut().insert(
+        axum::http::header::CONTENT_DISPOSITION,
+        axum::http::HeaderValue::from_str(
+            &format!("attachment; filename=\"{filename}\""))
+            .unwrap_or(axum::http::HeaderValue::from_static("attachment")));
+    Ok(resp)
 }
 
 async fn regenerate_apply(

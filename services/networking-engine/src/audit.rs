@@ -415,6 +415,121 @@ pub async fn list(pool: &PgPool, q: &ListAuditQuery) -> Result<Vec<AuditRow>, En
     Ok(rows)
 }
 
+// ─── Export ──────────────────────────────────────────────────────────────
+
+#[derive(Debug, Copy, Clone, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ExportFormat { Csv, Ndjson }
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportQuery {
+    pub organization_id: Uuid,
+    pub format: ExportFormat,
+    pub entity_type: Option<String>,
+    pub entity_id: Option<Uuid>,
+    pub action: Option<String>,
+    pub actor_user_id: Option<i32>,
+    pub correlation_id: Option<Uuid>,
+    pub from_at: Option<DateTime<Utc>>,
+    pub to_at: Option<DateTime<Utc>>,
+    /// Hard ceiling on rows returned — defaults to 50k. Higher-volume
+    /// pulls should chunk via multiple from_at/to_at windows.
+    #[serde(default = "default_export_limit")]
+    pub limit: i64,
+}
+
+fn default_export_limit() -> i64 { 50_000 }
+
+/// Export body as a single `String` (no streaming yet — 50k row default
+/// is comfortably in-memory, and axum's streaming bodies need a Send +
+/// 'static stream which complicates the sqlx lifetime dance). Can be
+/// upgraded to a chunked stream later without changing the HTTP surface.
+pub async fn export(pool: &PgPool, q: &ExportQuery) -> Result<(String, &'static str), EngineError> {
+    let limit = q.limit.clamp(1, 1_000_000);
+
+    let rows: Vec<AuditRow> = sqlx::query_as(
+        "SELECT id, organization_id, sequence_id, source_service, entity_type,
+                entity_id, action, actor_user_id, actor_display,
+                correlation_id, details, prev_hash, entry_hash, created_at
+           FROM net.audit_entry
+          WHERE organization_id = $1
+            AND ($2::text IS NULL OR entity_type    = $2)
+            AND ($3::uuid IS NULL OR entity_id      = $3)
+            AND ($4::text IS NULL OR action         = $4)
+            AND ($5::int  IS NULL OR actor_user_id  = $5)
+            AND ($6::uuid IS NULL OR correlation_id = $6)
+            AND ($7::timestamptz IS NULL OR created_at >= $7)
+            AND ($8::timestamptz IS NULL OR created_at <= $8)
+          ORDER BY sequence_id ASC
+          LIMIT $9")
+        .bind(q.organization_id)
+        .bind(q.entity_type.as_deref())
+        .bind(q.entity_id)
+        .bind(q.action.as_deref())
+        .bind(q.actor_user_id)
+        .bind(q.correlation_id)
+        .bind(q.from_at)
+        .bind(q.to_at)
+        .bind(limit)
+        .fetch_all(pool)
+        .await?;
+
+    match q.format {
+        ExportFormat::Csv => Ok((render_csv(&rows), "text/csv; charset=utf-8")),
+        ExportFormat::Ndjson => Ok((render_ndjson(&rows), "application/x-ndjson")),
+    }
+}
+
+fn render_csv(rows: &[AuditRow]) -> String {
+    let mut out = String::with_capacity(rows.len() * 160);
+    out.push_str("sequence_id,created_at,source_service,entity_type,entity_id,action,\
+                  actor_user_id,actor_display,correlation_id,prev_hash,entry_hash,details\n");
+    for r in rows {
+        out.push_str(&r.sequence_id.to_string()); out.push(',');
+        out.push_str(&r.created_at.to_rfc3339()); out.push(',');
+        push_csv_field(&mut out, &r.source_service); out.push(',');
+        push_csv_field(&mut out, &r.entity_type); out.push(',');
+        push_csv_field(&mut out, &r.entity_id.map(|id| id.to_string()).unwrap_or_default()); out.push(',');
+        push_csv_field(&mut out, &r.action); out.push(',');
+        out.push_str(&r.actor_user_id.map(|v| v.to_string()).unwrap_or_default()); out.push(',');
+        push_csv_field(&mut out, r.actor_display.as_deref().unwrap_or("")); out.push(',');
+        push_csv_field(&mut out, &r.correlation_id.map(|id| id.to_string()).unwrap_or_default()); out.push(',');
+        push_csv_field(&mut out, r.prev_hash.as_deref().unwrap_or("")); out.push(',');
+        push_csv_field(&mut out, &r.entry_hash); out.push(',');
+        push_csv_field(&mut out, &r.details.to_string());
+        out.push('\n');
+    }
+    out
+}
+
+/// RFC 4180 field quoting: wrap in double quotes if the value contains
+/// commas, newlines, or quotes; double-up any embedded quotes.
+fn push_csv_field(out: &mut String, s: &str) {
+    let needs_quote = s.contains(',') || s.contains('"') || s.contains('\n') || s.contains('\r');
+    if !needs_quote { out.push_str(s); return; }
+    out.push('"');
+    for ch in s.chars() {
+        if ch == '"' { out.push('"'); }
+        out.push(ch);
+    }
+    out.push('"');
+}
+
+fn render_ndjson(rows: &[AuditRow]) -> String {
+    let mut out = String::with_capacity(rows.len() * 200);
+    for r in rows {
+        // Re-using AuditRow's Serialize impl gives the same camelCase
+        // shape as the JSON API, which is the point — "the export is
+        // the API output, one-per-line".
+        if let Ok(line) = serde_json::to_string(r) {
+            out.push_str(&line);
+            out.push('\n');
+        }
+    }
+    out
+}
+
 /// Entity-scoped chronological timeline. Powers "show me everything that
 /// has ever happened to this device / link / server" forensics. Rows are
 /// returned in ascending sequence_id order so the UI reads left-to-right.
@@ -678,6 +793,42 @@ mod tests {
     fn single_row_verifies() {
         let r1 = build_row(1, None, "alone");
         assert!(walk_and_verify(&[r1]).is_empty());
+    }
+
+    #[test]
+    fn csv_plain_field_not_quoted() {
+        let mut s = String::new();
+        push_csv_field(&mut s, "hello");
+        assert_eq!(s, "hello");
+    }
+
+    #[test]
+    fn csv_field_with_comma_is_quoted() {
+        let mut s = String::new();
+        push_csv_field(&mut s, "a,b");
+        assert_eq!(s, "\"a,b\"");
+    }
+
+    #[test]
+    fn csv_field_with_quote_is_escaped() {
+        let mut s = String::new();
+        push_csv_field(&mut s, r#"he said "hi""#);
+        assert_eq!(s, r#""he said ""hi""""#);
+    }
+
+    #[test]
+    fn csv_field_with_newline_is_quoted() {
+        let mut s = String::new();
+        push_csv_field(&mut s, "line1\nline2");
+        assert!(s.starts_with('"') && s.ends_with('"'));
+        assert!(s.contains('\n'));
+    }
+
+    #[test]
+    fn csv_field_with_cr_is_quoted() {
+        let mut s = String::new();
+        push_csv_field(&mut s, "line1\rline2");
+        assert!(s.starts_with('"') && s.ends_with('"'));
     }
 
     #[test]
