@@ -69,6 +69,22 @@ pub struct BulkEditDevicesBody {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct BulkEditVlansBody {
+    pub vlan_ids: Vec<Uuid>,
+    pub field: String,
+    pub value: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BulkEditSubnetsBody {
+    pub subnet_ids: Vec<Uuid>,
+    pub field: String,
+    pub value: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BulkEditQuery {
     pub organization_id: Uuid,
     #[serde(default = "default_dry_run")]
@@ -405,6 +421,374 @@ async fn apply_device_field_update(
     };
     let result = query.execute(&mut **tx).await?;
     Ok(result.rows_affected())
+}
+
+// ─── VLAN bulk edit ──────────────────────────────────────────────────────
+
+const EDITABLE_VLAN_FIELDS: &[&str] = &[
+    "display_name", "description", "scope_level", "status", "template_code", "notes",
+];
+
+pub fn is_editable_vlan_field(name: &str) -> bool {
+    EDITABLE_VLAN_FIELDS.iter().any(|f| *f == name)
+}
+
+fn validate_vlan_scope_level(v: &str) -> Result<(), String> {
+    if matches!(v, "Free"|"Region"|"Site"|"Building"|"Device") { Ok(()) }
+    else { Err(format!("scope_level '{v}' must be Free/Region/Site/Building/Device")) }
+}
+
+pub async fn bulk_edit_vlans(
+    pool: &PgPool,
+    org_id: Uuid,
+    req: &BulkEditVlansBody,
+    dry_run: bool,
+    user_id: Option<i32>,
+) -> Result<BulkEditResult, EngineError> {
+    if !is_editable_vlan_field(&req.field) {
+        return Err(EngineError::bad_request(format!(
+            "field '{}' is not editable via bulk-edit (allowed: {})",
+            req.field, EDITABLE_VLAN_FIELDS.join(","))));
+    }
+    match req.field.as_str() {
+        "status"      => validate_status(&req.value).map_err(EngineError::bad_request)?,
+        "scope_level" => validate_vlan_scope_level(&req.value).map_err(EngineError::bad_request)?,
+        "display_name" if req.value.is_empty() =>
+            return Err(EngineError::bad_request("display_name cannot be empty")),
+        "display_name" | "description" | "notes" | "template_code" => {}
+        _ => unreachable!("is_editable_vlan_field whitelist guards this"),
+    }
+    if req.vlan_ids.is_empty() {
+        return Ok(BulkEditResult {
+            total: 0, succeeded: 0, failed: 0,
+            dry_run, applied: false, outcomes: vec![],
+        });
+    }
+
+    // Resolve template_code → uuid if that's the field being edited.
+    let template_id_opt = resolve_code_or_null(
+        pool, org_id, "net.vlan_template", "template_code", &req.value,
+    ).await?;
+    if req.field == "template_code" && !req.value.is_empty() && template_id_opt.is_none() {
+        return Err(EngineError::bad_request(format!(
+            "template_code '{}' not found in this tenant's vlan_template catalog",
+            req.value)));
+    }
+
+    // Snapshot — VLANs are identified by their display_name for the
+    // outcome `hostname` slot (the field name is misleading given
+    // it's carrying a VLAN label, but the DTO shape stays consistent
+    // across entity types so clients don't need per-entity result
+    // types).
+    let targets: Vec<(Uuid, String, i32)> = sqlx::query_as(
+        "SELECT id, display_name, version FROM net.vlan
+          WHERE organization_id = $1 AND id = ANY($2) AND deleted_at IS NULL")
+        .bind(org_id).bind(&req.vlan_ids)
+        .fetch_all(pool).await?;
+
+    let mut outcomes: Vec<BulkEditOutcome> = req.vlan_ids.iter().map(|id| {
+        if let Some((_, label, _)) = targets.iter().find(|(t, _, _)| t == id) {
+            BulkEditOutcome { id: *id, hostname: label.clone(), ok: true, error: None }
+        } else {
+            BulkEditOutcome {
+                id: *id, hostname: String::new(), ok: false,
+                error: Some("vlan not found in this tenant (or soft-deleted)".into()),
+            }
+        }
+    }).collect();
+    let any_missing = outcomes.iter().any(|o| !o.ok);
+    if dry_run || any_missing {
+        return Ok(BulkEditResult {
+            total: outcomes.len(),
+            succeeded: outcomes.iter().filter(|o| o.ok).count(),
+            failed:    outcomes.iter().filter(|o| !o.ok).count(),
+            dry_run, applied: false, outcomes,
+        });
+    }
+
+    // RBAC — opt-in via X-User-Id presence, same as devices.
+    if let Some(uid) = user_id {
+        for vlan_id in &req.vlan_ids {
+            let decision = crate::scope_grants::has_permission(
+                pool, org_id, uid, "write", "Vlan", Some(*vlan_id)
+            ).await?;
+            if !decision.allowed {
+                return Err(EngineError::forbidden(uid, "write", "Vlan"));
+            }
+        }
+    }
+
+    let mut tx = pool.begin().await?;
+    for (target_id, target_label, current_version) in &targets {
+        let outcome_idx = outcomes.iter()
+            .position(|o| &o.id == target_id)
+            .expect("targets filtered from vlan_ids");
+
+        let update_result = apply_vlan_field_update(
+            &mut tx, org_id, *target_id, *current_version, &req.field,
+            &req.value, template_id_opt, user_id,
+        ).await;
+
+        match update_result {
+            Ok(rows_affected) if rows_affected == 1 => {}
+            Ok(_) => {
+                outcomes[outcome_idx].ok = false;
+                outcomes[outcome_idx].error = Some(
+                    "concurrent write detected (version changed between read and write)".into()
+                );
+                return Ok(BulkEditResult {
+                    total: outcomes.len(),
+                    succeeded: outcomes.iter().filter(|o| o.ok).count(),
+                    failed:    outcomes.iter().filter(|o| !o.ok).count(),
+                    dry_run: false, applied: false, outcomes,
+                });
+            }
+            Err(e) => {
+                outcomes[outcome_idx].ok = false;
+                outcomes[outcome_idx].error = Some(format!("database UPDATE failed: {e}"));
+                return Ok(BulkEditResult {
+                    total: outcomes.len(),
+                    succeeded: outcomes.iter().filter(|o| o.ok).count(),
+                    failed:    outcomes.iter().filter(|o| !o.ok).count(),
+                    dry_run: false, applied: false, outcomes,
+                });
+            }
+        }
+
+        audit::append_tx(&mut tx, &AuditEvent {
+            organization_id: org_id,
+            source_service: "networking-engine",
+            entity_type: "Vlan",
+            entity_id: Some(*target_id),
+            action: "BulkEdited",
+            actor_user_id: user_id,
+            actor_display: None, client_ip: None, correlation_id: None,
+            details: serde_json::json!({
+                "source": "bulk_edit",
+                "display_name": target_label,
+                "field": req.field,
+                "new_value": req.value,
+            }),
+        }).await?;
+    }
+    tx.commit().await?;
+
+    let total = outcomes.len();
+    Ok(BulkEditResult {
+        total, succeeded: total, failed: 0,
+        dry_run: false, applied: true, outcomes,
+    })
+}
+
+async fn apply_vlan_field_update(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    org_id: Uuid, vlan_id: Uuid, current_version: i32,
+    field: &str, value: &str, template_id_opt: Option<Uuid>,
+    user_id: Option<i32>,
+) -> Result<u64, sqlx::Error> {
+    let value_opt: Option<&str> = if value.is_empty() { None } else { Some(value) };
+    let query = match field {
+        "display_name" => sqlx::query(
+            "UPDATE net.vlan SET display_name = $3, updated_at = now(),
+                 updated_by = $4, version = version + 1
+              WHERE id = $1 AND organization_id = $2 AND version = $5 AND deleted_at IS NULL")
+            .bind(vlan_id).bind(org_id).bind(value).bind(user_id).bind(current_version),
+        "description" => sqlx::query(
+            "UPDATE net.vlan SET description = $3, updated_at = now(),
+                 updated_by = $4, version = version + 1
+              WHERE id = $1 AND organization_id = $2 AND version = $5 AND deleted_at IS NULL")
+            .bind(vlan_id).bind(org_id).bind(value_opt).bind(user_id).bind(current_version),
+        "scope_level" => sqlx::query(
+            "UPDATE net.vlan SET scope_level = $3, updated_at = now(),
+                 updated_by = $4, version = version + 1
+              WHERE id = $1 AND organization_id = $2 AND version = $5 AND deleted_at IS NULL")
+            .bind(vlan_id).bind(org_id).bind(value).bind(user_id).bind(current_version),
+        "status" => sqlx::query(
+            "UPDATE net.vlan SET status = $3::net.entity_status, updated_at = now(),
+                 updated_by = $4, version = version + 1
+              WHERE id = $1 AND organization_id = $2 AND version = $5 AND deleted_at IS NULL")
+            .bind(vlan_id).bind(org_id).bind(value).bind(user_id).bind(current_version),
+        "template_code" => sqlx::query(
+            "UPDATE net.vlan SET template_id = $3, updated_at = now(),
+                 updated_by = $4, version = version + 1
+              WHERE id = $1 AND organization_id = $2 AND version = $5 AND deleted_at IS NULL")
+            .bind(vlan_id).bind(org_id).bind(template_id_opt).bind(user_id).bind(current_version),
+        "notes" => sqlx::query(
+            "UPDATE net.vlan SET notes = $3, updated_at = now(),
+                 updated_by = $4, version = version + 1
+              WHERE id = $1 AND organization_id = $2 AND version = $5 AND deleted_at IS NULL")
+            .bind(vlan_id).bind(org_id).bind(value_opt).bind(user_id).bind(current_version),
+        _ => unreachable!(),
+    };
+    Ok(query.execute(&mut **tx).await?.rows_affected())
+}
+
+// ─── Subnet bulk edit ────────────────────────────────────────────────────
+
+const EDITABLE_SUBNET_FIELDS: &[&str] = &[
+    "display_name", "scope_level", "status", "notes",
+];
+
+pub fn is_editable_subnet_field(name: &str) -> bool {
+    EDITABLE_SUBNET_FIELDS.iter().any(|f| *f == name)
+}
+
+fn validate_subnet_scope_level(v: &str) -> Result<(), String> {
+    if matches!(v, "Free"|"Region"|"Site"|"Building"|"Floor"|"Room") { Ok(()) }
+    else { Err(format!("scope_level '{v}' must be Free/Region/Site/Building/Floor/Room")) }
+}
+
+pub async fn bulk_edit_subnets(
+    pool: &PgPool,
+    org_id: Uuid,
+    req: &BulkEditSubnetsBody,
+    dry_run: bool,
+    user_id: Option<i32>,
+) -> Result<BulkEditResult, EngineError> {
+    if !is_editable_subnet_field(&req.field) {
+        return Err(EngineError::bad_request(format!(
+            "field '{}' is not editable via bulk-edit (allowed: {})",
+            req.field, EDITABLE_SUBNET_FIELDS.join(","))));
+    }
+    match req.field.as_str() {
+        "status"      => validate_status(&req.value).map_err(EngineError::bad_request)?,
+        "scope_level" => validate_subnet_scope_level(&req.value).map_err(EngineError::bad_request)?,
+        "display_name" if req.value.is_empty() =>
+            return Err(EngineError::bad_request("display_name cannot be empty")),
+        "display_name" | "notes" => {}
+        _ => unreachable!(),
+    }
+    if req.subnet_ids.is_empty() {
+        return Ok(BulkEditResult {
+            total: 0, succeeded: 0, failed: 0,
+            dry_run, applied: false, outcomes: vec![],
+        });
+    }
+
+    let targets: Vec<(Uuid, String, i32)> = sqlx::query_as(
+        "SELECT id, subnet_code, version FROM net.subnet
+          WHERE organization_id = $1 AND id = ANY($2) AND deleted_at IS NULL")
+        .bind(org_id).bind(&req.subnet_ids)
+        .fetch_all(pool).await?;
+
+    let mut outcomes: Vec<BulkEditOutcome> = req.subnet_ids.iter().map(|id| {
+        if let Some((_, code, _)) = targets.iter().find(|(t, _, _)| t == id) {
+            BulkEditOutcome { id: *id, hostname: code.clone(), ok: true, error: None }
+        } else {
+            BulkEditOutcome {
+                id: *id, hostname: String::new(), ok: false,
+                error: Some("subnet not found in this tenant (or soft-deleted)".into()),
+            }
+        }
+    }).collect();
+    let any_missing = outcomes.iter().any(|o| !o.ok);
+    if dry_run || any_missing {
+        return Ok(BulkEditResult {
+            total: outcomes.len(),
+            succeeded: outcomes.iter().filter(|o| o.ok).count(),
+            failed:    outcomes.iter().filter(|o| !o.ok).count(),
+            dry_run, applied: false, outcomes,
+        });
+    }
+
+    if let Some(uid) = user_id {
+        for sid in &req.subnet_ids {
+            let d = crate::scope_grants::has_permission(
+                pool, org_id, uid, "write", "Subnet", Some(*sid)
+            ).await?;
+            if !d.allowed { return Err(EngineError::forbidden(uid, "write", "Subnet")); }
+        }
+    }
+
+    let mut tx = pool.begin().await?;
+    for (target_id, target_code, current_version) in &targets {
+        let outcome_idx = outcomes.iter().position(|o| &o.id == target_id).unwrap();
+
+        let update_result = apply_subnet_field_update(
+            &mut tx, org_id, *target_id, *current_version, &req.field, &req.value, user_id,
+        ).await;
+
+        match update_result {
+            Ok(rows_affected) if rows_affected == 1 => {}
+            Ok(_) => {
+                outcomes[outcome_idx].ok = false;
+                outcomes[outcome_idx].error = Some(
+                    "concurrent write detected (version changed between read and write)".into()
+                );
+                return Ok(BulkEditResult {
+                    total: outcomes.len(),
+                    succeeded: outcomes.iter().filter(|o| o.ok).count(),
+                    failed:    outcomes.iter().filter(|o| !o.ok).count(),
+                    dry_run: false, applied: false, outcomes,
+                });
+            }
+            Err(e) => {
+                outcomes[outcome_idx].ok = false;
+                outcomes[outcome_idx].error = Some(format!("database UPDATE failed: {e}"));
+                return Ok(BulkEditResult {
+                    total: outcomes.len(),
+                    succeeded: outcomes.iter().filter(|o| o.ok).count(),
+                    failed:    outcomes.iter().filter(|o| !o.ok).count(),
+                    dry_run: false, applied: false, outcomes,
+                });
+            }
+        }
+
+        audit::append_tx(&mut tx, &AuditEvent {
+            organization_id: org_id,
+            source_service: "networking-engine",
+            entity_type: "Subnet",
+            entity_id: Some(*target_id),
+            action: "BulkEdited",
+            actor_user_id: user_id,
+            actor_display: None, client_ip: None, correlation_id: None,
+            details: serde_json::json!({
+                "source": "bulk_edit",
+                "subnet_code": target_code,
+                "field": req.field,
+                "new_value": req.value,
+            }),
+        }).await?;
+    }
+    tx.commit().await?;
+
+    let total = outcomes.len();
+    Ok(BulkEditResult {
+        total, succeeded: total, failed: 0,
+        dry_run: false, applied: true, outcomes,
+    })
+}
+
+async fn apply_subnet_field_update(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    org_id: Uuid, subnet_id: Uuid, current_version: i32,
+    field: &str, value: &str, user_id: Option<i32>,
+) -> Result<u64, sqlx::Error> {
+    let value_opt: Option<&str> = if value.is_empty() { None } else { Some(value) };
+    let query = match field {
+        "display_name" => sqlx::query(
+            "UPDATE net.subnet SET display_name = $3, updated_at = now(),
+                 updated_by = $4, version = version + 1
+              WHERE id = $1 AND organization_id = $2 AND version = $5 AND deleted_at IS NULL")
+            .bind(subnet_id).bind(org_id).bind(value).bind(user_id).bind(current_version),
+        "scope_level" => sqlx::query(
+            "UPDATE net.subnet SET scope_level = $3, updated_at = now(),
+                 updated_by = $4, version = version + 1
+              WHERE id = $1 AND organization_id = $2 AND version = $5 AND deleted_at IS NULL")
+            .bind(subnet_id).bind(org_id).bind(value).bind(user_id).bind(current_version),
+        "status" => sqlx::query(
+            "UPDATE net.subnet SET status = $3::net.entity_status, updated_at = now(),
+                 updated_by = $4, version = version + 1
+              WHERE id = $1 AND organization_id = $2 AND version = $5 AND deleted_at IS NULL")
+            .bind(subnet_id).bind(org_id).bind(value).bind(user_id).bind(current_version),
+        "notes" => sqlx::query(
+            "UPDATE net.subnet SET notes = $3, updated_at = now(),
+                 updated_by = $4, version = version + 1
+              WHERE id = $1 AND organization_id = $2 AND version = $5 AND deleted_at IS NULL")
+            .bind(subnet_id).bind(org_id).bind(value_opt).bind(user_id).bind(current_version),
+        _ => unreachable!(),
+    };
+    Ok(query.execute(&mut **tx).await?.rows_affected())
 }
 
 #[cfg(test)]

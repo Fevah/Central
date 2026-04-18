@@ -16,7 +16,7 @@ use uuid::Uuid;
 
 use crate::allocation::AllocationService;
 use crate::audit::{self, ExportQuery, ListAuditQuery, VerifyChainQuery};
-use crate::bulk_edit::{self, BulkEditDevicesBody, BulkEditQuery};
+use crate::bulk_edit::{self, BulkEditDevicesBody, BulkEditQuery, BulkEditSubnetsBody, BulkEditVlansBody};
 use crate::bulk_export;
 use crate::bulk_import;
 use crate::cli_flavor::{self, ListFlavorsQuery, SetFlavorConfigBody};
@@ -149,6 +149,8 @@ pub fn build_router(state: AppState) -> Router {
         // Bulk edit (Phase 10) — same-value-for-all transactional
         // update across a selected set of rows; dryRun preview.
         .route("/api/net/devices/bulk-edit",                post(bulk_edit_devices_handler))
+        .route("/api/net/vlans/bulk-edit",                  post(bulk_edit_vlans_handler))
+        .route("/api/net/subnets/bulk-edit",                post(bulk_edit_subnets_handler))
         // Scope grants (Phase 10 RBAC foundation) — CRUD + resolver.
         // Engine is available now but not-yet-blocking anywhere;
         // per-endpoint enforcement lands in follow-on slices.
@@ -1264,6 +1266,32 @@ async fn bulk_edit_devices_handler(
 ) -> Result<impl IntoResponse, EngineError> {
     let user_id = header_user_id(&headers);
     let result = bulk_edit::bulk_edit_devices(
+        &s.pool, q.organization_id, &body, q.dry_run, user_id,
+    ).await?;
+    Ok(Json(result))
+}
+
+async fn bulk_edit_vlans_handler(
+    State(s): State<AppState>,
+    Query(q): Query<BulkEditQuery>,
+    headers: HeaderMap,
+    Json(body): Json<BulkEditVlansBody>,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    let result = bulk_edit::bulk_edit_vlans(
+        &s.pool, q.organization_id, &body, q.dry_run, user_id,
+    ).await?;
+    Ok(Json(result))
+}
+
+async fn bulk_edit_subnets_handler(
+    State(s): State<AppState>,
+    Query(q): Query<BulkEditQuery>,
+    headers: HeaderMap,
+    Json(body): Json<BulkEditSubnetsBody>,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    let result = bulk_edit::bulk_edit_subnets(
         &s.pool, q.organization_id, &body, q.dry_run, user_id,
     ).await?;
     Ok(Json(result))

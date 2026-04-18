@@ -646,16 +646,43 @@ public class NetworkingEngineClient : IDisposable
     /// role_code, building_code, management_ip, notes. Any per-row
     /// failure rolls back the whole batch; dryRun=true previews.
     /// </summary>
-    public async Task<BulkEditResultDto> BulkEditDevicesAsync(Guid organizationId,
+    public Task<BulkEditResultDto> BulkEditDevicesAsync(Guid organizationId,
         IReadOnlyList<Guid> deviceIds, string field, string value,
         bool dryRun = true, CancellationToken ct = default)
+        => BulkEditAsync("/api/net/devices/bulk-edit", organizationId,
+            new { deviceIds, field, value }, dryRun, ct);
+
+    /// <summary>Bulk edit VLANs. Whitelisted fields: display_name,
+    /// description, scope_level, status, template_code, notes.
+    /// template_code resolves to net.vlan_template.id; non-existent
+    /// codes return 400 before any write.</summary>
+    public Task<BulkEditResultDto> BulkEditVlansAsync(Guid organizationId,
+        IReadOnlyList<Guid> vlanIds, string field, string value,
+        bool dryRun = true, CancellationToken ct = default)
+        => BulkEditAsync("/api/net/vlans/bulk-edit", organizationId,
+            new { vlanIds, field, value }, dryRun, ct);
+
+    /// <summary>Bulk edit subnets. Whitelisted fields: display_name,
+    /// scope_level, status, notes. Network + pool_id + vlan_id stay
+    /// gated behind single-row CRUD — bulk-editing a subnet's CIDR at
+    /// scale is rarely what operators actually want.</summary>
+    public Task<BulkEditResultDto> BulkEditSubnetsAsync(Guid organizationId,
+        IReadOnlyList<Guid> subnetIds, string field, string value,
+        bool dryRun = true, CancellationToken ct = default)
+        => BulkEditAsync("/api/net/subnets/bulk-edit", organizationId,
+            new { subnetIds, field, value }, dryRun, ct);
+
+    /// <summary>Shared POST helper for every bulk-edit endpoint.
+    /// Each entity's method differs only in the body shape (its id
+    /// list field name) + the URL path.</summary>
+    private async Task<BulkEditResultDto> BulkEditAsync(string path,
+        Guid organizationId, object body, bool dryRun, CancellationToken ct)
     {
-        var url = $"/api/net/devices/bulk-edit?organizationId={organizationId}&dryRun={(dryRun ? "true" : "false")}";
-        var resp = await _http.PostAsJsonAsync(url,
-            new { deviceIds, field, value }, Json, ct);
+        var url = $"{path}?organizationId={organizationId}&dryRun={(dryRun ? "true" : "false")}";
+        var resp = await _http.PostAsJsonAsync(url, body, Json, ct);
         await EnsureSuccessAsync(resp, ct);
         return (await resp.Content.ReadFromJsonAsync<BulkEditResultDto>(Json, ct))
-            ?? throw new NetworkingEngineException(0, "POST bulk-edit returned null body");
+            ?? throw new NetworkingEngineException(0, $"POST {path} returned null body");
     }
 
     // ─── Transport helpers ──────────────────────────────────────────────

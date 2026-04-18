@@ -337,3 +337,204 @@ async fn bulk_edit_notes_clears_to_null_on_empty_value() {
         .bind(fx.device_a).fetch_one(&fx.pool).await.unwrap();
     assert_eq!(notes, None, "empty value must clear notes to NULL");
 }
+
+// ─── VLAN + subnet bulk edit tests ───────────────────────────────────────
+//
+// Extend the device bulk-edit invariants (whitelist / happy-path /
+// missing-id / forbidden / empty-value handling) to VLANs + subnets.
+
+use networking_engine::bulk_edit::{BulkEditVlansBody, BulkEditSubnetsBody};
+
+/// Fixture with 1 tenant + 1 vlan_pool/block + 2 VLANs + 1 ip_pool
+/// + 2 subnets. Enough rows to drive bulk-edit happy paths +
+/// rollback-on-missing tests for both entity types.
+struct VlanSubnetFixture {
+    pool: PgPool,
+    org_id: Uuid,
+    vlan_a: Uuid,
+    vlan_b: Uuid,
+    subnet_a: Uuid,
+    subnet_b: Uuid,
+}
+
+impl VlanSubnetFixture {
+    async fn new(pool: PgPool) -> sqlx::Result<Self> {
+        let org_id = Uuid::new_v4();
+        sqlx::query(
+            "INSERT INTO central_platform.tenants (id, slug, display_name, status)
+             VALUES ($1, $2, $2, 'Active') ON CONFLICT (id) DO NOTHING")
+            .bind(org_id).bind(format!("vs-itest-{org_id}"))
+            .execute(&pool).await?;
+
+        let vp_id: (Uuid,) = sqlx::query_as(
+            "INSERT INTO net.vlan_pool (organization_id, pool_code, display_name,
+                                        vlan_first, vlan_last)
+             VALUES ($1, 'VS-VP', 'VS pool', 1, 4094) RETURNING id")
+            .bind(org_id).fetch_one(&pool).await?;
+        let vb_id: (Uuid,) = sqlx::query_as(
+            "INSERT INTO net.vlan_block (organization_id, pool_id, block_code, display_name,
+                                         vlan_first, vlan_last, scope_level)
+             VALUES ($1, $2, 'VS-VB', 'VS block', 1, 4094, 'Free') RETURNING id")
+            .bind(org_id).bind(vp_id.0).fetch_one(&pool).await?;
+        let vlan_a: (Uuid,) = sqlx::query_as(
+            "INSERT INTO net.vlan (organization_id, pool_id, block_id,
+                                   vlan_id, display_name, scope_level, status)
+             VALUES ($1, $2, $3, 100, 'VLAN-A', 'Free', 'Active') RETURNING id")
+            .bind(org_id).bind(vp_id.0).bind(vb_id.0).fetch_one(&pool).await?;
+        let vlan_b: (Uuid,) = sqlx::query_as(
+            "INSERT INTO net.vlan (organization_id, pool_id, block_id,
+                                   vlan_id, display_name, scope_level, status)
+             VALUES ($1, $2, $3, 101, 'VLAN-B', 'Free', 'Active') RETURNING id")
+            .bind(org_id).bind(vp_id.0).bind(vb_id.0).fetch_one(&pool).await?;
+
+        let ip_id: (Uuid,) = sqlx::query_as(
+            "INSERT INTO net.ip_pool (organization_id, pool_code, display_name,
+                                      network, address_family)
+             VALUES ($1, 'VS-IP', 'VS IP pool', '10.77.0.0/16', 4) RETURNING id")
+            .bind(org_id).fetch_one(&pool).await?;
+        let subnet_a: (Uuid,) = sqlx::query_as(
+            "INSERT INTO net.subnet (organization_id, pool_id, subnet_code, display_name,
+                                     network, scope_level, status)
+             VALUES ($1, $2, 'VS-SUB-A', 'SA', '10.77.1.0/24', 'Free', 'Active')
+             RETURNING id")
+            .bind(org_id).bind(ip_id.0).fetch_one(&pool).await?;
+        let subnet_b: (Uuid,) = sqlx::query_as(
+            "INSERT INTO net.subnet (organization_id, pool_id, subnet_code, display_name,
+                                     network, scope_level, status)
+             VALUES ($1, $2, 'VS-SUB-B', 'SB', '10.77.2.0/24', 'Free', 'Active')
+             RETURNING id")
+            .bind(org_id).bind(ip_id.0).fetch_one(&pool).await?;
+
+        Ok(Self { pool, org_id,
+                   vlan_a: vlan_a.0, vlan_b: vlan_b.0,
+                   subnet_a: subnet_a.0, subnet_b: subnet_b.0 })
+    }
+
+    async fn vlan_status(&self, id: Uuid) -> String {
+        let (s,): (String,) = sqlx::query_as(
+            "SELECT status::text FROM net.vlan WHERE id = $1")
+            .bind(id).fetch_one(&self.pool).await.unwrap();
+        s
+    }
+
+    async fn subnet_display(&self, id: Uuid) -> String {
+        let (s,): (String,) = sqlx::query_as(
+            "SELECT display_name FROM net.subnet WHERE id = $1")
+            .bind(id).fetch_one(&self.pool).await.unwrap();
+        s
+    }
+}
+
+impl Drop for VlanSubnetFixture {
+    fn drop(&mut self) {
+        let pool = self.pool.clone();
+        let org_id = self.org_id;
+        tokio::spawn(async move {
+            let _ = sqlx::query("DELETE FROM central_platform.tenants WHERE id = $1")
+                .bind(org_id).execute(&pool).await;
+        });
+    }
+}
+
+#[tokio::test]
+#[ignore]
+async fn vlan_bulk_edit_status_updates_every_selected() {
+    let Some(pool) = pool_or_skip("vlan_bulk_edit_status_updates_every_selected").await else { return; };
+    let fx = VlanSubnetFixture::new(pool).await.expect("fixture");
+    assert_eq!(fx.vlan_status(fx.vlan_a).await, "Active");
+
+    let req = BulkEditVlansBody {
+        vlan_ids: vec![fx.vlan_a, fx.vlan_b],
+        field: "status".into(),
+        value: "Retired".into(),
+    };
+    let result = bulk_edit::bulk_edit_vlans(&fx.pool, fx.org_id, &req, false, None)
+        .await.expect("apply");
+    assert!(result.applied);
+    assert_eq!(fx.vlan_status(fx.vlan_a).await, "Retired");
+    assert_eq!(fx.vlan_status(fx.vlan_b).await, "Retired");
+}
+
+#[tokio::test]
+#[ignore]
+async fn vlan_bulk_edit_rejects_non_whitelisted_field() {
+    let Some(pool) = pool_or_skip("vlan_bulk_edit_rejects_non_whitelisted_field").await else { return; };
+    let fx = VlanSubnetFixture::new(pool).await.expect("fixture");
+
+    let req = BulkEditVlansBody {
+        vlan_ids: vec![fx.vlan_a],
+        field: "vlan_id".into(),
+        value: "999".into(),
+    };
+    let err = bulk_edit::bulk_edit_vlans(&fx.pool, fx.org_id, &req, false, None)
+        .await.unwrap_err().to_string();
+    assert!(err.contains("not editable"), "err: {err}");
+}
+
+#[tokio::test]
+#[ignore]
+async fn vlan_bulk_edit_forbidden_without_grant() {
+    let Some(pool) = pool_or_skip("vlan_bulk_edit_forbidden_without_grant").await else { return; };
+    let fx = VlanSubnetFixture::new(pool).await.expect("fixture");
+
+    let req = BulkEditVlansBody {
+        vlan_ids: vec![fx.vlan_a],
+        field: "status".into(),
+        value: "Retired".into(),
+    };
+    let err = bulk_edit::bulk_edit_vlans(&fx.pool, fx.org_id, &req, false, Some(42))
+        .await.unwrap_err().to_string();
+    assert!(err.contains("Forbidden"), "err: {err}");
+    assert_eq!(fx.vlan_status(fx.vlan_a).await, "Active");
+}
+
+#[tokio::test]
+#[ignore]
+async fn subnet_bulk_edit_display_name_updates_every_selected() {
+    let Some(pool) = pool_or_skip("subnet_bulk_edit_display_name_updates_every_selected").await else { return; };
+    let fx = VlanSubnetFixture::new(pool).await.expect("fixture");
+
+    let req = BulkEditSubnetsBody {
+        subnet_ids: vec![fx.subnet_a, fx.subnet_b],
+        field: "display_name".into(),
+        value: "Renamed in bulk".into(),
+    };
+    let result = bulk_edit::bulk_edit_subnets(&fx.pool, fx.org_id, &req, false, None)
+        .await.expect("apply");
+    assert!(result.applied);
+    assert_eq!(fx.subnet_display(fx.subnet_a).await, "Renamed in bulk");
+    assert_eq!(fx.subnet_display(fx.subnet_b).await, "Renamed in bulk");
+}
+
+#[tokio::test]
+#[ignore]
+async fn subnet_bulk_edit_rejects_empty_display_name() {
+    let Some(pool) = pool_or_skip("subnet_bulk_edit_rejects_empty_display_name").await else { return; };
+    let fx = VlanSubnetFixture::new(pool).await.expect("fixture");
+
+    let req = BulkEditSubnetsBody {
+        subnet_ids: vec![fx.subnet_a],
+        field: "display_name".into(),
+        value: "".into(),
+    };
+    let err = bulk_edit::bulk_edit_subnets(&fx.pool, fx.org_id, &req, false, None)
+        .await.unwrap_err().to_string();
+    assert!(err.contains("display_name cannot be empty"), "err: {err}");
+    assert_eq!(fx.subnet_display(fx.subnet_a).await, "SA");
+}
+
+#[tokio::test]
+#[ignore]
+async fn subnet_bulk_edit_forbidden_without_grant() {
+    let Some(pool) = pool_or_skip("subnet_bulk_edit_forbidden_without_grant").await else { return; };
+    let fx = VlanSubnetFixture::new(pool).await.expect("fixture");
+
+    let req = BulkEditSubnetsBody {
+        subnet_ids: vec![fx.subnet_a],
+        field: "status".into(),
+        value: "Deprecated".into(),
+    };
+    let err = bulk_edit::bulk_edit_subnets(&fx.pool, fx.org_id, &req, false, Some(42))
+        .await.unwrap_err().to_string();
+    assert!(err.contains("Forbidden"), "err: {err}");
+}
