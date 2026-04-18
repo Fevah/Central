@@ -105,8 +105,9 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/devices/:id/renders",              get(list_device_renders))
         .route("/api/net/renders/:id",                      get(get_render_by_id))
         .route("/api/net/renders/:id/diff",                 get(diff_render_by_id))
-        // Building-level turn-up pack: fan-out render + persist
+        // Building- / site-level turn-up packs: fan-out render + persist
         .route("/api/net/buildings/:id/render-configs",     post(render_building_configs))
+        .route("/api/net/sites/:id/render-configs",         post(render_site_configs))
         .with_state(state)
 }
 
@@ -918,5 +919,19 @@ async fn render_building_configs(
     let rendered_by = header_user_id(&headers);
     Ok(Json(config_gen::render_building_persisted(
         &s.pool, q.organization_id, building_id, rendered_by
+    ).await?))
+}
+
+async fn render_site_configs(
+    State(s): State<AppState>,
+    Path(site_id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, EngineError> {
+    // Same fan-out semantics as building-level, one scope up:
+    // every device across every building in the site.
+    let rendered_by = header_user_id(&headers);
+    Ok(Json(config_gen::render_site_persisted(
+        &s.pool, q.organization_id, site_id, rendered_by
     ).await?))
 }

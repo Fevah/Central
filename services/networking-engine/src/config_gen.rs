@@ -89,6 +89,22 @@ pub struct BuildingRenderResult {
     pub errors: Vec<DeviceRenderError>,
 }
 
+/// Site-level turn-up pack — every device in every building in the
+/// site, one persisted render per device. Same per-device error-
+/// tolerance semantics as `BuildingRenderResult`; counters roll up
+/// across buildings.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SiteRenderResult {
+    pub site_id: Uuid,
+    pub site_code: Option<String>,
+    pub total_devices: i32,
+    pub succeeded: i32,
+    pub failed: i32,
+    pub renders: Vec<RenderedConfig>,
+    pub errors: Vec<DeviceRenderError>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceRenderError {
@@ -182,13 +198,34 @@ pub async fn render_device_persisted(
     Ok(rc)
 }
 
+/// Shared core for every scope-level turn-up pack. Renders + persists
+/// each device in the given `(id, hostname)` list, tolerating per-
+/// device errors (they land in the returned errors array). Sequential
+/// today; revisit with `futures::stream` + semaphore when tenants
+/// show up with hundreds of devices in one building.
+async fn render_device_list(
+    pool: &PgPool,
+    org_id: Uuid,
+    devices: Vec<(Uuid, String)>,
+    rendered_by: Option<i32>,
+) -> (Vec<RenderedConfig>, Vec<DeviceRenderError>) {
+    let mut renders = Vec::with_capacity(devices.len());
+    let mut errors  = Vec::new();
+    for (device_id, hostname) in devices {
+        match render_device_persisted(pool, org_id, device_id, rendered_by).await {
+            Ok(rc) => renders.push(rc),
+            Err(e) => errors.push(DeviceRenderError {
+                device_id, hostname, error: e.to_string(),
+            }),
+        }
+    }
+    (renders, errors)
+}
+
 /// Render + persist every device in a building. Errors on a single
 /// device don't short-circuit the whole pack — they land in
 /// `result.errors` so the operator can see exactly which devices
 /// need attention without losing the configs that DID render.
-/// Sequential (not parallel) today: a full tenant building is ~50
-/// devices which is fine serially; revisit when we see tenants with
-/// hundreds of devices per building.
 pub async fn render_building_persisted(
     pool: &PgPool,
     org_id: Uuid,
@@ -220,20 +257,62 @@ pub async fn render_building_persisted(
         .await?;
 
     let total = devices.len() as i32;
-    let mut renders = Vec::with_capacity(devices.len());
-    let mut errors = Vec::new();
-    for (device_id, hostname) in devices {
-        match render_device_persisted(pool, org_id, device_id, rendered_by).await {
-            Ok(rc)  => renders.push(rc),
-            Err(e)  => errors.push(DeviceRenderError {
-                device_id, hostname, error: e.to_string(),
-            }),
-        }
-    }
+    let (renders, errors) = render_device_list(pool, org_id, devices, rendered_by).await;
 
     Ok(BuildingRenderResult {
         building_id,
         building_code,
+        total_devices: total,
+        succeeded:     renders.len() as i32,
+        failed:        errors.len()  as i32,
+        renders,
+        errors,
+    })
+}
+
+/// Render + persist every device across every building in a site.
+/// Useful for greenfield site turn-ups where the operator wants
+/// the whole pack in one call. Counters roll up across buildings.
+pub async fn render_site_persisted(
+    pool: &PgPool,
+    org_id: Uuid,
+    site_id: Uuid,
+    rendered_by: Option<i32>,
+) -> Result<SiteRenderResult, EngineError> {
+    let site: Option<(String,)> = sqlx::query_as(
+        "SELECT site_code FROM net.site
+          WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL")
+        .bind(site_id)
+        .bind(org_id)
+        .fetch_optional(pool)
+        .await?;
+    if site.is_none() {
+        return Err(EngineError::container_not_found("site", site_id));
+    }
+    let site_code = site.map(|(c,)| c);
+
+    // Walk buildings-in-site → devices-in-buildings. Single join is
+    // cheaper than two round-trips and the result set is small
+    // (sites typically have < 200 devices total).
+    let devices: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT d.id, d.hostname
+           FROM net.device d
+           JOIN net.building b ON b.id = d.building_id AND b.deleted_at IS NULL
+          WHERE d.organization_id = $1
+            AND b.site_id         = $2
+            AND d.deleted_at      IS NULL
+          ORDER BY b.building_code, d.hostname")
+        .bind(org_id)
+        .bind(site_id)
+        .fetch_all(pool)
+        .await?;
+
+    let total = devices.len() as i32;
+    let (renders, errors) = render_device_list(pool, org_id, devices, rendered_by).await;
+
+    Ok(SiteRenderResult {
+        site_id,
+        site_code,
         total_devices: total,
         succeeded:     renders.len() as i32,
         failed:        errors.len()  as i32,
@@ -2509,6 +2588,28 @@ mod tests {
         assert!(json.contains("\"unchangedCount\":0"));
         assert!(json.contains("\"removed\":[]"),
             "empty arrays must serialise as [] not omitted:\n{json}");
+    }
+
+    #[test]
+    fn site_render_result_serialises_camelcase_and_empty_arrays() {
+        // Same invariants as the building result — locks the
+        // client-facing field names and confirms empty arrays
+        // serialise as [] not omitted.
+        let r = SiteRenderResult {
+            site_id:       Uuid::nil(),
+            site_code:     Some("MP".into()),
+            total_devices: 0,
+            succeeded:     0,
+            failed:        0,
+            renders:       vec![],
+            errors:        vec![],
+        };
+        let json = serde_json::to_string(&r).expect("serialises");
+        assert!(json.contains("\"siteId\""),           "siteId key missing: {json}");
+        assert!(json.contains("\"siteCode\":\"MP\""));
+        assert!(json.contains("\"totalDevices\":0"));
+        assert!(json.contains("\"renders\":[]"));
+        assert!(json.contains("\"errors\":[]"));
     }
 
     #[test]
