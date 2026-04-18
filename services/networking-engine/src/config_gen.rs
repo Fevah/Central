@@ -102,20 +102,44 @@ pub struct DeviceContext {
     pub management_ip: Option<String>,
     pub vlans: Vec<VlanLine>,
     pub bgp: Option<BgpContext>,
+    pub bgp_neighbors: Vec<BgpNeighborLine>,
 }
 
-/// BGP scalar context — local AS + router-id source. Neighbors are
-/// intentionally *not* pulled from `public.bgp_neighbors` here; that
-/// table is the SSH-synced read-back of what's currently on the switch
-/// rather than the target state we want to emit. A follow-on slice
-/// will derive neighbors from `net.link_endpoint` so the generated
-/// config reflects topology, not live device state.
+/// BGP scalar context — local AS + router-id source. Neighbors live
+/// in `DeviceContext::bgp_neighbors`, derived from `net.link_endpoint`
+/// rather than the SSH-synced read-back `public.bgp_neighbors`.
 #[derive(Debug, Clone)]
 pub struct BgpContext {
     pub local_as: i64,
     /// Defaults to 4 (customer standard across every PicOS core today —
     /// see `CLAUDE.md` "BGP ECMP max-paths 4 on all core switches").
     pub max_paths: i32,
+}
+
+/// One peer from the device's point of view. Derived from P2P / B2B
+/// links by looking at the other endpoint of every link this device
+/// terminates. `remote_as = None` means the peer's ASN isn't allocated
+/// in `net.asn_allocation` yet — the renderer emits `"?"` to match
+/// legacy behaviour for cross-building B2B peers whose far end isn't
+/// modelled in our tenant DB.
+#[derive(Debug, Clone)]
+pub struct BgpNeighborLine {
+    pub peer_ip: String,
+    pub remote_as: Option<i64>,
+    /// Description prefix — "P2P" or "B2B". Kept abstract so the
+    /// renderer can format `"P2P-{peer_name}"` or `"B2B-{building}"`
+    /// without re-deriving the link type.
+    pub kind: BgpNeighborKind,
+    /// For P2P, the peer device's hostname. For B2B, the peer
+    /// building's `building_code`. Either may be empty if the peer
+    /// endpoint is partially modelled.
+    pub peer_label: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BgpNeighborKind {
+    P2P,
+    B2B,
 }
 
 #[derive(Debug, Clone)]
@@ -175,6 +199,45 @@ async fn fetch_context(
         .fetch_optional(pool)
         .await?;
 
+    // BGP neighbors — derived from link endpoints the device
+    // terminates on P2P or B2B links. For each link where this device
+    // is endpoint X, the OTHER endpoint gives us peer IP + (possibly)
+    // peer device + peer's ASN + peer's building. Cross-building B2B
+    // peers whose far end isn't in net.asn_allocation come back with
+    // NULL peer_asn; the renderer emits "?" to match legacy output.
+    let neighbor_rows: Vec<(String, String, Option<i64>, Option<String>, Option<String>)> = sqlx::query_as(
+        r#"SELECT lt.type_code,
+                  ip.address::text            AS peer_ip,
+                  aa.asn                      AS peer_asn,
+                  dev_peer.hostname           AS peer_hostname,
+                  b_peer.building_code        AS peer_building
+             FROM net.link_endpoint le_self
+             JOIN net.link l
+               ON l.id = le_self.link_id AND l.deleted_at IS NULL
+             JOIN net.link_type lt
+               ON lt.id = l.link_type_id
+             JOIN net.link_endpoint le_peer
+               ON le_peer.link_id = le_self.link_id
+              AND le_peer.id <> le_self.id
+              AND le_peer.deleted_at IS NULL
+             JOIN net.ip_address ip
+               ON ip.id = le_peer.ip_address_id AND ip.deleted_at IS NULL
+             LEFT JOIN net.device dev_peer
+               ON dev_peer.id = le_peer.device_id AND dev_peer.deleted_at IS NULL
+             LEFT JOIN net.asn_allocation aa
+               ON aa.id = dev_peer.asn_allocation_id AND aa.deleted_at IS NULL
+             LEFT JOIN net.building b_peer
+               ON b_peer.id = dev_peer.building_id AND b_peer.deleted_at IS NULL
+            WHERE le_self.organization_id = $1
+              AND le_self.device_id       = $2
+              AND le_self.deleted_at IS NULL
+              AND lt.type_code IN ('P2P','B2B')
+            ORDER BY ip.address"#)
+        .bind(org_id)
+        .bind(device_id)
+        .fetch_all(pool)
+        .await?;
+
     // VLANs the device terminates — for now, every VLAN in the tenant's
     // active rows. Real scoping (VLAN's scope_level / scope_entity_id
     // intersects device's building) comes in a follow-on slice.
@@ -197,6 +260,19 @@ async fn fetch_context(
             vlan_id: vid, display_name: name, description: desc,
         }).collect(),
         bgp: asn.map(|(n,)| BgpContext { local_as: n, max_paths: 4 }),
+        bgp_neighbors: neighbor_rows.into_iter().map(|(type_code, peer_ip, peer_asn, peer_host, peer_bldg)| {
+            let (kind, peer_label) = match type_code.as_str() {
+                "P2P" => (BgpNeighborKind::P2P, peer_host.unwrap_or_default()),
+                // B2B falls back to building code; legacy emits "B2B-{building}"
+                _     => (BgpNeighborKind::B2B, peer_bldg.unwrap_or_default()),
+            };
+            // Peer IP comes back as inet text "a.b.c.d/NN" — strip the
+            // prefix so neighbor lines use a bare host address.
+            let peer_ip_host = split_inet_text(&peer_ip)
+                .map(|(h, _)| h.to_string())
+                .unwrap_or(peer_ip);
+            BgpNeighborLine { peer_ip: peer_ip_host, remote_as: peer_asn, kind, peer_label }
+        }).collect(),
     })
 }
 
@@ -289,11 +365,10 @@ fn render_vlans_section(out: &mut String, ctx: &DeviceContext) {
     out.push('\n');
 }
 
-/// Scalar BGP section — local-as, ebgp-requires-policy, router-id,
-/// and the two fixed `ipv4-unicast` lines that match the legacy
-/// `ConfigBuilderService` output byte-for-byte. Neighbors aren't
-/// emitted here; they need link-topology derivation and land in a
-/// follow-on slice.
+/// Full BGP section — scalar lines (local-as, ebgp-requires-policy,
+/// router-id), then one pair of lines per neighbor (remote-as +
+/// description), then the two fixed `ipv4-unicast` lines. Order
+/// matches the legacy `ConfigBuilderService` output byte-for-byte.
 fn render_bgp_scalar_section(out: &mut String, ctx: &DeviceContext) {
     let Some(bgp) = ctx.bgp.as_ref() else { return; };
     out.push_str(&format!("set protocols bgp local-as \"{}\"\n", bgp.local_as));
@@ -302,6 +377,19 @@ fn render_bgp_scalar_section(out: &mut String, ctx: &DeviceContext) {
         if let Some((host, _)) = split_inet_text(lb) {
             out.push_str(&format!("set protocols bgp router-id {}\n", host));
         }
+    }
+    for n in &ctx.bgp_neighbors {
+        let remote_as = n.remote_as.map(|a| a.to_string()).unwrap_or_else(|| "?".into());
+        out.push_str(&format!(
+            "set protocols bgp neighbor {} remote-as \"{}\"\n",
+            n.peer_ip, remote_as));
+        let desc_prefix = match n.kind {
+            BgpNeighborKind::P2P => "P2P",
+            BgpNeighborKind::B2B => "B2B",
+        };
+        out.push_str(&format!(
+            "set protocols bgp neighbor {} description \"{}-{}\"\n",
+            n.peer_ip, desc_prefix, escape_picos(&n.peer_label)));
     }
     out.push_str("set protocols bgp ipv4-unicast redistribute connected\n");
     out.push_str(&format!(
@@ -339,6 +427,7 @@ mod tests {
             management_ip: None,
             vlans,
             bgp: None,
+            bgp_neighbors: vec![],
         }
     }
 
@@ -354,6 +443,7 @@ mod tests {
             management_ip: mgmt.map(Into::into),
             vlans: vec![],
             bgp: None,
+            bgp_neighbors: vec![],
         }
     }
 
@@ -362,6 +452,15 @@ mod tests {
         loopback: Option<&str>,
         bgp: Option<BgpContext>,
     ) -> DeviceContext {
+        fixture_with_bgp_and_neighbors(hostname, loopback, bgp, vec![])
+    }
+
+    fn fixture_with_bgp_and_neighbors(
+        hostname: &str,
+        loopback: Option<&str>,
+        bgp: Option<BgpContext>,
+        bgp_neighbors: Vec<BgpNeighborLine>,
+    ) -> DeviceContext {
         DeviceContext {
             device_id: Uuid::nil(),
             hostname: hostname.into(),
@@ -369,6 +468,7 @@ mod tests {
             management_ip: None,
             vlans: vec![],
             bgp,
+            bgp_neighbors,
         }
     }
 
@@ -530,6 +630,102 @@ mod tests {
         let out = PicosRenderer::render(&ctx);
         assert!(out.contains("multipath ebgp maximum-paths 8"),
             "max_paths 8 should pass through:\n{out}");
+    }
+
+    #[test]
+    fn picos_emits_p2p_bgp_neighbor_with_peer_hostname() {
+        let ctx = fixture_with_bgp_and_neighbors(
+            "MEP-91-CORE02",
+            Some("10.255.91.2/32"),
+            Some(BgpContext { local_as: 65112, max_paths: 4 }),
+            vec![BgpNeighborLine {
+                peer_ip: "10.5.17.2".into(),
+                remote_as: Some(65121),
+                kind: BgpNeighborKind::P2P,
+                peer_label: "MEP-92-CORE01".into(),
+            }],
+        );
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains(r#"set protocols bgp neighbor 10.5.17.2 remote-as "65121""#),
+            "P2P remote-as missing:\n{out}");
+        assert!(out.contains(r#"set protocols bgp neighbor 10.5.17.2 description "P2P-MEP-92-CORE01""#),
+            "P2P description missing:\n{out}");
+    }
+
+    #[test]
+    fn picos_emits_b2b_bgp_neighbor_with_building_code_and_question_mark_when_asn_missing() {
+        let ctx = fixture_with_bgp_and_neighbors(
+            "MEP-91-CORE02",
+            None,
+            Some(BgpContext { local_as: 65112, max_paths: 4 }),
+            vec![BgpNeighborLine {
+                peer_ip: "10.11.262.1".into(),
+                remote_as: None,
+                kind: BgpNeighborKind::B2B,
+                peer_label: "MEP-92".into(),
+            }],
+        );
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains(r#"set protocols bgp neighbor 10.11.262.1 remote-as "?""#),
+            "B2B missing-ASN should emit remote-as \"?\":\n{out}");
+        assert!(out.contains(r#"set protocols bgp neighbor 10.11.262.1 description "B2B-MEP-92""#),
+            "B2B description should use building code:\n{out}");
+    }
+
+    #[test]
+    fn picos_neighbor_block_lands_between_router_id_and_redistribute() {
+        // Ordering matters for byte-for-byte parity: scalar lines first,
+        // then neighbor pairs, then the two ipv4-unicast lines.
+        let ctx = fixture_with_bgp_and_neighbors(
+            "CORE02",
+            Some("10.255.91.2/32"),
+            Some(BgpContext { local_as: 65112, max_paths: 4 }),
+            vec![BgpNeighborLine {
+                peer_ip: "10.5.17.2".into(),
+                remote_as: Some(65121),
+                kind: BgpNeighborKind::P2P,
+                peer_label: "CORE01".into(),
+            }],
+        );
+        let out = PicosRenderer::render(&ctx);
+        let router_id = out.find("router-id").expect("router-id present");
+        let neighbor = out.find("neighbor 10.5.17.2 remote-as").expect("neighbor present");
+        let redistribute = out.find("redistribute connected").expect("redistribute present");
+        assert!(router_id < neighbor && neighbor < redistribute,
+            "expected order: router-id < neighbor < redistribute in:\n{out}");
+    }
+
+    #[test]
+    fn picos_neighbor_description_escapes_special_chars_in_peer_label() {
+        let ctx = fixture_with_bgp_and_neighbors(
+            "CORE02",
+            None,
+            Some(BgpContext { local_as: 65112, max_paths: 4 }),
+            vec![BgpNeighborLine {
+                peer_ip: "10.0.0.1".into(),
+                remote_as: Some(65200),
+                kind: BgpNeighborKind::P2P,
+                peer_label: r#"weird"name"#.into(),
+            }],
+        );
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains(r#"description "P2P-weird\"name""#),
+            "peer_label quotes must be escaped:\n{out}");
+    }
+
+    #[test]
+    fn picos_emits_no_neighbor_lines_when_vec_empty() {
+        let ctx = fixture_with_bgp(
+            "CORE02",
+            Some("10.255.91.2/32"),
+            Some(BgpContext { local_as: 65112, max_paths: 4 }),
+        );
+        let out = PicosRenderer::render(&ctx);
+        assert!(!out.contains("bgp neighbor"),
+            "no neighbor rows → no neighbor lines:\n{out}");
+        // But the rest of the BGP section must still render.
+        assert!(out.contains("local-as \"65112\""));
+        assert!(out.contains("redistribute connected"));
     }
 
     #[test]
