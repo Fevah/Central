@@ -221,6 +221,100 @@ pub async fn export_ip_addresses_csv(
     Ok(out)
 }
 
+// ─── Link export ─────────────────────────────────────────────────────────
+
+/// CSV dump of `net.link` with endpoints flattened A/B side-by-side.
+/// Matches the shape of the legacy P2P / B2B / FW link exports so
+/// operators used to that format see the same columns.
+///
+/// Columns (in order):
+///
+///   link_code, link_type, vlan_id, subnet_code,
+///   device_a, port_a, ip_a,
+///   device_b, port_b, ip_b,
+///   status
+///
+/// The cross-tab join goes through `net.link_endpoint` twice — once
+/// for `endpoint_order = 0` (the A side) and once for `= 1` (the B
+/// side). Endpoints beyond order 1 (hub + spoke links, if they ever
+/// land) won't show up in this export; they warrant their own format
+/// when the requirement actually exists.
+///
+/// Ordered `(link_type, link_code)` so the export groups by type
+/// (P2P / B2B / FW / ...) and reads naturally within each group.
+pub async fn export_links_csv(
+    pool: &PgPool,
+    org_id: Uuid,
+) -> Result<String, EngineError> {
+    type Row = (
+        String,          // link_code
+        Option<String>,  // link_type
+        Option<i32>,     // vlan_id
+        Option<String>,  // subnet_code
+        Option<String>,  // device_a
+        Option<String>,  // port_a
+        Option<String>,  // ip_a (bare host)
+        Option<String>,  // device_b
+        Option<String>,  // port_b
+        Option<String>,  // ip_b (bare host)
+        String,          // status
+    );
+    let rows: Vec<Row> = sqlx::query_as(
+        r#"SELECT l.link_code,
+                  lt.type_code                    AS link_type,
+                  v.vlan_id                       AS vlan_id,
+                  s.subnet_code                   AS subnet_code,
+                  da.hostname                     AS device_a,
+                  ea.interface_name               AS port_a,
+                  host(ipa.address)               AS ip_a,
+                  db.hostname                     AS device_b,
+                  eb.interface_name               AS port_b,
+                  host(ipb.address)               AS ip_b,
+                  l.status::text                  AS status
+             FROM net.link l
+             LEFT JOIN net.link_type lt ON lt.id = l.link_type_id
+             LEFT JOIN net.vlan      v  ON v.id  = l.vlan_id   AND v.deleted_at IS NULL
+             LEFT JOIN net.subnet    s  ON s.id  = l.subnet_id AND s.deleted_at IS NULL
+             LEFT JOIN net.link_endpoint ea
+                    ON ea.link_id = l.id AND ea.endpoint_order = 0 AND ea.deleted_at IS NULL
+             LEFT JOIN net.device        da ON da.id = ea.device_id     AND da.deleted_at IS NULL
+             LEFT JOIN net.ip_address    ipa ON ipa.id = ea.ip_address_id AND ipa.deleted_at IS NULL
+             LEFT JOIN net.link_endpoint eb
+                    ON eb.link_id = l.id AND eb.endpoint_order = 1 AND eb.deleted_at IS NULL
+             LEFT JOIN net.device        db ON db.id = eb.device_id     AND db.deleted_at IS NULL
+             LEFT JOIN net.ip_address    ipb ON ipb.id = eb.ip_address_id AND ipb.deleted_at IS NULL
+            WHERE l.organization_id = $1 AND l.deleted_at IS NULL
+            ORDER BY lt.type_code NULLS LAST, l.link_code"#)
+        .bind(org_id)
+        .fetch_all(pool)
+        .await?;
+
+    let mut out = String::with_capacity(256 + rows.len() * 160);
+    out.push_str(&csv_row(&[
+        "link_code".into(), "link_type".into(), "vlan_id".into(),
+        "subnet_code".into(),
+        "device_a".into(), "port_a".into(), "ip_a".into(),
+        "device_b".into(), "port_b".into(), "ip_b".into(),
+        "status".into(),
+    ]));
+    for (code, ty, vid, subnet, da, pa, ipa, db, pb, ipb, status) in rows {
+        out.push_str(&csv_row(&[
+            csv_escape(&code),
+            csv_escape(&ty.unwrap_or_default()),
+            vid.map(|n| n.to_string()).unwrap_or_default(),
+            csv_escape(&subnet.unwrap_or_default()),
+            csv_escape(&da.unwrap_or_default()),
+            csv_escape(&pa.unwrap_or_default()),
+            csv_escape(&ipa.unwrap_or_default()),
+            csv_escape(&db.unwrap_or_default()),
+            csv_escape(&pb.unwrap_or_default()),
+            csv_escape(&ipb.unwrap_or_default()),
+            csv_escape(&status),
+        ]));
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
