@@ -552,8 +552,7 @@ impl Renderer for PicosRenderer {
         render_bgp_scalar_section(&mut out, ctx);
         render_mstp_section(&mut out, ctx);
         render_mlag_section(&mut out, ctx);
-        render_port_descriptions_section(&mut out, ctx);
-        render_port_l2_rules_section(&mut out, ctx);
+        render_ports_section(&mut out, ctx);
         render_lldp_section(&mut out, ctx);
         // TODO(follow-on): render_vrrp (needs net.vrrp_*),
         // render_dhcp_relay (needs DHCP-role server discovery),
@@ -849,37 +848,50 @@ fn render_bgp_scalar_section(out: &mut String, ctx: &DeviceContext) {
     out.push('\n');
 }
 
-/// Port L2 rules. Emits `native-vlan-id` first (when set) then
-/// `port-mode` — matching the legacy `ConfigBuilderService` order
-/// so diffs against prior generations stay readable. `gigabit-ethernet`
-/// is the fixed PicOS keyword regardless of physical speed (same as
-/// the description section).
-fn render_port_l2_rules_section(out: &mut String, ctx: &DeviceContext) {
-    if ctx.port_l2_rules.is_empty() { return; }
-    for p in &ctx.port_l2_rules {
-        if let Some(vid) = p.native_vlan_id {
-            out.push_str(&format!(
-                "set interface gigabit-ethernet {} family ethernet-switching native-vlan-id {}\n",
-                p.interface_name, vid));
-        }
-        out.push_str(&format!(
-            "set interface gigabit-ethernet {} family ethernet-switching port-mode \"{}\"\n",
-            p.interface_name, p.port_mode));
-    }
-    out.push('\n');
-}
+/// Merged per-interface config section — description + L2 rules
+/// emitted adjacently for each port that has either. Matches the
+/// legacy `ConfigBuilderService` per-link block layout where all
+/// lines for one interface cluster together, which keeps regen-vs-
+/// shipped diffs readable.
+///
+/// PicOS uses the fixed keyword `gigabit-ethernet` regardless of the
+/// port's actual speed — the interface name prefix (`xe-` / `ge-` /
+/// `et-`) carries the speed semantics. Description text is
+/// `escape_picos`'d so link-naming output that happens to contain a
+/// quote can't break the config block.
+///
+/// QoS bindings stay in their own section near the QoS preset — they
+/// reference names (`qos-dscp-classifier`, `qos-flex-profile`) that
+/// need to be declared earlier in the file, so interleaving them
+/// here would break that locality.
+fn render_ports_section(out: &mut String, ctx: &DeviceContext) {
+    if ctx.port_descriptions.is_empty() && ctx.port_l2_rules.is_empty() { return; }
 
-/// Port description lines. PicOS uses the fixed keyword
-/// `gigabit-ethernet` regardless of the port's actual speed — the
-/// interface name prefix (`xe-` / `ge-` / `et-`) carries the speed
-/// semantics. The description is escape_picos'd so link-naming output
-/// that happens to contain a quote can't break the config block.
-fn render_port_descriptions_section(out: &mut String, ctx: &DeviceContext) {
-    if ctx.port_descriptions.is_empty() { return; }
-    for p in &ctx.port_descriptions {
-        out.push_str(&format!(
-            "set interface gigabit-ethernet {} description \"{}\"\n",
-            p.interface_name, escape_picos(&p.description)));
+    use std::collections::BTreeMap;
+    let mut by_iface: BTreeMap<&str, (Option<&PortDescriptionLine>, Option<&PortL2Line>)> = BTreeMap::new();
+    for d in &ctx.port_descriptions {
+        by_iface.entry(d.interface_name.as_str()).or_default().0 = Some(d);
+    }
+    for r in &ctx.port_l2_rules {
+        by_iface.entry(r.interface_name.as_str()).or_default().1 = Some(r);
+    }
+
+    for (iface, (desc, l2)) in by_iface {
+        if let Some(d) = desc {
+            out.push_str(&format!(
+                "set interface gigabit-ethernet {} description \"{}\"\n",
+                iface, escape_picos(&d.description)));
+        }
+        if let Some(r) = l2 {
+            if let Some(vid) = r.native_vlan_id {
+                out.push_str(&format!(
+                    "set interface gigabit-ethernet {} family ethernet-switching native-vlan-id {}\n",
+                    iface, vid));
+            }
+            out.push_str(&format!(
+                "set interface gigabit-ethernet {} family ethernet-switching port-mode \"{}\"\n",
+                iface, r.port_mode));
+        }
     }
     out.push('\n');
 }
@@ -1084,6 +1096,27 @@ mod tests {
             l3_svis: vec![],
             port_descriptions: vec![],
             port_l2_rules: rules,
+            port_qos_bindings: vec![],
+        }
+    }
+
+    fn fixture_with_port_cfg(
+        descs: Vec<PortDescriptionLine>,
+        l2s: Vec<PortL2Line>,
+    ) -> DeviceContext {
+        DeviceContext {
+            device_id: Uuid::nil(),
+            hostname: "CORE02".into(),
+            loopback: None,
+            management_ip: None,
+            vlans: vec![],
+            bgp: None,
+            bgp_neighbors: vec![],
+            mstp_priority: None,
+            mlag: None,
+            l3_svis: vec![],
+            port_descriptions: descs,
+            port_l2_rules: l2s,
             port_qos_bindings: vec![],
         }
     }
@@ -1741,6 +1774,65 @@ mod tests {
         let bind_120    = out.find(r#"vlan-id 120 l3-interface"#).expect("120 binding");
         assert!(desc_101 < bind_101 && bind_101 < desc_120 && desc_120 < bind_120,
             "each binding must sit between its own description and the next:\n{out}");
+    }
+
+    #[test]
+    fn picos_per_interface_lines_cluster_together_in_merged_ports_section() {
+        // For each port that has BOTH a description and an L2 rule,
+        // the three lines (description, native-vlan-id, port-mode)
+        // must appear consecutively — no other port's lines
+        // interleaved. This is the whole point of the merged section.
+        let ctx = fixture_with_port_cfg(
+            vec![
+                PortDescriptionLine { interface_name: "xe-1/1/20".into(), description: "P2P".into() },
+                PortDescriptionLine { interface_name: "ge-1/1/5".into(),  description: "Access".into() },
+            ],
+            vec![
+                PortL2Line { interface_name: "xe-1/1/20".into(), port_mode: "trunk".into(),  native_vlan_id: Some(120) },
+                PortL2Line { interface_name: "ge-1/1/5".into(),  port_mode: "access".into(), native_vlan_id: Some(101) },
+            ],
+        );
+        let out = PicosRenderer::render(&ctx);
+        let ge5_desc     = out.find("ge-1/1/5 description").expect("ge-1/1/5 desc");
+        let ge5_native   = out.find("ge-1/1/5 family ethernet-switching native-vlan-id").expect("ge-1/1/5 native");
+        let ge5_mode     = out.find(r#"ge-1/1/5 family ethernet-switching port-mode "access""#).expect("ge-1/1/5 mode");
+        let xe20_desc    = out.find("xe-1/1/20 description").expect("xe-1/1/20 desc");
+        // ge-1/1/5 sorts before xe-1/1/20 in BTreeMap order (g < x).
+        assert!(ge5_desc < ge5_native && ge5_native < ge5_mode,
+            "ge-1/1/5 description + native + mode must be contiguous:\n{out}");
+        assert!(ge5_mode < xe20_desc,
+            "ALL of ge-1/1/5's lines must appear before xe-1/1/20's first line:\n{out}");
+    }
+
+    #[test]
+    fn picos_merged_ports_section_handles_description_only_interfaces() {
+        // Interface with description but no L2 rule — e.g. a routed
+        // port whose mode stays 'unset'. Only the description line
+        // should render; no family ethernet-switching for that iface.
+        let ctx = fixture_with_port_cfg(
+            vec![PortDescriptionLine { interface_name: "xe-1/1/31".into(), description: "P2P-routed".into() }],
+            vec![],
+        );
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains(r#"xe-1/1/31 description "P2P-routed""#),
+            "description-only port should emit description line:\n{out}");
+        assert!(!out.contains("xe-1/1/31 family ethernet-switching"),
+            "description-only port should NOT emit ethernet-switching lines:\n{out}");
+    }
+
+    #[test]
+    fn picos_merged_ports_section_handles_l2_only_interfaces() {
+        // Interface with L2 rule but no description — e.g. an unused
+        // trunk port we pre-configured. Only the L2 lines render.
+        let ctx = fixture_with_port_cfg(
+            vec![],
+            vec![PortL2Line { interface_name: "xe-1/1/1".into(), port_mode: "trunk".into(), native_vlan_id: None }],
+        );
+        let out = PicosRenderer::render(&ctx);
+        assert!(!out.contains("xe-1/1/1 description"),
+            "no description row → no description line:\n{out}");
+        assert!(out.contains(r#"xe-1/1/1 family ethernet-switching port-mode "trunk""#),
+            "L2-only port should still emit port-mode line:\n{out}");
     }
 
     #[test]
