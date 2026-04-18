@@ -1,7 +1,8 @@
 ﻿# Central Platform — Feature Test Checklist
 
 Last updated: 2026-04-18
-Test suite: 2,616 tests across ~180 test classes. 0 failures (unit + live-DB integration against the podman `central-postgres` container).
+Test suite: 2,616 tests across ~180 test classes on the .NET side. 0 failures (unit + live-DB integration against the podman `central-postgres` container).
+Rust networking-engine (`services/networking-engine/`): 199 unit tests, 0 failures.
 Build: 0 errors.
 
 Comprehensive test checklist for the Central desktop + API platform, organised by surface
@@ -2355,6 +2356,58 @@ Per the plan amendment (commit `758ccaa98`), every new *-type catalog row must c
 - [ ] Dialog validation extracted + tested
 
 Compliance by *-type table: `link_type` ✓, `device_role` ✓, `server_profile` ✓. Pending coverage: `building_profile`, `vlan_template`, `mstp_priority_rule` (Phase 7).
+
+### 7.X.9 Config Generation — Phase 10 (IN PROGRESS, 2026-04-18)
+
+Lives entirely in Rust: `services/networking-engine/src/cli_flavor.rs` + `services/networking-engine/src/config_gen.rs`. 199 Rust tests green on this surface (up from 121 before Phase 10 started).
+
+**CLI flavor foundation** (commit `74d0523b6`, migration 102_net_cli_flavors.sql)
+- [ ] `FLAVORS` const catalog — 6 entries: PicOS (Ga, default-on), Cisco NX-OS / Cisco IOS / Arista EOS / Junos OS / FRR (all Stub, default-off)
+- [ ] `net.tenant_cli_flavor` — per-tenant enable + is_default, partial unique index enforces one default per tenant
+- [ ] `net.rendered_config` — render history with body_sha256 + previous_render_id SHA chain
+- [ ] `cli_flavor::list_flavors` / `set_flavor_config` / `resolve_for_device`
+- [ ] Dispatcher `config_gen::render_device` returns clean 400 "No renderer implemented for flavor X" for Stub flavors rather than emitting wrong-syntax CLI
+- [ ] REST: GET `/api/net/cli-flavors`, PUT `/api/net/cli-flavors/:code`, POST `/api/net/devices/:id/render-config`
+- [ ] `FLAVORS` invariants — codes unique, PicOS is position 0, only one Ga today, stubs default off, vendors from known set (6 unit tests in `cli_flavor::tests`)
+
+**PicOS renderer — section pipeline (in emit order):**
+1. [ ] Header comment `# Config for {hostname} — generated {rfc3339}` + `# Flavor: PicOS 4.6 (FS N-series)`
+2. [ ] `set system hostname "{resolved}"` — hostname is **parametric** via `net.device_role.naming_template` + hierarchy codes (region / site / building / rack / role) + `device_code` → `{instance}` (commit `56aa5ab40`); falls back to stored `net.device.hostname` when template is NULL / empty / whitespace-only expansion
+3. [ ] `set ip routing enable true` — universal fixed emit (commit `7861abc86`)
+4. [ ] **QoS / CoS preset** — 55-line forwarding-class + scheduler + classifier + scheduler-profile block held in `QOS_PRESET_LINES` const, line-count-drift asserted in tests (commit `08153f37f`)
+5. [ ] **Per-port QoS bindings** — two lines per physical port (`classifier "qos-dscp-classifier"` + `scheduler-profile "qos-flex-profile"`); breakout sub-interfaces excluded via `breakout_parent_id IS NULL` (commit `69b273114`)
+6. [ ] **Voice-VLAN preset** — 4-line Avaya block (OUI c8:1f:ea + local-priority 6 + DSCP 46) held in `VOICE_VLAN_PRESET_LINES` const (commit `439eb92c6`)
+7. [ ] **Loopback `lo0`** — sourced from `net.ip_address` joined to `net.subnet` where `subnet_code ILIKE 'LOOPBACK%'` and `assigned_to_id = device_id` (commit `7903d5fe4`)
+8. [ ] **Management SVI `vlan-152`** — sourced from `net.device.management_ip`, inet text split into address + prefix via `split_inet_text` (commit `7903d5fe4`)
+9. [ ] **VLAN catalog** — `set vlans vlan-id N description "..."` per VLAN, followed by `set vlans vlan-id N l3-interface "vlan-N"` when a matching SVI exists in `ctx.l3_svis` (commit `ac80e3e9b`)
+10. [ ] **L3 VLAN SVIs** — every `net.ip_address` assigned to this device whose subnet is wired to a VLAN (LOOPBACK filtered) (commit `d2567b3b6`)
+11. [ ] **BGP scalar block** — local-as from `net.asn_allocation` via `net.device.asn_allocation_id`, ebgp-requires-policy false, router-id from loopback, ipv4-unicast redistribute connected, multipath ebgp maximum-paths 4 (commit `5a7852901`)
+12. [ ] **BGP neighbors** — derived from `net.link_endpoint` for P2P / B2B link-types only; unmodelled cross-building B2B peers emit `remote-as "?"` to match legacy behaviour (commit `54776cc7d`)
+13. [ ] **MSTP bridge-priority** — from `net.mstp_priority_allocation` keyed by device_id (commit `f6b029c0d`)
+14. [ ] **MLAG peer-link** — domain id via `net.mlag_domain` scoped to device's building; peer-link interface from the `MLAG-Peer` link's local endpoint. Each half optional; partial state emits whichever half is resolvable (commit `f6b029c0d`)
+15. [ ] **Merged ports section** — description from `net.link_endpoint` + L2 rules from `net.port` (port-mode + native-vlan-id) interleaved by interface name via `BTreeMap` so each port's lines cluster together (commits `992cd2f9d` + `9583b7e75` + `ee155920a`); routed / unset ports skip L2 rules
+16. [ ] `set protocols lldp enable true` — universal fixed emit (commit `7861abc86`)
+
+**Pure-function renderer invariants:**
+- [ ] `PicosRenderer::render(&ctx)` takes `&DeviceContext` only — no DB access inside the render path, all fetches happen in `fetch_context`
+- [ ] Tests use fixture helpers (one per code path: `fixture`, `fixture_with_addrs`, `fixture_with_bgp`, `fixture_with_bgp_and_neighbors`, `fixture_with_mstp_mlag`, `fixture_with_svis`, `fixture_with_vlans_and_svis`, `fixture_with_ports`, `fixture_with_l2_rules`, `fixture_with_port_cfg`, `fixture_with_qos_bindings`) so each section has isolated coverage
+- [ ] `split_inet_text` parses Postgres `inet` text cleanly, returns `None` for malformed input (`"10.255.91.2"`, `"10.255.91.2/abc"`, `"/32"`, `""`)
+- [ ] `escape_picos` escapes embedded `"` and `\` in user-supplied strings (VLAN descriptions, link-name auto-generated peer labels)
+- [ ] `resolve_device_hostname` — token expansion via `naming::expand_device`; fallback to stored when template missing / empty / whitespace-only; non-numeric `device_code` yields empty `{instance}`
+- [ ] Line ordering asserted in tests matches legacy `ConfigBuilderService` section order (IP routing before VLANs, LLDP after port rules, neighbors between router-id and redistribute, voice between QoS and VLAN catalog, binding line between VLAN description and next VLAN description)
+- [ ] Each fixed-preset block (`QOS_PRESET_LINES`, `VOICE_VLAN_PRESET_LINES`) has a count-drift assertion so silent divergence from the customer's documented policy trips CI
+
+**Persistence:**
+- [ ] `build_result` computes `RenderedConfig { device_id, flavor_code, body, body_sha256, line_count, rendered_at }` — `body_sha256` is 64 hex chars
+- [ ] Render history writeback to `net.rendered_config` with previous_render_id chain (not yet wired from the REST handler — persistence lands in a follow-on slice)
+
+**Byte-for-byte parity gaps still open:**
+- [ ] Static default route (`set protocols static route 0.0.0.0/0 next-hop X.X.X.X`) — needs mgmt-VLAN gateway lookup; no data model for Gateway IPs yet
+- [ ] DHCP relay (`set protocols dhcp relay interface vlan-120 dhcp-server-address X.X.X.X`) — needs DHCP-role server discovery from `net.server`
+- [ ] VRRP (`set protocols vrrp interface vlan-N vrid 1 ip X.X.X.X`) — needs `net.vrrp_*` migration (not yet in tree)
+- [ ] Per-port QoS binding interleaving with description + L2 lines — deferred; QoS bindings reference forward-declared classifier + scheduler-profile names so keeping them near the QoS preset is the simpler correctness story
+
+**Phase 10 deliverables NOT yet started:** RBAC scoped policy engine, global search + faceted filters + saved views, bulk edit / import / export, XLSX round-trip of the Immunocore workbook, turn-up pack generator.
 
 ---
 
