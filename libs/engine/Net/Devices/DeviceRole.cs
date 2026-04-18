@@ -22,4 +22,13 @@ public class DeviceRole : EntityBase
 
     /// <summary>UI accent colour hint ("blue" / "green" / "red" / …).</summary>
     public string? ColorHint { get; set; }
+
+    /// <summary>
+    /// Tokenised hostname template — expanded by
+    /// <c>DeviceNamingService</c> when creating devices of this role.
+    /// Recognised tokens: <c>{region_code}</c>, <c>{site_code}</c>,
+    /// <c>{building_code}</c>, <c>{role_code}</c>, <c>{instance}</c>,
+    /// <c>{rack_code}</c>. Separators are literal text between tokens.
+    /// </summary>
+    public string NamingTemplate { get; set; } = "{building_code}-{role_code}{instance}";
 }

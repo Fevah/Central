@@ -13,6 +13,11 @@ public class DeviceModelTests
         Assert.Equal(LockState.Open, r.LockState);
         Assert.Null(r.DefaultAsnKind);
         Assert.Null(r.DefaultLoopbackPrefix);
+        // Default template is the generic shape — seeded roles
+        // override via migration 093. This default is what a
+        // newly-created role starts with if the admin doesn't set
+        // one explicitly.
+        Assert.Equal("{building_code}-{role_code}{instance}", r.NamingTemplate);
     }
 
     [Fact]

@@ -78,7 +78,7 @@ public class DevicesRepository
     {
         const string sql = @"
             SELECT id, organization_id, role_code, display_name, description,
-                   default_asn_kind, default_loopback_prefix, color_hint, " + BaseColumns + @"
+                   default_asn_kind, default_loopback_prefix, color_hint, naming_template," + BaseColumns + @"
             FROM net.device_role
             WHERE organization_id = @org AND deleted_at IS NULL
             ORDER BY role_code";
@@ -89,7 +89,7 @@ public class DevicesRepository
     {
         const string sql = @"
             SELECT id, organization_id, role_code, display_name, description,
-                   default_asn_kind, default_loopback_prefix, color_hint, " + BaseColumns + @"
+                   default_asn_kind, default_loopback_prefix, color_hint, naming_template," + BaseColumns + @"
             FROM net.device_role
             WHERE id = @id AND organization_id = @org AND deleted_at IS NULL";
         return await GetOneAsync(sql, id, orgId, ReadDeviceRole, ct);
@@ -100,9 +100,10 @@ public class DevicesRepository
         const string sql = @"
             INSERT INTO net.device_role (organization_id, role_code, display_name, description,
                                          default_asn_kind, default_loopback_prefix, color_hint,
+                                         naming_template,
                                          status, lock_state, notes, tags, external_refs,
                                          created_by, updated_by)
-            VALUES (@org, @code, @name, @desc, @kind, @pfx, @color,
+            VALUES (@org, @code, @name, @desc, @kind, @pfx, @color, @tpl,
                     @status::net.entity_status, @lock::net.lock_state,
                     @notes, @tags::jsonb, @refs::jsonb, @uid, @uid)
             RETURNING id";
@@ -122,6 +123,7 @@ public class DevicesRepository
                 default_asn_kind        = @kind,
                 default_loopback_prefix = @pfx,
                 color_hint              = @color,
+                naming_template         = @tpl,
                 status                  = @status::net.entity_status,
                 lock_state              = @lock::net.lock_state,
                 lock_reason             = @lreason,
@@ -155,6 +157,7 @@ public class DevicesRepository
         cmd.Parameters.AddWithValue("kind", (object?)e.DefaultAsnKind ?? DBNull.Value);
         cmd.Parameters.AddWithValue("pfx", (object?)e.DefaultLoopbackPrefix ?? DBNull.Value);
         cmd.Parameters.AddWithValue("color", (object?)e.ColorHint ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("tpl", e.NamingTemplate);
         cmd.Parameters.AddWithValue("status", e.Status.ToString());
         cmd.Parameters.AddWithValue("lock", e.LockState.ToString());
         cmd.Parameters.AddWithValue("notes", (object?)e.Notes ?? DBNull.Value);
@@ -175,8 +178,9 @@ public class DevicesRepository
             DefaultAsnKind = r.IsDBNull(5) ? null : r.GetString(5),
             DefaultLoopbackPrefix = r.IsDBNull(6) ? null : r.GetInt32(6),
             ColorHint = r.IsDBNull(7) ? null : r.GetString(7),
+            NamingTemplate = r.GetString(8),
         };
-        PopulateBase(e, r, 8);
+        PopulateBase(e, r, 9);
         return e;
     }
 
