@@ -128,6 +128,14 @@ public partial class DbRepository
 
     public async Task<List<SwitchRecord>> GetSwitchesAsync(List<string>? allowedSites = null)
     {
+        // Phase 4f transition flag. When set, read from net.device joined
+        // with net.building + net.loopback + net.ip_address rather than
+        // public.switches. The dual-write trigger (migration 090) keeps
+        // both tables identical, so the caller sees the same data either
+        // way. Off by default until every UI path is validated.
+        if (Environment.GetEnvironmentVariable("CENTRAL_USE_NET_DEVICE") == "1")
+            return await GetSwitchesFromNetDeviceAsync(allowedSites);
+
         var list = new List<SwitchRecord>();
         await using var conn = await OpenConnectionAsync();
 
@@ -158,6 +166,97 @@ public partial class DbRepository
             FROM switches
             {where}
             ORDER BY site, hostname
+            """;
+
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        if (allowedSites != null && allowedSites.Count > 0)
+            cmd.Parameters.AddWithValue("@sites", allowedSites.ToArray());
+        await using var rdr = await cmd.ExecuteReaderAsync();
+        while (await rdr.ReadAsync())
+        {
+            list.Add(new SwitchRecord
+            {
+                Id             = rdr.GetGuid(0),
+                Hostname       = rdr.IsDBNull(1)  ? "" : rdr.GetString(1),
+                Site           = rdr.IsDBNull(2)  ? "" : rdr.GetString(2),
+                Role           = rdr.IsDBNull(3)  ? "" : rdr.GetString(3),
+                LoopbackIp     = rdr.IsDBNull(4)  ? "" : rdr.GetString(4),
+                LoopbackPrefix = rdr.IsDBNull(5)  ? 0  : rdr.GetInt32(5),
+                ManagementIp   = rdr.IsDBNull(6)  ? "" : rdr.GetString(6),
+                SshUsername    = rdr.IsDBNull(7)  ? "" : rdr.GetString(7),
+                SshPort        = rdr.IsDBNull(8)  ? 22 : rdr.GetInt32(8),
+                SshPassword    = rdr.GetString(9),
+                SshOverrideIp  = rdr.GetString(10),
+                LastPingOk     = rdr.IsDBNull(11) ? null : (bool?)rdr.GetBoolean(11),
+                LastPingMs     = rdr.IsDBNull(12) ? null : (double?)Convert.ToDouble(rdr.GetValue(12)),
+                LastSshOk      = rdr.IsDBNull(13) ? null : (bool?)rdr.GetBoolean(13),
+                LastPingAt     = rdr.IsDBNull(14) ? "" : rdr.GetString(14),
+                LastSshAt      = rdr.IsDBNull(15) ? "" : rdr.GetString(15),
+                PicosVersion   = rdr.IsDBNull(16) ? "" : rdr.GetString(16),
+                HardwareModel  = rdr.GetString(17),
+                MacAddress     = rdr.GetString(18),
+                SerialNumber   = rdr.GetString(19),
+                Uptime         = rdr.GetString(20),
+            });
+        }
+        return list;
+    }
+
+    /// <summary>
+    /// Phase 4f reader — pulls SwitchRecord rows from net.device joined
+    /// with building / loopback / ip_address / device_role, plus a
+    /// LEFT JOIN to public.switches by legacy_switch_id for the handful
+    /// of fields that haven't been lifted into the net.* schema yet
+    /// (ssh_password, ssh_override_ip, uptime).
+    ///
+    /// The projected SwitchRecord shape is identical to what
+    /// <see cref="GetSwitchesAsync"/> returns from the legacy path, so
+    /// the UI doesn't notice the swap. Controlled by the
+    /// CENTRAL_USE_NET_DEVICE env var until we're satisfied; the
+    /// dual-write trigger guarantees the data matches either way.
+    /// </summary>
+    public async Task<List<SwitchRecord>> GetSwitchesFromNetDeviceAsync(List<string>? allowedSites = null)
+    {
+        var list = new List<SwitchRecord>();
+        await using var conn = await OpenConnectionAsync();
+
+        var where = "d.deleted_at IS NULL";
+        if (allowedSites != null && allowedSites.Count == 0)
+            where += " AND FALSE";
+        else if (allowedSites != null && allowedSites.Count > 0)
+            where += " AND b.building_code = ANY(@sites)";
+
+        var sql = $"""
+            SELECT
+                d.id,
+                d.hostname,
+                COALESCE(b.building_code, '')       AS site,
+                COALESCE(lower(r.role_code), '')    AS role,
+                COALESCE(host(ia.address), '')      AS loopback_ip,
+                COALESCE(masklen(ia.address), 0)    AS loopback_prefix,
+                COALESCE(host(d.management_ip), '') AS management_ip,
+                COALESCE(d.ssh_username, '')        AS ssh_username,
+                COALESCE(d.ssh_port, 22)            AS ssh_port,
+                COALESCE(s.ssh_password, '')        AS ssh_password,
+                COALESCE(s.ssh_override_ip, '')     AS ssh_override_ip,
+                d.last_ping_ok, d.last_ping_ms,
+                d.last_ssh_ok,
+                d.last_ping_at::text,
+                d.last_ssh_at::text,
+                d.firmware_version                  AS picos_version,
+                COALESCE(d.hardware_model, '')      AS hardware_model,
+                COALESCE(d.mac_address::text, '')   AS mac_address,
+                COALESCE(d.serial_number, '')       AS serial_number,
+                COALESCE(s.uptime, '')              AS uptime
+              FROM net.device d
+              LEFT JOIN net.building    b  ON b.id = d.building_id
+              LEFT JOIN net.device_role r  ON r.id = d.device_role_id
+              LEFT JOIN net.loopback    lo ON lo.device_id = d.id AND lo.loopback_number = 0
+                                           AND lo.deleted_at IS NULL
+              LEFT JOIN net.ip_address  ia ON ia.id = lo.ip_address_id AND ia.deleted_at IS NULL
+              LEFT JOIN public.switches s  ON s.id = d.legacy_switch_id
+             WHERE {where}
+             ORDER BY site, d.hostname
             """;
 
         await using var cmd = new NpgsqlCommand(sql, conn);
