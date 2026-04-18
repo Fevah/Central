@@ -30,6 +30,40 @@ use crate::naming::{self, DeviceNamingContext};
 
 // ─── Public surface ──────────────────────────────────────────────────────
 
+/// Lightweight row for the render-history list endpoint — no `body`,
+/// so a tenant with 10k renders doesn't need to ship MBs over the
+/// wire to populate a list panel. Callers fetch the full body by id
+/// via `RenderedConfigRecord` when they actually need to diff.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RenderedConfigSummary {
+    pub id: Uuid,
+    pub device_id: Uuid,
+    pub flavor_code: String,
+    pub body_sha256: String,
+    pub line_count: i32,
+    pub render_duration_ms: Option<i32>,
+    pub previous_render_id: Option<Uuid>,
+    pub rendered_at: DateTime<Utc>,
+    pub rendered_by: Option<i32>,
+}
+
+/// Full record including body — for the diff / view-one-render flow.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RenderedConfigRecord {
+    pub id: Uuid,
+    pub device_id: Uuid,
+    pub flavor_code: String,
+    pub body: String,
+    pub body_sha256: String,
+    pub line_count: i32,
+    pub render_duration_ms: Option<i32>,
+    pub previous_render_id: Option<Uuid>,
+    pub rendered_at: DateTime<Utc>,
+    pub rendered_by: Option<i32>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderedConfig {
@@ -159,6 +193,73 @@ fn build_result(device_id: Uuid, flavor: &'static FlavorMeta, body: String) -> R
         previous_render_id: None,
         render_duration_ms: None,
     }
+}
+
+/// Lightweight default + safety-cap for the list endpoint. Callers
+/// can pass their own `limit` but we clamp to `RENDER_LIST_MAX` to
+/// stop a single request from pulling a tenant's entire history.
+const RENDER_LIST_DEFAULT: i64 = 50;
+const RENDER_LIST_MAX: i64 = 500;
+
+pub fn clamp_render_list_limit(requested: Option<i64>) -> i64 {
+    let n = requested.unwrap_or(RENDER_LIST_DEFAULT);
+    n.clamp(1, RENDER_LIST_MAX)
+}
+
+/// Recent renders for a device, most recent first. Limit clamps to
+/// `[1, RENDER_LIST_MAX]` via `clamp_render_list_limit` so caller
+/// typos can't accidentally fetch the whole table.
+pub async fn list_renders(
+    pool: &PgPool,
+    org_id: Uuid,
+    device_id: Uuid,
+    limit: i64,
+) -> Result<Vec<RenderedConfigSummary>, EngineError> {
+    let rows: Vec<(Uuid, Uuid, String, String, i32, Option<i32>, Option<Uuid>, DateTime<Utc>, Option<i32>)> =
+        sqlx::query_as(
+            "SELECT id, device_id, flavor_code, body_sha256, line_count,
+                    render_duration_ms, previous_render_id, rendered_at, rendered_by
+               FROM net.rendered_config
+              WHERE organization_id = $1
+                AND device_id       = $2
+                AND deleted_at      IS NULL
+              ORDER BY rendered_at DESC
+              LIMIT $3")
+            .bind(org_id)
+            .bind(device_id)
+            .bind(limit)
+            .fetch_all(pool)
+            .await?;
+    Ok(rows.into_iter().map(|(id, dev, flavor, sha, lines, dur, prev, at, by)| RenderedConfigSummary {
+        id, device_id: dev, flavor_code: flavor, body_sha256: sha, line_count: lines,
+        render_duration_ms: dur, previous_render_id: prev, rendered_at: at, rendered_by: by,
+    }).collect())
+}
+
+/// Fetch one render by id, scoped by tenant so cross-tenant reads
+/// return `container_not_found` rather than leaking.
+pub async fn get_render(
+    pool: &PgPool,
+    org_id: Uuid,
+    render_id: Uuid,
+) -> Result<RenderedConfigRecord, EngineError> {
+    let row: Option<(Uuid, Uuid, String, String, String, i32, Option<i32>, Option<Uuid>, DateTime<Utc>, Option<i32>)> =
+        sqlx::query_as(
+            "SELECT id, device_id, flavor_code, body, body_sha256, line_count,
+                    render_duration_ms, previous_render_id, rendered_at, rendered_by
+               FROM net.rendered_config
+              WHERE organization_id = $1
+                AND id              = $2
+                AND deleted_at      IS NULL")
+            .bind(org_id)
+            .bind(render_id)
+            .fetch_optional(pool)
+            .await?;
+    row.map(|(id, dev, flavor, body, sha, lines, dur, prev, at, by)| RenderedConfigRecord {
+        id, device_id: dev, flavor_code: flavor, body, body_sha256: sha, line_count: lines,
+        render_duration_ms: dur, previous_render_id: prev, rendered_at: at, rendered_by: by,
+    })
+    .ok_or_else(|| EngineError::container_not_found("rendered_config", render_id))
 }
 
 fn sha256_hex(s: &str) -> String {
@@ -2160,6 +2261,73 @@ mod tests {
         assert!(out.contains("mlag domain 1"));
         assert!(!out.contains("peer-link "),
             "empty interface string → no peer-link line:\n{out}");
+    }
+
+    #[test]
+    fn clamp_render_list_limit_defaults_and_caps() {
+        // None → default
+        assert_eq!(clamp_render_list_limit(None), RENDER_LIST_DEFAULT);
+        // Under 1 → snaps to 1
+        assert_eq!(clamp_render_list_limit(Some(0)), 1);
+        assert_eq!(clamp_render_list_limit(Some(-5)), 1);
+        // Above cap → snaps to cap
+        assert_eq!(clamp_render_list_limit(Some(RENDER_LIST_MAX + 1)), RENDER_LIST_MAX);
+        assert_eq!(clamp_render_list_limit(Some(i64::MAX)), RENDER_LIST_MAX);
+        // In-range passes through unchanged
+        assert_eq!(clamp_render_list_limit(Some(25)), 25);
+        assert_eq!(clamp_render_list_limit(Some(RENDER_LIST_MAX)), RENDER_LIST_MAX);
+    }
+
+    #[test]
+    fn rendered_config_summary_serialises_camelcase_with_none_duration() {
+        // Summary rows come back from the list endpoint — the shape is
+        // the contract with Angular/WPF clients. Lock the camelCase
+        // field names here so a rename on the Rust side breaks the
+        // test (forces a matching update on the client).
+        let s = RenderedConfigSummary {
+            id:                 Uuid::nil(),
+            device_id:          Uuid::nil(),
+            flavor_code:        "PicOS".into(),
+            body_sha256:        "deadbeef".into(),
+            line_count:         42,
+            render_duration_ms: None,
+            previous_render_id: None,
+            rendered_at:        Utc::now(),
+            rendered_by:        Some(7),
+        };
+        let json = serde_json::to_string(&s).expect("serialises");
+        assert!(json.contains("\"deviceId\""),         "deviceId key missing: {json}");
+        assert!(json.contains("\"flavorCode\":\"PicOS\""), "flavorCode missing: {json}");
+        assert!(json.contains("\"bodySha256\":\"deadbeef\""));
+        assert!(json.contains("\"lineCount\":42"));
+        assert!(json.contains("\"renderedBy\":7"));
+        // None duration serialises as null (it's not Option-skipped here
+        // — summaries always include it so clients can render "n/a"
+        // without field-presence checks).
+        assert!(json.contains("\"renderDurationMs\":null"),
+            "renderDurationMs should be present-but-null when unset: {json}");
+    }
+
+    #[test]
+    fn rendered_config_record_serialises_with_body() {
+        // The full record — used by the GET-one endpoint — carries
+        // the body. Make sure camelCase mapping is identical to the
+        // summary so clients can upcast / downcast cleanly.
+        let r = RenderedConfigRecord {
+            id:                 Uuid::nil(),
+            device_id:          Uuid::nil(),
+            flavor_code:        "PicOS".into(),
+            body:               "set system hostname \"x\"\n".into(),
+            body_sha256:        "c0de".into(),
+            line_count:         1,
+            render_duration_ms: Some(12),
+            previous_render_id: None,
+            rendered_at:        Utc::now(),
+            rendered_by:        None,
+        };
+        let json = serde_json::to_string(&r).expect("serialises");
+        assert!(json.contains("\"body\":\"set system hostname"));
+        assert!(json.contains("\"renderDurationMs\":12"));
     }
 
     #[test]

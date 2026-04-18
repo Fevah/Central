@@ -102,6 +102,8 @@ pub fn build_router(state: AppState) -> Router {
                axum::routing::put(set_cli_flavor_config))
         // Device config render (Phase 10 PicOS starter)
         .route("/api/net/devices/:id/render-config", post(render_device_config))
+        .route("/api/net/devices/:id/renders",       get(list_device_renders))
+        .route("/api/net/renders/:id",               get(get_render_by_id))
         .with_state(state)
 }
 
@@ -868,4 +870,27 @@ async fn render_device_config(
     Ok(Json(config_gen::render_device_persisted(
         &s.pool, q.organization_id, device_id, rendered_by
     ).await?))
+}
+
+#[derive(Deserialize)]
+struct RenderListQuery {
+    organization_id: Uuid,
+    limit: Option<i64>,
+}
+
+async fn list_device_renders(
+    State(s): State<AppState>,
+    Path(device_id): Path<Uuid>,
+    Query(q): Query<RenderListQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let limit = config_gen::clamp_render_list_limit(q.limit);
+    Ok(Json(config_gen::list_renders(&s.pool, q.organization_id, device_id, limit).await?))
+}
+
+async fn get_render_by_id(
+    State(s): State<AppState>,
+    Path(render_id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    Ok(Json(config_gen::get_render(&s.pool, q.organization_id, render_id).await?))
 }
