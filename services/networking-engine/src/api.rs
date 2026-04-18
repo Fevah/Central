@@ -101,9 +101,11 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/cli-flavors/:code",
                axum::routing::put(set_cli_flavor_config))
         // Device config render (Phase 10 PicOS starter)
-        .route("/api/net/devices/:id/render-config", post(render_device_config))
-        .route("/api/net/devices/:id/renders",       get(list_device_renders))
-        .route("/api/net/renders/:id",               get(get_render_by_id))
+        .route("/api/net/devices/:id/render-config",        post(render_device_config))
+        .route("/api/net/devices/:id/renders",              get(list_device_renders))
+        .route("/api/net/renders/:id",                      get(get_render_by_id))
+        // Building-level turn-up pack: fan-out render + persist
+        .route("/api/net/buildings/:id/render-configs",     post(render_building_configs))
         .with_state(state)
 }
 
@@ -893,4 +895,19 @@ async fn get_render_by_id(
     Query(q): Query<OrgQuery>,
 ) -> Result<impl IntoResponse, EngineError> {
     Ok(Json(config_gen::get_render(&s.pool, q.organization_id, render_id).await?))
+}
+
+async fn render_building_configs(
+    State(s): State<AppState>,
+    Path(building_id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, EngineError> {
+    // POST → turn-up pack: render + persist every device in the
+    // building; per-device errors surface in the result's `errors`
+    // array rather than aborting the whole pack.
+    let rendered_by = header_user_id(&headers);
+    Ok(Json(config_gen::render_building_persisted(
+        &s.pool, q.organization_id, building_id, rendered_by
+    ).await?))
 }

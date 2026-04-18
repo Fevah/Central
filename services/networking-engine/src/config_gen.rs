@@ -48,6 +48,31 @@ pub struct RenderedConfigSummary {
     pub rendered_by: Option<i32>,
 }
 
+/// One building render "turn-up pack" — every device in the building
+/// rendered + persisted + chained in one call. Per-device errors are
+/// tolerated (a broken naming template on device 17 doesn't block
+/// rendering devices 1-16 and 18-50) and surfaced as structured
+/// entries so the operator can see exactly what needs fixing.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BuildingRenderResult {
+    pub building_id: Uuid,
+    pub building_code: Option<String>,
+    pub total_devices: i32,
+    pub succeeded: i32,
+    pub failed: i32,
+    pub renders: Vec<RenderedConfig>,
+    pub errors: Vec<DeviceRenderError>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeviceRenderError {
+    pub device_id: Uuid,
+    pub hostname: String,
+    pub error: String,
+}
+
 /// Full record including body — for the diff / view-one-render flow.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -131,6 +156,66 @@ pub async fn render_device_persisted(
     rc.render_duration_ms = Some(started.elapsed().as_millis().min(i32::MAX as u128) as i32);
     persist_render(pool, org_id, rendered_by, &mut rc).await?;
     Ok(rc)
+}
+
+/// Render + persist every device in a building. Errors on a single
+/// device don't short-circuit the whole pack — they land in
+/// `result.errors` so the operator can see exactly which devices
+/// need attention without losing the configs that DID render.
+/// Sequential (not parallel) today: a full tenant building is ~50
+/// devices which is fine serially; revisit when we see tenants with
+/// hundreds of devices per building.
+pub async fn render_building_persisted(
+    pool: &PgPool,
+    org_id: Uuid,
+    building_id: Uuid,
+    rendered_by: Option<i32>,
+) -> Result<BuildingRenderResult, EngineError> {
+    // Building code — cheap, used in the result header so the caller
+    // doesn't need a second round-trip. None if the row was deleted
+    // between the lookup and now (race window).
+    let building: Option<(String,)> = sqlx::query_as(
+        "SELECT building_code FROM net.building
+          WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL")
+        .bind(building_id)
+        .bind(org_id)
+        .fetch_optional(pool)
+        .await?;
+    if building.is_none() {
+        return Err(EngineError::container_not_found("building", building_id));
+    }
+    let building_code = building.map(|(c,)| c);
+
+    let devices: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, hostname FROM net.device
+          WHERE organization_id = $1 AND building_id = $2 AND deleted_at IS NULL
+          ORDER BY hostname")
+        .bind(org_id)
+        .bind(building_id)
+        .fetch_all(pool)
+        .await?;
+
+    let total = devices.len() as i32;
+    let mut renders = Vec::with_capacity(devices.len());
+    let mut errors = Vec::new();
+    for (device_id, hostname) in devices {
+        match render_device_persisted(pool, org_id, device_id, rendered_by).await {
+            Ok(rc)  => renders.push(rc),
+            Err(e)  => errors.push(DeviceRenderError {
+                device_id, hostname, error: e.to_string(),
+            }),
+        }
+    }
+
+    Ok(BuildingRenderResult {
+        building_id,
+        building_code,
+        total_devices: total,
+        succeeded:     renders.len() as i32,
+        failed:        errors.len()  as i32,
+        renders,
+        errors,
+    })
 }
 
 /// Insert a row into `net.rendered_config` and fill
@@ -2261,6 +2346,46 @@ mod tests {
         assert!(out.contains("mlag domain 1"));
         assert!(!out.contains("peer-link "),
             "empty interface string → no peer-link line:\n{out}");
+    }
+
+    #[test]
+    fn building_render_result_serialises_camelcase_and_empty_arrays() {
+        // Turn-up pack for an empty building — no devices, no errors.
+        // Locks the client-facing field names + confirms empty arrays
+        // serialise as `[]` not omitted.
+        let r = BuildingRenderResult {
+            building_id:   Uuid::nil(),
+            building_code: Some("MEP-91".into()),
+            total_devices: 0,
+            succeeded:     0,
+            failed:        0,
+            renders:       vec![],
+            errors:        vec![],
+        };
+        let json = serde_json::to_string(&r).expect("serialises");
+        assert!(json.contains("\"buildingId\""),           "buildingId key missing: {json}");
+        assert!(json.contains("\"buildingCode\":\"MEP-91\""));
+        assert!(json.contains("\"totalDevices\":0"));
+        assert!(json.contains("\"succeeded\":0"));
+        assert!(json.contains("\"failed\":0"));
+        assert!(json.contains("\"renders\":[]"),
+            "empty renders array must serialise as []:\n{json}");
+        assert!(json.contains("\"errors\":[]"),
+            "empty errors array must serialise as []:\n{json}");
+    }
+
+    #[test]
+    fn device_render_error_serialises_with_human_readable_fields() {
+        let e = DeviceRenderError {
+            device_id: Uuid::nil(),
+            hostname:  "MEP-91-BROKEN".into(),
+            error:     "naming template references unknown token {device_rack_floor}".into(),
+        };
+        let json = serde_json::to_string(&e).expect("serialises");
+        assert!(json.contains("\"deviceId\""));
+        assert!(json.contains("\"hostname\":\"MEP-91-BROKEN\""));
+        assert!(json.contains("unknown token"),
+            "error field should carry the human-readable message:\n{json}");
     }
 
     #[test]
