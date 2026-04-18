@@ -26,7 +26,8 @@
                 <dxg:TableView AutoWidth="True"
                                ShowIndicator="False"
                                ShowGroupPanel="True"
-                               AllowEditing="False"/>
+                               AllowEditing="False"
+                               RowDoubleClick="OnRowDoubleClick"/>
             </dxg:GridControl.View>
             <dxg:GridControl.Columns>
                 <dxg:GridColumn FieldName="Title"              Header="Title"          Width="260"/>

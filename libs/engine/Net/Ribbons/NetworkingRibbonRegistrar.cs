@@ -136,6 +136,8 @@ public static class NetworkingRibbonRegistrar
                     () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelChangeSets, "action:rollback")));
                 group.AddButton("Cancel",          P.ChangeSetsWrite,   "Close_16x16",
                     () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelChangeSets, "action:cancel")));
+                group.AddButton("Details",         P.ChangeSetsRead,    "Properties_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelChangeSets, "action:details")));
                 group.AddButton("Refresh",         P.ChangeSetsRead,    "Refresh_16x16",
                     () => PanelMessageBus.Publish(new RefreshPanelMessage(PanelChangeSets)));
             });

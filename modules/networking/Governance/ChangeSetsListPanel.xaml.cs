@@ -102,6 +102,9 @@ public partial class ChangeSetsListPanel : UserControl
             case "action:cancel":
                 RunWithSelection("Cancel", ConfirmAndCancel);
                 break;
+            case "action:details":
+                RunWithSelection("inspect", OpenDetailDialog);
+                break;
             default:
                 _ = ReloadAsync();
                 break;
@@ -145,6 +148,25 @@ public partial class ChangeSetsListPanel : UserControl
         {
             _ = ReloadAsync();
         }
+    }
+
+    // ─── Detail ─────────────────────────────────────────────────────────
+
+    /// <summary>Row-double-click shortcut to the detail view. Bound
+    /// from XAML via TableView.RowDoubleClick.</summary>
+    private void OnRowDoubleClick(object sender, DevExpress.Xpf.Grid.RowDoubleClickEventArgs e)
+    {
+        var row = CurrentRow();
+        if (row is not null) OpenDetailDialog(row);
+    }
+
+    private void OpenDetailDialog(ChangeSetRow row)
+    {
+        var dialog = new ChangeSetDetailDialog(_baseUrl!, _tenantId, _actorUserId, row)
+        {
+            Owner = Window.GetWindow(this),
+        };
+        dialog.ShowDialog();
     }
 
     // ─── Add Item ───────────────────────────────────────────────────────

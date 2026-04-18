@@ -103,6 +103,7 @@ public class NetworkingRibbonAuditTests
     [InlineData("Governance", "Apply",            "changesets", "action:apply")]
     [InlineData("Governance", "Rollback",         "changesets", "action:rollback")]
     [InlineData("Governance", "Cancel",           "changesets", "action:cancel")]
+    [InlineData("Governance", "Details",          "changesets", "action:details")]
     public void NavigateButton_PublishesCorrectTargetAndAction(
         string groupHeader, string buttonContent, string expectedPanel, string expectedAction)
     {
