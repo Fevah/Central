@@ -105,6 +105,22 @@ pub struct SiteRenderResult {
     pub errors: Vec<DeviceRenderError>,
 }
 
+/// Region-level turn-up pack — every device in every building across
+/// every site in the region. For most tenants "region" = "the whole
+/// estate", so this is the biggest fan-out scope. Same shape as the
+/// site / building results; counters roll up across sites.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RegionRenderResult {
+    pub region_id: Uuid,
+    pub region_code: Option<String>,
+    pub total_devices: i32,
+    pub succeeded: i32,
+    pub failed: i32,
+    pub renders: Vec<RenderedConfig>,
+    pub errors: Vec<DeviceRenderError>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceRenderError {
@@ -262,6 +278,60 @@ pub async fn render_building_persisted(
     Ok(BuildingRenderResult {
         building_id,
         building_code,
+        total_devices: total,
+        succeeded:     renders.len() as i32,
+        failed:        errors.len()  as i32,
+        renders,
+        errors,
+    })
+}
+
+/// Render + persist every device across every site in a region.
+/// For tenants with one region (common case — Immunocore, most
+/// customers) this is an "whole-estate turn-up" call. Same
+/// fan-out semantics + error tolerance as the site and building
+/// variants; counters roll up across sites.
+pub async fn render_region_persisted(
+    pool: &PgPool,
+    org_id: Uuid,
+    region_id: Uuid,
+    rendered_by: Option<i32>,
+) -> Result<RegionRenderResult, EngineError> {
+    let region: Option<(String,)> = sqlx::query_as(
+        "SELECT region_code FROM net.region
+          WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL")
+        .bind(region_id)
+        .bind(org_id)
+        .fetch_optional(pool)
+        .await?;
+    if region.is_none() {
+        return Err(EngineError::container_not_found("region", region_id));
+    }
+    let region_code = region.map(|(c,)| c);
+
+    // Walk region → sites → buildings → devices in one join. Result
+    // ordered (site_code, building_code, hostname) so the renders
+    // array groups readably when an operator scans through it.
+    let devices: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT d.id, d.hostname
+           FROM net.device d
+           JOIN net.building b ON b.id = d.building_id AND b.deleted_at IS NULL
+           JOIN net.site     s ON s.id = b.site_id     AND s.deleted_at IS NULL
+          WHERE d.organization_id = $1
+            AND s.region_id       = $2
+            AND d.deleted_at      IS NULL
+          ORDER BY s.site_code, b.building_code, d.hostname")
+        .bind(org_id)
+        .bind(region_id)
+        .fetch_all(pool)
+        .await?;
+
+    let total = devices.len() as i32;
+    let (renders, errors) = render_device_list(pool, org_id, devices, rendered_by).await;
+
+    Ok(RegionRenderResult {
+        region_id,
+        region_code,
         total_devices: total,
         succeeded:     renders.len() as i32,
         failed:        errors.len()  as i32,
@@ -3021,6 +3091,25 @@ mod tests {
         assert!(json.contains("\"unchangedCount\":0"));
         assert!(json.contains("\"removed\":[]"),
             "empty arrays must serialise as [] not omitted:\n{json}");
+    }
+
+    #[test]
+    fn region_render_result_serialises_camelcase_and_empty_arrays() {
+        let r = RegionRenderResult {
+            region_id:     Uuid::nil(),
+            region_code:   Some("UK".into()),
+            total_devices: 0,
+            succeeded:     0,
+            failed:        0,
+            renders:       vec![],
+            errors:        vec![],
+        };
+        let json = serde_json::to_string(&r).expect("serialises");
+        assert!(json.contains("\"regionId\""),         "regionId key missing: {json}");
+        assert!(json.contains("\"regionCode\":\"UK\""));
+        assert!(json.contains("\"totalDevices\":0"));
+        assert!(json.contains("\"renders\":[]"));
+        assert!(json.contains("\"errors\":[]"));
     }
 
     #[test]

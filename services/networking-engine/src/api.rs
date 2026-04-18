@@ -108,9 +108,10 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/devices/:id/renders",              get(list_device_renders))
         .route("/api/net/renders/:id",                      get(get_render_by_id))
         .route("/api/net/renders/:id/diff",                 get(diff_render_by_id))
-        // Building- / site-level turn-up packs: fan-out render + persist
+        // Building- / site- / region-level turn-up packs: fan-out render + persist
         .route("/api/net/buildings/:id/render-configs",     post(render_building_configs))
         .route("/api/net/sites/:id/render-configs",         post(render_site_configs))
+        .route("/api/net/regions/:id/render-configs",       post(render_region_configs))
         // DHCP relay targets: M:N between VLANs + DHCP server IPs,
         // consumed by config-gen. CRUD follows the NamingOverride shape.
         .route("/api/net/dhcp-relay-targets",               get(list_dhcp_relay).post(create_dhcp_relay))
@@ -943,6 +944,21 @@ async fn render_site_configs(
     let rendered_by = header_user_id(&headers);
     Ok(Json(config_gen::render_site_persisted(
         &s.pool, q.organization_id, site_id, rendered_by
+    ).await?))
+}
+
+async fn render_region_configs(
+    State(s): State<AppState>,
+    Path(region_id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, EngineError> {
+    // Whole-estate turn-up: every device across every site in the
+    // region. For single-region tenants this renders the entire
+    // network in one call.
+    let rendered_by = header_user_id(&headers);
+    Ok(Json(config_gen::render_region_persisted(
+        &s.pool, q.organization_id, region_id, rendered_by
     ).await?))
 }
 
