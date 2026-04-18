@@ -60,6 +60,26 @@
                 </dxg:GridControl>
             </TabItem>
 
+            <TabItem Header="Approvals">
+                <dxg:GridControl x:Name="ApprovalsGrid"
+                                 AutoGenerateColumns="None"
+                                 SelectionMode="Row"
+                                 ShowBorder="False">
+                    <dxg:GridControl.View>
+                        <dxg:TableView AutoWidth="True"
+                                       ShowIndicator="False"
+                                       AllowEditing="False"/>
+                    </dxg:GridControl.View>
+                    <dxg:GridControl.Columns>
+                        <dxg:GridColumn FieldName="DecidedAt"        Header="When"       Width="150"/>
+                        <dxg:GridColumn FieldName="ApproverDisplay"  Header="Approver"   Width="160"/>
+                        <dxg:GridColumn FieldName="ApproverUserId"   Header="User ID"    Width="70"/>
+                        <dxg:GridColumn FieldName="Decision"         Header="Decision"   Width="90"/>
+                        <dxg:GridColumn FieldName="Notes"            Header="Notes"      Width="*"/>
+                    </dxg:GridControl.Columns>
+                </dxg:GridControl>
+            </TabItem>
+
             <TabItem Header="Audit Timeline">
                 <dxg:GridControl x:Name="AuditGrid"
                                  AutoGenerateColumns="None"

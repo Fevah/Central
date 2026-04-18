@@ -68,20 +68,25 @@ public partial class ChangeSetDetailDialog : DevExpress.Xpf.Core.DXWindow
             RenderLifecycle(detail);
             RenderItems(detail.Items);
 
-            // Audit by correlation id — ascending so the story reads
-            // top-to-bottom in creation order. Limit 500 is generous
-            // for any realistic Set (draft + items + submit + decisions
-            // + apply steps + optional rollback — rarely over 50 rows).
-            var audit = await client.ListAuditAsync(new ListAuditRequest
+            // Approvals + audit load concurrently — they're independent
+            // and both short, so parallelism halves the wall-clock wait.
+            var approvalsTask = client.ListApprovalsAsync(_setId, _tenantId);
+            var auditTask = client.ListAuditAsync(new ListAuditRequest
             {
                 OrganizationId = _tenantId,
                 CorrelationId = _correlationId,
                 Limit = 500,
             });
+
+            var approvals = await approvalsTask;
+            RenderApprovals(approvals);
+
+            var audit = await auditTask;
             // The list endpoint returns DESC; flip to ASC for reading order.
             RenderAudit(audit.OrderBy(a => a.SequenceId).ToList());
 
             StatusLabel.Text = $"{detail.Items.Count} item{(detail.Items.Count == 1 ? "" : "s")} · " +
+                                $"{approvals.Count} approval{(approvals.Count == 1 ? "" : "s")} · " +
                                 $"{audit.Count} audit row{(audit.Count == 1 ? "" : "s")} · " +
                                 $"loaded {DateTime.Now:HH:mm:ss}";
         }
@@ -120,6 +125,18 @@ public partial class ChangeSetDetailDialog : DevExpress.Xpf.Core.DXWindow
             AppliedAt = i.AppliedAt,
             ApplyError = i.ApplyError ?? "",
             Notes = i.Notes ?? "",
+        }).ToList();
+    }
+
+    private void RenderApprovals(IReadOnlyList<ApprovalDto> approvals)
+    {
+        ApprovalsGrid.ItemsSource = approvals.Select(a => new ApprovalDisplayRow
+        {
+            DecidedAt = a.DecidedAt,
+            ApproverDisplay = a.ApproverDisplay ?? "",
+            ApproverUserId = a.ApproverUserId,
+            Decision = a.Decision,
+            Notes = a.Notes ?? "",
         }).ToList();
     }
 
@@ -191,6 +208,15 @@ public partial class ChangeSetDetailDialog : DevExpress.Xpf.Core.DXWindow
         public int? ExpectedVersion { get; set; }
         public DateTime? AppliedAt { get; set; }
         public string ApplyError { get; set; } = "";
+        public string Notes { get; set; } = "";
+    }
+
+    private sealed class ApprovalDisplayRow
+    {
+        public DateTime DecidedAt { get; set; }
+        public string ApproverDisplay { get; set; } = "";
+        public int ApproverUserId { get; set; }
+        public string Decision { get; set; } = "";
         public string Notes { get; set; } = "";
     }
 
