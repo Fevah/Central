@@ -575,6 +575,71 @@ pub async fn export_mlag_domains_csv(
     Ok(out)
 }
 
+// ─── DHCP relay target export ────────────────────────────────────────────
+
+/// CSV dump of `net.dhcp_relay_target` — symmetric with the DHCP relay
+/// CRUD that's shipped on `/api/net/dhcp-relay-targets`. Columns:
+///
+///   vlan_id, server_ip, priority, linked_ip_address_id, notes, status
+///
+/// `vlan_id` is the human-readable numeric tag (joined through
+/// `net.vlan`), not the internal UUID; that way operators pasting the
+/// export into a ticket see "120" rather than a UUID nobody can
+/// correlate.
+///
+/// `linked_ip_address_id` remains a UUID when set — there's no useful
+/// "code" to project for a single IP, and the `address` column on
+/// `net.ip_address` is already available via the
+/// `/api/net/ip-addresses/export` dump if operators want to correlate.
+///
+/// Ordered `(vlan_id, priority ASC)` so rows group by VLAN with the
+/// primary server first within each group — same ordering the PicOS
+/// renderer uses when emitting `set protocols dhcp relay` lines.
+pub async fn export_dhcp_relay_targets_csv(
+    pool: &PgPool,
+    org_id: Uuid,
+) -> Result<String, EngineError> {
+    type Row = (
+        i32,             // vlan_id (numeric)
+        String,          // server_ip (bare host)
+        i32,             // priority
+        Option<Uuid>,    // ip_address_id
+        Option<String>,  // notes
+        String,          // status
+    );
+    let rows: Vec<Row> = sqlx::query_as(
+        r#"SELECT v.vlan_id,
+                  host(drt.server_ip)     AS server_ip,
+                  drt.priority,
+                  drt.ip_address_id,
+                  drt.notes,
+                  drt.status::text        AS status
+             FROM net.dhcp_relay_target drt
+             JOIN net.vlan v ON v.id = drt.vlan_id AND v.deleted_at IS NULL
+            WHERE drt.organization_id = $1 AND drt.deleted_at IS NULL
+            ORDER BY v.vlan_id, drt.priority ASC, drt.server_ip"#)
+        .bind(org_id)
+        .fetch_all(pool)
+        .await?;
+
+    let mut out = String::with_capacity(128 + rows.len() * 96);
+    out.push_str(&csv_row(&[
+        "vlan_id".into(), "server_ip".into(), "priority".into(),
+        "linked_ip_address_id".into(), "notes".into(), "status".into(),
+    ]));
+    for (vlan_id, server_ip, priority, ip_address_id, notes, status) in rows {
+        out.push_str(&csv_row(&[
+            vlan_id.to_string(),
+            csv_escape(&server_ip),
+            priority.to_string(),
+            ip_address_id.map(|id| id.to_string()).unwrap_or_default(),
+            csv_escape(&notes.unwrap_or_default()),
+            csv_escape(&status),
+        ]));
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

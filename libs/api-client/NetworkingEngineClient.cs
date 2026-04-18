@@ -488,6 +488,54 @@ public class NetworkingEngineClient : IDisposable
         await EnsureSuccessAsync(resp, ct);
     }
 
+    // ─── Bulk export + import (Phase 10) ─────────────────────────────────
+
+    /// <summary>Download a CSV dump of the tenant's devices. Returned as
+    /// the raw body string (text/csv) so callers can save-as-file or
+    /// parse directly.</summary>
+    public Task<string> ExportDevicesCsvAsync(Guid organizationId, CancellationToken ct = default)
+        => GetStringAsync($"/api/net/devices/export?organizationId={organizationId}", ct);
+
+    public Task<string> ExportVlansCsvAsync(Guid organizationId, CancellationToken ct = default)
+        => GetStringAsync($"/api/net/vlans/export?organizationId={organizationId}", ct);
+
+    public Task<string> ExportIpAddressesCsvAsync(Guid organizationId, CancellationToken ct = default)
+        => GetStringAsync($"/api/net/ip-addresses/export?organizationId={organizationId}", ct);
+
+    public Task<string> ExportLinksCsvAsync(Guid organizationId, CancellationToken ct = default)
+        => GetStringAsync($"/api/net/links/export?organizationId={organizationId}", ct);
+
+    public Task<string> ExportServersCsvAsync(Guid organizationId, CancellationToken ct = default)
+        => GetStringAsync($"/api/net/servers/export?organizationId={organizationId}", ct);
+
+    public Task<string> ExportSubnetsCsvAsync(Guid organizationId, CancellationToken ct = default)
+        => GetStringAsync($"/api/net/subnets/export?organizationId={organizationId}", ct);
+
+    public Task<string> ExportAsnAllocationsCsvAsync(Guid organizationId, CancellationToken ct = default)
+        => GetStringAsync($"/api/net/asn-allocations/export?organizationId={organizationId}", ct);
+
+    public Task<string> ExportMlagDomainsCsvAsync(Guid organizationId, CancellationToken ct = default)
+        => GetStringAsync($"/api/net/mlag-domains/export?organizationId={organizationId}", ct);
+
+    public Task<string> ExportDhcpRelayTargetsCsvAsync(Guid organizationId, CancellationToken ct = default)
+        => GetStringAsync($"/api/net/dhcp-relay-targets/export?organizationId={organizationId}", ct);
+
+    /// <summary>Validate (or apply, when the server supports it) a CSV
+    /// bulk import of devices. <paramref name="dryRun"/>=true runs
+    /// per-row validation only and returns the structured outcome
+    /// without writing anything; dryRun=false is reserved for the
+    /// apply path that'll land in a follow-on service slice.</summary>
+    public async Task<ImportValidationResultDto> ImportDevicesCsvAsync(Guid organizationId,
+        string csvBody, bool dryRun = true, CancellationToken ct = default)
+    {
+        var url = $"/api/net/devices/import?organizationId={organizationId}&dryRun={(dryRun ? "true" : "false")}";
+        var content = new StringContent(csvBody, System.Text.Encoding.UTF8, "text/csv");
+        var resp = await _http.PostAsync(url, content, ct);
+        await EnsureSuccessAsync(resp, ct);
+        return (await resp.Content.ReadFromJsonAsync<ImportValidationResultDto>(Json, ct))
+            ?? throw new NetworkingEngineException(0, "POST import returned null body");
+    }
+
     // ─── Transport helpers ──────────────────────────────────────────────
 
     private static string BuildQuery(params (string key, string? value)[] parts)
@@ -504,6 +552,15 @@ public class NetworkingEngineClient : IDisposable
         await EnsureSuccessAsync(resp, ct);
         return (await resp.Content.ReadFromJsonAsync<T>(Json, ct))
             ?? throw new NetworkingEngineException(0, $"GET {url} returned null body");
+    }
+
+    /// <summary>GET the raw response body as a string. Used by the
+    /// bulk-export endpoints that return text/csv rather than JSON.</summary>
+    private async Task<string> GetStringAsync(string url, CancellationToken ct)
+    {
+        var resp = await _http.GetAsync(url, ct);
+        await EnsureSuccessAsync(resp, ct);
+        return await resp.Content.ReadAsStringAsync(ct);
     }
 
     private async Task<T> PostAsync<T>(string url, object body, CancellationToken ct)
@@ -840,3 +897,19 @@ public record DhcpRelayTargetDto(Guid Id, Guid OrganizationId, Guid VlanId,
 public record CreateDhcpRelayTargetRequest(Guid OrganizationId, Guid VlanId,
     string ServerIp, Guid? IpAddressId = null, int Priority = 10,
     string? Notes = null);
+
+// ─── Bulk import (Phase 10) ────────────────────────────────────────────
+
+/// <summary>Per-row outcome from a bulk CSV import. <c>RowNumber</c> is
+/// 1-based so it matches spreadsheet row display; <c>Identifier</c>
+/// echoes the key column (hostname for devices, vlan_id for VLANs,
+/// etc.) so UIs can show which record failed without the operator
+/// counting rows.</summary>
+public record ImportRowOutcomeDto(int RowNumber, bool Ok, List<string> Errors, string Identifier);
+
+/// <summary>Top-level result of a bulk import request. <c>Applied</c>
+/// is false when <c>DryRun</c> was true (or when apply isn't yet
+/// wired for the entity); <c>Valid</c> + <c>Invalid</c> partition
+/// the per-row outcomes so UIs can drive a summary banner.</summary>
+public record ImportValidationResultDto(int TotalRows, int Valid, int Invalid,
+    bool DryRun, bool Applied, List<ImportRowOutcomeDto> Outcomes);

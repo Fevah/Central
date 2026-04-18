@@ -17,6 +17,7 @@ use uuid::Uuid;
 use crate::allocation::AllocationService;
 use crate::audit::{self, ExportQuery, ListAuditQuery, VerifyChainQuery};
 use crate::bulk_export;
+use crate::bulk_import;
 use crate::cli_flavor::{self, ListFlavorsQuery, SetFlavorConfigBody};
 use crate::config_gen;
 use crate::dhcp_relay::{
@@ -130,6 +131,12 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/subnets/export",                   get(export_subnets))
         .route("/api/net/asn-allocations/export",           get(export_asn_allocations))
         .route("/api/net/mlag-domains/export",              get(export_mlag_domains))
+        .route("/api/net/dhcp-relay-targets/export",        get(export_dhcp_relay_targets))
+        // Bulk import (Phase 10) — POST the CSV body. `dryRun=true`
+        // (the default) runs validate-only + returns per-row outcomes.
+        // `dryRun=false` is reserved for the apply path that lands in
+        // a follow-on slice and currently 400s with a clear message.
+        .route("/api/net/devices/import",                   post(import_devices_csv))
         .with_state(state)
 }
 
@@ -1044,8 +1051,9 @@ fn csv_download_headers(filename: &'static str) -> [(axum::http::header::HeaderN
         "servers.csv"          => HeaderValue::from_static("attachment; filename=\"servers.csv\""),
         "subnets.csv"          => HeaderValue::from_static("attachment; filename=\"subnets.csv\""),
         "asn-allocations.csv"  => HeaderValue::from_static("attachment; filename=\"asn-allocations.csv\""),
-        "mlag-domains.csv"     => HeaderValue::from_static("attachment; filename=\"mlag-domains.csv\""),
-        _                      => HeaderValue::from_static("attachment"),
+        "mlag-domains.csv"       => HeaderValue::from_static("attachment; filename=\"mlag-domains.csv\""),
+        "dhcp-relay-targets.csv" => HeaderValue::from_static("attachment; filename=\"dhcp-relay-targets.csv\""),
+        _                        => HeaderValue::from_static("attachment"),
     };
     [
         (header::CONTENT_TYPE, HeaderValue::from_static("text/csv; charset=utf-8")),
@@ -1115,4 +1123,28 @@ async fn export_mlag_domains(
 ) -> Result<impl IntoResponse, EngineError> {
     let body = bulk_export::export_mlag_domains_csv(&s.pool, q.organization_id).await?;
     Ok((csv_download_headers("mlag-domains.csv"), body))
+}
+
+async fn export_dhcp_relay_targets(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let body = bulk_export::export_dhcp_relay_targets_csv(&s.pool, q.organization_id).await?;
+    Ok((csv_download_headers("dhcp-relay-targets.csv"), body))
+}
+
+// ─── Bulk import handler ─────────────────────────────────────────────────
+
+async fn import_devices_csv(
+    State(s): State<AppState>,
+    Query(q): Query<bulk_import::ImportQuery>,
+    body: String,
+) -> Result<impl IntoResponse, EngineError> {
+    // Accept CSV as the raw POST body (Content-Type text/csv or
+    // application/octet-stream). Keeping the body a plain String
+    // means operators can `curl --data-binary @devices.csv` without
+    // multipart gymnastics; file-upload UIs still work because the
+    // browser's FormData upload handlers will also produce text.
+    let result = bulk_import::import_devices(&s.pool, q.organization_id, &body, q.dry_run).await?;
+    Ok(Json(result))
 }

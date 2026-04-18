@@ -11,6 +11,7 @@ pub mod allocation;
 pub mod api;
 pub mod audit;
 pub mod bulk_export;
+pub mod bulk_import;
 pub mod change_sets;
 pub mod cli_flavor;
 pub mod config_gen;
