@@ -17,8 +17,8 @@ use uuid::Uuid;
 use crate::allocation::AllocationService;
 use crate::audit::{self, ListAuditQuery, VerifyChainQuery};
 use crate::change_sets::{
-    AddItemBody, ChangeSetRepo, CreateChangeSetBody, GetChangeSetQuery,
-    ListChangeSetsQuery, SubmitBody,
+    AddItemBody, ChangeSetRepo, CreateChangeSetBody, DecisionBody,
+    GetChangeSetQuery, ListChangeSetsQuery, SubmitBody,
 };
 use crate::error::EngineError;
 use crate::ip_allocation::IpAllocationService;
@@ -71,6 +71,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/change-sets/:id", get(get_change_set))
         .route("/api/net/change-sets/:id/items", post(add_change_set_item))
         .route("/api/net/change-sets/:id/submit", post(submit_change_set))
+        .route("/api/net/change-sets/:id/decisions", post(record_decision))
         .with_state(state)
 }
 
@@ -471,4 +472,17 @@ async fn submit_change_set(
     let repo = ChangeSetRepo::new(s.pool);
     let user_id = header_user_id(&headers);
     Ok(Json(repo.submit(id, q.organization_id, &body, user_id).await?))
+}
+
+async fn record_decision(
+    State(s): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+    Json(body): Json<DecisionBody>,
+) -> Result<impl IntoResponse, EngineError> {
+    let approver = header_user_id(&headers).ok_or_else(|| EngineError::bad_request(
+        "Approver user id required — pass X-User-Id header."))?;
+    let repo = ChangeSetRepo::new(s.pool);
+    Ok(Json(repo.record_decision(id, q.organization_id, approver, &body).await?))
 }

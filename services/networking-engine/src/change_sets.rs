@@ -181,6 +181,46 @@ fn default_list_limit() -> i64 { 50 }
 #[serde(rename_all = "camelCase")]
 pub struct GetChangeSetQuery { pub organization_id: Uuid }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DecisionBody {
+    pub decision: ChangeSetDecision,
+    pub approver_display: Option<String>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum ChangeSetDecision { Approve, Reject }
+
+impl ChangeSetDecision {
+    pub fn as_str(&self) -> &'static str {
+        match self { Self::Approve => "Approve", Self::Reject => "Reject" }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApprovalRow {
+    pub id: Uuid,
+    pub change_set_id: Uuid,
+    pub approver_user_id: i32,
+    pub approver_display: Option<String>,
+    pub decision: ChangeSetDecision,
+    pub decided_at: DateTime<Utc>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DecisionResult {
+    pub approval: ApprovalRow,
+    pub change_set: ChangeSet,
+    /// How many Approves the Set has now vs. its threshold.
+    pub approvals_count: i64,
+    pub approvals_required: i32,
+}
+
 // ─── Repo ────────────────────────────────────────────────────────────────
 
 #[derive(Clone)]
@@ -393,6 +433,163 @@ impl ChangeSetRepo {
         row.into_dto()
     }
 
+    /// Record an approval or rejection decision. Rules:
+    ///
+    /// - Parent Set must be in `Submitted`. Any other state is rejected.
+    /// - Approver cannot be the same user who requested the Set — a
+    ///   self-approval would defeat the point of the gate.
+    /// - One decision per `(Set, approver)`. The UNIQUE index catches
+    ///   double-decisions; we surface a clean error rather than leaking
+    ///   the constraint message.
+    /// - Any single `Reject` flips the Set to `Rejected` (terminal) —
+    ///   subsequent Approve decisions on the same Set error out.
+    /// - `Approve` count reaching `required_approvals` flips to `Approved`.
+    ///   Further decisions after the threshold error out (the Set is no
+    ///   longer in Submitted).
+    pub async fn record_decision(
+        &self,
+        set_id: Uuid,
+        org_id: Uuid,
+        approver_user_id: i32,
+        body: &DecisionBody,
+    ) -> Result<DecisionResult, EngineError> {
+        let mut tx = self.pool.begin().await?;
+
+        // FOR UPDATE so the parent's state + approval count can't race
+        // against a concurrent decision.
+        let parent: Option<ChangeSetRow> = sqlx::query_as(
+            "SELECT id, organization_id, title, description,
+                    status::text AS status, requested_by, requested_by_display,
+                    submitted_by, submitted_at, approved_at, applied_at,
+                    rolled_back_at, cancelled_at, required_approvals,
+                    correlation_id, version, created_at, updated_at
+               FROM net.change_set
+              WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
+              FOR UPDATE")
+            .bind(set_id)
+            .bind(org_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+        let parent = parent
+            .ok_or_else(|| EngineError::container_not_found("change_set", set_id))?;
+        let status = ChangeSetStatus::from_db(&parent.status)?;
+        if status != ChangeSetStatus::Submitted {
+            return Err(EngineError::bad_request(format!(
+                "Cannot record a decision on a Change Set in status '{}'. \
+                 Decisions are only accepted while Submitted.", status.as_str())));
+        }
+        if parent.requested_by == Some(approver_user_id) {
+            return Err(EngineError::bad_request(
+                "Requester cannot approve their own Change Set — ask another admin."));
+        }
+
+        // Insert the approval row. UNIQUE (change_set_id, approver_user_id)
+        // catches duplicates; map the constraint error to a readable one.
+        let approval: ApprovalRow = match sqlx::query_as::<_, ApprovalRowDb>(
+            "INSERT INTO net.change_set_approval
+                (organization_id, change_set_id, approver_user_id, approver_display,
+                 decision, notes)
+             VALUES ($1, $2, $3, $4, $5::net.change_set_decision, $6)
+             RETURNING id, change_set_id, approver_user_id, approver_display,
+                       decision::text AS decision, decided_at, notes")
+            .bind(org_id)
+            .bind(set_id)
+            .bind(approver_user_id)
+            .bind(body.approver_display.as_deref())
+            .bind(body.decision.as_str())
+            .bind(body.notes.as_deref())
+            .fetch_one(&mut *tx)
+            .await
+        {
+            Ok(row) => row.into_dto()?,
+            Err(sqlx::Error::Database(db_err)) if db_err.is_unique_violation() =>
+                return Err(EngineError::bad_request(
+                    "This approver has already recorded a decision on this Change Set.")),
+            Err(e) => return Err(e.into()),
+        };
+
+        // Count current Approve tally + determine if we should transition.
+        let approve_count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*)::bigint FROM net.change_set_approval
+              WHERE change_set_id = $1
+                AND decision = 'Approve'::net.change_set_decision")
+            .bind(set_id)
+            .fetch_one(&mut *tx)
+            .await?;
+        let required = parent.required_approvals.unwrap_or(1);
+
+        // Decide the next state.
+        let (new_status, stamp_approved_at): (Option<&str>, bool) = match body.decision {
+            ChangeSetDecision::Reject => (Some("Rejected"), false),
+            ChangeSetDecision::Approve if (approve_count as i32) >= required =>
+                (Some("Approved"), true),
+            ChangeSetDecision::Approve => (None, false),
+        };
+
+        let updated_set: ChangeSetRow = if let Some(next) = new_status {
+            sqlx::query_as(
+                "UPDATE net.change_set
+                    SET status       = $3::net.change_set_status,
+                        approved_at  = CASE WHEN $4 THEN now() ELSE approved_at END,
+                        updated_at   = now(),
+                        updated_by   = $5,
+                        version      = version + 1
+                  WHERE id = $1 AND organization_id = $2
+                    AND status = 'Submitted'::net.change_set_status
+                  RETURNING id, organization_id, title, description,
+                            status::text AS status, requested_by, requested_by_display,
+                            submitted_by, submitted_at, approved_at, applied_at,
+                            rolled_back_at, cancelled_at, required_approvals,
+                            correlation_id, version, created_at, updated_at")
+                .bind(set_id)
+                .bind(org_id)
+                .bind(next)
+                .bind(stamp_approved_at)
+                .bind(approver_user_id)
+                .fetch_one(&mut *tx)
+                .await?
+        } else {
+            parent
+        };
+
+        audit::append_tx(&mut tx, &AuditEvent {
+            organization_id: org_id,
+            source_service: "networking-engine",
+            entity_type: "ChangeSet",
+            entity_id: Some(set_id),
+            action: match body.decision {
+                ChangeSetDecision::Approve => "ApprovalRecorded",
+                ChangeSetDecision::Reject => "Rejected",
+            },
+            actor_user_id: Some(approver_user_id),
+            actor_display: body.approver_display.as_deref(),
+            client_ip: None,
+            correlation_id: Some(updated_set.correlation_id),
+            details: serde_json::json!({
+                "decision": body.decision.as_str(),
+                "approval_id": approval.id,
+                "approve_count": approve_count,
+                "approvals_required": required,
+                "new_status": new_status.unwrap_or(&updated_set.status),
+            }),
+        }).await?;
+
+        let item_count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*)::bigint FROM net.change_set_item
+              WHERE change_set_id = $1 AND deleted_at IS NULL")
+            .bind(set_id)
+            .fetch_one(&mut *tx)
+            .await?;
+
+        tx.commit().await?;
+        Ok(DecisionResult {
+            approval,
+            change_set: updated_set.into_dto(item_count)?,
+            approvals_count: approve_count,
+            approvals_required: required,
+        })
+    }
+
     pub async fn submit(
         &self,
         set_id: Uuid,
@@ -556,6 +753,36 @@ impl ChangeSetRow {
             item_count,
             created_at: self.created_at,
             updated_at: self.updated_at,
+        })
+    }
+}
+
+#[derive(sqlx::FromRow)]
+struct ApprovalRowDb {
+    id: Uuid,
+    change_set_id: Uuid,
+    approver_user_id: i32,
+    approver_display: Option<String>,
+    decision: String,
+    decided_at: DateTime<Utc>,
+    notes: Option<String>,
+}
+
+impl ApprovalRowDb {
+    fn into_dto(self) -> Result<ApprovalRow, EngineError> {
+        Ok(ApprovalRow {
+            id: self.id,
+            change_set_id: self.change_set_id,
+            approver_user_id: self.approver_user_id,
+            approver_display: self.approver_display,
+            decision: match self.decision.as_str() {
+                "Approve" => ChangeSetDecision::Approve,
+                "Reject" => ChangeSetDecision::Reject,
+                other => return Err(EngineError::bad_request(format!(
+                    "Unknown change_set_decision '{other}'"))),
+            },
+            decided_at: self.decided_at,
+            notes: self.notes,
         })
     }
 }
