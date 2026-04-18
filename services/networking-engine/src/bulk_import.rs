@@ -180,9 +180,45 @@ pub struct ImportQuery {
     pub organization_id: Uuid,
     #[serde(default = "default_dry_run")]
     pub dry_run: bool,
+    /// Import mode. `create` (default) — every row must be new;
+    /// existing hostnames error out per-row ("already exists").
+    /// `upsert` — existing rows UPDATE with version-check; missing
+    /// rows INSERT. The CSV's `version` column is the snapshot
+    /// the update runs against, so stale versions surface as a
+    /// concurrent-write row error.
+    ///
+    /// Not an enum in the DTO because the raw query string doesn't
+    /// serialise ergonomically to a Rust enum via serde — keeping
+    /// it as a String lets the validator produce a helpful error
+    /// on typos ("`mode=upser` is not a valid mode").
+    #[serde(default)]
+    pub mode: Option<String>,
 }
 
 fn default_dry_run() -> bool { true }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ImportMode {
+    /// Every row must be new. Duplicate rows surface as a per-row
+    /// "already exists — update mode not yet supported" error.
+    /// Default — matches the original bulk-import contract.
+    Create,
+    /// Existing rows UPDATE with version-check; missing rows
+    /// INSERT. Operators use this for "export → edit in Excel →
+    /// re-import" round-trips.
+    Upsert,
+}
+
+impl ImportMode {
+    pub fn parse(raw: Option<&str>) -> Result<Self, EngineError> {
+        match raw.map(str::trim).filter(|s| !s.is_empty()) {
+            None | Some("create") => Ok(Self::Create),
+            Some("upsert")        => Ok(Self::Upsert),
+            Some(other)           => Err(EngineError::bad_request(format!(
+                "mode '{other}' must be one of: create, upsert"))),
+        }
+    }
+}
 
 // ─── Device import — validate-only (apply lands in a follow-on slice) ────
 
@@ -224,13 +260,17 @@ pub async fn import_devices(
     org_id: Uuid,
     body: &str,
     dry_run: bool,
+    mode: ImportMode,
     user_id: Option<i32>,
 ) -> Result<ImportValidationResult, EngineError> {
-    // RBAC — creates require Global write:Device because the entity
-    // doesn't exist yet, so hierarchy-scoped grants can't resolve
-    // against it. Fine-grained "create in Building X" permissions
-    // need a separate design (check write on Building X? or a new
-    // 'create' action?). Strictness is the safe default.
+    // RBAC — both create and upsert are `write:Device`. For creates
+    // the entity doesn't exist yet so hierarchy-scoped grants can't
+    // resolve; Global is the only thing that matches. For upsert
+    // the "update existing" branch COULD check per-row hierarchy,
+    // but that'd split into two auth checks per row (Global
+    // upfront vs per-row scope later). Easier rule: bulk import
+    // always requires Global write, same for both modes. Operators
+    // with finer-grained access use the single-row CRUD paths.
     scope_grants::require_permission(
         pool, org_id, user_id, "write", "Device", None,
     ).await?;
@@ -277,28 +317,31 @@ pub async fn import_devices(
     let building_code_to_id: std::collections::HashMap<String, Uuid> =
         building_rows.into_iter().map(|(id, c)| (c, id)).collect();
 
-    // Existing hostname set — used to surface "already exists" as a
-    // per-row error rather than letting the INSERT blow up later.
-    let existing_rows: Vec<(String,)> = sqlx::query_as(
-        "SELECT hostname FROM net.device
+    // Existing devices keyed by hostname so the apply loop can
+    // distinguish "new row → INSERT" from "existing row → UPDATE"
+    // without another query per row. We also grab the id + version
+    // so the UPDATE's version-check has the snapshot the row was
+    // based on.
+    let existing_rows: Vec<(String, Uuid, i32)> = sqlx::query_as(
+        "SELECT hostname, id, version FROM net.device
           WHERE organization_id = $1 AND deleted_at IS NULL")
         .bind(org_id).fetch_all(pool).await?;
-    let existing_hostnames: std::collections::HashSet<String> =
-        existing_rows.into_iter().map(|(h,)| h).collect();
+    let existing_by_hostname: std::collections::HashMap<String, (Uuid, i32)> =
+        existing_rows.into_iter().map(|(h, id, v)| (h, (id, v))).collect();
 
     let mut outcomes: Vec<ImportRowOutcome> = Vec::with_capacity(rows.len().saturating_sub(1));
     for (i, row) in rows.iter().enumerate().skip(1) {
-        let row_number = i + 1;   // 1-based, header is row 1
+        let row_number = i + 1;
         let mut outcome = validate_device_row(row, row_number, &role_codes, &building_codes);
-        // Create-only semantics: a row is only valid for apply if
-        // its hostname is new. Flag this here (not in
-        // validate_device_row) so dry-run still shows the same
-        // per-field validation — but we don't want apply to INSERT
-        // an existing hostname.
-        if outcome.ok && existing_hostnames.contains(&outcome.identifier) {
+        // Create mode: existing hostname is a per-row error.
+        // Upsert mode: existing hostname is expected — it's an
+        // update target, no error.
+        if outcome.ok && existing_by_hostname.contains_key(&outcome.identifier)
+            && mode == ImportMode::Create
+        {
             outcome.ok = false;
             outcome.errors.push(
-                "device with this hostname already exists — update mode not yet supported (delete + re-import if intended)"
+                "device with this hostname already exists — use mode=upsert to update existing rows"
                 .to_string());
         }
         outcomes.push(outcome);
@@ -317,9 +360,13 @@ pub async fn import_devices(
         });
     }
 
-    // Apply path — every row passed validation, so INSERT them all
-    // inside one transaction. If ANY INSERT fails the whole tx
-    // rolls back and we surface the failing row via its outcome.
+    // Apply path — every row passed validation. For each row:
+    //   - new hostname (both create + upsert modes) → INSERT
+    //   - existing hostname (upsert mode only; create mode already
+    //     flagged the row as a validation error so we won't reach
+    //     here) → UPDATE with version-check; version column on the
+    //     row is the snapshot the update runs against
+    // Any DB failure rolls back the whole batch.
     let mut tx = pool.begin().await?;
     for (outcome_idx, row) in rows.iter().enumerate().skip(1).map(|(_, r)| r).enumerate() {
         let hostname      = row[0].trim();
@@ -327,50 +374,107 @@ pub async fn import_devices(
         let building_code = row[2].trim();
         let management_ip = row[4].trim();
         let status        = row[6].trim();
+        let version_str   = row[7].trim();
 
         let role_id     = if role_code.is_empty()     { None } else { role_code_to_id.get(role_code).copied() };
         let building_id = if building_code.is_empty() { None } else { building_code_to_id.get(building_code).copied() };
         let status_val  = if status.is_empty() { "Planned" } else { status };
-        // inet accepts either bare host or host/prefix; bind the
-        // string and let Postgres parse, so "10.11.152.2" and
-        // "10.11.152.2/24" both land correctly.
         let mgmt_ip_opt: Option<&str> = if management_ip.is_empty() { None } else { Some(management_ip) };
 
-        // Insert. If the DB rejects (constraint we didn't pre-check
-        // for, enum coercion, etc.) propagate as a typed row-level
-        // failure + rollback the whole tx.
-        let insert_result: Result<(Uuid,), sqlx::Error> = sqlx::query_as(
-            "INSERT INTO net.device
-                (organization_id, device_role_id, building_id,
-                 hostname, management_ip, status, created_by, updated_by)
-             VALUES
-                ($1, $2, $3, $4, $5::inet, $6::net.entity_status, $7, $7)
-             RETURNING id")
-            .bind(org_id)
-            .bind(role_id)
-            .bind(building_id)
-            .bind(hostname)
-            .bind(mgmt_ip_opt)
-            .bind(status_val)
-            .bind(user_id)
-            .fetch_one(&mut *tx).await;
+        let existing = existing_by_hostname.get(hostname).copied();
+        let (device_id, action) = match (existing, mode) {
+            // UPSERT path — existing row gets UPDATE with version check.
+            (Some((id, db_version)), ImportMode::Upsert) => {
+                // Operator's CSV version (what they edited against).
+                // Empty version cell → fall back to the DB's current
+                // version, treating "I don't know" as "don't bother
+                // version-checking me" — the common case for CSVs
+                // hand-written rather than exported from the system.
+                let expected_version: i32 = version_str.parse().unwrap_or(db_version);
 
-        let device_id = match insert_result {
-            Ok((id,)) => id,
-            Err(e) => {
-                // Rollback tx (by dropping it implicitly when we
-                // return — sqlx rolls back on Drop) and mark this
-                // row failed in the outcomes.
-                let o = &mut outcomes[outcome_idx];
-                o.ok = false;
-                o.errors.push(format!("database INSERT failed: {e}"));
-                return Ok(ImportValidationResult {
-                    total_rows: outcomes.len(),
-                    valid: outcomes.iter().filter(|o| o.ok).count(),
-                    invalid: outcomes.iter().filter(|o| !o.ok).count(),
-                    dry_run: false, applied: false,
-                    outcomes,
-                });
+                let update_result: Result<Option<(Uuid,)>, sqlx::Error> = sqlx::query_as(
+                    "UPDATE net.device
+                        SET device_role_id = COALESCE($3, device_role_id),
+                            building_id    = COALESCE($4, building_id),
+                            management_ip  = CASE WHEN $5::text IS NULL
+                                                  THEN management_ip
+                                                  ELSE $5::inet END,
+                            status         = $6::net.entity_status,
+                            updated_at     = now(),
+                            updated_by     = $7,
+                            version        = version + 1
+                      WHERE id = $1 AND organization_id = $2
+                        AND version = $8 AND deleted_at IS NULL
+                      RETURNING id")
+                    .bind(id)
+                    .bind(org_id)
+                    .bind(role_id)
+                    .bind(building_id)
+                    .bind(mgmt_ip_opt)
+                    .bind(status_val)
+                    .bind(user_id)
+                    .bind(expected_version)
+                    .fetch_optional(&mut *tx).await;
+
+                match update_result {
+                    Ok(Some((updated_id,))) => (updated_id, "Updated"),
+                    Ok(None) => {
+                        let o = &mut outcomes[outcome_idx];
+                        o.ok = false;
+                        o.errors.push(format!(
+                            "version mismatch — CSV had version {expected_version} but DB is at {db_version} (someone else edited this device)"));
+                        return Ok(ImportValidationResult {
+                            total_rows: outcomes.len(),
+                            valid: outcomes.iter().filter(|o| o.ok).count(),
+                            invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                            dry_run: false, applied: false, outcomes,
+                        });
+                    }
+                    Err(e) => {
+                        let o = &mut outcomes[outcome_idx];
+                        o.ok = false;
+                        o.errors.push(format!("database UPDATE failed: {e}"));
+                        return Ok(ImportValidationResult {
+                            total_rows: outcomes.len(),
+                            valid: outcomes.iter().filter(|o| o.ok).count(),
+                            invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                            dry_run: false, applied: false, outcomes,
+                        });
+                    }
+                }
+            }
+            // INSERT path — create mode (always) or upsert mode
+            // for a new hostname (existing is None).
+            _ => {
+                let insert_result: Result<(Uuid,), sqlx::Error> = sqlx::query_as(
+                    "INSERT INTO net.device
+                        (organization_id, device_role_id, building_id,
+                         hostname, management_ip, status, created_by, updated_by)
+                     VALUES ($1, $2, $3, $4, $5::inet, $6::net.entity_status, $7, $7)
+                     RETURNING id")
+                    .bind(org_id)
+                    .bind(role_id)
+                    .bind(building_id)
+                    .bind(hostname)
+                    .bind(mgmt_ip_opt)
+                    .bind(status_val)
+                    .bind(user_id)
+                    .fetch_one(&mut *tx).await;
+
+                match insert_result {
+                    Ok((id,)) => (id, "Created"),
+                    Err(e) => {
+                        let o = &mut outcomes[outcome_idx];
+                        o.ok = false;
+                        o.errors.push(format!("database INSERT failed: {e}"));
+                        return Ok(ImportValidationResult {
+                            total_rows: outcomes.len(),
+                            valid: outcomes.iter().filter(|o| o.ok).count(),
+                            invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                            dry_run: false, applied: false, outcomes,
+                        });
+                    }
+                }
             }
         };
 
@@ -379,13 +483,20 @@ pub async fn import_devices(
             source_service: "networking-engine",
             entity_type: "Device",
             entity_id: Some(device_id),
-            action: "Created",
+            // Created / Updated — audit consumers can distinguish
+            // "new via bulk_import" from "modified via bulk_import"
+            // by the action column + the source=bulk_import tag.
+            action,
             actor_user_id: user_id,
             actor_display: None,
             client_ip: None,
             correlation_id: None,
             details: serde_json::json!({
                 "source": "bulk_import",
+                "mode": match mode {
+                    ImportMode::Create => "create",
+                    ImportMode::Upsert => "upsert",
+                },
                 "hostname": hostname,
                 "role_code": role_code,
                 "building_code": building_code,

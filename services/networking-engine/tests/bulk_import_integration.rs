@@ -11,7 +11,7 @@
 //! message and returns `Ok(())` — keeps `cargo test --ignored` safe
 //! on machines without a live DB.
 
-use networking_engine::bulk_import;
+use networking_engine::bulk_import::{self, ImportMode};
 use networking_engine::scope_grants::{CreateScopeGrantBody, ScopeGrantRepo};
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use std::env;
@@ -110,7 +110,7 @@ async fn dry_run_returns_outcomes_without_writing() {
 
     let csv = format!("{HEADER}IT-B-NEW01,Core,IT-B,IT-S,10.99.0.1/24,65100,Active,1\r\n");
     let result = bulk_import::import_devices(
-        &fx.pool, fx.org_id, &csv, /*dry_run=*/true, None,
+        &fx.pool, fx.org_id, &csv, /*dry_run=*/true, ImportMode::Create, None,
     ).await.expect("dry run");
 
     assert_eq!(result.total_rows, 1);
@@ -134,7 +134,7 @@ async fn apply_happy_path_inserts_all_rows_and_commits() {
          IT-B-CORE01,Core,IT-B,IT-S,10.99.0.1/24,65100,Active,1\r\n\
          IT-B-CORE02,Core,IT-B,IT-S,10.99.0.2/24,65101,Active,1\r\n");
     let result = bulk_import::import_devices(
-        &fx.pool, fx.org_id, &csv, /*dry_run=*/false,
+        &fx.pool, fx.org_id, &csv, /*dry_run=*/false, ImportMode::Create,
         // None = service-call RBAC bypass. This test is about the
         // import-apply happy path, not auth; auth tests are below.
         None,
@@ -162,7 +162,7 @@ async fn apply_rolls_back_on_any_invalid_row() {
          IT-B-CORE01,Core,IT-B,IT-S,10.99.0.1/24,65100,Active,1\r\n\
          IT-B-BAD01,UnknownRole,IT-B,IT-S,10.99.0.2/24,65101,Active,1\r\n");
     let result = bulk_import::import_devices(
-        &fx.pool, fx.org_id, &csv, /*dry_run=*/false, None,
+        &fx.pool, fx.org_id, &csv, /*dry_run=*/false, ImportMode::Create, None,
     ).await.expect("apply call succeeds even though validation fails");
 
     assert_eq!(result.total_rows, 2);
@@ -333,13 +333,13 @@ async fn apply_rejects_existing_hostname_as_row_error() {
 
     // Pre-seed a device so the import row hits "already exists".
     let csv1 = format!("{HEADER}IT-B-CORE01,Core,IT-B,IT-S,10.99.0.1/24,65100,Active,1\r\n");
-    bulk_import::import_devices(&fx.pool, fx.org_id, &csv1, false, None)
+    bulk_import::import_devices(&fx.pool, fx.org_id, &csv1, false, ImportMode::Create, None)
         .await.expect("seed apply");
     assert_eq!(fx.count_devices().await, 1);
 
     // Re-import the same hostname — should be flagged as an existing
     // row and NOT applied.
-    let result = bulk_import::import_devices(&fx.pool, fx.org_id, &csv1, false, None)
+    let result = bulk_import::import_devices(&fx.pool, fx.org_id, &csv1, false, ImportMode::Create, None)
         .await.expect("re-apply");
     assert_eq!(result.invalid, 1);
     assert!(!result.applied);
@@ -363,11 +363,140 @@ async fn device_import_forbidden_without_write_grant() {
 
     let csv = format!("{HEADER}IT-B-CORE99,Core,IT-B,IT-S,10.99.0.9/24,65199,Active,1\r\n");
     let err = bulk_import::import_devices(
-        &fx.pool, fx.org_id, &csv, false, Some(42)
+        &fx.pool, fx.org_id, &csv, false, ImportMode::Create, Some(42)
     ).await.unwrap_err().to_string();
     assert!(err.contains("Forbidden"), "expected Forbidden err: {err}");
     assert_eq!(fx.count_devices().await, 0,
         "denied import must not touch DB");
+}
+
+// ─── Upsert mode ─────────────────────────────────────────────────────────
+//
+// Default mode is Create — proven by the pre-existing tests.
+// These exercise the Upsert branch: existing hostnames UPDATE;
+// missing hostnames INSERT; version-checked updates surface stale
+// CSV versions as row-level errors that roll back the whole batch.
+
+#[tokio::test]
+#[ignore]
+async fn upsert_mode_updates_existing_device_rather_than_rejecting() {
+    let Some(pool) = pool_or_skip("upsert_mode_updates_existing_device_rather_than_rejecting").await else { return; };
+    let fx = TenantFixture::new(pool).await.expect("fixture");
+
+    // Seed one device via Create mode.
+    let csv_initial = format!("{HEADER}IT-B-UPSERT01,Core,IT-B,IT-S,10.99.9.1/24,65100,Planned,1\r\n");
+    bulk_import::import_devices(&fx.pool, fx.org_id, &csv_initial, false, ImportMode::Create, None)
+        .await.expect("seed");
+    assert_eq!(fx.count_devices().await, 1);
+
+    // Re-import the SAME hostname with Active status + Upsert mode —
+    // should UPDATE, not reject.
+    let csv_upsert = format!("{HEADER}IT-B-UPSERT01,Core,IT-B,IT-S,10.99.9.1/24,65100,Active,1\r\n");
+    let result = bulk_import::import_devices(
+        &fx.pool, fx.org_id, &csv_upsert, false, ImportMode::Upsert, None
+    ).await.expect("upsert");
+    assert!(result.applied, "upsert must succeed on existing hostname (not reject)");
+    assert_eq!(fx.count_devices().await, 1,
+        "upsert update must NOT create a duplicate row");
+
+    // Verify the UPDATE actually changed status.
+    let (status, version): (String, i32) = sqlx::query_as(
+        "SELECT status::text, version FROM net.device
+          WHERE organization_id = $1 AND hostname = 'IT-B-UPSERT01'")
+        .bind(fx.org_id).fetch_one(&fx.pool).await.unwrap();
+    assert_eq!(status, "Active", "status should be Active after upsert");
+    assert_eq!(version, 2, "version must bump on upsert UPDATE");
+}
+
+#[tokio::test]
+#[ignore]
+async fn upsert_mode_creates_new_hostname_like_create() {
+    let Some(pool) = pool_or_skip("upsert_mode_creates_new_hostname_like_create").await else { return; };
+    let fx = TenantFixture::new(pool).await.expect("fixture");
+
+    let csv = format!("{HEADER}IT-B-NEW42,Core,IT-B,IT-S,10.99.42.1/24,65142,Active,1\r\n");
+    let result = bulk_import::import_devices(
+        &fx.pool, fx.org_id, &csv, false, ImportMode::Upsert, None
+    ).await.expect("upsert new");
+    assert!(result.applied);
+    assert_eq!(fx.count_devices().await, 1,
+        "upsert on a new hostname must INSERT, matching create behaviour");
+}
+
+#[tokio::test]
+#[ignore]
+async fn upsert_mode_stale_csv_version_rolls_back_batch() {
+    let Some(pool) = pool_or_skip("upsert_mode_stale_csv_version_rolls_back_batch").await else { return; };
+    let fx = TenantFixture::new(pool).await.expect("fixture");
+
+    // Seed
+    let csv_initial = format!("{HEADER}IT-B-STALE,Core,IT-B,IT-S,10.99.9.1/24,65100,Planned,1\r\n");
+    bulk_import::import_devices(&fx.pool, fx.org_id, &csv_initial, false, ImportMode::Create, None)
+        .await.expect("seed");
+
+    // Simulate a concurrent writer bumping the version via CRUD.
+    sqlx::query("UPDATE net.device
+                    SET status = 'Active'::net.entity_status,
+                        version = version + 1
+                  WHERE organization_id = $1 AND hostname = 'IT-B-STALE'")
+        .bind(fx.org_id).execute(&fx.pool).await.unwrap();
+
+    // Operator tries to upsert based on version=1 (stale) — should
+    // surface a clear version-mismatch error and roll back.
+    let csv_stale = format!("{HEADER}IT-B-STALE,Core,IT-B,IT-S,10.99.9.1/24,65100,Retired,1\r\n");
+    let result = bulk_import::import_devices(
+        &fx.pool, fx.org_id, &csv_stale, false, ImportMode::Upsert, None
+    ).await.expect("upsert call succeeds but apply fails");
+    assert!(!result.applied, "stale version must block apply");
+    assert!(result.outcomes[0].errors.iter().any(|e| e.contains("version mismatch")),
+        "stale version should surface as version mismatch: {:?}",
+        result.outcomes[0].errors);
+
+    // Operator's attempted Retired update must not have landed.
+    let (status,): (String,) = sqlx::query_as(
+        "SELECT status::text FROM net.device
+          WHERE organization_id = $1 AND hostname = 'IT-B-STALE'")
+        .bind(fx.org_id).fetch_one(&fx.pool).await.unwrap();
+    assert_eq!(status, "Active",
+        "concurrent writer's Active status must survive; stale upsert didn't overwrite it");
+}
+
+#[tokio::test]
+#[ignore]
+async fn upsert_mode_empty_version_column_skips_version_check() {
+    // Operators hand-writing CSVs (rather than round-tripping an
+    // export) often leave the version column blank. The validator
+    // accepts blank version in create mode; upsert treats blank as
+    // "I don't know — just apply to current version" rather than
+    // failing with a parse error.
+    let Some(pool) = pool_or_skip("upsert_mode_empty_version_column_skips_version_check").await else { return; };
+    let fx = TenantFixture::new(pool).await.expect("fixture");
+
+    let csv_initial = format!("{HEADER}IT-B-BLANK,Core,IT-B,IT-S,10.99.9.1/24,65100,Planned,1\r\n");
+    bulk_import::import_devices(&fx.pool, fx.org_id, &csv_initial, false, ImportMode::Create, None)
+        .await.expect("seed");
+
+    // CSV with empty version column — note the trailing `,,\r\n` region.
+    let csv_blank = "hostname,role_code,building_code,site_code,management_ip,asn,status,version\r\n\
+                     IT-B-BLANK,Core,IT-B,IT-S,10.99.9.1/24,65100,Active,\r\n";
+    let result = bulk_import::import_devices(
+        &fx.pool, fx.org_id, csv_blank, false, ImportMode::Upsert, None
+    ).await.expect("upsert with blank version");
+    assert!(result.applied,
+        "empty version must accept current DB version as the snapshot, not fail parse");
+    let (status,): (String,) = sqlx::query_as(
+        "SELECT status::text FROM net.device
+          WHERE organization_id = $1 AND hostname = 'IT-B-BLANK'")
+        .bind(fx.org_id).fetch_one(&fx.pool).await.unwrap();
+    assert_eq!(status, "Active");
+}
+
+#[tokio::test]
+#[ignore]
+async fn import_mode_parse_rejects_unknown_mode_string() {
+    // ImportMode::parse is public — test directly without DB.
+    let err = bulk_import::ImportMode::parse(Some("upser")).unwrap_err().to_string();
+    assert!(err.contains("mode"), "err: {err}");
 }
 
 #[tokio::test]
@@ -388,7 +517,7 @@ async fn device_import_allowed_with_global_write_grant() {
 
     let csv = format!("{HEADER}IT-B-CORE50,Core,IT-B,IT-S,10.99.0.5/24,65150,Active,1\r\n");
     let result = bulk_import::import_devices(
-        &fx.pool, fx.org_id, &csv, false, Some(42)
+        &fx.pool, fx.org_id, &csv, false, ImportMode::Create, Some(42)
     ).await.expect("allowed import");
     assert!(result.applied);
     assert_eq!(fx.count_devices().await, 1);

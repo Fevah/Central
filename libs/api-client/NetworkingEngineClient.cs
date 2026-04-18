@@ -525,11 +525,17 @@ public class NetworkingEngineClient : IDisposable
     /// and returns the structured outcome without writing;
     /// <paramref name="dryRun"/>=false applies via a single
     /// transaction — the whole import rolls back on any row-level
-    /// failure. Create-only today; update-on-upsert lands in a
-    /// follow-on slice.</summary>
+    /// failure.
+    ///
+    /// <paramref name="mode"/> = "create" (default) rejects
+    /// existing hostnames as per-row errors; "upsert" updates
+    /// existing rows via version-checked UPDATE and inserts new
+    /// hostnames the same way create does. Pass null/unset for
+    /// create-only semantics (matches the original import
+    /// contract).</summary>
     public Task<ImportValidationResultDto> ImportDevicesCsvAsync(Guid organizationId,
-        string csvBody, bool dryRun = true, CancellationToken ct = default)
-        => PostCsvAsync("/api/net/devices/import", organizationId, csvBody, dryRun, ct);
+        string csvBody, bool dryRun = true, string? mode = null, CancellationToken ct = default)
+        => PostCsvAsync("/api/net/devices/import", organizationId, csvBody, dryRun, mode, ct);
 
     /// <summary>Bulk import VLANs. Required columns match what
     /// <see cref="ExportVlansCsvAsync"/> emits (vlan_id, display_name,
@@ -537,7 +543,7 @@ public class NetworkingEngineClient : IDisposable
     /// `block_code` must resolve to an existing net.vlan_block row.</summary>
     public Task<ImportValidationResultDto> ImportVlansCsvAsync(Guid organizationId,
         string csvBody, bool dryRun = true, CancellationToken ct = default)
-        => PostCsvAsync("/api/net/vlans/import", organizationId, csvBody, dryRun, ct);
+        => PostCsvAsync("/api/net/vlans/import", organizationId, csvBody, dryRun, ct: ct);
 
     /// <summary>Bulk import subnets. `pool_code` is required and must
     /// resolve; the `vlan_id` column is accepted but ignored on apply
@@ -545,7 +551,7 @@ public class NetworkingEngineClient : IDisposable
     /// ambiguous across multiple blocks).</summary>
     public Task<ImportValidationResultDto> ImportSubnetsCsvAsync(Guid organizationId,
         string csvBody, bool dryRun = true, CancellationToken ct = default)
-        => PostCsvAsync("/api/net/subnets/import", organizationId, csvBody, dryRun, ct);
+        => PostCsvAsync("/api/net/subnets/import", organizationId, csvBody, dryRun, ct: ct);
 
     /// <summary>Bulk import servers. Required: hostname; optional:
     /// profile_code, building_code, management_ip, status. ASN +
@@ -554,7 +560,7 @@ public class NetworkingEngineClient : IDisposable
     /// operators wire them up via the allocation service or CRUD).</summary>
     public Task<ImportValidationResultDto> ImportServersCsvAsync(Guid organizationId,
         string csvBody, bool dryRun = true, CancellationToken ct = default)
-        => PostCsvAsync("/api/net/servers/import", organizationId, csvBody, dryRun, ct);
+        => PostCsvAsync("/api/net/servers/import", organizationId, csvBody, dryRun, ct: ct);
 
     /// <summary>Bulk import links. One CSV row → 1 net.link +
     /// 2 net.link_endpoint rows in a single transaction. Required:
@@ -567,7 +573,7 @@ public class NetworkingEngineClient : IDisposable
     /// lands.</summary>
     public Task<ImportValidationResultDto> ImportLinksCsvAsync(Guid organizationId,
         string csvBody, bool dryRun = true, CancellationToken ct = default)
-        => PostCsvAsync("/api/net/links/import", organizationId, csvBody, dryRun, ct);
+        => PostCsvAsync("/api/net/links/import", organizationId, csvBody, dryRun, ct: ct);
 
     /// <summary>Bulk import DHCP relay targets. Required: vlan_id
     /// (must exist in the tenant's VLAN catalog), server_ip. First-
@@ -577,14 +583,21 @@ public class NetworkingEngineClient : IDisposable
     /// lands.</summary>
     public Task<ImportValidationResultDto> ImportDhcpRelayTargetsCsvAsync(Guid organizationId,
         string csvBody, bool dryRun = true, CancellationToken ct = default)
-        => PostCsvAsync("/api/net/dhcp-relay-targets/import", organizationId, csvBody, dryRun, ct);
+        => PostCsvAsync("/api/net/dhcp-relay-targets/import", organizationId, csvBody, dryRun, ct: ct);
 
     /// <summary>Shared transport for every `*/import` POST — keeps
-    /// the three entity-specific helpers to one line each.</summary>
+    /// the entity-specific helpers to one line each. `mode` is
+    /// forwarded on the query string; unset means server default
+    /// (today: create).</summary>
     private async Task<ImportValidationResultDto> PostCsvAsync(string path,
-        Guid organizationId, string csvBody, bool dryRun, CancellationToken ct)
+        Guid organizationId, string csvBody, bool dryRun,
+        string? mode = null, CancellationToken ct = default)
     {
-        var url = $"{path}?organizationId={organizationId}&dryRun={(dryRun ? "true" : "false")}";
+        var qs = BuildQuery(
+            ("organizationId", organizationId.ToString()),
+            ("dryRun",         dryRun ? "true" : "false"),
+            ("mode",           mode));
+        var url = $"{path}{qs}";
         var content = new StringContent(csvBody, System.Text.Encoding.UTF8, "text/csv");
         var resp = await _http.PostAsync(url, content, ct);
         await EnsureSuccessAsync(resp, ct);
@@ -788,33 +801,38 @@ public class NetworkingEngineClient : IDisposable
         => GetBytesAsync($"/api/net/dhcp-relay-targets/export.xlsx?organizationId={organizationId}", ct);
 
     public Task<ImportValidationResultDto> ImportDevicesXlsxAsync(Guid organizationId,
-        byte[] xlsxBytes, bool dryRun = true, CancellationToken ct = default)
-        => PostXlsxAsync("/api/net/devices/import.xlsx", organizationId, xlsxBytes, dryRun, ct);
+        byte[] xlsxBytes, bool dryRun = true, string? mode = null, CancellationToken ct = default)
+        => PostXlsxAsync("/api/net/devices/import.xlsx", organizationId, xlsxBytes, dryRun, mode, ct);
 
     public Task<ImportValidationResultDto> ImportVlansXlsxAsync(Guid organizationId,
         byte[] xlsxBytes, bool dryRun = true, CancellationToken ct = default)
-        => PostXlsxAsync("/api/net/vlans/import.xlsx", organizationId, xlsxBytes, dryRun, ct);
+        => PostXlsxAsync("/api/net/vlans/import.xlsx", organizationId, xlsxBytes, dryRun, ct: ct);
 
     public Task<ImportValidationResultDto> ImportSubnetsXlsxAsync(Guid organizationId,
         byte[] xlsxBytes, bool dryRun = true, CancellationToken ct = default)
-        => PostXlsxAsync("/api/net/subnets/import.xlsx", organizationId, xlsxBytes, dryRun, ct);
+        => PostXlsxAsync("/api/net/subnets/import.xlsx", organizationId, xlsxBytes, dryRun, ct: ct);
 
     public Task<ImportValidationResultDto> ImportServersXlsxAsync(Guid organizationId,
         byte[] xlsxBytes, bool dryRun = true, CancellationToken ct = default)
-        => PostXlsxAsync("/api/net/servers/import.xlsx", organizationId, xlsxBytes, dryRun, ct);
+        => PostXlsxAsync("/api/net/servers/import.xlsx", organizationId, xlsxBytes, dryRun, ct: ct);
 
     public Task<ImportValidationResultDto> ImportLinksXlsxAsync(Guid organizationId,
         byte[] xlsxBytes, bool dryRun = true, CancellationToken ct = default)
-        => PostXlsxAsync("/api/net/links/import.xlsx", organizationId, xlsxBytes, dryRun, ct);
+        => PostXlsxAsync("/api/net/links/import.xlsx", organizationId, xlsxBytes, dryRun, ct: ct);
 
     public Task<ImportValidationResultDto> ImportDhcpRelayTargetsXlsxAsync(Guid organizationId,
         byte[] xlsxBytes, bool dryRun = true, CancellationToken ct = default)
-        => PostXlsxAsync("/api/net/dhcp-relay-targets/import.xlsx", organizationId, xlsxBytes, dryRun, ct);
+        => PostXlsxAsync("/api/net/dhcp-relay-targets/import.xlsx", organizationId, xlsxBytes, dryRun, ct: ct);
 
     private async Task<ImportValidationResultDto> PostXlsxAsync(string path,
-        Guid organizationId, byte[] xlsxBytes, bool dryRun, CancellationToken ct)
+        Guid organizationId, byte[] xlsxBytes, bool dryRun,
+        string? mode = null, CancellationToken ct = default)
     {
-        var url = $"{path}?organizationId={organizationId}&dryRun={(dryRun ? "true" : "false")}";
+        var qs = BuildQuery(
+            ("organizationId", organizationId.ToString()),
+            ("dryRun",         dryRun ? "true" : "false"),
+            ("mode",           mode));
+        var url = $"{path}{qs}";
         var content = new ByteArrayContent(xlsxBytes);
         content.Headers.ContentType = new MediaTypeHeaderValue(
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");

@@ -1267,8 +1267,9 @@ async fn import_devices_csv(
     // multipart gymnastics; file-upload UIs still work because the
     // browser's FormData upload handlers will also produce text.
     let user_id = header_user_id(&headers);
+    let mode = bulk_import::ImportMode::parse(q.mode.as_deref())?;
     let result = bulk_import::import_devices(
-        &s.pool, q.organization_id, &body, q.dry_run, user_id
+        &s.pool, q.organization_id, &body, q.dry_run, mode, user_id
     ).await?;
     Ok(Json(result))
 }
@@ -1431,9 +1432,10 @@ async fn import_devices_xlsx(
     body: axum::body::Bytes,
 ) -> Result<impl IntoResponse, EngineError> {
     let user_id = header_user_id(&headers);
+    let mode = bulk_import::ImportMode::parse(q.mode.as_deref())?;
     let csv = xlsx_codec::xlsx_bytes_to_csv(&body)?;
     let result = bulk_import::import_devices(
-        &s.pool, q.organization_id, &csv, q.dry_run, user_id
+        &s.pool, q.organization_id, &csv, q.dry_run, mode, user_id
     ).await?;
     Ok(Json(result))
 }
