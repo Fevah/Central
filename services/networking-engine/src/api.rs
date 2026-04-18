@@ -19,6 +19,10 @@ use crate::error::EngineError;
 use crate::ip_allocation::IpAllocationService;
 use crate::models::{PoolScopeLevel, ShelfResourceType};
 use crate::naming::{self, DeviceNamingContext, LinkNamingContext, ServerNamingContext};
+use crate::naming_overrides::{
+    CreateOverrideBody, ListOverridesQuery, NamingOverrideRepo, UpdateOverrideBody,
+};
+use crate::naming_resolver::{NamingResolver, ResolveRequest};
 use crate::server_fanout::{ServerCreationRequest, ServerCreationService};
 
 #[derive(Clone)]
@@ -43,6 +47,11 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/naming/link/preview", post(preview_link))
         .route("/api/net/naming/device/preview", post(preview_device))
         .route("/api/net/naming/server/preview", post(preview_server))
+        // Naming overrides (Phase 7a)
+        .route("/api/net/naming/resolve", post(resolve_naming))
+        .route("/api/net/naming/overrides", get(list_overrides).post(create_override))
+        .route("/api/net/naming/overrides/:id",
+               get(get_override).put(update_override).delete(delete_override))
         .with_state(state)
 }
 
@@ -260,4 +269,71 @@ async fn preview_device(Json(req): Json<DevicePreviewBody>) -> impl IntoResponse
 
 async fn preview_server(Json(req): Json<ServerPreviewBody>) -> impl IntoResponse {
     Json(PreviewResponse { expanded: naming::expand_server(&req.template, &req.context) })
+}
+
+// ─── Naming overrides (Phase 7a) ─────────────────────────────────────────
+
+async fn resolve_naming(
+    State(s): State<AppState>,
+    Json(req): Json<ResolveRequest>,
+) -> Result<impl IntoResponse, EngineError> {
+    let svc = NamingResolver::new(s.pool);
+    let out = svc.resolve(&req).await?;
+    Ok(Json(out))
+}
+
+async fn list_overrides(
+    State(s): State<AppState>,
+    Query(q): Query<ListOverridesQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = NamingOverrideRepo::new(s.pool);
+    Ok(Json(repo.list(&q).await?))
+}
+
+async fn create_override(
+    State(s): State<AppState>,
+    headers: HeaderMap,
+    Json(body): Json<CreateOverrideBody>,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = NamingOverrideRepo::new(s.pool);
+    let user_id = header_user_id(&headers);
+    let out = repo.create(&body, user_id).await?;
+    Ok((StatusCode::CREATED, Json(out)))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct OrgQuery { organization_id: Uuid }
+
+async fn get_override(
+    State(s): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = NamingOverrideRepo::new(s.pool);
+    Ok(Json(repo.get(id, q.organization_id).await?))
+}
+
+async fn update_override(
+    State(s): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+    Json(body): Json<UpdateOverrideBody>,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = NamingOverrideRepo::new(s.pool);
+    let user_id = header_user_id(&headers);
+    Ok(Json(repo.update(id, q.organization_id, &body, user_id).await?))
+}
+
+async fn delete_override(
+    State(s): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = NamingOverrideRepo::new(s.pool);
+    let user_id = header_user_id(&headers);
+    repo.delete(id, q.organization_id, user_id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }

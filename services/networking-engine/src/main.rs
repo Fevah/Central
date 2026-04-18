@@ -19,6 +19,8 @@ mod ip_math;
 mod ip_math6;
 mod models;
 mod naming;
+mod naming_overrides;
+mod naming_resolver;
 mod server_fanout;
 
 use anyhow::Result;
