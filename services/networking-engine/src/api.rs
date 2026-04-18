@@ -120,10 +120,11 @@ pub fn build_router(state: AppState) -> Router {
                get(get_dhcp_relay)
                    .put(update_dhcp_relay)
                    .delete(delete_dhcp_relay))
-        // Bulk export: flat dump of net.device as CSV. First of the
-        // Phase 10 bulk surfaces; sibling entities (links, VLANs,
-        // servers) follow once the pattern stabilises.
+        // Bulk export: flat CSV dumps of the core net.* entities
+        // operators need for spreadsheet workflows + BI ingestion.
         .route("/api/net/devices/export",                   get(export_devices))
+        .route("/api/net/vlans/export",                     get(export_vlans))
+        .route("/api/net/ip-addresses/export",              get(export_ip_addresses))
         .with_state(state)
 }
 
@@ -1023,18 +1024,45 @@ async fn delete_dhcp_relay(
 
 // ─── Bulk export handlers ────────────────────────────────────────────────
 
+/// Shared helper: standard text/csv response headers with a
+/// Content-Disposition that names the download file. Keeps the
+/// three export handlers DRY — they differ only in body-producer
+/// and filename.
+fn csv_download_headers(filename: &'static str) -> [(axum::http::header::HeaderName, axum::http::HeaderValue); 2] {
+    use axum::http::{HeaderValue, header};
+    // filename is a `&'static str` so from_static works for both.
+    let disp = match filename {
+        "devices.csv"      => HeaderValue::from_static("attachment; filename=\"devices.csv\""),
+        "vlans.csv"        => HeaderValue::from_static("attachment; filename=\"vlans.csv\""),
+        "ip-addresses.csv" => HeaderValue::from_static("attachment; filename=\"ip-addresses.csv\""),
+        _                  => HeaderValue::from_static("attachment"),
+    };
+    [
+        (header::CONTENT_TYPE, HeaderValue::from_static("text/csv; charset=utf-8")),
+        (header::CONTENT_DISPOSITION, disp),
+    ]
+}
+
 async fn export_devices(
     State(s): State<AppState>,
     Query(q): Query<OrgQuery>,
 ) -> Result<impl IntoResponse, EngineError> {
-    use axum::http::{HeaderValue, header};
     let body = bulk_export::export_devices_csv(&s.pool, q.organization_id).await?;
-    // text/csv + the standard Content-Disposition so browsers offer
-    // a filename when the URL is opened directly rather than fetched
-    // by a JS client.
-    let headers: [(header::HeaderName, HeaderValue); 2] = [
-        (header::CONTENT_TYPE, HeaderValue::from_static("text/csv; charset=utf-8")),
-        (header::CONTENT_DISPOSITION, HeaderValue::from_static("attachment; filename=\"devices.csv\"")),
-    ];
-    Ok((headers, body))
+    Ok((csv_download_headers("devices.csv"), body))
+}
+
+async fn export_vlans(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let body = bulk_export::export_vlans_csv(&s.pool, q.organization_id).await?;
+    Ok((csv_download_headers("vlans.csv"), body))
+}
+
+async fn export_ip_addresses(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let body = bulk_export::export_ip_addresses_csv(&s.pool, q.organization_id).await?;
+    Ok((csv_download_headers("ip-addresses.csv"), body))
 }

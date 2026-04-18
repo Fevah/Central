@@ -120,6 +120,107 @@ pub async fn export_devices_csv(
     Ok(out)
 }
 
+// ─── VLAN export ─────────────────────────────────────────────────────────
+
+/// CSV dump of `net.vlan` for a tenant. Columns — in this order:
+///
+///   vlan_id, display_name, description, scope_level, template_code, status
+///
+/// `template_code` joins through `net.vlan_template` — lets the
+/// spreadsheet show "IT / Servers / DMZ" rather than a UUID that
+/// means nothing outside the DB. VLANs ordered by `vlan_id` so the
+/// export reads bottom-up the way operators think about it.
+pub async fn export_vlans_csv(
+    pool: &PgPool,
+    org_id: Uuid,
+) -> Result<String, EngineError> {
+    type Row = (i32, String, Option<String>, String, Option<String>, String);
+    let rows: Vec<Row> = sqlx::query_as(
+        r#"SELECT v.vlan_id,
+                  v.display_name,
+                  v.description,
+                  v.scope_level,
+                  t.template_code,
+                  v.status::text AS status
+             FROM net.vlan v
+             LEFT JOIN net.vlan_template t ON t.id = v.template_id AND t.deleted_at IS NULL
+            WHERE v.organization_id = $1 AND v.deleted_at IS NULL
+            ORDER BY v.vlan_id"#)
+        .bind(org_id)
+        .fetch_all(pool)
+        .await?;
+
+    let mut out = String::with_capacity(128 + rows.len() * 96);
+    out.push_str(&csv_row(&[
+        "vlan_id".into(), "display_name".into(), "description".into(),
+        "scope_level".into(), "template_code".into(), "status".into(),
+    ]));
+    for (vlan_id, name, desc, scope, tpl, status) in rows {
+        out.push_str(&csv_row(&[
+            vlan_id.to_string(),
+            csv_escape(&name),
+            csv_escape(&desc.unwrap_or_default()),
+            csv_escape(&scope),
+            csv_escape(&tpl.unwrap_or_default()),
+            csv_escape(&status),
+        ]));
+    }
+    Ok(out)
+}
+
+// ─── IP address export ───────────────────────────────────────────────────
+
+/// CSV dump of `net.ip_address` for a tenant. Columns — in this order:
+///
+///   address, subnet_code, assigned_to_type, assigned_to_id,
+///   is_reserved, status
+///
+/// Address is emitted as a bare host (CIDR prefix stripped) matching
+/// the device-export convention. `subnet_code` joins through
+/// `net.subnet` so the output names the subnet operators recognise
+/// ("MEP-91-LOOPBACK") rather than a UUID.
+///
+/// Ordered by subnet_code then address so IPs cluster by their subnet
+/// for human scanning — easier to spot gaps and conflicts than a
+/// flat sort by address alone.
+pub async fn export_ip_addresses_csv(
+    pool: &PgPool,
+    org_id: Uuid,
+) -> Result<String, EngineError> {
+    type Row = (String, Option<String>, Option<String>, Option<Uuid>, bool, String);
+    let rows: Vec<Row> = sqlx::query_as(
+        r#"SELECT host(ip.address),
+                  s.subnet_code,
+                  ip.assigned_to_type,
+                  ip.assigned_to_id,
+                  ip.is_reserved,
+                  ip.status::text AS status
+             FROM net.ip_address ip
+             LEFT JOIN net.subnet s ON s.id = ip.subnet_id AND s.deleted_at IS NULL
+            WHERE ip.organization_id = $1 AND ip.deleted_at IS NULL
+            ORDER BY s.subnet_code NULLS LAST, ip.address"#)
+        .bind(org_id)
+        .fetch_all(pool)
+        .await?;
+
+    let mut out = String::with_capacity(128 + rows.len() * 96);
+    out.push_str(&csv_row(&[
+        "address".into(), "subnet_code".into(), "assigned_to_type".into(),
+        "assigned_to_id".into(), "is_reserved".into(), "status".into(),
+    ]));
+    for (addr, subnet_code, assigned_type, assigned_id, is_reserved, status) in rows {
+        out.push_str(&csv_row(&[
+            csv_escape(&addr),
+            csv_escape(&subnet_code.unwrap_or_default()),
+            csv_escape(&assigned_type.unwrap_or_default()),
+            assigned_id.map(|id| id.to_string()).unwrap_or_default(),
+            if is_reserved { "true".into() } else { "false".into() },
+            csv_escape(&status),
+        ]));
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
