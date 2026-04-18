@@ -127,6 +127,9 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/ip-addresses/export",              get(export_ip_addresses))
         .route("/api/net/links/export",                     get(export_links))
         .route("/api/net/servers/export",                   get(export_servers))
+        .route("/api/net/subnets/export",                   get(export_subnets))
+        .route("/api/net/asn-allocations/export",           get(export_asn_allocations))
+        .route("/api/net/mlag-domains/export",              get(export_mlag_domains))
         .with_state(state)
 }
 
@@ -1038,8 +1041,11 @@ fn csv_download_headers(filename: &'static str) -> [(axum::http::header::HeaderN
         "vlans.csv"        => HeaderValue::from_static("attachment; filename=\"vlans.csv\""),
         "ip-addresses.csv" => HeaderValue::from_static("attachment; filename=\"ip-addresses.csv\""),
         "links.csv"        => HeaderValue::from_static("attachment; filename=\"links.csv\""),
-        "servers.csv"      => HeaderValue::from_static("attachment; filename=\"servers.csv\""),
-        _                  => HeaderValue::from_static("attachment"),
+        "servers.csv"          => HeaderValue::from_static("attachment; filename=\"servers.csv\""),
+        "subnets.csv"          => HeaderValue::from_static("attachment; filename=\"subnets.csv\""),
+        "asn-allocations.csv"  => HeaderValue::from_static("attachment; filename=\"asn-allocations.csv\""),
+        "mlag-domains.csv"     => HeaderValue::from_static("attachment; filename=\"mlag-domains.csv\""),
+        _                      => HeaderValue::from_static("attachment"),
     };
     [
         (header::CONTENT_TYPE, HeaderValue::from_static("text/csv; charset=utf-8")),
@@ -1085,4 +1091,28 @@ async fn export_servers(
 ) -> Result<impl IntoResponse, EngineError> {
     let body = bulk_export::export_servers_csv(&s.pool, q.organization_id).await?;
     Ok((csv_download_headers("servers.csv"), body))
+}
+
+async fn export_subnets(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let body = bulk_export::export_subnets_csv(&s.pool, q.organization_id).await?;
+    Ok((csv_download_headers("subnets.csv"), body))
+}
+
+async fn export_asn_allocations(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let body = bulk_export::export_asn_allocations_csv(&s.pool, q.organization_id).await?;
+    Ok((csv_download_headers("asn-allocations.csv"), body))
+}
+
+async fn export_mlag_domains(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let body = bulk_export::export_mlag_domains_csv(&s.pool, q.organization_id).await?;
+    Ok((csv_download_headers("mlag-domains.csv"), body))
 }

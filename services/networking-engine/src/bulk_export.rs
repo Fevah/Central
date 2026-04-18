@@ -389,6 +389,192 @@ pub async fn export_servers_csv(
     Ok(out)
 }
 
+// ─── Subnet export ───────────────────────────────────────────────────────
+
+/// CSV dump of `net.subnet`. Columns:
+///
+///   subnet_code, display_name, network, vlan_id, pool_code,
+///   scope_level, status
+///
+/// `vlan_id` is the numeric VLAN tag from the linked `net.vlan`
+/// (NULL when the subnet isn't VLAN-bound). `pool_code` identifies
+/// the parent IP pool. Ordered by `subnet_code` so diffing against
+/// prior exports stays stable.
+pub async fn export_subnets_csv(
+    pool: &PgPool,
+    org_id: Uuid,
+) -> Result<String, EngineError> {
+    type Row = (
+        String,          // subnet_code
+        String,          // display_name
+        String,          // network (cidr text)
+        Option<i32>,     // vlan_id
+        Option<String>,  // pool_code
+        String,          // scope_level
+        String,          // status
+    );
+    let rows: Vec<Row> = sqlx::query_as(
+        r#"SELECT s.subnet_code,
+                  s.display_name,
+                  s.network::text                  AS network,
+                  v.vlan_id                        AS vlan_id,
+                  p.pool_code                      AS pool_code,
+                  s.scope_level,
+                  s.status::text                   AS status
+             FROM net.subnet s
+             LEFT JOIN net.vlan    v ON v.id = s.vlan_id AND v.deleted_at IS NULL
+             LEFT JOIN net.ip_pool p ON p.id = s.pool_id AND p.deleted_at IS NULL
+            WHERE s.organization_id = $1 AND s.deleted_at IS NULL
+            ORDER BY s.subnet_code"#)
+        .bind(org_id)
+        .fetch_all(pool)
+        .await?;
+
+    let mut out = String::with_capacity(128 + rows.len() * 96);
+    out.push_str(&csv_row(&[
+        "subnet_code".into(), "display_name".into(), "network".into(),
+        "vlan_id".into(), "pool_code".into(), "scope_level".into(), "status".into(),
+    ]));
+    for (code, name, network, vlan, pool_code, scope, status) in rows {
+        out.push_str(&csv_row(&[
+            csv_escape(&code),
+            csv_escape(&name),
+            csv_escape(&network),
+            vlan.map(|n| n.to_string()).unwrap_or_default(),
+            csv_escape(&pool_code.unwrap_or_default()),
+            csv_escape(&scope),
+            csv_escape(&status),
+        ]));
+    }
+    Ok(out)
+}
+
+// ─── ASN allocation export ───────────────────────────────────────────────
+
+/// CSV dump of `net.asn_allocation` — one row per allocated ASN.
+/// Columns:
+///
+///   asn, allocated_to_type, allocated_to_hostname, block_code,
+///   allocated_at, status
+///
+/// `allocated_to_hostname` resolves the opaque `allocated_to_id` via
+/// the type-specific table (device or server) so operators reading
+/// the export see "MEP-91-CORE02" rather than a UUID. Allocations
+/// pointing at entities outside those two types (future: building-
+/// level allocations) render an empty hostname rather than NULL —
+/// the CSV consumer then needs no branch on type.
+///
+/// Ordered by `asn` so the ASN space reads bottom-up.
+pub async fn export_asn_allocations_csv(
+    pool: &PgPool,
+    org_id: Uuid,
+) -> Result<String, EngineError> {
+    type Row = (
+        i64,             // asn
+        String,          // allocated_to_type
+        Option<String>,  // allocated_to_hostname (from device or server)
+        Option<String>,  // block_code
+        chrono::DateTime<chrono::Utc>,  // allocated_at
+        String,          // status
+    );
+    let rows: Vec<Row> = sqlx::query_as(
+        r#"SELECT aa.asn,
+                  aa.allocated_to_type,
+                  COALESCE(d.hostname, s.hostname) AS allocated_to_hostname,
+                  ab.block_code                    AS block_code,
+                  aa.allocated_at,
+                  aa.status::text                  AS status
+             FROM net.asn_allocation aa
+             LEFT JOIN net.asn_block ab ON ab.id = aa.block_id       AND ab.deleted_at IS NULL
+             LEFT JOIN net.device    d  ON aa.allocated_to_type = 'Device'
+                                       AND d.id = aa.allocated_to_id
+                                       AND d.deleted_at IS NULL
+             LEFT JOIN net.server    s  ON aa.allocated_to_type = 'Server'
+                                       AND s.id = aa.allocated_to_id
+                                       AND s.deleted_at IS NULL
+            WHERE aa.organization_id = $1 AND aa.deleted_at IS NULL
+            ORDER BY aa.asn"#)
+        .bind(org_id)
+        .fetch_all(pool)
+        .await?;
+
+    let mut out = String::with_capacity(128 + rows.len() * 96);
+    out.push_str(&csv_row(&[
+        "asn".into(), "allocated_to_type".into(), "allocated_to_hostname".into(),
+        "block_code".into(), "allocated_at".into(), "status".into(),
+    ]));
+    for (asn, ty, hostname, block, allocated_at, status) in rows {
+        out.push_str(&csv_row(&[
+            asn.to_string(),
+            csv_escape(&ty),
+            csv_escape(&hostname.unwrap_or_default()),
+            csv_escape(&block.unwrap_or_default()),
+            csv_escape(&allocated_at.to_rfc3339()),
+            csv_escape(&status),
+        ]));
+    }
+    Ok(out)
+}
+
+// ─── MLAG domain export ──────────────────────────────────────────────────
+
+/// CSV dump of `net.mlag_domain`. Columns:
+///
+///   domain_id, display_name, pool_code, scope_level,
+///   scope_entity_id, status
+///
+/// `scope_entity_id` is a UUID — the *human* display (building code
+/// / site code / region code) depends on `scope_level` and would
+/// require a polymorphic join the export layer intentionally skips.
+/// Operators who want the building-code column can correlate via
+/// the subnet / device exports.
+///
+/// Ordered by `domain_id` so the MLAG ID space reads bottom-up.
+pub async fn export_mlag_domains_csv(
+    pool: &PgPool,
+    org_id: Uuid,
+) -> Result<String, EngineError> {
+    type Row = (
+        i32,             // domain_id
+        String,          // display_name
+        Option<String>,  // pool_code
+        String,          // scope_level
+        Option<Uuid>,    // scope_entity_id
+        String,          // status
+    );
+    let rows: Vec<Row> = sqlx::query_as(
+        r#"SELECT m.domain_id,
+                  m.display_name,
+                  p.pool_code        AS pool_code,
+                  m.scope_level,
+                  m.scope_entity_id,
+                  m.status::text     AS status
+             FROM net.mlag_domain m
+             LEFT JOIN net.mlag_domain_pool p ON p.id = m.pool_id AND p.deleted_at IS NULL
+            WHERE m.organization_id = $1 AND m.deleted_at IS NULL
+            ORDER BY m.domain_id"#)
+        .bind(org_id)
+        .fetch_all(pool)
+        .await?;
+
+    let mut out = String::with_capacity(128 + rows.len() * 96);
+    out.push_str(&csv_row(&[
+        "domain_id".into(), "display_name".into(), "pool_code".into(),
+        "scope_level".into(), "scope_entity_id".into(), "status".into(),
+    ]));
+    for (domain_id, name, pool_code, scope, scope_entity, status) in rows {
+        out.push_str(&csv_row(&[
+            domain_id.to_string(),
+            csv_escape(&name),
+            csv_escape(&pool_code.unwrap_or_default()),
+            csv_escape(&scope),
+            scope_entity.map(|id| id.to_string()).unwrap_or_default(),
+            csv_escape(&status),
+        ]));
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
