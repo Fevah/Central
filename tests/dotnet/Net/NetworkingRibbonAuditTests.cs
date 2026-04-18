@@ -33,17 +33,18 @@ public class NetworkingRibbonAuditTests
     }
 
     [Fact]
-    public void HasEightFunctionalGroupsPlusPanels()
+    public void HasNineFunctionalGroupsPlusPanels()
     {
-        // Spec: Devices, Switches, Links, Routing, VLANs, Servers, Governance, Panels.
-        // Governance added in Phase 8 — surfaces Change Set actions
-        // (new / submit / decide / apply / rollback / cancel / refresh).
+        // Spec: Devices, Switches, Links, Routing, VLANs, Servers,
+        // Governance, Validation, Panels. Validation group added in
+        // Phase 9a — surfaces named-rule execution (run-all / run-selected
+        // / toggle / refresh) against the Rust networking-engine.
         var rb = new RibbonBuilder();
         NetworkingRibbonRegistrar.BuildRibbon(rb, 20);
         var groups = rb.Pages[0].Groups.Select(g => g.Header).ToList();
         Assert.Equal(
             new[] { "Devices", "Switches", "Links", "Routing", "VLANs",
-                    "Servers", "Governance", "Panels" },
+                    "Servers", "Governance", "Validation", "Panels" },
             groups);
     }
 
@@ -104,6 +105,9 @@ public class NetworkingRibbonAuditTests
     [InlineData("Governance", "Rollback",         "changesets", "action:rollback")]
     [InlineData("Governance", "Cancel",           "changesets", "action:cancel")]
     [InlineData("Governance", "Details",          "changesets", "action:details")]
+    [InlineData("Validation", "Run All",          "validation", "action:runAll")]
+    [InlineData("Validation", "Run Selected",     "validation", "action:runSelected")]
+    [InlineData("Validation", "Toggle Rule",      "validation", "action:toggleRule")]
     public void NavigateButton_PublishesCorrectTargetAndAction(
         string groupHeader, string buttonContent, string expectedPanel, string expectedAction)
     {

@@ -32,6 +32,7 @@ public static class NetworkingRibbonRegistrar
     public const string PanelVlans    = "vlans";
     public const string PanelServers  = "servers";
     public const string PanelChangeSets = "changesets";
+    public const string PanelValidation = "validation";
 
     public static void BuildRibbon(IRibbonBuilder ribbon, int sortOrder)
     {
@@ -142,12 +143,31 @@ public static class NetworkingRibbonRegistrar
                     () => PanelMessageBus.Publish(new RefreshPanelMessage(PanelChangeSets)));
             });
 
+            // ── Validation (Phase 9a) ────────────────────────────────────
+            // Run the named-rule set against the tenant's net.* data.
+            // Rule catalog lives in code (services/networking-engine/src/
+            // validation.rs) so buttons here are execution-side only —
+            // rule edits are a per-tenant config action toggled from
+            // inside the panel.
+            page.AddGroup("Validation", group =>
+            {
+                group.AddButton("Run All",          P.ValidationRun,     "Play_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelValidation, "action:runAll")));
+                group.AddButton("Run Selected",     P.ValidationRun,     "Arrow_Right_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelValidation, "action:runSelected")));
+                group.AddButton("Toggle Rule",      P.ValidationConfigure, "Check_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelValidation, "action:toggleRule")));
+                group.AddButton("Refresh",          P.ValidationRead,    "Refresh_16x16",
+                    () => PanelMessageBus.Publish(new RefreshPanelMessage(PanelValidation)));
+            });
+
             page.AddGroup("Panels", group =>
             {
                 group.AddCheckButton("Hierarchy",      panelId: "HierarchyPanel");
                 group.AddCheckButton("Pools",          panelId: "PoolsPanel");
                 group.AddCheckButton("Servers",        panelId: "ServersPanel");
                 group.AddCheckButton("Change Sets",    panelId: "ChangeSetsPanel");
+                group.AddCheckButton("Validation",     panelId: "ValidationPanel");
                 group.AddCheckButton("IPAM",           panelId: "DevicesPanel");
                 group.AddCheckButton("Device Details", panelId: "DeviceDetailPanel");
                 group.AddCheckButton("Switches",       panelId: "SwitchesPanel");

@@ -144,6 +144,7 @@ public partial class MainWindow
             if (e.Item == PoolsPanel) VM.IsPoolsPanelOpen = false;
             if (e.Item == NetServersPanel) VM.IsNetServersPanelOpen = false;
             if (e.Item == ChangeSetsPanel) VM.IsChangeSetsPanelOpen = false;
+            if (e.Item == ValidationPanel) VM.IsValidationPanelOpen = false;
             if (e.Item == P2PPanel) VM.IsP2PPanelOpen = false;
             if (e.Item == B2BPanel) VM.IsB2BPanelOpen = false;
             if (e.Item == FWPanel) VM.IsFWPanelOpen = false;
@@ -399,6 +400,11 @@ public partial class MainWindow
             {
                 ToggleDockPanel(ChangeSetsPanel, VM.IsChangeSetsPanelOpen);
                 if (VM.IsChangeSetsPanelOpen) _ = ChangeSetsListPanel.ReloadAsync();
+            }
+            if (e.PropertyName == nameof(MainViewModel.IsValidationPanelOpen))
+            {
+                ToggleDockPanel(ValidationPanel, VM.IsValidationPanelOpen);
+                if (VM.IsValidationPanelOpen) _ = ValidationPanelView.ReloadAsync();
             }
             if (e.PropertyName == nameof(MainViewModel.IsMlagPanelOpen))
                 ToggleDockPanel(MlagPanel, VM.IsMlagPanelOpen);
@@ -864,6 +870,8 @@ public partial class MainWindow
             var neUrl = Environment.GetEnvironmentVariable("CENTRAL_NETWORKING_ENGINE_URL")
                         ?? "http://localhost:8091";
             ChangeSetsListPanel.SetContext(neUrl, App.CurrentTenantId,
+                AuthContext.Instance.CurrentUser?.Id);
+            ValidationPanelView.SetContext(neUrl, App.CurrentTenantId,
                 AuthContext.Instance.CurrentUser?.Id);
         }
         await Task.Yield(); // Let splash repaint

@@ -339,6 +339,11 @@ public class MainViewModel : INotifyPropertyChanged
     private bool _isChangeSetsPanelOpen;
     public bool IsChangeSetsPanelOpen { get => _isChangeSetsPanelOpen; set { _isChangeSetsPanelOpen = value; OnPropertyChanged(); } }
 
+    /// <summary>Phase-9a validation rules + violations panel — list + run
+    /// + per-tenant toggle of the engine's named rule catalog.</summary>
+    private bool _isValidationPanelOpen;
+    public bool IsValidationPanelOpen { get => _isValidationPanelOpen; set { _isValidationPanelOpen = value; OnPropertyChanged(); } }
+
     private bool _isSettingsPanelOpen;
     public bool IsSettingsPanelOpen
     {

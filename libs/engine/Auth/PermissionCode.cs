@@ -238,4 +238,13 @@ public static class P
     public const string ChangeSetsApprove   = "net:changesets:approve";
     public const string ChangeSetsApply     = "net:changesets:apply";
     public const string ChangeSetsRollback  = "net:changesets:rollback";
+
+    // Networking validation — Phase 9a's named-rule engine. Read is the
+    // "see rules + violations" right; Run executes the rule set against
+    // tenant data; Configure flips enabled/severity on per-tenant rules.
+    // Split Run from Configure so a tenant can grant "run checks" widely
+    // while keeping rule-set editing tight.
+    public const string ValidationRead      = "net:validation:read";
+    public const string ValidationRun       = "net:validation:run";
+    public const string ValidationConfigure = "net:validation:configure";
 }
