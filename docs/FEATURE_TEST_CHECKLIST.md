@@ -2,7 +2,7 @@
 
 Last updated: 2026-04-18
 Test suite: 2,616 tests across ~180 test classes on the .NET side. 0 failures (unit + live-DB integration against the podman `central-postgres` container).
-Rust networking-engine (`services/networking-engine/`): 199 unit tests, 0 failures.
+Rust networking-engine (`services/networking-engine/`): 229 unit tests, 0 failures.
 Build: 0 errors.
 
 Comprehensive test checklist for the Central desktop + API platform, organised by surface
@@ -2357,9 +2357,9 @@ Per the plan amendment (commit `758ccaa98`), every new *-type catalog row must c
 
 Compliance by *-type table: `link_type` ✓, `device_role` ✓, `server_profile` ✓. Pending coverage: `building_profile`, `vlan_template`, `mstp_priority_rule` (Phase 7).
 
-### 7.X.9 Config Generation — Phase 10 (IN PROGRESS, 2026-04-18)
+### 7.X.9 Config Generation — Phase 10 (2026-04-18)
 
-Lives entirely in Rust: `services/networking-engine/src/cli_flavor.rs` + `services/networking-engine/src/config_gen.rs`. 199 Rust tests green on this surface (up from 121 before Phase 10 started).
+**Byte-for-byte parity acceptance bar REACHED.** Every section the legacy `ConfigBuilderService` emits now has a counterpart in the Rust renderer — once a tenant seeds Gateway / Vrrp / DhcpRelayTarget rows, the output matches line-for-line. Lives in three Rust files: `services/networking-engine/src/cli_flavor.rs`, `config_gen.rs`, `dhcp_relay.rs`. 229 Rust tests green (up from 121 before Phase 10 started).
 
 **CLI flavor foundation** (commit `74d0523b6`, migration 102_net_cli_flavors.sql)
 - [ ] `FLAVORS` const catalog — 6 entries: PicOS (Ga, default-on), Cisco NX-OS / Cisco IOS / Arista EOS / Junos OS / FRR (all Stub, default-off)
@@ -2368,9 +2368,9 @@ Lives entirely in Rust: `services/networking-engine/src/cli_flavor.rs` + `servic
 - [ ] `cli_flavor::list_flavors` / `set_flavor_config` / `resolve_for_device`
 - [ ] Dispatcher `config_gen::render_device` returns clean 400 "No renderer implemented for flavor X" for Stub flavors rather than emitting wrong-syntax CLI
 - [ ] REST: GET `/api/net/cli-flavors`, PUT `/api/net/cli-flavors/:code`, POST `/api/net/devices/:id/render-config`
-- [ ] `FLAVORS` invariants — codes unique, PicOS is position 0, only one Ga today, stubs default off, vendors from known set (6 unit tests in `cli_flavor::tests`)
+- [ ] `FLAVORS` invariants — codes unique, PicOS is position 0, only one Ga today, stubs default off, vendors from known set
 
-**PicOS renderer — section pipeline (in emit order):**
+**PicOS renderer — section pipeline (in legacy-step emit order):**
 1. [ ] Header comment `# Config for {hostname} — generated {rfc3339}` + `# Flavor: PicOS 4.6 (FS N-series)`
 2. [ ] `set system hostname "{resolved}"` — hostname is **parametric** via `net.device_role.naming_template` + hierarchy codes (region / site / building / rack / role) + `device_code` → `{instance}` (commit `56aa5ab40`); falls back to stored `net.device.hostname` when template is NULL / empty / whitespace-only expansion
 3. [ ] `set ip routing enable true` — universal fixed emit (commit `7861abc86`)
@@ -2385,29 +2385,49 @@ Lives entirely in Rust: `services/networking-engine/src/cli_flavor.rs` + `servic
 12. [ ] **BGP neighbors** — derived from `net.link_endpoint` for P2P / B2B link-types only; unmodelled cross-building B2B peers emit `remote-as "?"` to match legacy behaviour (commit `54776cc7d`)
 13. [ ] **MSTP bridge-priority** — from `net.mstp_priority_allocation` keyed by device_id (commit `f6b029c0d`)
 14. [ ] **MLAG peer-link** — domain id via `net.mlag_domain` scoped to device's building; peer-link interface from the `MLAG-Peer` link's local endpoint. Each half optional; partial state emits whichever half is resolvable (commit `f6b029c0d`)
-15. [ ] **Merged ports section** — description from `net.link_endpoint` + L2 rules from `net.port` (port-mode + native-vlan-id) interleaved by interface name via `BTreeMap` so each port's lines cluster together (commits `992cd2f9d` + `9583b7e75` + `ee155920a`); routed / unset ports skip L2 rules
-16. [ ] `set protocols lldp enable true` — universal fixed emit (commit `7861abc86`)
+15. [ ] **VRRP VIPs** — one line per (VLAN, VIP) from `net.ip_address` with `assigned_to_type = 'Vrrp'` in subnets belonging to VLANs this device L3-terminates; VRID defaults to 1, per-VIP override via `ip_address.tags.vrid` JSON path (commit `f98a058a9`)
+16. [ ] **DHCP relay** — one line per (VLAN, server_ip) from `net.dhcp_relay_target` (migration 103), priority-ordered within each VLAN; scoped to SVI VLANs (commit `aadc16afd`)
+17. [ ] **Merged ports section** — description from `net.link_endpoint` + L2 rules from `net.port` (port-mode + native-vlan-id) interleaved by interface name via `BTreeMap` so each port's lines cluster together (commits `992cd2f9d` + `9583b7e75` + `ee155920a`); routed / unset ports skip L2 rules
+18. [ ] **Static default route** — `set protocols static route 0.0.0.0/0 next-hop X`; next-hop sourced from `net.ip_address` with `assigned_to_type = 'Gateway'` in the subnet containing `management_ip` (using the `>>=` supernet operator); tenants without seeded Gateway rows skip the line (commit `59c13011e`)
+19. [ ] `set protocols lldp enable true` — universal fixed emit (commit `7861abc86`)
 
 **Pure-function renderer invariants:**
 - [ ] `PicosRenderer::render(&ctx)` takes `&DeviceContext` only — no DB access inside the render path, all fetches happen in `fetch_context`
-- [ ] Tests use fixture helpers (one per code path: `fixture`, `fixture_with_addrs`, `fixture_with_bgp`, `fixture_with_bgp_and_neighbors`, `fixture_with_mstp_mlag`, `fixture_with_svis`, `fixture_with_vlans_and_svis`, `fixture_with_ports`, `fixture_with_l2_rules`, `fixture_with_port_cfg`, `fixture_with_qos_bindings`) so each section has isolated coverage
+- [ ] Per-section fixture helpers (one per code path: `fixture`, `fixture_with_addrs`, `fixture_with_bgp`, `fixture_with_bgp_and_neighbors`, `fixture_with_mstp_mlag`, `fixture_with_svis`, `fixture_with_vlans_and_svis`, `fixture_with_ports`, `fixture_with_l2_rules`, `fixture_with_port_cfg`, `fixture_with_qos_bindings`, `fixture_with_gateway`, `fixture_with_vrrp`, `fixture_with_dhcp_relay`) so each section has isolated coverage
 - [ ] `split_inet_text` parses Postgres `inet` text cleanly, returns `None` for malformed input (`"10.255.91.2"`, `"10.255.91.2/abc"`, `"/32"`, `""`)
 - [ ] `escape_picos` escapes embedded `"` and `\` in user-supplied strings (VLAN descriptions, link-name auto-generated peer labels)
 - [ ] `resolve_device_hostname` — token expansion via `naming::expand_device`; fallback to stored when template missing / empty / whitespace-only; non-numeric `device_code` yields empty `{instance}`
-- [ ] Line ordering asserted in tests matches legacy `ConfigBuilderService` section order (IP routing before VLANs, LLDP after port rules, neighbors between router-id and redistribute, voice between QoS and VLAN catalog, binding line between VLAN description and next VLAN description)
-- [ ] Each fixed-preset block (`QOS_PRESET_LINES`, `VOICE_VLAN_PRESET_LINES`) has a count-drift assertion so silent divergence from the customer's documented policy trips CI
+- [ ] Each section has an order-assertion test pinning its position in the pipeline (e.g. VRRP between MLAG and ports; DHCP between VRRP and static route; LLDP last)
+- [ ] `QOS_PRESET_LINES` + `VOICE_VLAN_PRESET_LINES` each have a count-drift assertion so silent divergence from the customer's documented policy trips CI
 
-**Persistence:**
-- [ ] `build_result` computes `RenderedConfig { device_id, flavor_code, body, body_sha256, line_count, rendered_at }` — `body_sha256` is 64 hex chars
-- [ ] Render history writeback to `net.rendered_config` with previous_render_id chain (not yet wired from the REST handler — persistence lands in a follow-on slice)
+**Render lifecycle — write / read / diff / fan-out:**
+- [ ] `render_device(pool, org, device)` — dry-run path; returns `RenderedConfig` in memory without writing to `net.rendered_config` (use from preview flows that shouldn't pollute history)
+- [ ] `render_device_persisted(pool, org, device, rendered_by)` — render + write + chain to previous render's id + measure wall-clock duration (commit `87bcb3fef`)
+- [ ] `RenderedConfig` extra fields (`id`, `previousRenderId`, `renderDurationMs`) skip serialisation when `None` so dry-run JSON responses stay clean
+- [ ] `POST /api/net/devices/:id/render-config` → single-device render + persist via `render_device_persisted`
+- [ ] `GET /api/net/devices/:id/renders?organizationId=X[&limit=N]` — list recent renders as `RenderedConfigSummary[]` (no body); limit clamps to `[1, 500]` (default 50) via `clamp_render_list_limit` (commit `2244aacbf`)
+- [ ] `GET /api/net/renders/:id?organizationId=X` — full `RenderedConfigRecord` including body; scoped by tenant
+- [ ] `GET /api/net/renders/:id/diff?organizationId=X` — `RenderDiff { added, removed, unchangedCount }` computed by pure `compute_line_diff` helper against the chained previous render; first-ever render returns full body as added with zero removed (commit `fd26b7368`)
+- [ ] `POST /api/net/buildings/:id/render-configs` — building turn-up pack: `BuildingRenderResult` with `totalDevices` / `succeeded` / `failed` counters; per-device errors tolerated (commit `f14811e5b`)
+- [ ] `POST /api/net/sites/:id/render-configs` — site turn-up pack: rolls up across every building in the site via shared `render_device_list` core; ordered `(building_code, hostname)` (commit `1f8f8508c`)
 
-**Byte-for-byte parity gaps still open:**
-- [ ] Static default route (`set protocols static route 0.0.0.0/0 next-hop X.X.X.X`) — needs mgmt-VLAN gateway lookup; no data model for Gateway IPs yet
-- [ ] DHCP relay (`set protocols dhcp relay interface vlan-120 dhcp-server-address X.X.X.X`) — needs DHCP-role server discovery from `net.server`
-- [ ] VRRP (`set protocols vrrp interface vlan-N vrid 1 ip X.X.X.X`) — needs `net.vrrp_*` migration (not yet in tree)
-- [ ] Per-port QoS binding interleaving with description + L2 lines — deferred; QoS bindings reference forward-declared classifier + scheduler-profile names so keeping them near the QoS preset is the simpler correctness story
+**DHCP relay target CRUD** (commit `1b7896f7a`)
+- [ ] `GET /api/net/dhcp-relay-targets?organizationId=X[&vlanId=Y]` — list with optional VLAN filter
+- [ ] `GET /api/net/dhcp-relay-targets/:id?organizationId=X` — fetch one
+- [ ] `POST /api/net/dhcp-relay-targets` → 201 + body
+- [ ] `PUT /api/net/dhcp-relay-targets/:id` — optimistic concurrency via `version` column; "not found / already updated / wrong tenant" collapsed to a single 400
+- [ ] `DELETE /api/net/dhcp-relay-targets/:id` — soft-delete (deleted_at stamp); returns 204
+- [ ] Priority defaults to 10 when clients omit it (Immunocore convention, pinned by test)
+- [ ] Priority must be non-negative — validated at the API so a `-1` typo can't break the renderer's primary-before-backup ordering
+- [ ] `server_ip` serialises as bare host (`"10.11.120.10"`) not CIDR — matches what the renderer emits
+- [ ] Every mutation writes an audit entry in the same transaction as the DB write so neither can land without the other
 
-**Phase 10 deliverables NOT yet started:** RBAC scoped policy engine, global search + faceted filters + saved views, bulk edit / import / export, XLSX round-trip of the Immunocore workbook, turn-up pack generator.
+**Still open:**
+- [ ] SQL paths lack a live-DB harness — persist / list / get / diff / fan-out / CRUD queries are exercised only via in-memory unit tests of the pure helpers + struct shape assertions. Integration harness is the flagged next-slice candidate.
+- [ ] Immunocore seed import for the three new data models — Gateway IPs, VRRP VIPs, DHCP relay targets — lives in the customer's `public.dhcp_relay` / `public.vrrp_config` legacy tables and needs a migration to copy forward.
+- [ ] Per-port QoS binding interleaving with description + L2 lines — deferred; QoS bindings reference forward-declared classifier + scheduler-profile names so keeping them near the QoS preset remains the simpler correctness story.
+
+**Phase 10 deliverables NOT yet started:** RBAC scoped policy engine, global search + faceted filters + saved views, bulk edit / import / export, XLSX round-trip of the Immunocore workbook. (Turn-up pack generator is shipped at building + site scope; region scope would be trivial to add when needed.)
 
 ---
 
