@@ -588,6 +588,19 @@ pub struct DeviceContext {
     /// this device has an SVI on. Tenants without seeded Vrrp IPs
     /// get an empty list and the VRRP section skips entirely.
     pub vrrp_vips: Vec<VrrpVipLine>,
+    /// DHCP relay targets — one row per (VLAN, server_ip). Only
+    /// populated for VLANs this device has an SVI on (a switch
+    /// without an SVI on a VLAN can't meaningfully relay DHCP for
+    /// it). Sourced from `net.dhcp_relay_target` (migration 103);
+    /// tenants without relay targets seeded get an empty list and
+    /// the DHCP section skips.
+    pub dhcp_relay_targets: Vec<DhcpRelayLine>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DhcpRelayLine {
+    pub vlan_id: i32,
+    pub server_ip: String,
 }
 
 #[derive(Debug, Clone)]
@@ -863,6 +876,32 @@ async fn fetch_context(
         .fetch_all(pool)
         .await?;
 
+    // DHCP relay targets — scope same way VRRP does: only VLANs
+    // this device has an SVI on. Priority ordering is preserved so
+    // the generated config expresses the tenant's "primary then
+    // backup" intent verbatim.
+    let dhcp_rows: Vec<(i32, String)> = sqlx::query_as(
+        r#"SELECT v.vlan_id, host(d.server_ip)
+             FROM net.dhcp_relay_target d
+             JOIN net.vlan v ON v.id = d.vlan_id AND v.deleted_at IS NULL
+            WHERE d.organization_id = $1
+              AND d.deleted_at      IS NULL
+              AND d.vlan_id IN (
+                  SELECT s2.vlan_id
+                    FROM net.ip_address dev_ip
+                    JOIN net.subnet s2 ON s2.id = dev_ip.subnet_id
+                     AND s2.deleted_at IS NULL
+                   WHERE dev_ip.organization_id  = $1
+                     AND dev_ip.assigned_to_id   = $2
+                     AND dev_ip.assigned_to_type = 'Device'
+                     AND dev_ip.deleted_at       IS NULL
+                     AND s2.vlan_id              IS NOT NULL)
+            ORDER BY v.vlan_id, d.priority ASC, d.server_ip"#)
+        .bind(org_id)
+        .bind(device_id)
+        .fetch_all(pool)
+        .await?;
+
     // MSTP priority — unique per (org, device) so one row or none.
     let mstp: Option<(i32,)> = sqlx::query_as(
         "SELECT priority
@@ -1042,6 +1081,9 @@ async fn fetch_context(
         vrrp_vips: vrrp_rows.into_iter()
             .map(|(vid, ip, vrid)| VrrpVipLine { vlan_id: vid, virtual_ip: ip, vrid })
             .collect(),
+        dhcp_relay_targets: dhcp_rows.into_iter()
+            .map(|(vid, ip)| DhcpRelayLine { vlan_id: vid, server_ip: ip })
+            .collect(),
     })
 }
 
@@ -1075,6 +1117,7 @@ impl Renderer for PicosRenderer {
         render_mstp_section(&mut out, ctx);
         render_mlag_section(&mut out, ctx);
         render_vrrp_section(&mut out, ctx);
+        render_dhcp_relay_section(&mut out, ctx);
         render_ports_section(&mut out, ctx);
         render_static_route_section(&mut out, ctx);
         render_lldp_section(&mut out, ctx);
@@ -1239,6 +1282,21 @@ fn render_vrrp_section(out: &mut String, ctx: &DeviceContext) {
         out.push_str(&format!(
             "set protocols vrrp interface vlan-{} vrid {} ip {}\n",
             v.vlan_id, v.vrid, v.virtual_ip));
+    }
+    out.push('\n');
+}
+
+/// DHCP relay section — one line per (VLAN, server_ip). Sourced
+/// from `net.dhcp_relay_target`; priority-ordered within each VLAN
+/// so the generated config expresses the tenant's primary / backup
+/// intent verbatim. Position: legacy step 13 — after VRRP, before
+/// the ports section.
+fn render_dhcp_relay_section(out: &mut String, ctx: &DeviceContext) {
+    if ctx.dhcp_relay_targets.is_empty() { return; }
+    for t in &ctx.dhcp_relay_targets {
+        out.push_str(&format!(
+            "set protocols dhcp relay interface vlan-{} dhcp-server-address {}\n",
+            t.vlan_id, t.server_ip));
     }
     out.push('\n');
 }
@@ -1526,6 +1584,7 @@ mod tests {
             port_qos_bindings: vec![],
             default_gateway: None,
             vrrp_vips: vec![],
+            dhcp_relay_targets: vec![],
         }
     }
 
@@ -1550,6 +1609,7 @@ mod tests {
             port_qos_bindings: vec![],
             default_gateway: None,
             vrrp_vips: vec![],
+            dhcp_relay_targets: vec![],
         }
     }
 
@@ -1583,6 +1643,7 @@ mod tests {
             port_qos_bindings: vec![],
             default_gateway: None,
             vrrp_vips: vec![],
+            dhcp_relay_targets: vec![],
         }
     }
 
@@ -1603,6 +1664,7 @@ mod tests {
             port_qos_bindings: vec![],
             default_gateway: None,
             vrrp_vips: vec![],
+            dhcp_relay_targets: vec![],
         }
     }
 
@@ -1623,6 +1685,7 @@ mod tests {
             port_qos_bindings: vec![],
             default_gateway: None,
             vrrp_vips: vec![],
+            dhcp_relay_targets: vec![],
         }
     }
 
@@ -1646,6 +1709,7 @@ mod tests {
             port_qos_bindings: vec![],
             default_gateway: None,
             vrrp_vips: vec![],
+            dhcp_relay_targets: vec![],
         }
     }
 
@@ -1666,6 +1730,7 @@ mod tests {
             port_qos_bindings: vec![],
             default_gateway: None,
             vrrp_vips: vec![],
+            dhcp_relay_targets: vec![],
         }
     }
 
@@ -1689,6 +1754,7 @@ mod tests {
             port_qos_bindings: vec![],
             default_gateway: None,
             vrrp_vips: vec![],
+            dhcp_relay_targets: vec![],
         }
     }
 
@@ -1709,6 +1775,7 @@ mod tests {
             port_qos_bindings: ports.into_iter().map(String::from).collect(),
             default_gateway: None,
             vrrp_vips: vec![],
+            dhcp_relay_targets: vec![],
         }
     }
 
@@ -1729,6 +1796,7 @@ mod tests {
             port_qos_bindings: vec![],
             default_gateway: gateway.map(String::from),
             vrrp_vips: vec![],
+            dhcp_relay_targets: vec![],
         }
     }
 
@@ -1749,6 +1817,28 @@ mod tests {
             port_qos_bindings: vec![],
             default_gateway: None,
             vrrp_vips: vips,
+            dhcp_relay_targets: vec![],
+        }
+    }
+
+    fn fixture_with_dhcp_relay(targets: Vec<DhcpRelayLine>) -> DeviceContext {
+        DeviceContext {
+            device_id: Uuid::nil(),
+            hostname: "CORE02".into(),
+            loopback: None,
+            management_ip: None,
+            vlans: vec![],
+            bgp: None,
+            bgp_neighbors: vec![],
+            mstp_priority: None,
+            mlag: None,
+            l3_svis: vec![],
+            port_descriptions: vec![],
+            port_l2_rules: vec![],
+            port_qos_bindings: vec![],
+            default_gateway: None,
+            vrrp_vips: vec![],
+            dhcp_relay_targets: targets,
         }
     }
 
@@ -1772,6 +1862,7 @@ mod tests {
             port_qos_bindings: vec![],
             default_gateway: None,
             vrrp_vips: vec![],
+            dhcp_relay_targets: vec![],
         }
     }
 
@@ -2271,6 +2362,75 @@ mod tests {
         let loopback   = out.find("loopback lo0").expect("loopback present");
         assert!(ip_routing < qos_first && qos_first < loopback,
             "QoS must sit between ip routing and loopback:\n{out}");
+    }
+
+    #[test]
+    fn picos_emits_dhcp_relay_line_per_target() {
+        let ctx = fixture_with_dhcp_relay(vec![
+            DhcpRelayLine { vlan_id: 120, server_ip: "10.11.120.10".into() },
+            DhcpRelayLine { vlan_id: 120, server_ip: "10.11.120.11".into() },
+        ]);
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains("set protocols dhcp relay interface vlan-120 dhcp-server-address 10.11.120.10"),
+            "first DHCP relay line missing:\n{out}");
+        assert!(out.contains("set protocols dhcp relay interface vlan-120 dhcp-server-address 10.11.120.11"),
+            "second DHCP relay line missing:\n{out}");
+    }
+
+    #[test]
+    fn picos_omits_dhcp_relay_section_when_no_targets() {
+        let out = PicosRenderer::render(&fixture_with_dhcp_relay(vec![]));
+        assert!(!out.contains("protocols dhcp relay"),
+            "no targets → no DHCP relay lines:\n{out}");
+    }
+
+    #[test]
+    fn picos_dhcp_relay_preserves_priority_order_from_context() {
+        // Fetch query ORDER BYs (vlan_id, priority ASC, server_ip);
+        // renderer preserves that order so "primary server first"
+        // expresses tenant intent cleanly.
+        let ctx = fixture_with_dhcp_relay(vec![
+            DhcpRelayLine { vlan_id: 120, server_ip: "10.11.120.10".into() }, // primary
+            DhcpRelayLine { vlan_id: 120, server_ip: "10.11.120.11".into() }, // backup
+        ]);
+        let out = PicosRenderer::render(&ctx);
+        let p10 = out.find("dhcp-server-address 10.11.120.10").expect("primary present");
+        let p11 = out.find("dhcp-server-address 10.11.120.11").expect("backup present");
+        assert!(p10 < p11,
+            "primary (10.11.120.10) must come before backup (10.11.120.11):\n{out}");
+    }
+
+    #[test]
+    fn picos_dhcp_relay_lands_after_vrrp_and_before_static_route() {
+        // Legacy step 13 — follows VRRP, precedes static route.
+        let ctx = DeviceContext {
+            device_id: Uuid::nil(),
+            hostname: "CORE02".into(),
+            loopback: None,
+            management_ip: None,
+            vlans: vec![],
+            bgp: None,
+            bgp_neighbors: vec![],
+            mstp_priority: None,
+            mlag: None,
+            l3_svis: vec![],
+            port_descriptions: vec![],
+            port_l2_rules: vec![],
+            port_qos_bindings: vec![],
+            default_gateway: Some("10.11.152.254".into()),
+            vrrp_vips: vec![
+                VrrpVipLine { vlan_id: 101, virtual_ip: "10.11.101.254".into(), vrid: 1 },
+            ],
+            dhcp_relay_targets: vec![
+                DhcpRelayLine { vlan_id: 120, server_ip: "10.11.120.10".into() },
+            ],
+        };
+        let out = PicosRenderer::render(&ctx);
+        let vrrp        = out.find("protocols vrrp interface").expect("VRRP present");
+        let dhcp        = out.find("protocols dhcp relay").expect("DHCP present");
+        let static_rte  = out.find("protocols static route").expect("static route present");
+        assert!(vrrp < dhcp,  "DHCP must come AFTER VRRP:\n{out}");
+        assert!(dhcp < static_rte, "DHCP must come BEFORE static route:\n{out}");
     }
 
     #[test]
