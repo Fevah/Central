@@ -330,6 +330,10 @@ public class MainViewModel : INotifyPropertyChanged
     public bool IsIpRangesPanelOpen { get => _isIpRangesPanelOpen; set { _isIpRangesPanelOpen = value; OnPropertyChanged(); } }
     public bool IsServersPanelOpen { get => _isServersPanelOpen; set { _isServersPanelOpen = value; OnPropertyChanged(); } }
 
+    /// <summary>Phase-6f net.server grid panel (distinct from IsServersPanelOpen which drives the legacy public.servers grid).</summary>
+    private bool _isNetServersPanelOpen;
+    public bool IsNetServersPanelOpen { get => _isNetServersPanelOpen; set { _isNetServersPanelOpen = value; OnPropertyChanged(); } }
+
     private bool _isSettingsPanelOpen;
     public bool IsSettingsPanelOpen
     {

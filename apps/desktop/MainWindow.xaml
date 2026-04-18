@@ -18,6 +18,7 @@
     xmlns:vlViews="clr-namespace:Central.Module.Networking.Vlans;assembly=Central.Module.Networking"
     xmlns:hierViews="clr-namespace:Central.Module.Networking.Hierarchy;assembly=Central.Module.Networking"
     xmlns:poolViews="clr-namespace:Central.Module.Networking.Pools;assembly=Central.Module.Networking"
+    xmlns:srvViews="clr-namespace:Central.Module.Networking.Servers;assembly=Central.Module.Networking"
     xmlns:admViews="clr-namespace:Central.Module.Global.Admin;assembly=Central.Module.Global"
     xmlns:sdViews="clr-namespace:Central.Module.ServiceDesk.Views;assembly=Central.Module.ServiceDesk"
     xmlns:taskViews="clr-namespace:Central.Module.Projects;assembly=Central.Module.Projects"
@@ -584,6 +585,10 @@
                                            Glyph="{dx:DXImage Image=BOBinLocation_16x16}"
                                            RibbonStyle="SmallWithText"
                                            IsChecked="{Binding IsPoolsPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Servers"
+                                           Glyph="{dx:DXImage Image=ServerMode_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsNetServersPanelOpen, Mode=TwoWay}" />
                         <dxb:BarCheckItem  Content="Devices"
                                            Glyph="{dx:DXImage Image=Grid_16x16}"
                                            RibbonStyle="SmallWithText"
@@ -1195,6 +1200,13 @@
                                         Caption="Pools"
                                         AllowClose="True">
                         <poolViews:PoolsTreePanel x:Name="PoolsTreePanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- Servers Panel (net.server grid — Phase 6f) -->
+                    <dxdo:DocumentPanel x:Name="NetServersPanel"
+                                        Caption="Servers"
+                                        AllowClose="True">
+                        <srvViews:ServerGridPanel x:Name="ServerGridPanel" />
                     </dxdo:DocumentPanel>
 
                     <!-- Devices Panel (extracted to Module.Devices) -->
