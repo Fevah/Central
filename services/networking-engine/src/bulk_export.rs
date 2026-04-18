@@ -124,28 +124,35 @@ pub async fn export_devices_csv(
 
 /// CSV dump of `net.vlan` for a tenant. Columns — in this order:
 ///
-///   vlan_id, display_name, description, scope_level, template_code, status
+///   vlan_id, display_name, description, scope_level,
+///   template_code, block_code, status
 ///
-/// `template_code` joins through `net.vlan_template` — lets the
-/// spreadsheet show "IT / Servers / DMZ" rather than a UUID that
-/// means nothing outside the DB. VLANs ordered by `vlan_id` so the
-/// export reads bottom-up the way operators think about it.
+/// `block_code` joins through `net.vlan_block` — carried for the
+/// round-trip with bulk import, which needs to resolve a VLAN's
+/// parent block FK. `template_code` joins through `net.vlan_template`
+/// for the same reason plus the human-recognisable display.
+///
+/// VLANs ordered by `(block_code, vlan_id)` so the export reads
+/// naturally when multiple blocks partition the 1..4094 space
+/// (e.g. infrastructure vs tenant ranges).
 pub async fn export_vlans_csv(
     pool: &PgPool,
     org_id: Uuid,
 ) -> Result<String, EngineError> {
-    type Row = (i32, String, Option<String>, String, Option<String>, String);
+    type Row = (i32, String, Option<String>, String, Option<String>, Option<String>, String);
     let rows: Vec<Row> = sqlx::query_as(
         r#"SELECT v.vlan_id,
                   v.display_name,
                   v.description,
                   v.scope_level,
                   t.template_code,
+                  b.block_code,
                   v.status::text AS status
              FROM net.vlan v
              LEFT JOIN net.vlan_template t ON t.id = v.template_id AND t.deleted_at IS NULL
+             LEFT JOIN net.vlan_block    b ON b.id = v.block_id    AND b.deleted_at IS NULL
             WHERE v.organization_id = $1 AND v.deleted_at IS NULL
-            ORDER BY v.vlan_id"#)
+            ORDER BY b.block_code NULLS LAST, v.vlan_id"#)
         .bind(org_id)
         .fetch_all(pool)
         .await?;
@@ -153,15 +160,17 @@ pub async fn export_vlans_csv(
     let mut out = String::with_capacity(128 + rows.len() * 96);
     out.push_str(&csv_row(&[
         "vlan_id".into(), "display_name".into(), "description".into(),
-        "scope_level".into(), "template_code".into(), "status".into(),
+        "scope_level".into(), "template_code".into(), "block_code".into(),
+        "status".into(),
     ]));
-    for (vlan_id, name, desc, scope, tpl, status) in rows {
+    for (vlan_id, name, desc, scope, tpl, block, status) in rows {
         out.push_str(&csv_row(&[
             vlan_id.to_string(),
             csv_escape(&name),
             csv_escape(&desc.unwrap_or_default()),
             csv_escape(&scope),
             csv_escape(&tpl.unwrap_or_default()),
+            csv_escape(&block.unwrap_or_default()),
             csv_escape(&status),
         ]));
     }

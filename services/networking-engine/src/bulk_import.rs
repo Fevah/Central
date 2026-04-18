@@ -459,6 +459,447 @@ fn validate_device_row(
     }
 }
 
+// ─── VLAN import ─────────────────────────────────────────────────────────
+
+/// Column order mirrors `bulk_export::export_vlans_csv` so exports
+/// round-trip cleanly through the import.
+const VLAN_COLUMNS: &[&str] = &[
+    "vlan_id", "display_name", "description", "scope_level",
+    "template_code", "block_code", "status",
+];
+
+/// Validate + optionally apply a CSV bulk import of VLANs. Same
+/// shape as `import_devices`: dry-run is the default, apply is
+/// create-only + transactional.
+///
+/// `block_code` is **required** (VLANs can't exist without a parent
+/// block); `template_code` is optional; `description` / `scope_level`
+/// / `status` have sensible defaults when empty.
+pub async fn import_vlans(
+    pool: &PgPool,
+    org_id: Uuid,
+    body: &str,
+    dry_run: bool,
+    user_id: Option<i32>,
+) -> Result<ImportValidationResult, EngineError> {
+    let rows = parse_csv(body)?;
+    if rows.is_empty() {
+        return Ok(ImportValidationResult {
+            total_rows: 0, valid: 0, invalid: 0,
+            dry_run, applied: false, outcomes: vec![],
+        });
+    }
+
+    let header = &rows[0];
+    if header.len() != VLAN_COLUMNS.len()
+        || !header.iter().zip(VLAN_COLUMNS).all(|(a,b)| a.eq_ignore_ascii_case(b))
+    {
+        return Err(EngineError::bad_request(format!(
+            "vlan import header must be: {}", VLAN_COLUMNS.join(","))));
+    }
+
+    // Pre-fetch FK dimensions — block + template codes.
+    let block_rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, block_code FROM net.vlan_block
+          WHERE organization_id = $1 AND deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let block_codes: std::collections::HashSet<String> =
+        block_rows.iter().map(|(_, c)| c.clone()).collect();
+    let block_code_to_id: std::collections::HashMap<String, Uuid> =
+        block_rows.into_iter().map(|(id, c)| (c, id)).collect();
+
+    let template_rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, template_code FROM net.vlan_template
+          WHERE organization_id = $1 AND deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let template_codes: std::collections::HashSet<String> =
+        template_rows.iter().map(|(_, c)| c.clone()).collect();
+    let template_code_to_id: std::collections::HashMap<String, Uuid> =
+        template_rows.into_iter().map(|(id, c)| (c, id)).collect();
+
+    // Existing (block_id, vlan_id) pairs — drives the dup check.
+    // Keyed by the string "block_code|vlan_id" for easy lookup.
+    let existing_rows: Vec<(String, i32)> = sqlx::query_as(
+        "SELECT b.block_code, v.vlan_id
+           FROM net.vlan v
+           JOIN net.vlan_block b ON b.id = v.block_id AND b.deleted_at IS NULL
+          WHERE v.organization_id = $1 AND v.deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let existing_pairs: std::collections::HashSet<String> =
+        existing_rows.into_iter().map(|(c, id)| format!("{c}|{id}")).collect();
+
+    let mut outcomes: Vec<ImportRowOutcome> = Vec::with_capacity(rows.len().saturating_sub(1));
+    for (i, row) in rows.iter().enumerate().skip(1) {
+        let row_number = i + 1;
+        let outcome = validate_vlan_row(row, row_number, &block_codes, &template_codes, &existing_pairs);
+        outcomes.push(outcome);
+    }
+
+    let valid   = outcomes.iter().filter(|o| o.ok).count();
+    let invalid = outcomes.len() - valid;
+
+    if dry_run || invalid > 0 {
+        return Ok(ImportValidationResult {
+            total_rows: outcomes.len(),
+            valid, invalid,
+            dry_run, applied: false, outcomes,
+        });
+    }
+
+    let mut tx = pool.begin().await?;
+    for (outcome_idx, row) in rows.iter().enumerate().skip(1).map(|(_, r)| r).enumerate() {
+        let vlan_id: i32  = row[0].trim().parse().unwrap_or(0);  // validator checked
+        let display_name  = row[1].trim();
+        let description   = row[2].trim();
+        let scope_level   = row[3].trim();
+        let template_code = row[4].trim();
+        let block_code    = row[5].trim();
+        let status        = row[6].trim();
+
+        let block_id    = block_code_to_id.get(block_code).copied()
+            .expect("validator enforced block_code exists");
+        let template_id = if template_code.is_empty() { None }
+                          else { template_code_to_id.get(template_code).copied() };
+        let desc_opt: Option<&str>  = if description.is_empty() { None } else { Some(description) };
+        let scope_val   = if scope_level.is_empty() { "Free" }     else { scope_level };
+        let status_val  = if status.is_empty()      { "Active" }   else { status };
+
+        let insert_result: Result<(Uuid,), sqlx::Error> = sqlx::query_as(
+            "INSERT INTO net.vlan
+                (organization_id, block_id, template_id, vlan_id,
+                 display_name, description, scope_level, status,
+                 created_by, updated_by)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8::net.entity_status, $9, $9)
+             RETURNING id")
+            .bind(org_id)
+            .bind(block_id)
+            .bind(template_id)
+            .bind(vlan_id)
+            .bind(display_name)
+            .bind(desc_opt)
+            .bind(scope_val)
+            .bind(status_val)
+            .bind(user_id)
+            .fetch_one(&mut *tx).await;
+
+        let vlan_uuid = match insert_result {
+            Ok((id,)) => id,
+            Err(e) => {
+                let o = &mut outcomes[outcome_idx];
+                o.ok = false;
+                o.errors.push(format!("database INSERT failed: {e}"));
+                return Ok(ImportValidationResult {
+                    total_rows: outcomes.len(),
+                    valid: outcomes.iter().filter(|o| o.ok).count(),
+                    invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                    dry_run: false, applied: false, outcomes,
+                });
+            }
+        };
+
+        audit::append_tx(&mut tx, &AuditEvent {
+            organization_id: org_id,
+            source_service: "networking-engine",
+            entity_type: "Vlan",
+            entity_id: Some(vlan_uuid),
+            action: "Created",
+            actor_user_id: user_id,
+            actor_display: None, client_ip: None, correlation_id: None,
+            details: serde_json::json!({
+                "source": "bulk_import",
+                "vlan_id": vlan_id,
+                "block_code": block_code,
+            }),
+        }).await?;
+    }
+    tx.commit().await?;
+
+    Ok(ImportValidationResult {
+        total_rows: outcomes.len(),
+        valid, invalid: 0,
+        dry_run: false, applied: true, outcomes,
+    })
+}
+
+fn validate_vlan_row(
+    row: &[String],
+    row_number: usize,
+    block_codes: &std::collections::HashSet<String>,
+    template_codes: &std::collections::HashSet<String>,
+    existing_pairs: &std::collections::HashSet<String>,
+) -> ImportRowOutcome {
+    let mut errors = Vec::new();
+
+    if row.len() != VLAN_COLUMNS.len() {
+        errors.push(format!("expected {} columns, got {}", VLAN_COLUMNS.len(), row.len()));
+        return ImportRowOutcome {
+            row_number, ok: false, errors,
+            identifier: row.first().cloned().unwrap_or_default(),
+        };
+    }
+
+    let vlan_id_str   = row[0].trim();
+    let display_name  = row[1].trim();
+    let scope_level   = row[3].trim();
+    let template_code = row[4].trim();
+    let block_code    = row[5].trim();
+    let status        = row[6].trim();
+
+    // vlan_id: parse + range.
+    let vlan_id_ok = vlan_id_str.parse::<i32>().ok();
+    match vlan_id_ok {
+        None    => errors.push(format!("vlan_id '{vlan_id_str}' is not a valid integer")),
+        Some(n) if !(1..=4094).contains(&n) =>
+            errors.push(format!("vlan_id {n} is outside the 1-4094 range")),
+        Some(_) => {}
+    }
+    if display_name.is_empty() {
+        errors.push("display_name is required".into());
+    }
+    if block_code.is_empty() {
+        errors.push("block_code is required".into());
+    } else if !block_codes.contains(block_code) {
+        errors.push(format!("block_code '{block_code}' not found in this tenant's vlan_block catalog"));
+    }
+    if !template_code.is_empty() && !template_codes.contains(template_code) {
+        errors.push(format!("template_code '{template_code}' not found in this tenant's vlan_template catalog"));
+    }
+    if !scope_level.is_empty() &&
+        !matches!(scope_level, "Free"|"Region"|"Site"|"Building"|"Device")
+    {
+        errors.push(format!("scope_level '{scope_level}' must be Free/Region/Site/Building/Device"));
+    }
+    if !status.is_empty() &&
+        !matches!(status, "Planned"|"Reserved"|"Active"|"Deprecated"|"Retired")
+    {
+        errors.push(format!("status '{status}' must be Planned/Reserved/Active/Deprecated/Retired"));
+    }
+    // Dup check — only if vlan_id parsed AND block_code resolved.
+    if let (Some(n), true) = (vlan_id_ok, !block_code.is_empty() && block_codes.contains(block_code)) {
+        let key = format!("{block_code}|{n}");
+        if existing_pairs.contains(&key) {
+            errors.push(format!(
+                "vlan {n} already exists in block '{block_code}' — update mode not yet supported"));
+        }
+    }
+
+    ImportRowOutcome {
+        row_number,
+        ok: errors.is_empty(),
+        errors,
+        identifier: vlan_id_str.to_string(),
+    }
+}
+
+// ─── Subnet import ───────────────────────────────────────────────────────
+
+/// Column order mirrors `bulk_export::export_subnets_csv`.
+const SUBNET_COLUMNS: &[&str] = &[
+    "subnet_code", "display_name", "network", "vlan_id",
+    "pool_code", "scope_level", "status",
+];
+
+/// Validate + optionally apply a CSV bulk import of subnets. Same
+/// semantics as the device + VLAN importers.
+///
+/// `pool_code` is required (subnets can't exist without a parent
+/// pool); `network` is required + must be a valid CIDR; `subnet_code`
+/// is required and must be unique per-tenant.
+///
+/// **vlan_id is ignored on apply.** Multi-block tenants can have the
+/// same numeric vlan_id in multiple blocks, making the resolution
+/// ambiguous from a numeric tag alone. Same "ignored-on-apply"
+/// semantic as ASN on the device importer — operators carry the
+/// column for human reference + wire it up via the CRUD panel.
+pub async fn import_subnets(
+    pool: &PgPool,
+    org_id: Uuid,
+    body: &str,
+    dry_run: bool,
+    user_id: Option<i32>,
+) -> Result<ImportValidationResult, EngineError> {
+    let rows = parse_csv(body)?;
+    if rows.is_empty() {
+        return Ok(ImportValidationResult {
+            total_rows: 0, valid: 0, invalid: 0,
+            dry_run, applied: false, outcomes: vec![],
+        });
+    }
+
+    let header = &rows[0];
+    if header.len() != SUBNET_COLUMNS.len()
+        || !header.iter().zip(SUBNET_COLUMNS).all(|(a,b)| a.eq_ignore_ascii_case(b))
+    {
+        return Err(EngineError::bad_request(format!(
+            "subnet import header must be: {}", SUBNET_COLUMNS.join(","))));
+    }
+
+    let pool_rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, pool_code FROM net.ip_pool
+          WHERE organization_id = $1 AND deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let pool_codes: std::collections::HashSet<String> =
+        pool_rows.iter().map(|(_, c)| c.clone()).collect();
+    let pool_code_to_id: std::collections::HashMap<String, Uuid> =
+        pool_rows.into_iter().map(|(id, c)| (c, id)).collect();
+
+    let existing_codes: Vec<(String,)> = sqlx::query_as(
+        "SELECT subnet_code FROM net.subnet
+          WHERE organization_id = $1 AND deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let existing_codes: std::collections::HashSet<String> =
+        existing_codes.into_iter().map(|(c,)| c).collect();
+
+    let mut outcomes: Vec<ImportRowOutcome> = Vec::with_capacity(rows.len().saturating_sub(1));
+    for (i, row) in rows.iter().enumerate().skip(1) {
+        let row_number = i + 1;
+        outcomes.push(validate_subnet_row(row, row_number, &pool_codes, &existing_codes));
+    }
+
+    let valid   = outcomes.iter().filter(|o| o.ok).count();
+    let invalid = outcomes.len() - valid;
+
+    if dry_run || invalid > 0 {
+        return Ok(ImportValidationResult {
+            total_rows: outcomes.len(),
+            valid, invalid,
+            dry_run, applied: false, outcomes,
+        });
+    }
+
+    let mut tx = pool.begin().await?;
+    for (outcome_idx, row) in rows.iter().enumerate().skip(1).map(|(_, r)| r).enumerate() {
+        let subnet_code = row[0].trim();
+        let display_name= row[1].trim();
+        let network     = row[2].trim();
+        // row[3] is vlan_id — carried by the CSV for reference,
+        // ignored on apply (see module docs).
+        let pool_code   = row[4].trim();
+        let scope_level = row[5].trim();
+        let status      = row[6].trim();
+
+        let pool_id_val = pool_code_to_id.get(pool_code).copied()
+            .expect("validator enforced pool_code exists");
+        let scope_val   = if scope_level.is_empty() { "Free" }   else { scope_level };
+        let status_val  = if status.is_empty()      { "Active" } else { status };
+
+        let insert_result: Result<(Uuid,), sqlx::Error> = sqlx::query_as(
+            "INSERT INTO net.subnet
+                (organization_id, pool_id, subnet_code, display_name,
+                 network, scope_level, status, created_by, updated_by)
+             VALUES ($1, $2, $3, $4, $5::cidr, $6, $7::net.entity_status, $8, $8)
+             RETURNING id")
+            .bind(org_id)
+            .bind(pool_id_val)
+            .bind(subnet_code)
+            .bind(display_name)
+            .bind(network)
+            .bind(scope_val)
+            .bind(status_val)
+            .bind(user_id)
+            .fetch_one(&mut *tx).await;
+
+        let subnet_id = match insert_result {
+            Ok((id,)) => id,
+            Err(e) => {
+                let o = &mut outcomes[outcome_idx];
+                o.ok = false;
+                o.errors.push(format!("database INSERT failed: {e}"));
+                return Ok(ImportValidationResult {
+                    total_rows: outcomes.len(),
+                    valid: outcomes.iter().filter(|o| o.ok).count(),
+                    invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                    dry_run: false, applied: false, outcomes,
+                });
+            }
+        };
+
+        audit::append_tx(&mut tx, &AuditEvent {
+            organization_id: org_id,
+            source_service: "networking-engine",
+            entity_type: "Subnet",
+            entity_id: Some(subnet_id),
+            action: "Created",
+            actor_user_id: user_id,
+            actor_display: None, client_ip: None, correlation_id: None,
+            details: serde_json::json!({
+                "source": "bulk_import",
+                "subnet_code": subnet_code,
+                "network": network,
+                "pool_code": pool_code,
+            }),
+        }).await?;
+    }
+    tx.commit().await?;
+
+    Ok(ImportValidationResult {
+        total_rows: outcomes.len(),
+        valid, invalid: 0,
+        dry_run: false, applied: true, outcomes,
+    })
+}
+
+fn validate_subnet_row(
+    row: &[String],
+    row_number: usize,
+    pool_codes: &std::collections::HashSet<String>,
+    existing_codes: &std::collections::HashSet<String>,
+) -> ImportRowOutcome {
+    let mut errors = Vec::new();
+
+    if row.len() != SUBNET_COLUMNS.len() {
+        errors.push(format!("expected {} columns, got {}", SUBNET_COLUMNS.len(), row.len()));
+        return ImportRowOutcome {
+            row_number, ok: false, errors,
+            identifier: row.first().cloned().unwrap_or_default(),
+        };
+    }
+
+    let subnet_code = row[0].trim();
+    let display_name= row[1].trim();
+    let network     = row[2].trim();
+    let pool_code   = row[4].trim();
+    let scope_level = row[5].trim();
+    let status      = row[6].trim();
+
+    if subnet_code.is_empty() {
+        errors.push("subnet_code is required".into());
+    } else if existing_codes.contains(subnet_code) {
+        errors.push(format!(
+            "subnet_code '{subnet_code}' already exists — update mode not yet supported"));
+    }
+    if display_name.is_empty() {
+        errors.push("display_name is required".into());
+    }
+    if network.is_empty() {
+        errors.push("network is required".into());
+    } else if network.parse::<ipnetwork::IpNetwork>().is_err() {
+        errors.push(format!("network '{network}' is not a valid CIDR"));
+    }
+    if pool_code.is_empty() {
+        errors.push("pool_code is required".into());
+    } else if !pool_codes.contains(pool_code) {
+        errors.push(format!("pool_code '{pool_code}' not found in this tenant's ip_pool catalog"));
+    }
+    if !scope_level.is_empty() &&
+        !matches!(scope_level, "Free"|"Region"|"Site"|"Building"|"Floor"|"Room")
+    {
+        errors.push(format!("scope_level '{scope_level}' must be Free/Region/Site/Building/Floor/Room"));
+    }
+    if !status.is_empty() &&
+        !matches!(status, "Planned"|"Reserved"|"Active"|"Deprecated"|"Retired")
+    {
+        errors.push(format!("status '{status}' must be Planned/Reserved/Active/Deprecated/Retired"));
+    }
+
+    ImportRowOutcome {
+        row_number,
+        ok: errors.is_empty(),
+        errors,
+        identifier: subnet_code.to_string(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

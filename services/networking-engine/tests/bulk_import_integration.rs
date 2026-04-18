@@ -171,6 +171,155 @@ async fn apply_rolls_back_on_any_invalid_row() {
         fx.count_devices().await);
 }
 
+// ─── VLAN + subnet import tests ──────────────────────────────────────────
+
+/// Extra scaffolding on top of TenantFixture — seeds a VLAN pool +
+/// block (needed for VLAN import) plus an IP pool (needed for
+/// subnet import). Layered on top so the plain TenantFixture stays
+/// minimal for the device-import tests that don't need them.
+struct PoolsFixture {
+    tenant: TenantFixture,
+    block_code: String,
+    pool_code: String,
+}
+
+impl PoolsFixture {
+    async fn new(pool: PgPool) -> sqlx::Result<Self> {
+        let tenant = TenantFixture::new(pool).await?;
+
+        let vlan_pool_id: (Uuid,) = sqlx::query_as(
+            "INSERT INTO net.vlan_pool (organization_id, pool_code, display_name,
+                                        vlan_first, vlan_last)
+             VALUES ($1, 'BI-VP', 'BI VLAN pool', 1, 4094) RETURNING id")
+            .bind(tenant.org_id).fetch_one(&tenant.pool).await?;
+        sqlx::query(
+            "INSERT INTO net.vlan_block (organization_id, pool_id, block_code, display_name,
+                                         vlan_first, vlan_last, scope_level)
+             VALUES ($1, $2, 'BI-VB', 'BI VLAN block', 1, 4094, 'Free')")
+            .bind(tenant.org_id).bind(vlan_pool_id.0).execute(&tenant.pool).await?;
+
+        sqlx::query(
+            "INSERT INTO net.ip_pool (organization_id, pool_code, display_name,
+                                      network, address_family)
+             VALUES ($1, 'BI-IP', 'BI IP pool', '10.99.0.0/16', 4)")
+            .bind(tenant.org_id).execute(&tenant.pool).await?;
+
+        Ok(Self { tenant, block_code: "BI-VB".into(), pool_code: "BI-IP".into() })
+    }
+
+    async fn count_vlans(&self) -> i64 {
+        let (n,): (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM net.vlan
+              WHERE organization_id = $1 AND deleted_at IS NULL")
+            .bind(self.tenant.org_id).fetch_one(&self.tenant.pool).await.unwrap();
+        n
+    }
+
+    async fn count_subnets(&self) -> i64 {
+        let (n,): (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM net.subnet
+              WHERE organization_id = $1 AND deleted_at IS NULL")
+            .bind(self.tenant.org_id).fetch_one(&self.tenant.pool).await.unwrap();
+        n
+    }
+}
+
+const VLAN_HEADER: &str = "vlan_id,display_name,description,scope_level,template_code,block_code,status\r\n";
+const SUBNET_HEADER: &str = "subnet_code,display_name,network,vlan_id,pool_code,scope_level,status\r\n";
+
+#[tokio::test]
+#[ignore]
+async fn vlan_import_dry_run_no_writes() {
+    let Some(pool) = pool_or_skip("vlan_import_dry_run_no_writes").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    let csv = format!("{VLAN_HEADER}101,IT,,Free,,{},Active\r\n", fx.block_code);
+    let result = bulk_import::import_vlans(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, true, None,
+    ).await.expect("dry run");
+    assert_eq!(result.valid, 1);
+    assert!(!result.applied);
+    assert_eq!(fx.count_vlans().await, 0);
+}
+
+#[tokio::test]
+#[ignore]
+async fn vlan_import_happy_path_commits() {
+    let Some(pool) = pool_or_skip("vlan_import_happy_path_commits").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    let csv = format!(
+        "{VLAN_HEADER}\
+         101,IT,,Free,,{b},Active\r\n\
+         120,Servers,Servers LAN,Free,,{b},Active\r\n",
+        b = fx.block_code);
+    let result = bulk_import::import_vlans(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, Some(9),
+    ).await.expect("apply");
+    assert_eq!(result.valid, 2);
+    assert!(result.applied);
+    assert_eq!(fx.count_vlans().await, 2);
+}
+
+#[tokio::test]
+#[ignore]
+async fn vlan_import_rejects_duplicate_vlan_id_in_block() {
+    let Some(pool) = pool_or_skip("vlan_import_rejects_duplicate_vlan_id_in_block").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    let csv1 = format!("{VLAN_HEADER}101,IT,,Free,,{},Active\r\n", fx.block_code);
+    bulk_import::import_vlans(&fx.tenant.pool, fx.tenant.org_id, &csv1, false, None)
+        .await.expect("seed");
+    assert_eq!(fx.count_vlans().await, 1);
+
+    let result = bulk_import::import_vlans(&fx.tenant.pool, fx.tenant.org_id, &csv1, false, None)
+        .await.expect("re-apply");
+    assert_eq!(result.invalid, 1);
+    assert!(!result.applied);
+    assert!(result.outcomes[0].errors.iter().any(|e| e.contains("already exists")),
+        "dup vlan should surface clear error: {:?}", result.outcomes[0].errors);
+    assert_eq!(fx.count_vlans().await, 1);
+}
+
+#[tokio::test]
+#[ignore]
+async fn subnet_import_happy_path_commits() {
+    let Some(pool) = pool_or_skip("subnet_import_happy_path_commits").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    let csv = format!(
+        "{SUBNET_HEADER}\
+         BI-SUB-A,Subnet A,10.99.1.0/24,,{p},Free,Active\r\n\
+         BI-SUB-B,Subnet B,10.99.2.0/24,,{p},Free,Active\r\n",
+        p = fx.pool_code);
+    let result = bulk_import::import_subnets(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, None,
+    ).await.expect("apply");
+    assert_eq!(result.valid, 2);
+    assert!(result.applied);
+    assert_eq!(fx.count_subnets().await, 2);
+}
+
+#[tokio::test]
+#[ignore]
+async fn subnet_import_rejects_invalid_cidr_without_writing() {
+    let Some(pool) = pool_or_skip("subnet_import_rejects_invalid_cidr_without_writing").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    let csv = format!(
+        "{SUBNET_HEADER}\
+         BI-SUB-A,Subnet A,10.99.1.0/24,,{p},Free,Active\r\n\
+         BI-SUB-B,Subnet B,not-a-cidr,,{p},Free,Active\r\n",
+        p = fx.pool_code);
+    let result = bulk_import::import_subnets(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, None,
+    ).await.expect("apply");
+    assert_eq!(result.invalid, 1);
+    assert!(!result.applied);
+    assert_eq!(fx.count_subnets().await, 0,
+        "invalid CIDR must prevent partial writes — atomic across all rows");
+}
+
 #[tokio::test]
 #[ignore]
 async fn apply_rejects_existing_hostname_as_row_error() {

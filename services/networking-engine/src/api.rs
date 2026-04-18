@@ -134,9 +134,11 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/dhcp-relay-targets/export",        get(export_dhcp_relay_targets))
         // Bulk import (Phase 10) — POST the CSV body. `dryRun=true`
         // (the default) runs validate-only + returns per-row outcomes.
-        // `dryRun=false` is reserved for the apply path that lands in
-        // a follow-on slice and currently 400s with a clear message.
+        // `dryRun=false` applies via a single transaction, rolling
+        // back the whole import if any row fails.
         .route("/api/net/devices/import",                   post(import_devices_csv))
+        .route("/api/net/vlans/import",                     post(import_vlans_csv))
+        .route("/api/net/subnets/import",                   post(import_subnets_csv))
         .with_state(state)
 }
 
@@ -1148,6 +1150,32 @@ async fn import_devices_csv(
     // browser's FormData upload handlers will also produce text.
     let user_id = header_user_id(&headers);
     let result = bulk_import::import_devices(
+        &s.pool, q.organization_id, &body, q.dry_run, user_id
+    ).await?;
+    Ok(Json(result))
+}
+
+async fn import_vlans_csv(
+    State(s): State<AppState>,
+    Query(q): Query<bulk_import::ImportQuery>,
+    headers: HeaderMap,
+    body: String,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    let result = bulk_import::import_vlans(
+        &s.pool, q.organization_id, &body, q.dry_run, user_id
+    ).await?;
+    Ok(Json(result))
+}
+
+async fn import_subnets_csv(
+    State(s): State<AppState>,
+    Query(q): Query<bulk_import::ImportQuery>,
+    headers: HeaderMap,
+    body: String,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    let result = bulk_import::import_subnets(
         &s.pool, q.organization_id, &body, q.dry_run, user_id
     ).await?;
     Ok(Json(result))

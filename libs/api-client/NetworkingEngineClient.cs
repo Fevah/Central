@@ -520,20 +520,44 @@ public class NetworkingEngineClient : IDisposable
     public Task<string> ExportDhcpRelayTargetsCsvAsync(Guid organizationId, CancellationToken ct = default)
         => GetStringAsync($"/api/net/dhcp-relay-targets/export?organizationId={organizationId}", ct);
 
-    /// <summary>Validate (or apply, when the server supports it) a CSV
-    /// bulk import of devices. <paramref name="dryRun"/>=true runs
-    /// per-row validation only and returns the structured outcome
-    /// without writing anything; dryRun=false is reserved for the
-    /// apply path that'll land in a follow-on service slice.</summary>
-    public async Task<ImportValidationResultDto> ImportDevicesCsvAsync(Guid organizationId,
+    /// <summary>Validate or apply a CSV bulk import of devices.
+    /// <paramref name="dryRun"/>=true runs per-row validation only
+    /// and returns the structured outcome without writing;
+    /// <paramref name="dryRun"/>=false applies via a single
+    /// transaction — the whole import rolls back on any row-level
+    /// failure. Create-only today; update-on-upsert lands in a
+    /// follow-on slice.</summary>
+    public Task<ImportValidationResultDto> ImportDevicesCsvAsync(Guid organizationId,
         string csvBody, bool dryRun = true, CancellationToken ct = default)
+        => PostCsvAsync("/api/net/devices/import", organizationId, csvBody, dryRun, ct);
+
+    /// <summary>Bulk import VLANs. Required columns match what
+    /// <see cref="ExportVlansCsvAsync"/> emits (vlan_id, display_name,
+    /// description, scope_level, template_code, block_code, status);
+    /// `block_code` must resolve to an existing net.vlan_block row.</summary>
+    public Task<ImportValidationResultDto> ImportVlansCsvAsync(Guid organizationId,
+        string csvBody, bool dryRun = true, CancellationToken ct = default)
+        => PostCsvAsync("/api/net/vlans/import", organizationId, csvBody, dryRun, ct);
+
+    /// <summary>Bulk import subnets. `pool_code` is required and must
+    /// resolve; the `vlan_id` column is accepted but ignored on apply
+    /// (operators link via the CRUD panel — numeric vlan_id can be
+    /// ambiguous across multiple blocks).</summary>
+    public Task<ImportValidationResultDto> ImportSubnetsCsvAsync(Guid organizationId,
+        string csvBody, bool dryRun = true, CancellationToken ct = default)
+        => PostCsvAsync("/api/net/subnets/import", organizationId, csvBody, dryRun, ct);
+
+    /// <summary>Shared transport for every `*/import` POST — keeps
+    /// the three entity-specific helpers to one line each.</summary>
+    private async Task<ImportValidationResultDto> PostCsvAsync(string path,
+        Guid organizationId, string csvBody, bool dryRun, CancellationToken ct)
     {
-        var url = $"/api/net/devices/import?organizationId={organizationId}&dryRun={(dryRun ? "true" : "false")}";
+        var url = $"{path}?organizationId={organizationId}&dryRun={(dryRun ? "true" : "false")}";
         var content = new StringContent(csvBody, System.Text.Encoding.UTF8, "text/csv");
         var resp = await _http.PostAsync(url, content, ct);
         await EnsureSuccessAsync(resp, ct);
         return (await resp.Content.ReadFromJsonAsync<ImportValidationResultDto>(Json, ct))
-            ?? throw new NetworkingEngineException(0, "POST import returned null body");
+            ?? throw new NetworkingEngineException(0, $"POST {path} returned null body");
     }
 
     // ─── Transport helpers ──────────────────────────────────────────────
