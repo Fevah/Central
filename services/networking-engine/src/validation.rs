@@ -199,6 +199,126 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "device.unique_hostname",
+        name: "Device hostnames unique within tenant",
+        description: "Two non-deleted devices must not share a hostname. \
+                      The table has a UNIQUE constraint, so this rule is \
+                      the belt-and-braces check for imports that bypass it.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server.unique_hostname",
+        name: "Server hostnames unique within tenant",
+        description: "Two non-deleted servers must not share a hostname (same \
+                      reasoning as device.unique_hostname).",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "ip_address.unique_per_subnet",
+        name: "IP addresses unique within their subnet",
+        description: "Two non-deleted ip_address rows must not share both \
+                      subnet_id and address. Catches double-allocation that \
+                      bypasses the allocation service.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "subnet.parent_same_pool",
+        name: "Subnet parent must be in same pool",
+        description: "When parent_subnet_id is set, the parent and child must \
+                      live in the same ip_pool — cross-pool hierarchy is a \
+                      data-entry error.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "subnet.parent_contains_child",
+        name: "Subnet parent CIDR must contain child CIDR",
+        description: "parent_subnet.network must be a supernet of child \
+                      subnet.network. A /24 can't be parent of a /22 by \
+                      definition.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server_nic.index_unique_per_server",
+        name: "Server NIC indexes unique per server",
+        description: "Two non-deleted NIC rows on one server must not share \
+                      nic_index. The fan-out service enforces dense 0..N-1 \
+                      on create; this catches manual double-inserts.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server_nic.index_dense_sequence",
+        name: "Server NIC indexes form dense 0..N-1 sequence",
+        description: "Active NIC rows on one server should be numbered 0, 1, \
+                      …, count-1 with no gaps. Sparse indexes usually mean \
+                      a fan-out partially failed and partial-retry drifted.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "link.building_matches_endpoints",
+        name: "Link's building matches at least one endpoint",
+        description: "If a link carries a building_id, at least one of its \
+                      endpoint devices should sit in the same building. A \
+                      link tagged for Building A with both endpoints in \
+                      Building B is suspicious.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "loopback.ipv6_slash_128",
+        name: "Loopback IPv6 subnets must be /128",
+        description: "Loopback subnets on IPv6 should be /128 per device, \
+                      same reasoning as the /32 rule for IPv4.",
+        category: "Safety",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "mlag_domain.unique_per_tenant",
+        name: "MLAG domain IDs unique per tenant",
+        description: "MLAG uniqueness is tenant-wide (not pool-wide): two \
+                      non-deleted mlag_domain rows must not share domain_id \
+                      within an organization.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "asn_allocation.unique_per_tenant",
+        name: "ASN values unique per tenant",
+        description: "An ASN number must be allocated only once per tenant. \
+                      A duplicate would mean two devices are advertising the \
+                      same AS, which is an operational hazard.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "device.management_ip_for_active",
+        name: "Active devices should carry management_ip",
+        description: "Devices in status='Active' are expected to be reachable, \
+                      which requires a management_ip. Advisory — a device \
+                      legitimately out-of-band managed may fail this; toggle \
+                      off per-tenant if that's your norm.",
+        category: "Advisory",
+        default_severity: Severity::Info,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -398,6 +518,18 @@ async fn dispatch(
         "link.endpoints_distinct_devices"     => run_link_endpoints_distinct(pool, org_id, severity, out).await,
         "ip_address.contained_in_subnet"      => run_ip_contained_in_subnet(pool, org_id, severity, out).await,
         "subnet.scope_entity_present_when_non_free" => run_subnet_scope_entity_present(pool, org_id, severity, out).await,
+        "device.unique_hostname"               => run_device_unique_hostname(pool, org_id, severity, out).await,
+        "server.unique_hostname"               => run_server_unique_hostname(pool, org_id, severity, out).await,
+        "ip_address.unique_per_subnet"         => run_ip_unique_per_subnet(pool, org_id, severity, out).await,
+        "subnet.parent_same_pool"              => run_subnet_parent_same_pool(pool, org_id, severity, out).await,
+        "subnet.parent_contains_child"         => run_subnet_parent_contains_child(pool, org_id, severity, out).await,
+        "server_nic.index_unique_per_server"   => run_server_nic_index_unique(pool, org_id, severity, out).await,
+        "server_nic.index_dense_sequence"      => run_server_nic_index_dense(pool, org_id, severity, out).await,
+        "link.building_matches_endpoints"      => run_link_building_matches_endpoints(pool, org_id, severity, out).await,
+        "loopback.ipv6_slash_128"              => run_loopback_v6_slash_128(pool, org_id, severity, out).await,
+        "mlag_domain.unique_per_tenant"        => run_mlag_unique_per_tenant(pool, org_id, severity, out).await,
+        "asn_allocation.unique_per_tenant"     => run_asn_unique_per_tenant(pool, org_id, severity, out).await,
+        "device.management_ip_for_active"      => run_active_device_has_management_ip(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
     }
@@ -739,6 +871,304 @@ async fn run_subnet_scope_entity_present(
     Ok(())
 }
 
+async fn run_device_unique_hostname(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT d.id, d.hostname
+           FROM net.device d
+           JOIN (
+             SELECT hostname
+               FROM net.device
+              WHERE organization_id = $1 AND deleted_at IS NULL
+              GROUP BY hostname
+             HAVING COUNT(*) > 1
+           ) dup ON dup.hostname = d.hostname
+          WHERE d.organization_id = $1 AND d.deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname) in rows {
+        out.push(Violation {
+            rule_code: "device.unique_hostname".into(),
+            severity, entity_type: "Device".into(), entity_id: Some(id),
+            message: format!("Device hostname '{hostname}' is duplicated within the tenant."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_server_unique_hostname(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT s.id, s.hostname
+           FROM net.server s
+           JOIN (
+             SELECT hostname
+               FROM net.server
+              WHERE organization_id = $1 AND deleted_at IS NULL
+              GROUP BY hostname
+             HAVING COUNT(*) > 1
+           ) dup ON dup.hostname = s.hostname
+          WHERE s.organization_id = $1 AND s.deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname) in rows {
+        out.push(Violation {
+            rule_code: "server.unique_hostname".into(),
+            severity, entity_type: "Server".into(), entity_id: Some(id),
+            message: format!("Server hostname '{hostname}' is duplicated within the tenant."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_ip_unique_per_subnet(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, Uuid)> = sqlx::query_as(
+        "SELECT ip.id, ip.address::text, ip.subnet_id
+           FROM net.ip_address ip
+           JOIN (
+             SELECT subnet_id, address
+               FROM net.ip_address
+              WHERE organization_id = $1 AND deleted_at IS NULL
+              GROUP BY subnet_id, address
+             HAVING COUNT(*) > 1
+           ) dup ON dup.subnet_id = ip.subnet_id AND dup.address = ip.address
+          WHERE ip.organization_id = $1 AND ip.deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, addr, subnet_id) in rows {
+        out.push(Violation {
+            rule_code: "ip_address.unique_per_subnet".into(),
+            severity, entity_type: "IpAddress".into(), entity_id: Some(id),
+            message: format!("Address {addr} duplicated within subnet {subnet_id}."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_subnet_parent_same_pool(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, Uuid, Uuid)> = sqlx::query_as(
+        "SELECT child.id, child.subnet_code, child.pool_id, parent.pool_id
+           FROM net.subnet child
+           JOIN net.subnet parent ON parent.id = child.parent_subnet_id
+          WHERE child.organization_id = $1
+            AND child.deleted_at IS NULL
+            AND parent.deleted_at IS NULL
+            AND child.pool_id <> parent.pool_id")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, child_pool, parent_pool) in rows {
+        out.push(Violation {
+            rule_code: "subnet.parent_same_pool".into(),
+            severity, entity_type: "Subnet".into(), entity_id: Some(id),
+            message: format!(
+                "Subnet '{code}' is in pool {child_pool} but its parent is in pool {parent_pool}."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_subnet_parent_contains_child(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String, String)> = sqlx::query_as(
+        "SELECT child.id, child.subnet_code, child.network::text, parent.network::text
+           FROM net.subnet child
+           JOIN net.subnet parent ON parent.id = child.parent_subnet_id
+          WHERE child.organization_id = $1
+            AND child.deleted_at IS NULL
+            AND parent.deleted_at IS NULL
+            AND NOT (child.network <<= parent.network)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, child_net, parent_net) in rows {
+        out.push(Violation {
+            rule_code: "subnet.parent_contains_child".into(),
+            severity, entity_type: "Subnet".into(), entity_id: Some(id),
+            message: format!(
+                "Subnet '{code}' {child_net} is not contained by parent {parent_net}."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_server_nic_index_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, Uuid, i32)> = sqlx::query_as(
+        "SELECT n.id, n.server_id, n.nic_index
+           FROM net.server_nic n
+           JOIN (
+             SELECT server_id, nic_index
+               FROM net.server_nic
+              WHERE organization_id = $1 AND deleted_at IS NULL
+              GROUP BY server_id, nic_index
+             HAVING COUNT(*) > 1
+           ) dup ON dup.server_id = n.server_id AND dup.nic_index = n.nic_index
+          WHERE n.organization_id = $1 AND n.deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, server_id, idx) in rows {
+        out.push(Violation {
+            rule_code: "server_nic.index_unique_per_server".into(),
+            severity, entity_type: "ServerNic".into(), entity_id: Some(id),
+            message: format!("Server {server_id} has duplicate NIC index {idx}."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_server_nic_index_dense(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    // Per-server: if the set of active nic_index values isn't {0, 1, …, count-1}
+    // we've got a gap. max(index) != count - 1 is a cheap detector.
+    let rows: Vec<(Uuid, String, i32, i64)> = sqlx::query_as(
+        "SELECT s.id, s.hostname, MAX(n.nic_index), COUNT(n.id)
+           FROM net.server s
+           JOIN net.server_nic n ON n.server_id = s.id AND n.deleted_at IS NULL
+          WHERE s.organization_id = $1 AND s.deleted_at IS NULL
+          GROUP BY s.id, s.hostname
+         HAVING MAX(n.nic_index) <> COUNT(n.id) - 1")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname, max_idx, count) in rows {
+        out.push(Violation {
+            rule_code: "server_nic.index_dense_sequence".into(),
+            severity, entity_type: "Server".into(), entity_id: Some(id),
+            message: format!(
+                "Server '{hostname}' has {count} NIC(s) but max nic_index is {max_idx}; \
+                 sequence has gaps."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_link_building_matches_endpoints(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    // Flag only when the link has a building_id AND at least one endpoint
+    // resolves to a device with a building_id AND neither endpoint device
+    // is in that building. This keeps WAN / cross-site links (legitimately
+    // spanning buildings) quiet — they don't carry a building_id.
+    let rows: Vec<(Uuid, String, Uuid)> = sqlx::query_as(
+        "SELECT l.id, l.link_code, l.building_id
+           FROM net.link l
+          WHERE l.organization_id = $1
+            AND l.deleted_at IS NULL
+            AND l.building_id IS NOT NULL
+            AND NOT EXISTS (
+              SELECT 1
+                FROM net.link_endpoint e
+                JOIN net.device d ON d.id = e.device_id
+               WHERE e.link_id = l.id
+                 AND e.deleted_at IS NULL
+                 AND d.building_id = l.building_id)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, building_id) in rows {
+        out.push(Violation {
+            rule_code: "link.building_matches_endpoints".into(),
+            severity, entity_type: "Link".into(), entity_id: Some(id),
+            message: format!(
+                "Link '{code}' is tagged for building {building_id} but neither \
+                 endpoint device is in that building."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_loopback_v6_slash_128(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT id, subnet_code, network::text
+           FROM net.subnet
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND subnet_code ILIKE 'LOOPBACK%'
+            AND family(network) = 6
+            AND masklen(network) <> 128")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, cidr) in rows {
+        out.push(Violation {
+            rule_code: "loopback.ipv6_slash_128".into(),
+            severity, entity_type: "Subnet".into(), entity_id: Some(id),
+            message: format!(
+                "Loopback IPv6 subnet '{code}' is {cidr}; expected /128."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_mlag_unique_per_tenant(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32)> = sqlx::query_as(
+        "SELECT m.id, m.domain_id
+           FROM net.mlag_domain m
+           JOIN (
+             SELECT domain_id
+               FROM net.mlag_domain
+              WHERE organization_id = $1 AND deleted_at IS NULL
+              GROUP BY domain_id
+             HAVING COUNT(*) > 1
+           ) dup ON dup.domain_id = m.domain_id
+          WHERE m.organization_id = $1 AND m.deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, did) in rows {
+        out.push(Violation {
+            rule_code: "mlag_domain.unique_per_tenant".into(),
+            severity, entity_type: "MlagDomain".into(), entity_id: Some(id),
+            message: format!("MLAG domain ID {did} is duplicated within the tenant."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_asn_unique_per_tenant(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i64)> = sqlx::query_as(
+        "SELECT a.id, a.asn
+           FROM net.asn_allocation a
+           JOIN (
+             SELECT asn
+               FROM net.asn_allocation
+              WHERE organization_id = $1 AND deleted_at IS NULL
+              GROUP BY asn
+             HAVING COUNT(*) > 1
+           ) dup ON dup.asn = a.asn
+          WHERE a.organization_id = $1 AND a.deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, asn) in rows {
+        out.push(Violation {
+            rule_code: "asn_allocation.unique_per_tenant".into(),
+            severity, entity_type: "AsnAllocation".into(), entity_id: Some(id),
+            message: format!("ASN {asn} is allocated more than once in this tenant."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_active_device_has_management_ip(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, hostname
+           FROM net.device
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND status::text = 'Active'
+            AND management_ip IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname) in rows {
+        out.push(Violation {
+            rule_code: "device.management_ip_for_active".into(),
+            severity, entity_type: "Device".into(), entity_id: Some(id),
+            message: format!("Active device '{hostname}' has no management_ip."),
+        });
+    }
+    Ok(())
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -824,6 +1254,18 @@ mod tests {
             "link.endpoints_distinct_devices",
             "ip_address.contained_in_subnet",
             "subnet.scope_entity_present_when_non_free",
+            "device.unique_hostname",
+            "server.unique_hostname",
+            "ip_address.unique_per_subnet",
+            "subnet.parent_same_pool",
+            "subnet.parent_contains_child",
+            "server_nic.index_unique_per_server",
+            "server_nic.index_dense_sequence",
+            "link.building_matches_endpoints",
+            "loopback.ipv6_slash_128",
+            "mlag_domain.unique_per_tenant",
+            "asn_allocation.unique_per_tenant",
+            "device.management_ip_for_active",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
