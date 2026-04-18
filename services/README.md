@@ -8,6 +8,7 @@ Backend services. Independently deployable units — each runs as its own proces
 |--------|-------|------------|
 | [api/](api/) | .NET 10 / ASP.NET Core Minimal API | `Central.Api` — REST + SignalR hub. The canonical entry point for every client. Authenticates via JWT (Argon2id + MFA + identity providers), enforces RBAC, owns persistence via `libs/persistence/`. |
 | [tenant-provisioner/](tenant-provisioner/) | Rust (Axum + sqlx + kube) | K8s-aware tenant provisioning: listens to `tenant_provisioning_jobs`, creates dedicated PostgreSQL databases + K8s namespaces + NetworkPolicies + ResourceQuotas for enterprise-tier tenants. |
+| [networking-engine/](networking-engine/) | Rust (Axum + sqlx) | Networking allocation engine: ASN / VLAN / MLAG / IP / subnet allocation with advisory-lock serialisation and reservation shelf, 4-NIC server fan-out, naming-template preview. Phase 6.5 port of `libs/persistence/Net/*.cs` — C# callers switch over via the typed `Central.ApiClient.NetworkingEngine` wrapper. Default port 8091. |
 
 ## Planned but not yet built
 
