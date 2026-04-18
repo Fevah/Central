@@ -16,6 +16,8 @@ use uuid::Uuid;
 
 use crate::allocation::AllocationService;
 use crate::audit::{self, ExportQuery, ListAuditQuery, VerifyChainQuery};
+use crate::cli_flavor::{self, ListFlavorsQuery, SetFlavorConfigBody};
+use crate::config_gen;
 use crate::change_sets::{
     AddItemBody, CancelBody, ChangeSetRepo, CreateChangeSetBody, DecisionBody,
     GetChangeSetQuery, ListChangeSetsQuery, SubmitBody,
@@ -94,6 +96,12 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/validation/rules", get(list_validation_rules))
         .route("/api/net/validation/rules/:code", axum::routing::put(set_validation_rule_config))
         .route("/api/net/validation/run", post(run_validation_route))
+        // CLI flavors (Phase 10)
+        .route("/api/net/cli-flavors", get(list_cli_flavors))
+        .route("/api/net/cli-flavors/:code",
+               axum::routing::put(set_cli_flavor_config))
+        // Device config render (Phase 10 PicOS starter)
+        .route("/api/net/devices/:id/render-config", post(render_device_config))
         .with_state(state)
 }
 
@@ -824,4 +832,33 @@ async fn run_validation_route(
     Json(body): Json<RunValidationBody>,
 ) -> Result<impl IntoResponse, EngineError> {
     Ok(Json(validation::run_validation(&s.pool, &body).await?))
+}
+
+// ─── CLI flavors (Phase 10) ──────────────────────────────────────────────
+
+async fn list_cli_flavors(
+    State(s): State<AppState>,
+    Query(q): Query<ListFlavorsQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    Ok(Json(cli_flavor::list_flavors(&s.pool, &q).await?))
+}
+
+async fn set_cli_flavor_config(
+    State(s): State<AppState>,
+    Path(code): Path<String>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+    Json(body): Json<SetFlavorConfigBody>,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    cli_flavor::set_flavor_config(&s.pool, q.organization_id, &code, &body, user_id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn render_device_config(
+    State(s): State<AppState>,
+    Path(device_id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    Ok(Json(config_gen::render_device(&s.pool, q.organization_id, device_id).await?))
 }
