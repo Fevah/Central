@@ -126,6 +126,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/vlans/export",                     get(export_vlans))
         .route("/api/net/ip-addresses/export",              get(export_ip_addresses))
         .route("/api/net/links/export",                     get(export_links))
+        .route("/api/net/servers/export",                   get(export_servers))
         .with_state(state)
 }
 
@@ -1037,6 +1038,7 @@ fn csv_download_headers(filename: &'static str) -> [(axum::http::header::HeaderN
         "vlans.csv"        => HeaderValue::from_static("attachment; filename=\"vlans.csv\""),
         "ip-addresses.csv" => HeaderValue::from_static("attachment; filename=\"ip-addresses.csv\""),
         "links.csv"        => HeaderValue::from_static("attachment; filename=\"links.csv\""),
+        "servers.csv"      => HeaderValue::from_static("attachment; filename=\"servers.csv\""),
         _                  => HeaderValue::from_static("attachment"),
     };
     [
@@ -1075,4 +1077,12 @@ async fn export_links(
 ) -> Result<impl IntoResponse, EngineError> {
     let body = bulk_export::export_links_csv(&s.pool, q.organization_id).await?;
     Ok((csv_download_headers("links.csv"), body))
+}
+
+async fn export_servers(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let body = bulk_export::export_servers_csv(&s.pool, q.organization_id).await?;
+    Ok((csv_download_headers("servers.csv"), body))
 }

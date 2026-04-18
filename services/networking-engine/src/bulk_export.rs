@@ -315,6 +315,80 @@ pub async fn export_links_csv(
     Ok(out)
 }
 
+// ─── Server export ───────────────────────────────────────────────────────
+
+/// CSV dump of `net.server`. Columns (in order):
+///
+///   hostname, profile_code, building_code, asn, loopback_ip,
+///   management_ip, nic_count, status
+///
+/// `nic_count` is the COUNT(*) of live `net.server_nic` rows for the
+/// server — gives ops a single-glance sanity check against
+/// `server_profile.nic_count` without shipping per-NIC rows. When
+/// per-NIC detail is needed it belongs in its own `server-nics` export
+/// (separate endpoint once demand shows up).
+///
+/// Ordered by hostname for deterministic diffing.
+pub async fn export_servers_csv(
+    pool: &PgPool,
+    org_id: Uuid,
+) -> Result<String, EngineError> {
+    type Row = (
+        String,          // hostname
+        Option<String>,  // profile_code
+        Option<String>,  // building_code
+        Option<i64>,     // asn
+        Option<String>,  // loopback_ip (host, no prefix)
+        Option<String>,  // management_ip (host, no prefix)
+        i64,             // nic_count
+        String,          // status
+    );
+    let rows: Vec<Row> = sqlx::query_as(
+        r#"SELECT s.hostname,
+                  sp.profile_code,
+                  b.building_code,
+                  aa.asn                               AS asn,
+                  host(lb.address)                     AS loopback_ip,
+                  host(s.management_ip)                AS management_ip,
+                  COALESCE(nc.n, 0)                    AS nic_count,
+                  s.status::text                       AS status
+             FROM net.server s
+             LEFT JOIN net.server_profile    sp ON sp.id = s.server_profile_id    AND sp.deleted_at IS NULL
+             LEFT JOIN net.building          b  ON b.id  = s.building_id          AND b.deleted_at IS NULL
+             LEFT JOIN net.asn_allocation    aa ON aa.id = s.asn_allocation_id    AND aa.deleted_at IS NULL
+             LEFT JOIN net.ip_address        lb ON lb.id = s.loopback_ip_address_id AND lb.deleted_at IS NULL
+             LEFT JOIN LATERAL (
+                 SELECT COUNT(*) AS n
+                   FROM net.server_nic sn
+                  WHERE sn.server_id = s.id AND sn.deleted_at IS NULL
+             ) nc ON true
+            WHERE s.organization_id = $1 AND s.deleted_at IS NULL
+            ORDER BY s.hostname"#)
+        .bind(org_id)
+        .fetch_all(pool)
+        .await?;
+
+    let mut out = String::with_capacity(128 + rows.len() * 112);
+    out.push_str(&csv_row(&[
+        "hostname".into(), "profile_code".into(), "building_code".into(),
+        "asn".into(), "loopback_ip".into(), "management_ip".into(),
+        "nic_count".into(), "status".into(),
+    ]));
+    for (hostname, profile, building, asn, loopback, mgmt, nic_count, status) in rows {
+        out.push_str(&csv_row(&[
+            csv_escape(&hostname),
+            csv_escape(&profile.unwrap_or_default()),
+            csv_escape(&building.unwrap_or_default()),
+            asn.map(|a| a.to_string()).unwrap_or_default(),
+            csv_escape(&loopback.unwrap_or_default()),
+            csv_escape(&mgmt.unwrap_or_default()),
+            nic_count.to_string(),
+            csv_escape(&status),
+        ]));
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
