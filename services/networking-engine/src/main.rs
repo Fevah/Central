@@ -27,6 +27,7 @@ mod naming_resolver;
 mod regenerate;
 mod server_fanout;
 mod tenant_config;
+mod validation;
 
 use anyhow::Result;
 use std::env;

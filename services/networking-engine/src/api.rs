@@ -32,6 +32,7 @@ use crate::naming_resolver::{NamingResolver, ResolveRequest};
 use crate::regenerate::{self, RegenerateApplyRequest, RegeneratePreviewRequest};
 use crate::server_fanout::{ServerCreationRequest, ServerCreationService};
 use crate::tenant_config::{TenantConfigRepo, UpsertTenantConfigBody};
+use crate::validation::{self, ListRulesQuery, RunValidationBody, SetRuleConfigBody};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -78,6 +79,10 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/change-sets/:id/rollback", post(rollback_change_set))
         // Lock-state management (Phase 8f)
         .route("/api/net/locks/:table/:id", axum::routing::patch(set_entity_lock))
+        // Validation rules (Phase 9a)
+        .route("/api/net/validation/rules", get(list_validation_rules))
+        .route("/api/net/validation/rules/:code", axum::routing::put(set_validation_rule_config))
+        .route("/api/net/validation/run", post(run_validation_route))
         .with_state(state)
 }
 
@@ -540,4 +545,32 @@ async fn set_entity_lock(
 ) -> Result<impl IntoResponse, EngineError> {
     let user_id = header_user_id(&headers);
     Ok(Json(locks::set_lock(&s.pool, &table, id, q.organization_id, &body, user_id).await?))
+}
+
+// ─── Validation (Phase 9a) ───────────────────────────────────────────────
+
+async fn list_validation_rules(
+    State(s): State<AppState>,
+    Query(q): Query<ListRulesQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    Ok(Json(validation::list_rules(&s.pool, &q).await?))
+}
+
+async fn set_validation_rule_config(
+    State(s): State<AppState>,
+    Path(code): Path<String>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+    Json(body): Json<SetRuleConfigBody>,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    validation::set_rule_config(&s.pool, q.organization_id, &code, &body, user_id).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn run_validation_route(
+    State(s): State<AppState>,
+    Json(body): Json<RunValidationBody>,
+) -> Result<impl IntoResponse, EngineError> {
+    Ok(Json(validation::run_validation(&s.pool, &body).await?))
 }
