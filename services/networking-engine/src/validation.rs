@@ -319,6 +319,98 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Info,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "device.has_device_role",
+        name: "Active devices must carry a device role",
+        description: "Devices in status='Active' must reference a device_role. \
+                      Without one, naming templates fall back to catalog defaults \
+                      and role-scoped naming overrides don't apply.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "link.vlan_in_tenant",
+        name: "Link VLAN references resolve",
+        description: "If a link carries vlan_id, it must resolve to a non-deleted \
+                      VLAN in the same tenant. Dangling references are usually a \
+                      VLAN hard-delete that left links orphaned.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "link.subnet_in_tenant",
+        name: "Link subnet references resolve",
+        description: "Mirrors link.vlan_in_tenant for subnet_id: a link's subnet \
+                      reference must resolve to a non-deleted subnet in the same \
+                      tenant.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "hierarchy.floor_requires_building",
+        name: "Floors must have a building",
+        description: "Every non-deleted floor must carry a building_id. Orphan \
+                      floors break the site→building→floor walk the naming \
+                      resolver uses.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "hierarchy.rack_requires_room",
+        name: "Racks must have a room",
+        description: "Every non-deleted rack must carry a room_id (or the parent \
+                      room must carry a building_id fallback). Orphan racks \
+                      can't be addressed by scope-level naming rules.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server_nic.target_device_resolves",
+        name: "Server NIC target_device resolves",
+        description: "If a NIC carries target_device_id, that id must resolve to \
+                      a non-deleted device. Dangling NIC→device edges usually \
+                      mean a core was decommissioned and its NIC fan-out rows \
+                      weren't updated.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server.loopback_in_loopback_subnet",
+        name: "Server loopback IP comes from a LOOPBACK subnet",
+        description: "Servers with loopback_ip_address_id set should have that IP \
+                      in a subnet whose subnet_code starts with 'LOOPBACK'. A \
+                      loopback drawn from a regular fabric subnet usually means \
+                      the fan-out picked from the wrong pool.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "asn_block.range_not_empty",
+        name: "ASN block ranges must be non-empty",
+        description: "net.asn_block.asn_first must be ≤ asn_last. An inverted \
+                      range silently exhausts allocation attempts — nothing fits \
+                      an empty range.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "vlan_block.range_not_empty",
+        name: "VLAN block ranges must be non-empty",
+        description: "Same shape as asn_block.range_not_empty — \
+                      net.vlan_block.vlan_first must be ≤ vlan_last. An inverted \
+                      range exhausts allocation silently.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -530,6 +622,15 @@ async fn dispatch(
         "mlag_domain.unique_per_tenant"        => run_mlag_unique_per_tenant(pool, org_id, severity, out).await,
         "asn_allocation.unique_per_tenant"     => run_asn_unique_per_tenant(pool, org_id, severity, out).await,
         "device.management_ip_for_active"      => run_active_device_has_management_ip(pool, org_id, severity, out).await,
+        "device.has_device_role"               => run_device_has_role(pool, org_id, severity, out).await,
+        "link.vlan_in_tenant"                  => run_link_vlan_resolves(pool, org_id, severity, out).await,
+        "link.subnet_in_tenant"                => run_link_subnet_resolves(pool, org_id, severity, out).await,
+        "hierarchy.floor_requires_building"    => run_floor_requires_building(pool, org_id, severity, out).await,
+        "hierarchy.rack_requires_room"         => run_rack_requires_room(pool, org_id, severity, out).await,
+        "server_nic.target_device_resolves"    => run_server_nic_target_resolves(pool, org_id, severity, out).await,
+        "server.loopback_in_loopback_subnet"   => run_server_loopback_in_loopback_subnet(pool, org_id, severity, out).await,
+        "asn_block.range_not_empty"            => run_asn_block_range(pool, org_id, severity, out).await,
+        "vlan_block.range_not_empty"           => run_vlan_block_range(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
     }
@@ -1169,6 +1270,205 @@ async fn run_active_device_has_management_ip(
     Ok(())
 }
 
+async fn run_device_has_role(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, hostname
+           FROM net.device
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND status::text = 'Active'
+            AND device_role_id IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname) in rows {
+        out.push(Violation {
+            rule_code: "device.has_device_role".into(),
+            severity, entity_type: "Device".into(), entity_id: Some(id),
+            message: format!("Active device '{hostname}' has no device_role_id."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_link_vlan_resolves(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    // Flag links whose vlan_id points at a deleted or cross-tenant vlan.
+    // NOT EXISTS on the happy-path join — any link with vlan_id set must
+    // match a non-deleted vlan in the same tenant.
+    let rows: Vec<(Uuid, String, Option<Uuid>)> = sqlx::query_as(
+        "SELECT l.id, l.link_code, l.vlan_id
+           FROM net.link l
+          WHERE l.organization_id = $1 AND l.deleted_at IS NULL
+            AND l.vlan_id IS NOT NULL
+            AND NOT EXISTS (
+              SELECT 1 FROM net.vlan v
+               WHERE v.id = l.vlan_id
+                 AND v.organization_id = l.organization_id
+                 AND v.deleted_at IS NULL)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, vlan_id) in rows {
+        out.push(Violation {
+            rule_code: "link.vlan_in_tenant".into(),
+            severity, entity_type: "Link".into(), entity_id: Some(id),
+            message: format!("Link '{code}' references dangling vlan {vlan_id:?}."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_link_subnet_resolves(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, Option<Uuid>)> = sqlx::query_as(
+        "SELECT l.id, l.link_code, l.subnet_id
+           FROM net.link l
+          WHERE l.organization_id = $1 AND l.deleted_at IS NULL
+            AND l.subnet_id IS NOT NULL
+            AND NOT EXISTS (
+              SELECT 1 FROM net.subnet s
+               WHERE s.id = l.subnet_id
+                 AND s.organization_id = l.organization_id
+                 AND s.deleted_at IS NULL)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, subnet_id) in rows {
+        out.push(Violation {
+            rule_code: "link.subnet_in_tenant".into(),
+            severity, entity_type: "Link".into(), entity_id: Some(id),
+            message: format!("Link '{code}' references dangling subnet {subnet_id:?}."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_floor_requires_building(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, floor_code
+           FROM net.floor
+          WHERE organization_id = $1 AND deleted_at IS NULL AND building_id IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "hierarchy.floor_requires_building".into(),
+            severity, entity_type: "Floor".into(), entity_id: Some(id),
+            message: format!("Floor '{code}' has no building_id."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_rack_requires_room(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, rack_code
+           FROM net.rack
+          WHERE organization_id = $1 AND deleted_at IS NULL AND room_id IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "hierarchy.rack_requires_room".into(),
+            severity, entity_type: "Rack".into(), entity_id: Some(id),
+            message: format!("Rack '{code}' has no room_id."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_server_nic_target_resolves(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, Uuid, Option<Uuid>)> = sqlx::query_as(
+        "SELECT n.id, n.server_id, n.target_device_id
+           FROM net.server_nic n
+          WHERE n.organization_id = $1 AND n.deleted_at IS NULL
+            AND n.target_device_id IS NOT NULL
+            AND NOT EXISTS (
+              SELECT 1 FROM net.device d
+               WHERE d.id = n.target_device_id
+                 AND d.organization_id = n.organization_id
+                 AND d.deleted_at IS NULL)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, server_id, target) in rows {
+        out.push(Violation {
+            rule_code: "server_nic.target_device_resolves".into(),
+            severity, entity_type: "ServerNic".into(), entity_id: Some(id),
+            message: format!(
+                "Server {server_id} NIC points at device {target:?} which is \
+                 missing / deleted / cross-tenant."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_server_loopback_in_loopback_subnet(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT srv.id, srv.hostname, s.subnet_code
+           FROM net.server srv
+           JOIN net.ip_address ip ON ip.id = srv.loopback_ip_address_id
+           JOIN net.subnet s      ON s.id  = ip.subnet_id
+          WHERE srv.organization_id = $1
+            AND srv.deleted_at IS NULL
+            AND srv.loopback_ip_address_id IS NOT NULL
+            AND s.subnet_code NOT ILIKE 'LOOPBACK%'")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname, subnet_code) in rows {
+        out.push(Violation {
+            rule_code: "server.loopback_in_loopback_subnet".into(),
+            severity, entity_type: "Server".into(), entity_id: Some(id),
+            message: format!(
+                "Server '{hostname}' loopback is from subnet '{subnet_code}' — \
+                 expected subnet_code to start with 'LOOPBACK'."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_asn_block_range(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i64, i64)> = sqlx::query_as(
+        "SELECT id, block_code, asn_first, asn_last
+           FROM net.asn_block
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND asn_first > asn_last")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, first, last) in rows {
+        out.push(Violation {
+            rule_code: "asn_block.range_not_empty".into(),
+            severity, entity_type: "AsnBlock".into(), entity_id: Some(id),
+            message: format!(
+                "Block '{code}' has inverted range [{first}, {last}] — allocation will exhaust silently."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_vlan_block_range(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i32, i32)> = sqlx::query_as(
+        "SELECT id, block_code, vlan_first, vlan_last
+           FROM net.vlan_block
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND vlan_first > vlan_last")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, first, last) in rows {
+        out.push(Violation {
+            rule_code: "vlan_block.range_not_empty".into(),
+            severity, entity_type: "VlanBlock".into(), entity_id: Some(id),
+            message: format!(
+                "Block '{code}' has inverted range [{first}, {last}] — allocation will exhaust silently."),
+        });
+    }
+    Ok(())
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -1266,6 +1566,15 @@ mod tests {
             "mlag_domain.unique_per_tenant",
             "asn_allocation.unique_per_tenant",
             "device.management_ip_for_active",
+            "device.has_device_role",
+            "link.vlan_in_tenant",
+            "link.subnet_in_tenant",
+            "hierarchy.floor_requires_building",
+            "hierarchy.rack_requires_room",
+            "server_nic.target_device_resolves",
+            "server.loopback_in_loopback_subnet",
+            "asn_block.range_not_empty",
+            "vlan_block.range_not_empty",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
