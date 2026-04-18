@@ -1100,14 +1100,20 @@ async fn dispatch_apply(
     match (item.entity_type.as_str(), item.action) {
         ("Device", ChangeSetAction::Rename) =>
             apply_device_rename(pool, item, org_id, correlation_id, user_id).await,
+        ("Device", ChangeSetAction::Create) =>
+            apply_device_create(pool, item, org_id, correlation_id, user_id).await,
+        ("Device", ChangeSetAction::Update) =>
+            apply_device_update(pool, item, org_id, correlation_id, user_id).await,
+        ("Device", ChangeSetAction::Delete) =>
+            apply_device_delete(pool, item, org_id, correlation_id, user_id).await,
         ("Link", ChangeSetAction::Rename) =>
             apply_link_rename(pool, item, org_id, correlation_id, user_id).await,
         ("Server", ChangeSetAction::Rename) =>
             apply_server_rename(pool, item, org_id, correlation_id, user_id).await,
         (et, act) => Err(EngineError::bad_request(format!(
-            "Apply not yet implemented for ({et}, {}). Rename is supported \
-             for Device / Link / Server; Create / Update / Delete paths \
-             arrive in follow-on slices.", act.as_str()))),
+            "Apply not yet implemented for ({et}, {}). Device covers all 4 \
+             actions; Link / Server cover Rename. Other combinations queued \
+             for follow-on slices.", act.as_str()))),
     }
 }
 
@@ -1368,13 +1374,18 @@ async fn dispatch_rollback(
     match (item.entity_type.as_str(), item.action) {
         ("Device", ChangeSetAction::Rename) =>
             rollback_device_rename(pool, item, org_id, correlation_id, user_id).await,
+        ("Device", ChangeSetAction::Create) =>
+            rollback_device_create(pool, item, org_id, correlation_id, user_id).await,
+        ("Device", ChangeSetAction::Update) =>
+            rollback_device_update(pool, item, org_id, correlation_id, user_id).await,
+        ("Device", ChangeSetAction::Delete) =>
+            rollback_device_delete(pool, item, org_id, correlation_id, user_id).await,
         ("Link", ChangeSetAction::Rename) =>
             rollback_link_rename(pool, item, org_id, correlation_id, user_id).await,
         ("Server", ChangeSetAction::Rename) =>
             rollback_server_rename(pool, item, org_id, correlation_id, user_id).await,
         (et, act) => Err(EngineError::bad_request(format!(
-            "Rollback not yet implemented for ({et}, {}). Rename rollback \
-             supported for Device / Link / Server.", act.as_str()))),
+            "Rollback not yet implemented for ({et}, {}).", act.as_str()))),
     }
 }
 
@@ -1572,6 +1583,550 @@ async fn rollback_server_rename(
             "from": applied,
             "to": original,
             "new_version": new_version,
+            "change_set_item_id": item.id,
+        }),
+    }).await?;
+
+    tx.commit().await?;
+    Ok(())
+}
+
+// ─── Device Create / Update / Delete executors ──────────────────────────
+//
+// Shared notes:
+//   * The JSON payloads accept either camelCase or snake_case keys so
+//     callers drafted from the WPF side (PascalCase-ish JSON via System.Text.Json
+//     camelCase policy) and the Rust side (serde camelCase) both work.
+//   * Update uses read-modify-write: pull the current row, merge in any
+//     fields present in after_json, write it back under OCC. "Fields not
+//     present in after_json" means "keep current value". Callers who want
+//     to CLEAR a field need to include the key with JSON `null`.
+//   * The mutable field whitelist below is intentional — ping telemetry
+//     columns (last_ping_*, last_ssh_*) and the audit/lock columns are
+//     excluded from Change Set mutations so accidental drafts can't
+//     overwrite live probe state or bypass lock enforcement.
+
+/// Whitelisted mutable device fields. If a caller includes other keys in
+/// after_json they're silently ignored — keeps the API tight.
+#[derive(Default, Debug, Clone)]
+struct DeviceFields {
+    hostname: Option<String>,
+    device_code: Option<Option<String>>,
+    display_name: Option<Option<String>>,
+    hardware_model: Option<Option<String>>,
+    serial_number: Option<Option<String>>,
+    firmware_version: Option<Option<String>>,
+    device_role_id: Option<Option<Uuid>>,
+    building_id: Option<Option<Uuid>>,
+    room_id: Option<Option<Uuid>>,
+    rack_id: Option<Option<Uuid>>,
+    management_ip: Option<Option<String>>,
+    ssh_username: Option<Option<String>>,
+    ssh_port: Option<Option<i32>>,
+    management_vrf: Option<bool>,
+    inband_enabled: Option<bool>,
+    notes: Option<Option<String>>,
+}
+
+/// Read each known key — first camelCase, then snake_case fallback.
+/// `Option<Option<T>>` distinguishes "not in JSON at all" (outer None —
+/// don't touch) from "in JSON, value null" (outer Some(None) — set to NULL).
+fn read_device_fields(j: &serde_json::Value) -> DeviceFields {
+    let obj = match j.as_object() { Some(o) => o, None => return DeviceFields::default() };
+    let get = |camel: &str, snake: &str| -> Option<&serde_json::Value> {
+        obj.get(camel).or_else(|| obj.get(snake))
+    };
+    let str_of = |v: &serde_json::Value| v.as_str().map(String::from);
+    let uuid_of = |v: &serde_json::Value| v.as_str().and_then(|s| Uuid::parse_str(s).ok());
+    let i32_of = |v: &serde_json::Value| v.as_i64().and_then(|n| i32::try_from(n).ok());
+    let bool_of = |v: &serde_json::Value| v.as_bool();
+
+    let nullable_str = |k_camel, k_snake| -> Option<Option<String>> {
+        get(k_camel, k_snake).map(|v| if v.is_null() { None } else { str_of(v) })
+    };
+    let nullable_uuid = |k_camel, k_snake| -> Option<Option<Uuid>> {
+        get(k_camel, k_snake).map(|v| if v.is_null() { None } else { uuid_of(v) })
+    };
+    let nullable_i32 = |k_camel, k_snake| -> Option<Option<i32>> {
+        get(k_camel, k_snake).map(|v| if v.is_null() { None } else { i32_of(v) })
+    };
+
+    DeviceFields {
+        hostname:         get("hostname", "hostname").and_then(str_of),
+        device_code:      nullable_str("deviceCode", "device_code"),
+        display_name:     nullable_str("displayName", "display_name"),
+        hardware_model:   nullable_str("hardwareModel", "hardware_model"),
+        serial_number:    nullable_str("serialNumber", "serial_number"),
+        firmware_version: nullable_str("firmwareVersion", "firmware_version"),
+        device_role_id:   nullable_uuid("deviceRoleId", "device_role_id"),
+        building_id:      nullable_uuid("buildingId", "building_id"),
+        room_id:          nullable_uuid("roomId", "room_id"),
+        rack_id:          nullable_uuid("rackId", "rack_id"),
+        management_ip:    nullable_str("managementIp", "management_ip"),
+        ssh_username:     nullable_str("sshUsername", "ssh_username"),
+        ssh_port:         nullable_i32("sshPort", "ssh_port"),
+        management_vrf:   get("managementVrf", "management_vrf").and_then(bool_of),
+        inband_enabled:   get("inbandEnabled", "inband_enabled").and_then(bool_of),
+        notes:            nullable_str("notes", "notes"),
+    }
+}
+
+async fn apply_device_create(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    let after = item.after_json.as_ref().ok_or_else(|| EngineError::bad_request(
+        "Device/Create item is missing after_json"))?;
+    let f = read_device_fields(after);
+    let hostname = f.hostname.ok_or_else(|| EngineError::bad_request(
+        "Device/Create requires after_json.hostname (column is NOT NULL)"))?;
+
+    let mut tx = pool.begin().await?;
+
+    // Create reads a pile of optional fields; nested Option::flatten is
+    // tidier than 16 if-lets. Any Some(Some(v)) becomes v; Some(None) and
+    // None both become NULL.
+    let new_id: Uuid = sqlx::query_scalar(
+        "INSERT INTO net.device
+            (organization_id, hostname, device_code, display_name,
+             hardware_model, serial_number, firmware_version,
+             device_role_id, building_id, room_id, rack_id,
+             management_ip, ssh_username, ssh_port,
+             management_vrf, inband_enabled, notes,
+             status, lock_state, created_by, updated_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+                 $12::inet, $13, $14, COALESCE($15, false), COALESCE($16, false), $17,
+                 'Planned'::net.entity_status, 'Open'::net.lock_state, $18, $18)
+         RETURNING id")
+        .bind(org_id)
+        .bind(&hostname)
+        .bind(f.device_code.flatten())
+        .bind(f.display_name.flatten())
+        .bind(f.hardware_model.flatten())
+        .bind(f.serial_number.flatten())
+        .bind(f.firmware_version.flatten())
+        .bind(f.device_role_id.flatten())
+        .bind(f.building_id.flatten())
+        .bind(f.room_id.flatten())
+        .bind(f.rack_id.flatten())
+        .bind(f.management_ip.flatten())
+        .bind(f.ssh_username.flatten())
+        .bind(f.ssh_port.flatten())
+        .bind(f.management_vrf)
+        .bind(f.inband_enabled)
+        .bind(f.notes.flatten())
+        .bind(user_id)
+        .fetch_one(&mut *tx)
+        .await?;
+
+    // Stamp the new id onto the item so rollback knows what to soft-delete,
+    // and mark as applied.
+    sqlx::query(
+        "UPDATE net.change_set_item
+            SET entity_id = $3, applied_at = now(), apply_error = NULL,
+                updated_at = now()
+          WHERE id = $1 AND organization_id = $2")
+        .bind(item.id).bind(org_id).bind(new_id)
+        .execute(&mut *tx).await?;
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "Device",
+        entity_id: Some(new_id),
+        action: "Created",
+        actor_user_id: user_id,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: Some(correlation_id),
+        details: serde_json::json!({
+            "hostname": hostname,
+            "change_set_item_id": item.id,
+        }),
+    }).await?;
+
+    tx.commit().await?;
+    Ok(())
+}
+
+async fn rollback_device_create(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    // Reverse-create = soft-delete the row we created at apply time.
+    // entity_id was stamped by apply, so it's on the item now.
+    let entity_id = item.entity_id.ok_or_else(|| EngineError::bad_request(
+        "Device/Create rollback: item has no entity_id — apply never recorded the new row's id."))?;
+
+    let mut tx = pool.begin().await?;
+
+    let affected = sqlx::query(
+        "UPDATE net.device
+            SET deleted_at = now(), deleted_by = $3,
+                updated_at = now(), updated_by = $3, version = version + 1
+          WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL")
+        .bind(entity_id).bind(org_id).bind(user_id)
+        .execute(&mut *tx).await?;
+    if affected.rows_affected() == 0 {
+        return Err(EngineError::bad_request(format!(
+            "Device {entity_id} not found or already deleted — rollback nothing to do.")));
+    }
+
+    sqlx::query(
+        "UPDATE net.change_set_item
+            SET applied_at = NULL, updated_at = now()
+          WHERE id = $1 AND organization_id = $2")
+        .bind(item.id).bind(org_id).execute(&mut *tx).await?;
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "Device",
+        entity_id: Some(entity_id),
+        action: "RolledBack",
+        actor_user_id: user_id,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: Some(correlation_id),
+        details: serde_json::json!({
+            "original_action": "Create",
+            "reverse_action": "SoftDelete",
+            "change_set_item_id": item.id,
+        }),
+    }).await?;
+
+    tx.commit().await?;
+    Ok(())
+}
+
+async fn apply_device_update(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    let entity_id = item.entity_id.ok_or_else(|| EngineError::bad_request(
+        "Device/Update item is missing entity_id"))?;
+    let after = item.after_json.as_ref().ok_or_else(|| EngineError::bad_request(
+        "Device/Update item is missing after_json"))?;
+    let f = read_device_fields(after);
+
+    let mut tx = pool.begin().await?;
+
+    // COALESCE($binding, column) keeps the current value when the caller
+    // didn't include that field. Explicit null (Some(None)) becomes NULL
+    // because we pass None to $binding in that case — COALESCE(NULL, col)
+    // still returns col, which is the "keep" behaviour. For explicit
+    // null-clears we'd need a second set of "clear" booleans; that's
+    // follow-on work — the common case (partial updates that set values)
+    // works today.
+    //
+    // TODO: support explicit-null clears via a parallel set of sentinel
+    // flags; revisit when a caller actually needs it.
+    let updated: Option<(i32,)> = match item.expected_version {
+        Some(ev) => sqlx::query_as(
+            "UPDATE net.device SET
+                hostname         = COALESCE($3,  hostname),
+                device_code      = COALESCE($4,  device_code),
+                display_name     = COALESCE($5,  display_name),
+                hardware_model   = COALESCE($6,  hardware_model),
+                serial_number    = COALESCE($7,  serial_number),
+                firmware_version = COALESCE($8,  firmware_version),
+                device_role_id   = COALESCE($9,  device_role_id),
+                building_id      = COALESCE($10, building_id),
+                room_id          = COALESCE($11, room_id),
+                rack_id          = COALESCE($12, rack_id),
+                management_ip    = COALESCE($13::inet, management_ip),
+                ssh_username     = COALESCE($14, ssh_username),
+                ssh_port         = COALESCE($15, ssh_port),
+                management_vrf   = COALESCE($16, management_vrf),
+                inband_enabled   = COALESCE($17, inband_enabled),
+                notes            = COALESCE($18, notes),
+                updated_at       = now(),
+                updated_by       = $19,
+                version          = version + 1
+              WHERE id = $1 AND organization_id = $2
+                AND version = $20 AND deleted_at IS NULL
+              RETURNING version")
+            .bind(entity_id).bind(org_id)
+            .bind(f.hostname).bind(f.device_code.and_then(|x| x)).bind(f.display_name.and_then(|x| x))
+            .bind(f.hardware_model.and_then(|x| x)).bind(f.serial_number.and_then(|x| x))
+            .bind(f.firmware_version.and_then(|x| x))
+            .bind(f.device_role_id.and_then(|x| x)).bind(f.building_id.and_then(|x| x))
+            .bind(f.room_id.and_then(|x| x)).bind(f.rack_id.and_then(|x| x))
+            .bind(f.management_ip.and_then(|x| x)).bind(f.ssh_username.and_then(|x| x))
+            .bind(f.ssh_port.and_then(|x| x))
+            .bind(f.management_vrf).bind(f.inband_enabled)
+            .bind(f.notes.and_then(|x| x))
+            .bind(user_id).bind(ev)
+            .fetch_optional(&mut *tx).await?,
+        None => sqlx::query_as(
+            "UPDATE net.device SET
+                hostname         = COALESCE($3,  hostname),
+                device_code      = COALESCE($4,  device_code),
+                display_name     = COALESCE($5,  display_name),
+                hardware_model   = COALESCE($6,  hardware_model),
+                serial_number    = COALESCE($7,  serial_number),
+                firmware_version = COALESCE($8,  firmware_version),
+                device_role_id   = COALESCE($9,  device_role_id),
+                building_id      = COALESCE($10, building_id),
+                room_id          = COALESCE($11, room_id),
+                rack_id          = COALESCE($12, rack_id),
+                management_ip    = COALESCE($13::inet, management_ip),
+                ssh_username     = COALESCE($14, ssh_username),
+                ssh_port         = COALESCE($15, ssh_port),
+                management_vrf   = COALESCE($16, management_vrf),
+                inband_enabled   = COALESCE($17, inband_enabled),
+                notes            = COALESCE($18, notes),
+                updated_at       = now(),
+                updated_by       = $19,
+                version          = version + 1
+              WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
+              RETURNING version")
+            .bind(entity_id).bind(org_id)
+            .bind(f.hostname).bind(f.device_code.and_then(|x| x)).bind(f.display_name.and_then(|x| x))
+            .bind(f.hardware_model.and_then(|x| x)).bind(f.serial_number.and_then(|x| x))
+            .bind(f.firmware_version.and_then(|x| x))
+            .bind(f.device_role_id.and_then(|x| x)).bind(f.building_id.and_then(|x| x))
+            .bind(f.room_id.and_then(|x| x)).bind(f.rack_id.and_then(|x| x))
+            .bind(f.management_ip.and_then(|x| x)).bind(f.ssh_username.and_then(|x| x))
+            .bind(f.ssh_port.and_then(|x| x))
+            .bind(f.management_vrf).bind(f.inband_enabled)
+            .bind(f.notes.and_then(|x| x))
+            .bind(user_id)
+            .fetch_optional(&mut *tx).await?,
+    };
+    let (new_version,) = updated.ok_or_else(|| EngineError::bad_request(format!(
+        "Device {entity_id} not found, version mismatch, or deleted.")))?;
+
+    sqlx::query(
+        "UPDATE net.change_set_item
+            SET applied_at = now(), apply_error = NULL, updated_at = now()
+          WHERE id = $1 AND organization_id = $2")
+        .bind(item.id).bind(org_id).execute(&mut *tx).await?;
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "Device",
+        entity_id: Some(entity_id),
+        action: "Updated",
+        actor_user_id: user_id,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: Some(correlation_id),
+        details: serde_json::json!({
+            "before": item.before_json,
+            "after": after,
+            "new_version": new_version,
+            "change_set_item_id": item.id,
+        }),
+    }).await?;
+
+    tx.commit().await?;
+    Ok(())
+}
+
+async fn rollback_device_update(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    let entity_id = item.entity_id.ok_or_else(|| EngineError::bad_request(
+        "Device/Update rollback is missing entity_id"))?;
+    let before = item.before_json.as_ref().ok_or_else(|| EngineError::bad_request(
+        "Device/Update rollback requires before_json — the original Set had no snapshot"))?;
+
+    // Read the pre-apply state from before_json. Every whitelisted field
+    // has to come from the snapshot — if any field is absent, we leave it
+    // alone (which is fine: the forward apply would have left it alone too).
+    let f = read_device_fields(before);
+
+    let mut tx = pool.begin().await?;
+
+    let updated: Option<(i32,)> = sqlx::query_as(
+        "UPDATE net.device SET
+            hostname         = COALESCE($3,  hostname),
+            device_code      = COALESCE($4,  device_code),
+            display_name     = COALESCE($5,  display_name),
+            hardware_model   = COALESCE($6,  hardware_model),
+            serial_number    = COALESCE($7,  serial_number),
+            firmware_version = COALESCE($8,  firmware_version),
+            device_role_id   = COALESCE($9,  device_role_id),
+            building_id      = COALESCE($10, building_id),
+            room_id          = COALESCE($11, room_id),
+            rack_id          = COALESCE($12, rack_id),
+            management_ip    = COALESCE($13::inet, management_ip),
+            ssh_username     = COALESCE($14, ssh_username),
+            ssh_port         = COALESCE($15, ssh_port),
+            management_vrf   = COALESCE($16, management_vrf),
+            inband_enabled   = COALESCE($17, inband_enabled),
+            notes            = COALESCE($18, notes),
+            updated_at       = now(),
+            updated_by       = $19,
+            version          = version + 1
+          WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
+          RETURNING version")
+        .bind(entity_id).bind(org_id)
+        .bind(f.hostname).bind(f.device_code.and_then(|x| x)).bind(f.display_name.and_then(|x| x))
+        .bind(f.hardware_model.and_then(|x| x)).bind(f.serial_number.and_then(|x| x))
+        .bind(f.firmware_version.and_then(|x| x))
+        .bind(f.device_role_id.and_then(|x| x)).bind(f.building_id.and_then(|x| x))
+        .bind(f.room_id.and_then(|x| x)).bind(f.rack_id.and_then(|x| x))
+        .bind(f.management_ip.and_then(|x| x)).bind(f.ssh_username.and_then(|x| x))
+        .bind(f.ssh_port.and_then(|x| x))
+        .bind(f.management_vrf).bind(f.inband_enabled)
+        .bind(f.notes.and_then(|x| x))
+        .bind(user_id)
+        .fetch_optional(&mut *tx).await?;
+    let (new_version,) = updated.ok_or_else(|| EngineError::bad_request(format!(
+        "Device {entity_id} not found or deleted — rollback aborted.")))?;
+
+    sqlx::query(
+        "UPDATE net.change_set_item
+            SET applied_at = NULL, updated_at = now()
+          WHERE id = $1 AND organization_id = $2")
+        .bind(item.id).bind(org_id).execute(&mut *tx).await?;
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "Device",
+        entity_id: Some(entity_id),
+        action: "RolledBack",
+        actor_user_id: user_id,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: Some(correlation_id),
+        details: serde_json::json!({
+            "original_action": "Update",
+            "restored_from_before_json": true,
+            "new_version": new_version,
+            "change_set_item_id": item.id,
+        }),
+    }).await?;
+
+    tx.commit().await?;
+    Ok(())
+}
+
+async fn apply_device_delete(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    let entity_id = item.entity_id.ok_or_else(|| EngineError::bad_request(
+        "Device/Delete item is missing entity_id"))?;
+
+    let mut tx = pool.begin().await?;
+
+    // Soft delete with OCC — if version doesn't match, abort.
+    let affected = match item.expected_version {
+        Some(ev) => sqlx::query(
+            "UPDATE net.device
+                SET deleted_at = now(), deleted_by = $3,
+                    updated_at = now(), updated_by = $3, version = version + 1
+              WHERE id = $1 AND organization_id = $2
+                AND version = $4 AND deleted_at IS NULL")
+            .bind(entity_id).bind(org_id).bind(user_id).bind(ev)
+            .execute(&mut *tx).await?,
+        None => sqlx::query(
+            "UPDATE net.device
+                SET deleted_at = now(), deleted_by = $3,
+                    updated_at = now(), updated_by = $3, version = version + 1
+              WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL")
+            .bind(entity_id).bind(org_id).bind(user_id)
+            .execute(&mut *tx).await?,
+    };
+    if affected.rows_affected() == 0 {
+        return Err(EngineError::bad_request(format!(
+            "Device {entity_id} not found, version mismatch, or already deleted.")));
+    }
+
+    sqlx::query(
+        "UPDATE net.change_set_item
+            SET applied_at = now(), apply_error = NULL, updated_at = now()
+          WHERE id = $1 AND organization_id = $2")
+        .bind(item.id).bind(org_id).execute(&mut *tx).await?;
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "Device",
+        entity_id: Some(entity_id),
+        action: "Deleted",
+        actor_user_id: user_id,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: Some(correlation_id),
+        details: serde_json::json!({
+            "soft_delete": true,
+            "change_set_item_id": item.id,
+        }),
+    }).await?;
+
+    tx.commit().await?;
+    Ok(())
+}
+
+async fn rollback_device_delete(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    let entity_id = item.entity_id.ok_or_else(|| EngineError::bad_request(
+        "Device/Delete rollback is missing entity_id"))?;
+
+    let mut tx = pool.begin().await?;
+
+    // Undelete = clear deleted_at. Surprise-safety: only undelete if the
+    // row is still soft-deleted (no one reaped and hard-deleted it in the
+    // interim).
+    let affected = sqlx::query(
+        "UPDATE net.device
+            SET deleted_at = NULL, deleted_by = NULL,
+                updated_at = now(), updated_by = $3, version = version + 1
+          WHERE id = $1 AND organization_id = $2 AND deleted_at IS NOT NULL")
+        .bind(entity_id).bind(org_id).bind(user_id)
+        .execute(&mut *tx).await?;
+    if affected.rows_affected() == 0 {
+        return Err(EngineError::bad_request(format!(
+            "Device {entity_id} is not soft-deleted — rollback aborted. \
+             It may have been hard-deleted by an operator since apply.")));
+    }
+
+    sqlx::query(
+        "UPDATE net.change_set_item
+            SET applied_at = NULL, updated_at = now()
+          WHERE id = $1 AND organization_id = $2")
+        .bind(item.id).bind(org_id).execute(&mut *tx).await?;
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "Device",
+        entity_id: Some(entity_id),
+        action: "RolledBack",
+        actor_user_id: user_id,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: Some(correlation_id),
+        details: serde_json::json!({
+            "original_action": "Delete",
+            "reverse_action": "Undelete",
             "change_set_item_id": item.id,
         }),
     }).await?;
