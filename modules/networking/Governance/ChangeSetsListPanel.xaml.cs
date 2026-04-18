@@ -7,6 +7,10 @@ using System.Threading.Tasks;
 using System.Windows;
 using Central.ApiClient;
 using Central.Engine.Shell;
+using MessageBox = System.Windows.MessageBox;
+using MessageBoxButton = System.Windows.MessageBoxButton;
+using MessageBoxImage = System.Windows.MessageBoxImage;
+using MessageBoxResult = System.Windows.MessageBoxResult;
 using UserControl = System.Windows.Controls.UserControl;
 
 namespace Central.Module.Networking.Governance;
@@ -72,13 +76,28 @@ public partial class ChangeSetsListPanel : UserControl
 
         // Action routing. SelectItem carries the sub-action tag
         // (from the registrar: "action:new" / "action:submit" / ...).
-        // Known actions get a typed handler; unknown ones fall through
-        // to refresh (same behaviour as the prior skeleton).
+        // Actions that operate on a single Set read the grid's current
+        // row; missing selection falls through to a MessageBox prompt.
         var action = msg.SelectItem as string;
         switch (action)
         {
             case "action:new":
                 OpenNewChangeSetDialog();
+                break;
+            case "action:submit":
+                RunWithSelection("Submit", OpenSubmitDialog);
+                break;
+            case "action:decide":
+                RunWithSelection("record a decision on", OpenDecideDialog);
+                break;
+            case "action:apply":
+                RunWithSelection("Apply", ConfirmAndApply);
+                break;
+            case "action:rollback":
+                RunWithSelection("Rollback", ConfirmAndRollback);
+                break;
+            case "action:cancel":
+                RunWithSelection("Cancel", ConfirmAndCancel);
                 break;
             default:
                 _ = ReloadAsync();
@@ -86,9 +105,31 @@ public partial class ChangeSetsListPanel : UserControl
         }
     }
 
-    /// <summary>Shows the draft dialog; on success, reload so the new
-    /// Set shows up top of the grid. Dialog owns its own error display
-    /// so we don't mirror the message here.</summary>
+    // ─── Selection helpers ──────────────────────────────────────────────
+
+    /// <summary>Current selected row from the grid, or null. Actions
+    /// that need a target Set go through this.</summary>
+    private ChangeSetRow? CurrentRow() => Grid.CurrentItem as ChangeSetRow;
+
+    /// <summary>Wraps the "did the admin actually select something?"
+    /// check that every non-new action shares. <paramref name="verb"/>
+    /// is the human-readable phrase that shows in the prompt ("Apply",
+    /// "Rollback", etc.).</summary>
+    private void RunWithSelection(string verb, Action<ChangeSetRow> body)
+    {
+        var row = CurrentRow();
+        if (row is null)
+        {
+            MessageBox.Show(
+                $"Select a Change Set to {verb}.",
+                "No selection", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        body(row);
+    }
+
+    // ─── New ────────────────────────────────────────────────────────────
+
     private void OpenNewChangeSetDialog()
     {
         if (string.IsNullOrEmpty(_baseUrl) || _tenantId == Guid.Empty) return;
@@ -100,6 +141,132 @@ public partial class ChangeSetsListPanel : UserControl
         if (dialog.ShowDialog() == true && dialog.CreatedSet is not null)
         {
             _ = ReloadAsync();
+        }
+    }
+
+    // ─── Submit ─────────────────────────────────────────────────────────
+
+    private void OpenSubmitDialog(ChangeSetRow row)
+    {
+        var dialog = new SubmitChangeSetDialog(_baseUrl!, _tenantId, _actorUserId, row)
+        {
+            Owner = Window.GetWindow(this),
+        };
+        if (dialog.ShowDialog() == true) _ = ReloadAsync();
+    }
+
+    // ─── Decide ─────────────────────────────────────────────────────────
+
+    private void OpenDecideDialog(ChangeSetRow row)
+    {
+        var dialog = new DecideChangeSetDialog(
+            _baseUrl!, _tenantId, _actorUserId, actorDisplay: null, row)
+        {
+            Owner = Window.GetWindow(this),
+        };
+        if (dialog.ShowDialog() == true) _ = ReloadAsync();
+    }
+
+    // ─── Apply ──────────────────────────────────────────────────────────
+
+    private async void ConfirmAndApply(ChangeSetRow row)
+    {
+        var confirm = MessageBox.Show(
+            $"Apply \u201C{row.Title}\u201D?\n\n" +
+            $"{row.ItemCount} item{(row.ItemCount == 1 ? "" : "s")} will execute. " +
+            "Items that succeed stamp audit entries; partial failures leave the \n" +
+            "Set at Approved for retry.",
+            "Apply Change Set", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes) return;
+
+        await RunRemote(
+            client => client.ApplyChangeSetAsync(row.Id, _tenantId),
+            onSuccess: result =>
+            {
+                _ = ReloadAsync();
+                if (result.FailedCount > 0)
+                {
+                    MessageBox.Show(
+                        $"Apply finished with {result.AppliedCount} succeeded, " +
+                        $"{result.FailedCount} failed. See the Set detail for per-item errors.",
+                        "Partial apply", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            });
+    }
+
+    // ─── Rollback ───────────────────────────────────────────────────────
+
+    private async void ConfirmAndRollback(ChangeSetRow row)
+    {
+        var confirm = MessageBox.Show(
+            $"Rollback \u201C{row.Title}\u201D?\n\n" +
+            "Every applied item is reversed. The audit log keeps both the \n" +
+            "original apply entries and fresh RolledBack entries — the \n" +
+            "history is never lost.",
+            "Rollback Change Set", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.Yes) return;
+
+        await RunRemote(
+            client => client.RollbackChangeSetAsync(row.Id, _tenantId),
+            onSuccess: result =>
+            {
+                _ = ReloadAsync();
+                if (result.FailedCount > 0)
+                {
+                    MessageBox.Show(
+                        $"Rollback finished with {result.RevertedCount} reverted, " +
+                        $"{result.FailedCount} failed. Items that couldn't be reversed \n" +
+                        "stay as their applied value; see per-item errors in the Set detail.",
+                        "Partial rollback", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            });
+    }
+
+    // ─── Cancel ─────────────────────────────────────────────────────────
+
+    private async void ConfirmAndCancel(ChangeSetRow row)
+    {
+        var confirm = MessageBox.Show(
+            $"Cancel \u201C{row.Title}\u201D?\n\nThe Set moves to Cancelled (terminal).",
+            "Cancel Change Set", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes) return;
+
+        await RunRemote(
+            client => client.CancelChangeSetAsync(row.Id, _tenantId),
+            onSuccess: result => { _ = ReloadAsync(); });
+    }
+
+    // ─── Remote-call wrapper ────────────────────────────────────────────
+
+    /// <summary>Handles the typed-exception -> MessageBox mapping shared
+    /// by every ribbon action that calls the Rust engine. Takes the
+    /// client delegate inline so each caller supplies its own method
+    /// pointer + result-type handler.</summary>
+    private async Task RunRemote<T>(
+        Func<NetworkingEngineClient, Task<T>> call,
+        Action<T> onSuccess)
+    {
+        try
+        {
+            using var client = new NetworkingEngineClient(_baseUrl!);
+            if (_actorUserId is int uid) client.SetActorUserId(uid);
+            var result = await call(client);
+            onSuccess(result);
+        }
+        catch (NetworkingEngineException ex)
+        {
+            MessageBox.Show($"Engine error ({ex.StatusCode}): {ex.Message}",
+                "Operation failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        catch (HttpRequestException ex)
+        {
+            MessageBox.Show($"Network error: {ex.Message}",
+                "Operation failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed: {ex.Message}",
+                "Operation failed", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
