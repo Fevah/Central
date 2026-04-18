@@ -124,6 +124,8 @@ Each phase has: scope, entities delivered, capabilities delivered (by MFL §), D
 
 ### Phase 1 — Universal entity base
 
+**Status:** ✅ COMPLETE (2026-04-17 · migration 084 `084_net_schema_foundation.sql`). Landed as part of Phase 2a — universal base columns on every `net.*` table, `EntityStatus` + `LockState` enums in `libs/engine/Net/`.
+
 **Scope:** The field pattern every new entity will carry.
 
 **Deliverables:**
@@ -142,6 +144,8 @@ Each phase has: scope, entities delivered, capabilities delivered (by MFL §), D
 ---
 
 ### Phase 2 — Physical hierarchy (organisation → region → site → building → floor → room → rack)
+
+**Status:** ✅ COMPLETE (2026-04-17). 5 sub-commits (2a–2e): schema + 9 hierarchy tables + Immunocore seed (`1b0715c65`); models + repo + REST (`1b3ca843b`); WPF `HierarchyTreePanel` (`e33ed8d94`); Region/Site/Building CRUD dialog (`49b4cfc18`); Floor/Room/Rack CRUD (`8126400fc`).
 
 **Scope:** The tenant + geographic backbone.
 
@@ -163,6 +167,8 @@ Each phase has: scope, entities delivered, capabilities delivered (by MFL §), D
 
 ### Phase 3 — Numbering pools
 
+**Status:** ✅ COMPLETE (2026-04-17). 11 sub-commits (3a–3k): 16 pool tables with GIST EXCLUDE for subnet overlap (`f30d760fb`); models + repo reads (`a55f3d305`); `AllocationService` with advisory-lock serialisation + shelf cool-down (`d2efad307`); IPv4 allocator (`932fabf9c`); 20+ REST endpoints (`4ad0e1a84`); WPF `PoolsTreePanel` with utilisation bars (`8e81623e9`); `PoolDetailDialog` + `AllocateDialog` + tree menu (`f9cff60be`); VLAN/MLAG repo-write gap closed (`2dd913be6`); Immunocore numbering import (`81d3da96e`); MSTP CRUD (`2045a11db`); IPv6 carver with `UInt128` math (`94bd9379b`).
+
 **Scope:** The "locked" core of the system — ASN / IP / VLAN / MLAG / MSTP.
 
 **Deliverables:**
@@ -183,6 +189,8 @@ Each phase has: scope, entities delivered, capabilities delivered (by MFL §), D
 ---
 
 ### Phase 4 — Device catalog + devices + ports
+
+**Status:** ✅ COMPLETE (2026-04-17). 6 sub-commits (4a–4f): schema + 12-role Immunocore catalog (`d366969e5`); models + repo reads (`45f561a41`); full CRUD + REST for device_role/device/module/port/ae/loopback + `MapChildResource<T>` helper (`080951e5f`); `switches → net.device` import with role-prefix disambiguation (`201062616`); dual-write trigger with txn-scoped reentrancy guard (`983fa06ae`); net.device-backed switches reader with parity test vs legacy (`4610ce4df`).
 
 **Scope:** Replace `switches` with the real `device` model.
 
@@ -206,6 +214,8 @@ Each phase has: scope, entities delivered, capabilities delivered (by MFL §), D
 
 ### Phase 5 — Unified link model
 
+**Status:** ✅ COMPLETE (2026-04-17, 2026-04-18). 6 sub-commits (5a–5f): schema + 7 link-type catalog (`3b2d6da4a`); models + repo reads (`cf94d8dbb`); CRUD + REST (`c0fecc312`); import of 2,826 legacy rows with 5,652 endpoints (`cb4171ca9`); `LinkNamingService` template engine (`15fec0102`); 9 SQL parity tests against all 2,826 imported links (`20fc0dd6d`).
+
 **Scope:** Merge `p2p_links`, `b2b_links`, `fw_links` into one `link` + `link_endpoint`.
 
 **Deliverables:**
@@ -226,6 +236,8 @@ Each phase has: scope, entities delivered, capabilities delivered (by MFL §), D
 ---
 
 ### Phase 6 — Servers + NICs
+
+**Status:** ✅ COMPLETE (2026-04-18). 6 sub-commits (6a–6f): schema (`ab866c5a2`); models + repo + `ServerNamingService` (`8f608f61b`); CRUD + REST + ribbon audit + `ServerValidation` (`4c1d1b4b7`); legacy import (`ced562ac7`); `ServerCreationService` 4-NIC fan-out with ASN + loopback + MLAG-paired cores (`d4519f436`); dual-write trigger + `ServerGridPanel` (`d23ce9816`).
 
 **Scope:** `server_profile`, `server`, `server_nic` — plus the 4-NIC fan-out pattern.
 

@@ -40,11 +40,38 @@ project structure without updating the architecture doc first.
 | [docs/GLOBALADMIN_BUILDOUT.md](docs/GLOBALADMIN_BUILDOUT.md) | Global Admin 5-phase buildout — tenant CRUD, licensing, subscriptions, setup wizard, audit |
 | [docs/TASKS_BUILDOUT.md](docs/TASKS_BUILDOUT.md) | Task module 11-phase buildout plan (Hansoft/P4 Plan clone) — all phases complete |
 | [docs/MERGE_PLAN.md](docs/MERGE_PLAN.md) | Central + Secure merge — 10 phases, unified auth, API gateway, K8s elastic scaling |
+| [docs/NETWORKING_BUILDOUT_PLAN.md](docs/NETWORKING_BUILDOUT_PLAN.md) | Networking engine — 23-phase buildout transforming single-customer toolkit into multi-tenant source-of-truth. Phases 1-6 complete (2026-04-18) |
+| [docs/NETWORKING_RIBBON_AUDIT.md](docs/NETWORKING_RIBBON_AUDIT.md) | Networking ribbon action inventory — every button, permission, message, handler; placeholder-lambda canary test |
 | [docs/CREDENTIALS.md](docs/CREDENTIALS.md) | All login credentials, DSNs, SSH info, service URLs, K8s access |
 
 ### All 8 Phases + Task Module COMPLETE — Platform is production-ready
 
-25 projects. .NET 10 / PG 18.3 / Npgsql 10.0.2 / DX 25.2 / Svg.NET 3.4.7 / Elsa 3.5.3. 53 API endpoint files. 80 DB migrations (001-080). 0 build errors. 2,229 unit tests across 164 classes (2026-04-17).
+25 projects. .NET 10 / PG 18.3 / Npgsql 10.0.2 / DX 25.2 / Svg.NET 3.4.7 / Elsa 3.5.3. 53 API endpoint files. 96 DB migrations (001-096). 0 build errors. **2,616 tests** across ~180 classes (2026-04-18).
+
+### Networking Engine Buildout — Phases 1-6 COMPLETE (2026-04-18)
+
+Transforms the existing `switches` / `p2p_links` / `servers` single-customer shape into a multi-tenant network source-of-truth with 42 `net.*` tables across:
+
+| Phase | What | Key commits |
+|-------|------|-------------|
+| 1 | Universal entity base (status / lock / version / audit) | 084 (foundation) |
+| 2 | Region → Site → Building → Floor → Room → Rack + profiles | 2a-2e (1b0715c65…8126400fc) |
+| 3 | ASN / IP / VLAN / MLAG / MSTP pools + allocation service + shelf + IPv4+IPv6 carver | 3a-3k (f30d760fb…94bd9379b) |
+| 4 | device_role catalog + device + module + port + aggregate_ethernet + loopback; dual-write vs legacy switches | 4a-4f (d366969e5…4610ce4df) |
+| 5 | Unified `link` + `link_endpoint` + 7 link-type catalog; import of 2,826 legacy P2P/B2B/FW rows with SQL parity tests | 5a-5f (3b2d6da4a…20fc0dd6d) |
+| 6 | server_profile + server + server_nic; 4-NIC fan-out allocation service with MLAG-paired cores | 6a-6f (ab866c5a2…d23ce9816) |
+
+Chunks (pull-forward cross-cutting work):
+
+| Chunk | What | Commit |
+|-------|------|--------|
+| A | Device naming templates — parity with links (`device_role.naming_template` + `DeviceNamingService`) | 3c8da8a6e |
+| B | Networking ribbon audit + placeholder wiring + 22 audit tests + `docs/NETWORKING_RIBBON_AUDIT.md` | e1fccd2c6 |
+| C | Dialog validation extracted to `HierarchyValidation` / `PoolValidation` / `AllocationValidation` + 44 tests; dialogs rewired to consume them | ce7c1edfa |
+
+Per-phase checklist invariant (from plan amendment 758ccaa98) — every *-type catalog table carries: `naming_template` column, `XNamingService` + `XNamingContext` record with documented tokens, unit tests for happy + edge paths, CRUD REST, ribbon audit with no placeholder lambdas, extracted dialog validation.
+
+**Honest gaps**: Phase 7 (scope-resolution engine + override table + preview API + admin UI) not started. Phases 8-23 not started. MSTP rule editor panel deferred. XAML ribbon coexists with engine-registered ribbon until Phase 11.
 
 ### Central + Secure Merge — ALL 10 PHASES COMPLETE
 
@@ -292,9 +319,12 @@ Restructured 2026-04-17 — see [docs/REPO_STRUCTURE_PLAN.md](docs/REPO_STRUCTUR
 │   │                         links — one self-contained tenant-togglable
 │   │                         module covering every networking concern.
 │   │                         Internal subfolders: Devices/, Switches/,
-│   │                         Routing/, Vlans/, Links/, Dashboards/.
+│   │                         Routing/, Vlans/, Links/, Dashboards/,
+│   │                         Hierarchy/ (Phase 2), Pools/ (Phase 3),
+│   │                         Servers/ (Phase 6f).
 │   │                         Devices folded in 2026-04-17 after earlier
-│   │                         four-way merge.
+│   │                         four-way merge. Networking engine buildout
+│   │                         phases 1-6 complete 2026-04-18.
 │   ├── projects/             Project + task management (portfolios,
 │   │                         programmes, sprints, Kanban, Gantt — 16 panels)
 │   │                         (+ Dashboards/TaskDashboardPanel + QADashboardPanel)
@@ -1047,6 +1077,22 @@ modules/admin/Views/
 | 078_ai_assistant.sql | `ai_conversations`, `ai_messages`, `ai_prompt_templates` (4 seeded), `ai_tools` (6 seeded) |
 | 079_ai_dedup_enrichment.sql | `crm_duplicate_rules`, `crm_duplicates`, `crm_merge_operations`, `crm_enrichment_providers` (5 seeded: Clearbit/Apollo/ZoomInfo/PeopleData/Hunter), `tenant_enrichment_providers` (BYOK), `crm_enrichment_jobs`, `v_contact_duplicate_candidates` view using pg_trgm |
 | 080_ai_churn_calls.sql | `crm_churn_risks`, `crm_account_ltv`, `crm_call_recordings` (transcript + sentiment + topics + talk ratio), `crm_auto_capture_rules`, `crm_auto_capture_queue`, 8 new AI-related webhook event types |
+| 081_desktop_missing_tables.sql | 6 tables the WPF startup health check was flagging as missing (identity_providers, auth_events, sync_configs, etc.) |
+| 082_app_users_auth_columns.sql | `password_changed_at` + `mfa_secret_enc` on `app_users` (fixes silent login failure where the query referenced non-existent columns) |
+| 083_module_catalog_reconcile.sql | Module catalog reconcile after the Networking module folded Devices |
+| 084_net_schema_foundation.sql | `net` schema, `net.entity_status` + `net.lock_state` enums, `public.schema_versions` table |
+| 085_net_hierarchy.sql | 9 tables: `net.region` / `site_profile` / `site` / `building_profile` / `building` / `floor_profile` / `floor` / `room` / `rack` with 17 universal base columns each; Immunocore seed |
+| 086_net_pools.sql | 16 pool tables — `asn_pool` / `asn_block` / `asn_allocation`; `ip_pool` / `subnet` (with GIST EXCLUDE for no-overlap) / `ip_address`; `vlan_pool` / `vlan_block` / `vlan` / `vlan_template`; `mlag_domain_pool` / `mlag_domain`; `mstp_priority_rule` / `rule_step` / `allocation`; `reservation_shelf` |
+| 087_net_immunocore_import.sql | Immunocore numbering import: 1 ASN pool + 5 per-site blocks + 5 allocations; 1 IP pool + 5 loopback subnets + 5 /32s; 1 VLAN pool + 63 distinct VLANs |
+| 088_net_devices.sql | 7 tables: `net.device_role` (12 Immunocore roles) / `device` / `module` / `port` / `aggregate_ethernet` / `loopback` / `building_profile_role_count` |
+| 089_net_device_import.sql | `public.switches` → `net.device` import with role-prefix disambiguation via hostname hint (l1 + CORE → L1Core, not L1SW) |
+| 090_net_device_dual_write.sql | Bidirectional trigger `public.switches` ↔ `net.device` with txn-scoped reentrancy guard |
+| 091_net_links.sql | 3 tables: `net.link_type` (7 seeded: P2P/B2B/FW/DMZ/MLAG-Peer/Server-NIC/WAN) / `link` / `link_endpoint` |
+| 092_net_link_import.sql | 2,826 legacy link rows imported (2,310 P2P + 180 B2B + 336 FW) with 5,652 endpoints |
+| 093_net_device_naming.sql | `naming_template` column on `net.device_role` + per-role seeds (Chunk A — parity with `net.link_type.naming_template`) |
+| 094_net_servers.sql | 3 tables: `net.server_profile` (Server4NIC seeded) / `server` / `server_nic` with MlagSide A/B |
+| 095_net_server_import.sql | `public.servers` → `net.server` import; 160 legacy rows → 31 distinct hostnames (data-quality-correct collapse via UNIQUE hostname) |
+| 096_net_server_dual_write.sql | Bidirectional trigger `public.servers` ↔ `net.server`; mirrors hostname + status (FK fields stay authoritative on `net.*`) |
 
 ## Multi-Tenancy Sizing Model
 

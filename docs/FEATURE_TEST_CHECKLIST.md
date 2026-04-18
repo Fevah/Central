@@ -1,7 +1,7 @@
 ﻿# Central Platform — Feature Test Checklist
 
-Last updated: 2026-04-17
-Test suite: 2,229 tests across 164 test classes. 0 failures (unit tests).
+Last updated: 2026-04-18
+Test suite: 2,616 tests across ~180 test classes. 0 failures (unit + live-DB integration against the podman `central-postgres` container).
 Build: 0 errors.
 
 Comprehensive test checklist for the Central desktop + API platform, organised by surface
@@ -2250,6 +2250,114 @@ All endpoints return RFC 7807 problem+json on errors. All write endpoints requir
 
 ---
 
+## 7.X Networking Engine (Phases 1-6 COMPLETE — 2026-04-18)
+
+Multi-tenant source-of-truth buildout living under the `net.*` schema (42 tables). Replaces the single-customer `public.switches` / `public.p2p_links` / `public.servers` shape with a proper tenanted + versioned model.
+
+**Cross-refs:** [docs/NETWORKING_BUILDOUT_PLAN.md](NETWORKING_BUILDOUT_PLAN.md) (23-phase plan), [docs/NETWORKING_RIBBON_AUDIT.md](NETWORKING_RIBBON_AUDIT.md) (ribbon action inventory).
+
+### 7.X.1 Universal Entity Base (Phase 1)
+
+- [ ] `net.entity_status` enum: Planned / Reserved / Active / Deprecated / Retired — `HierarchyModelTests.EntityStatus_LifecycleTransitions`
+- [ ] `net.lock_state` enum: Open / SoftLock / HardLock / Immutable — `HierarchyModelTests.LockState_Progression`
+- [ ] All 42 `net.*` tables carry the 17 universal base columns (id, organization_id, status, lock_state, lock_reason, locked_by, locked_at, created_at/by, updated_at/by, deleted_at/by, notes, tags jsonb, external_refs jsonb, version) — migration 084
+- [ ] Optimistic concurrency on Update via `WHERE version = @ver` — `ConcurrencyException` thrown on mismatch
+
+### 7.X.2 Hierarchy (Phase 2)
+
+- [ ] Region → Site → Building → Floor → Room → Rack tree (9 tables including profiles) — migration 085
+- [ ] Immunocore seed: 1 UK region, 1 Milton Park site, 5 MEP-91/92/93/94/96 buildings
+- [ ] `HierarchyRepository` with List/Get/Create/Update/SoftDelete for every tier — `HierarchyModelTests`
+- [ ] REST `/api/net/regions` + `/sites` + `/buildings` + `/floors` + `/rooms` + `/racks` (CRUD on all 6 tiers)
+- [ ] WPF `HierarchyTreePanel` (DX TreeListControl, KeyFieldName=Id + ParentFieldName=ParentId)
+- [ ] `HierarchyDetailDialog` one-dialog CRUD for all 6 levels, factory methods per mode
+- [ ] Right-click tree menu: New child (type-aware) / Edit / Delete (soft-delete with confirmation)
+- [ ] `HierarchyValidation` static helpers — per-type rules (code required, parent FK required in New mode) — 17 tests in `HierarchyValidationTests`
+
+### 7.X.3 Numbering Pools (Phase 3)
+
+- [ ] 16 pool tables: asn_pool + asn_block + asn_allocation; ip_pool + subnet + ip_address; vlan_pool + vlan_block + vlan + vlan_template; mlag_domain_pool + mlag_domain; mstp_priority_rule + rule_step + priority_allocation; reservation_shelf — migration 086
+- [ ] `net.subnet` carries GIST EXCLUDE on `(organization_id WITH =, network inet_ops WITH &&)` — no two active subnets may overlap (smoke-tested live)
+- [ ] `AllocationService` (integer allocation — ASN / VLAN / MLAG) with `pg_advisory_xact_lock(stable_hash(container_id))` serialisation — `AllocationServiceTests` (7 pure + 6 live-DB)
+- [ ] `IpAllocationService` (IPv4 next-free + subnet-carve with gap-finder) — `IpMathTests` (20) + `IpAllocationServiceTests` (9 live-DB)
+- [ ] `IpMath6` + IPv6 path via `UInt128` arithmetic (RFC 4291 — no reserved addresses) — `IpMath6Tests` (14) + `IpAllocationServiceV6Tests` (6 live-DB)
+- [ ] Reservation shelf with cool-down: `RetireAsync(resource, cooldown)`, `IsOnShelfAsync` — allocation skips shelved values until `available_after > now()`
+- [ ] Phase-3 invariants: PoolExhaustedException / AllocationContainerNotFoundException / AllocationRangeException
+- [ ] REST under `/api/net/*-pools/*-blocks/*-allocations` — 20+ endpoints, 4 permission codes (NetPoolsRead/Write/Delete/Allocate)
+- [ ] Immunocore numbering imported: 5 ASNs (65112/65121/65132/65141/65162) + 5 loopback /24 subnets + 63 VLANs — migration 087
+- [ ] WPF `PoolsTreePanel` with utilisation bars (DX ProgressBarEdit)
+- [ ] `PoolDetailDialog` covers every pool/block/template tier; `AllocateDialog` (5 modes: ASN/VLAN/MLAG/IP/subnet-carve)
+- [ ] `PoolValidation` static helpers (first <= last, VLAN/MLAG 1..4094, etc.) — 15 tests in `PoolValidationTests`
+
+### 7.X.4 Device Catalog (Phase 4)
+
+- [ ] 7 tables: device_role (12 Immunocore roles) + device + module + port + aggregate_ethernet + loopback + building_profile_role_count — migration 088
+- [ ] `DevicesRepository` with List/Get/Create/Update/SoftDelete for every tier — `DeviceModelTests` (10)
+- [ ] `Device.management_ip` + `ssh_*` + `last_ping_*` mirror `public.switches` 1:1 for dual-write sanity
+- [ ] `switches` → `net.device` import with role-prefix disambiguation (hostname contains "CORE" → prefer L1Core over L1SW) — migration 089
+- [ ] Bidirectional dual-write trigger with txn-scoped reentrancy guard (`set_config('net.in_dual_write', 'on', true)`) — migration 090
+- [ ] `GetSwitchesFromNetDeviceAsync` reads from `net.device` projected to `SwitchRecord`, feature-flagged via `CENTRAL_USE_NET_DEVICE=1` — `DeviceReaderParityTests` (3 live-DB)
+- [ ] Parity test: every imported switch yields an identical SwitchRecord through both readers
+- [ ] Device naming template on `net.device_role` — `DeviceNamingService` with recognised tokens (region / site / building / rack / role / instance) — 11 tests in `DeviceNamingServiceTests`
+
+### 7.X.5 Unified Link Model (Phase 5)
+
+- [ ] 3 tables: link_type (7 seeded) + link + link_endpoint — migration 091
+- [ ] link_type naming templates per type — `LinkNamingService` — 9 tests in `LinkNamingServiceTests`
+- [ ] 2,826 legacy P2P/B2B/FW rows imported to unified model — migration 092
+- [ ] 9 SQL parity tests between legacy and unified tables — `LinkImportParityTests`
+- [ ] Per-type extensions stored in `link.config_json` (B2B: tx/rx/media/speed; P2P: desc_a/desc_b) — survives import
+
+### 7.X.6 Servers + NICs (Phase 6)
+
+- [ ] 3 tables: server_profile (Server4NIC seeded) + server + server_nic (MlagSide A/B/None) — migration 094
+- [ ] `ServersRepository` with full CRUD + `RecordPingAsync` fast-path — `ServerModelTests` (4)
+- [ ] `ServerNamingService` + `ServerNamingContext` record — 8 tests in `ServerNamingServiceTests`
+- [ ] `ServerCreationService.CreateWithFanOutAsync` acceptance:
+  - [ ] Allocates ASN from block (if given) — `ServerCreationServiceTests.CreateWithFanOut_AllocatesAsnLoopbackAndFourNicsWithAlternatingSides`
+  - [ ] Allocates loopback IP from subnet (if given)
+  - [ ] Creates N NICs per profile.NicCount with alternating MLAG sides {A, B, A, B}
+  - [ ] Each NIC points at correct core (side A or B) looked up by role in building
+  - [ ] Optional pieces skip cleanly when not provided — `CreateWithFanOut_OptionalPiecesSkipCleanlyWhenNotProvided`
+  - [ ] One-core building leaves side-B NICs with null TargetDeviceId — `CreateWithFanOut_OneCoreBuildingPutsSideBAsNull`
+  - [ ] Unknown profile throws `ServerProfileNotFoundException` — `CreateWithFanOut_ProfileNotFound_Throws`
+- [ ] Legacy `public.servers` → `net.server` import; 160 rows dedupe to 31 distinct hostnames — migration 095
+- [ ] Bidirectional dual-write trigger `public.servers` ↔ `net.server` — migration 096 (smoke-tested both directions live)
+- [ ] WPF `ServerGridPanel` reads from `net.server` with joined building / profile / ASN / loopback / NIC count
+- [ ] `ServerValidation` static helpers — 12 tests in `ServerValidationTests`
+
+### 7.X.7 Cross-cutting Chunks (A/B/C)
+
+**Chunk A — Device naming templates** (commit `3c8da8a6e`)
+- [ ] `net.device_role.naming_template` column with per-role Immunocore seeds (Core → `{building_code}-CORE{instance}`, L1Core → `{building_code}-L1-CORE{instance}`, etc.)
+- [ ] `DeviceNamingService.Expand` — token substitution, zero-pad instance, unknown tokens pass-through
+
+**Chunk B — Networking ribbon audit** (commit `e1fccd2c6`)
+- [ ] `NetworkingRibbonRegistrar.BuildRibbon` — registration extracted to net10.0 assembly so test project can exercise it
+- [ ] Every action button publishes a `NavigateToPanelMessage` or `RefreshPanelMessage` — `NetworkingRibbonAuditTests.EveryActionButton_PublishesAMessage` (placeholder-lambda canary)
+- [ ] Every action button declares a permission — `EveryActionButton_HasAPermissionCode`
+- [ ] 14 theory rows pinning each (group, button) → (target panel, action payload)
+- [ ] VLAN toggle serialises bool in action payload (`action:showDefault:true|false`)
+
+**Chunk C — Dialog validation extraction** (commit `ce7c1edfa`)
+- [ ] `HierarchyValidation` + `PoolValidation` + `AllocationValidation` static helpers in libs/engine/Net/Dialogs/
+- [ ] `HierarchyDetailDialog` + `PoolDetailDialog` rewired to consume the validators (one source of truth)
+- [ ] 44 validation tests (17 hierarchy + 15 pool + 12 allocation)
+
+### 7.X.8 Naming template invariant (standing)
+
+Per the plan amendment (commit `758ccaa98`), every new *-type catalog row must carry:
+- [ ] `naming_template varchar(255)` column seeded with sensible default
+- [ ] `XNamingService` + `XNamingContext` record with documented tokens
+- [ ] Unit tests covering happy + edge paths
+- [ ] CRUD REST coverage
+- [ ] No placeholder `() => { }` lambdas in ribbon registrations
+- [ ] Dialog validation extracted + tested
+
+Compliance by *-type table: `link_type` ✓, `device_role` ✓, `server_profile` ✓. Pending coverage: `building_profile`, `vlan_template`, `mstp_priority_rule` (Phase 7).
+
+---
+
 ## 8. Enterprise SaaS
 
 ### 8.1 Multi-Tenancy Foundation
@@ -2912,5 +3020,21 @@ fresh DB via `MigrationRunner` at startup or `./db/setup.sh` manually.
 | 078 | `ai_assistant.sql` | `ai_conversations`, `ai_messages`, `ai_prompt_templates` (4 seeded), `ai_tool_definitions` (6 seeded) |
 | 079 | `ai_dedup_enrichment.sql` | `crm_duplicate_rules`, `crm_merge_operations`, `crm_enrichment_providers` (5 seeded), `crm_enrichment_jobs`, `v_contact_duplicate_candidates` view (pg_trgm) |
 | 080 | `ai_churn_calls.sql` | `crm_churn_risks`, `crm_account_ltv`, `crm_call_recordings`, `crm_auto_capture_queue`, 8 AI-related webhook event types |
+| 081 | `desktop_missing_tables.sql` | Hotfix for local dev — tables the desktop expects that were lost in earlier renumber (identity_providers, auth_events, etc.) |
+| 082 | `app_users_auth_columns.sql` | `password_changed_at`, `mfa_secret_enc` and other auth columns the desktop PermissionRepository queries |
+| 083 | `module_catalog_reconcile.sql` | Reconcile `module_catalog` with the post-consolidation WPF module layout |
+| 084 | `net_schema_foundation.sql` | **Networking engine — Phase 1.** `net` schema, universal entity base columns (status, lock_state, version, etc.), `net.entity_status` + `net.lock_state` enums, `net.entity_index` registry |
+| 085 | `net_hierarchy.sql` | **Phase 2.** `net.region`, `net.site`, `net.building`, `net.floor`, `net.room`, `net.rack` with parent FKs + per-tenant uniqueness on (parent, code) |
+| 086 | `net_pools.sql` | **Phase 3.** 16 pool tables (asn/vlan/mlag/subnet/loopback/etc.) + GIST EXCLUDE on `net.subnet` (no overlap per tenant via `btree_gist` + `inet_ops`) |
+| 087 | `net_immunocore_import.sql` | **Phase 3 import.** Seeds Immunocore ASN pool/blocks/allocations, loopback /24 subnets, 63 site VLANs from legacy switches data |
+| 088 | `net_devices.sql` | **Phase 4.** 7 device tables (`net.device_role` + 12 role catalog, `net.device`, `net.device_interface`, `net.device_optic`, etc.) |
+| 089 | `net_device_import.sql` | **Phase 4 import.** Imports from legacy `switches` with role-prefix disambiguation (hostname contains "CORE" → prefer L1Core over L1SW) |
+| 090 | `net_device_dual_write.sql` | **Phase 4 dual-write.** Bidirectional sync trigger between legacy `public.switches` and `net.device` with txn-scoped reentrancy guard |
+| 091 | `net_links.sql` | **Phase 5.** 3 unified link tables (`net.link_type` + 7-type catalog, `net.link`, `net.link_endpoint`) replacing P2P/B2B/FW separate tables |
+| 092 | `net_link_import.sql` | **Phase 5 import.** Migrates 2,826 legacy P2P/B2B/FW rows into the unified `net.link` model preserving `legacy_link_kind` + `legacy_link_id` |
+| 093 | `net_device_naming.sql` | **Chunk A.** `naming_template` column on `net.device_role` with per-role seeds — brace-substitution template engine for hostname conventions |
+| 094 | `net_servers.sql` | **Phase 6.** 3 server tables (`net.server`, `net.server_nic`, `net.server_profile`) with `Server4NIC` profile seeded for fan-out to building cores |
+| 095 | `net_server_import.sql` | **Phase 6 import.** Imports 160 legacy server rows → 31 unique servers via UNIQUE hostname dedup |
+| 096 | `net_server_dual_write.sql` | **Phase 6 dual-write.** Bidirectional sync trigger between legacy `public.servers` and `net.server` |
 
 ---
