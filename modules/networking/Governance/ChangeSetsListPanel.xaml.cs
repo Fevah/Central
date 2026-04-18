@@ -69,11 +69,38 @@ public partial class ChangeSetsListPanel : UserControl
     private void OnNavigate(NavigateToPanelMessage msg)
     {
         if (msg.TargetPanel != "changesets") return;
-        // Every ribbon action currently triggers a reload after the
-        // action completes — the detailed dialog work (inputs per action)
-        // is a follow-on slice. For now, navigate -> refresh keeps the
-        // grid up to date when actions happen outside this panel.
-        _ = ReloadAsync();
+
+        // Action routing. SelectItem carries the sub-action tag
+        // (from the registrar: "action:new" / "action:submit" / ...).
+        // Known actions get a typed handler; unknown ones fall through
+        // to refresh (same behaviour as the prior skeleton).
+        var action = msg.SelectItem as string;
+        switch (action)
+        {
+            case "action:new":
+                OpenNewChangeSetDialog();
+                break;
+            default:
+                _ = ReloadAsync();
+                break;
+        }
+    }
+
+    /// <summary>Shows the draft dialog; on success, reload so the new
+    /// Set shows up top of the grid. Dialog owns its own error display
+    /// so we don't mirror the message here.</summary>
+    private void OpenNewChangeSetDialog()
+    {
+        if (string.IsNullOrEmpty(_baseUrl) || _tenantId == Guid.Empty) return;
+
+        var dialog = new NewChangeSetDialog(_baseUrl!, _tenantId, _actorUserId)
+        {
+            Owner = Window.GetWindow(this),
+        };
+        if (dialog.ShowDialog() == true && dialog.CreatedSet is not null)
+        {
+            _ = ReloadAsync();
+        }
     }
 
     private void OnRefresh(RefreshPanelMessage msg)

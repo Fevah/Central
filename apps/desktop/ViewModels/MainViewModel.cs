@@ -334,6 +334,11 @@ public class MainViewModel : INotifyPropertyChanged
     private bool _isNetServersPanelOpen;
     public bool IsNetServersPanelOpen { get => _isNetServersPanelOpen; set { _isNetServersPanelOpen = value; OnPropertyChanged(); } }
 
+    /// <summary>Phase-8 Change Sets governance panel — driven by the Rust
+    /// networking-engine over HTTP via <c>NetworkingEngineClient</c>.</summary>
+    private bool _isChangeSetsPanelOpen;
+    public bool IsChangeSetsPanelOpen { get => _isChangeSetsPanelOpen; set { _isChangeSetsPanelOpen = value; OnPropertyChanged(); } }
+
     private bool _isSettingsPanelOpen;
     public bool IsSettingsPanelOpen
     {

@@ -19,6 +19,7 @@
     xmlns:hierViews="clr-namespace:Central.Module.Networking.Hierarchy;assembly=Central.Module.Networking"
     xmlns:poolViews="clr-namespace:Central.Module.Networking.Pools;assembly=Central.Module.Networking"
     xmlns:srvViews="clr-namespace:Central.Module.Networking.Servers;assembly=Central.Module.Networking"
+    xmlns:govViews="clr-namespace:Central.Module.Networking.Governance;assembly=Central.Module.Networking"
     xmlns:admViews="clr-namespace:Central.Module.Global.Admin;assembly=Central.Module.Global"
     xmlns:sdViews="clr-namespace:Central.Module.ServiceDesk.Views;assembly=Central.Module.ServiceDesk"
     xmlns:taskViews="clr-namespace:Central.Module.Projects;assembly=Central.Module.Projects"
@@ -589,6 +590,10 @@
                                            Glyph="{dx:DXImage Image=ServerMode_16x16}"
                                            RibbonStyle="SmallWithText"
                                            IsChecked="{Binding IsNetServersPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Change Sets"
+                                           Glyph="{dx:DXImage Image=Apply_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsChangeSetsPanelOpen, Mode=TwoWay}" />
                         <dxb:BarCheckItem  Content="Devices"
                                            Glyph="{dx:DXImage Image=Grid_16x16}"
                                            RibbonStyle="SmallWithText"
@@ -1207,6 +1212,13 @@
                                         Caption="Servers"
                                         AllowClose="True">
                         <srvViews:ServerGridPanel x:Name="ServerGridPanel" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- Change Sets Panel (Phase 8 governance — Rust-backed) -->
+                    <dxdo:DocumentPanel x:Name="ChangeSetsPanel"
+                                        Caption="Change Sets"
+                                        AllowClose="True">
+                        <govViews:ChangeSetsListPanel x:Name="ChangeSetsListPanel" />
                     </dxdo:DocumentPanel>
 
                     <!-- Devices Panel (extracted to Module.Devices) -->

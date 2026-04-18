@@ -143,6 +143,7 @@ public partial class MainWindow
             if (e.Item == HierarchyPanel) VM.IsHierarchyPanelOpen = false;
             if (e.Item == PoolsPanel) VM.IsPoolsPanelOpen = false;
             if (e.Item == NetServersPanel) VM.IsNetServersPanelOpen = false;
+            if (e.Item == ChangeSetsPanel) VM.IsChangeSetsPanelOpen = false;
             if (e.Item == P2PPanel) VM.IsP2PPanelOpen = false;
             if (e.Item == B2BPanel) VM.IsB2BPanelOpen = false;
             if (e.Item == FWPanel) VM.IsFWPanelOpen = false;
@@ -393,6 +394,11 @@ public partial class MainWindow
             {
                 ToggleDockPanel(NetServersPanel, VM.IsNetServersPanelOpen);
                 if (VM.IsNetServersPanelOpen) _ = ServerGridPanel.ReloadAsync();
+            }
+            if (e.PropertyName == nameof(MainViewModel.IsChangeSetsPanelOpen))
+            {
+                ToggleDockPanel(ChangeSetsPanel, VM.IsChangeSetsPanelOpen);
+                if (VM.IsChangeSetsPanelOpen) _ = ChangeSetsListPanel.ReloadAsync();
             }
             if (e.PropertyName == nameof(MainViewModel.IsMlagPanelOpen))
                 ToggleDockPanel(MlagPanel, VM.IsMlagPanelOpen);
@@ -851,6 +857,14 @@ public partial class MainWindow
             PoolsTreePanel.SetContext(App.Dsn, App.CurrentTenantId,
                 AuthContext.Instance.CurrentUser?.Id);
             ServerGridPanel.SetContext(App.Dsn, App.CurrentTenantId);
+
+            // Networking engine (Rust) base URL — env override so ops can
+            // point at the K8s cluster service; default matches the local
+            // service BIND_ADDR.
+            var neUrl = Environment.GetEnvironmentVariable("CENTRAL_NETWORKING_ENGINE_URL")
+                        ?? "http://localhost:8091";
+            ChangeSetsListPanel.SetContext(neUrl, App.CurrentTenantId,
+                AuthContext.Instance.CurrentUser?.Id);
         }
         await Task.Yield(); // Let splash repaint
         UpdateSplash("Loading ribbon icons...", 95);
