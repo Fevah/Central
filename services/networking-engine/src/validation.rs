@@ -512,6 +512,39 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Error,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "mlag_domain_pool.range_not_empty",
+        name: "MLAG domain pool ranges must be non-empty",
+        description: "Parallel to asn_pool / vlan_block range checks for the \
+                      MLAG pool tier (MLAG is pool-direct — no block layer). \
+                      domain_first must be ≤ domain_last; an inverted range \
+                      exhausts allocation silently.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "link_type.naming_template_not_empty",
+        name: "Link types must carry a naming template",
+        description: "Parallel to device_role.naming_template_not_empty — every \
+                      link_type should have a naming_template so the resolver \
+                      produces deterministic link_codes. Empty templates fall \
+                      back to global defaults which may not disambiguate \
+                      across buildings.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server_profile.naming_template_not_empty",
+        name: "Server profiles must carry a naming template",
+        description: "Completes the naming-template-required trio (device_role \
+                      / link_type / server_profile). Server profiles without a \
+                      template fall back to global resolver defaults.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -742,6 +775,9 @@ async fn dispatch(
         "device_role.naming_template_not_empty" => run_device_role_template_set(pool, org_id, severity, out).await,
         "asn_allocation.allocated_to_set"      => run_asn_allocation_target_set(pool, org_id, severity, out).await,
         "asn_pool.range_not_empty"             => run_asn_pool_range(pool, org_id, severity, out).await,
+        "mlag_domain_pool.range_not_empty"     => run_mlag_pool_range(pool, org_id, severity, out).await,
+        "link_type.naming_template_not_empty"  => run_link_type_template_set(pool, org_id, severity, out).await,
+        "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
     }
@@ -1791,6 +1827,66 @@ async fn run_asn_pool_range(
     Ok(())
 }
 
+async fn run_mlag_pool_range(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i32, i32)> = sqlx::query_as(
+        "SELECT id, pool_code, domain_first, domain_last
+           FROM net.mlag_domain_pool
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND domain_first > domain_last")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, first, last) in rows {
+        out.push(Violation {
+            rule_code: "mlag_domain_pool.range_not_empty".into(),
+            severity, entity_type: "MlagDomainPool".into(), entity_id: Some(id),
+            message: format!(
+                "Pool '{code}' has inverted range [{first}, {last}] — no domain IDs available."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_link_type_template_set(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, type_code
+           FROM net.link_type
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND (naming_template IS NULL OR btrim(naming_template) = '')")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "link_type.naming_template_not_empty".into(),
+            severity, entity_type: "LinkType".into(), entity_id: Some(id),
+            message: format!(
+                "Link type '{code}' has no naming_template — resolver falls back to global defaults."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_server_profile_template_set(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, profile_code
+           FROM net.server_profile
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND (naming_template IS NULL OR btrim(naming_template) = '')")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "server_profile.naming_template_not_empty".into(),
+            severity, entity_type: "ServerProfile".into(), entity_id: Some(id),
+            message: format!(
+                "Profile '{code}' has no naming_template — resolver falls back to global defaults."),
+        });
+    }
+    Ok(())
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -1907,6 +2003,9 @@ mod tests {
             "device_role.naming_template_not_empty",
             "asn_allocation.allocated_to_set",
             "asn_pool.range_not_empty",
+            "mlag_domain_pool.range_not_empty",
+            "link_type.naming_template_not_empty",
+            "server_profile.naming_template_not_empty",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
