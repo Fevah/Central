@@ -410,9 +410,95 @@ async fn fetch_entity_hierarchy(
                 region_id: r,
             }))
         }
+        "Link" => {
+            // Direct building_id column, same structure as Device.
+            let row: Option<(Option<Uuid>, Option<Uuid>, Option<Uuid>)> = sqlx::query_as(
+                "SELECT l.building_id, b.site_id, s.region_id
+                   FROM net.link l
+                   LEFT JOIN net.building b ON b.id = l.building_id AND b.deleted_at IS NULL
+                   LEFT JOIN net.site     s ON s.id = b.site_id     AND s.deleted_at IS NULL
+                  WHERE l.id = $1 AND l.organization_id = $2 AND l.deleted_at IS NULL")
+                .bind(entity_id).bind(org_id)
+                .fetch_optional(pool).await?;
+            Ok(row.map(|(b, s, r)| EntityHierarchy {
+                building_id: b, site_id: s, region_id: r,
+            }))
+        }
+        "Vlan" => fetch_scope_hierarchy(pool, org_id, entity_id, "net.vlan").await,
+        "Subnet" => fetch_scope_hierarchy(pool, org_id, entity_id, "net.subnet").await,
         // Entity types without modelled hierarchy fall back to
         // Global+EntityId-only matching. Adding a new one here
         // = copy a match arm above.
+        _ => Ok(None),
+    }
+}
+
+/// Shared hierarchy fetch for entities with the
+/// `(scope_level, scope_entity_id)` pattern — VLANs + subnets.
+///
+/// Semantic: the entity's scope_level names WHICH tier its
+/// scope_entity_id points at. "Building" means scope_entity_id is
+/// a building uuid; "Site" means it's a site uuid; etc. We map
+/// that into the resolver's `EntityHierarchy { building_id,
+/// site_id, region_id }` slots + walk the chain upward where
+/// the scope_level is a leaf tier (Building → site → region,
+/// Site → region).
+///
+/// Scope levels "Free" / "Device" / "Floor" / "Room" fall back
+/// to Global+EntityId by returning an empty hierarchy — their
+/// scope_entity_id doesn't line up with the three grant scope
+/// tiers the resolver currently handles. Floor + Room could be
+/// added with a walk through `net.room.rack_id` chain in a
+/// follow-on slice.
+async fn fetch_scope_hierarchy(
+    pool: &PgPool,
+    org_id: Uuid,
+    entity_id: Uuid,
+    table: &str,
+) -> Result<Option<EntityHierarchy>, EngineError> {
+    let sql = format!(
+        "SELECT scope_level, scope_entity_id FROM {table}
+          WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL");
+    let row: Option<(String, Option<Uuid>)> = sqlx::query_as(&sql)
+        .bind(entity_id).bind(org_id)
+        .fetch_optional(pool).await?;
+    let Some((scope_level, scope_entity_id)) = row else { return Ok(None); };
+
+    match (scope_level.as_str(), scope_entity_id) {
+        ("Building", Some(bid)) => {
+            let up: Option<(Option<Uuid>, Option<Uuid>)> = sqlx::query_as(
+                "SELECT b.site_id, s.region_id
+                   FROM net.building b
+                   LEFT JOIN net.site s ON s.id = b.site_id AND s.deleted_at IS NULL
+                  WHERE b.id = $1 AND b.organization_id = $2 AND b.deleted_at IS NULL")
+                .bind(bid).bind(org_id)
+                .fetch_optional(pool).await?;
+            let (site_id, region_id) = up.unwrap_or((None, None));
+            Ok(Some(EntityHierarchy {
+                building_id: Some(bid), site_id, region_id,
+            }))
+        }
+        ("Site", Some(sid)) => {
+            let up: Option<(Option<Uuid>,)> = sqlx::query_as(
+                "SELECT region_id FROM net.site
+                  WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL")
+                .bind(sid).bind(org_id)
+                .fetch_optional(pool).await?;
+            Ok(Some(EntityHierarchy {
+                building_id: None,
+                site_id: Some(sid),
+                region_id: up.and_then(|(r,)| r),
+            }))
+        }
+        ("Region", Some(rid)) => {
+            Ok(Some(EntityHierarchy {
+                building_id: None, site_id: None,
+                region_id: Some(rid),
+            }))
+        }
+        // Free / Device / Floor / Room / or scope_entity_id NULL:
+        // return None so the resolver falls back to Global+EntityId
+        // matching — no silent over-grant.
         _ => Ok(None),
     }
 }

@@ -299,6 +299,134 @@ async fn seed_device_hierarchy_b(pool: &PgPool, org_id: Uuid) -> (Uuid, Uuid, Uu
 
 #[tokio::test]
 #[ignore]
+async fn building_scoped_grant_allows_link_in_that_building_only() {
+    let Some(pool) = pool_or_skip("building_scoped_grant_allows_link_in_that_building_only").await else { return; };
+    let fx = TenantFixture::new(pool).await.expect("fixture");
+    let (_, _, building_a, _device_a) = seed_device_hierarchy(&fx.pool, fx.org_id).await;
+    let (_, _, _building_b, _device_b) = seed_device_hierarchy_b(&fx.pool, fx.org_id).await;
+    let repo = ScopeGrantRepo::new(fx.pool.clone());
+
+    // Create two links — one in building_a, one in building_b.
+    let (lt_id,): (Uuid,) = sqlx::query_as(
+        "INSERT INTO net.link_type (organization_id, type_code, display_name,
+                                    naming_template, required_endpoints, status)
+         VALUES ($1, 'P2P-HIER', 'P2P hier', '{device_a}-to-{device_b}', 2, 'Active')
+         RETURNING id")
+        .bind(fx.org_id).fetch_one(&fx.pool).await.unwrap();
+    let (link_a,): (Uuid,) = sqlx::query_as(
+        "INSERT INTO net.link (organization_id, link_type_id, building_id,
+                               link_code, status)
+         VALUES ($1, $2, $3, 'LINK-HIER-A', 'Active') RETURNING id")
+        .bind(fx.org_id).bind(lt_id).bind(building_a)
+        .fetch_one(&fx.pool).await.unwrap();
+    // building_b link
+    let (_, _, building_b, _) = seed_device_hierarchy_b(&fx.pool, fx.org_id).await;
+    let (link_b,): (Uuid,) = sqlx::query_as(
+        "INSERT INTO net.link (organization_id, link_type_id, building_id,
+                               link_code, status)
+         VALUES ($1, $2, $3, 'LINK-HIER-B', 'Active') RETURNING id")
+        .bind(fx.org_id).bind(lt_id).bind(building_b)
+        .fetch_one(&fx.pool).await.unwrap();
+
+    // Grant write:Link scoped to building_a.
+    repo.create(&CreateScopeGrantBody {
+        organization_id: fx.org_id, user_id: 42,
+        action: "write".into(), entity_type: "Link".into(),
+        scope_type: "Building".into(), scope_entity_id: Some(building_a),
+        notes: None,
+    }, Some(99)).await.expect("grant");
+
+    // Link A (in building_a) → allowed.
+    let d = scope_grants::has_permission(
+        &fx.pool, fx.org_id, 42, "write", "Link", Some(link_a)
+    ).await.expect("link_a");
+    assert!(d.allowed, "Building-scoped Link grant must match link in that building");
+
+    // Link B (in building_b) → denied (no leakage).
+    let d = scope_grants::has_permission(
+        &fx.pool, fx.org_id, 42, "write", "Link", Some(link_b)
+    ).await.expect("link_b");
+    assert!(!d.allowed, "Building-scoped grant must NOT leak to a different building's link");
+}
+
+#[tokio::test]
+#[ignore]
+async fn building_scoped_vlan_grant_matches_building_scoped_vlan() {
+    let Some(pool) = pool_or_skip("building_scoped_vlan_grant_matches_building_scoped_vlan").await else { return; };
+    let fx = TenantFixture::new(pool).await.expect("fixture");
+    let (_, _, building_a, _) = seed_device_hierarchy(&fx.pool, fx.org_id).await;
+    let repo = ScopeGrantRepo::new(fx.pool.clone());
+
+    // Seed a VLAN with scope_level='Building' pointing at building_a.
+    let (vp_id,): (Uuid,) = sqlx::query_as(
+        "INSERT INTO net.vlan_pool (organization_id, pool_code, display_name,
+                                    vlan_first, vlan_last)
+         VALUES ($1, 'HIER-VP', 'hier', 1, 4094) RETURNING id")
+        .bind(fx.org_id).fetch_one(&fx.pool).await.unwrap();
+    let (vb_id,): (Uuid,) = sqlx::query_as(
+        "INSERT INTO net.vlan_block (organization_id, pool_id, block_code, display_name,
+                                     vlan_first, vlan_last, scope_level)
+         VALUES ($1, $2, 'HIER-VB', 'hier', 1, 4094, 'Free') RETURNING id")
+        .bind(fx.org_id).bind(vp_id).fetch_one(&fx.pool).await.unwrap();
+    let (vlan_id,): (Uuid,) = sqlx::query_as(
+        "INSERT INTO net.vlan (organization_id, pool_id, block_id, vlan_id,
+                               display_name, scope_level, scope_entity_id, status)
+         VALUES ($1, $2, $3, 150, 'HIER-VLAN', 'Building', $4, 'Active') RETURNING id")
+        .bind(fx.org_id).bind(vp_id).bind(vb_id).bind(building_a)
+        .fetch_one(&fx.pool).await.unwrap();
+
+    // Grant write:Vlan scoped to building_a.
+    repo.create(&CreateScopeGrantBody {
+        organization_id: fx.org_id, user_id: 42,
+        action: "write".into(), entity_type: "Vlan".into(),
+        scope_type: "Building".into(), scope_entity_id: Some(building_a),
+        notes: None,
+    }, Some(99)).await.expect("grant");
+
+    let d = scope_grants::has_permission(
+        &fx.pool, fx.org_id, 42, "write", "Vlan", Some(vlan_id)
+    ).await.expect("vlan check");
+    assert!(d.allowed,
+        "Building-scoped Vlan grant must match a VLAN with scope_level='Building' + same scope_entity_id");
+}
+
+#[tokio::test]
+#[ignore]
+async fn subnet_with_scope_building_matches_building_scoped_grant() {
+    let Some(pool) = pool_or_skip("subnet_with_scope_building_matches_building_scoped_grant").await else { return; };
+    let fx = TenantFixture::new(pool).await.expect("fixture");
+    let (_, _, building_a, _) = seed_device_hierarchy(&fx.pool, fx.org_id).await;
+    let repo = ScopeGrantRepo::new(fx.pool.clone());
+
+    let (ip_id,): (Uuid,) = sqlx::query_as(
+        "INSERT INTO net.ip_pool (organization_id, pool_code, display_name,
+                                  network, address_family)
+         VALUES ($1, 'HIER-IP', 'hier ip', '10.66.0.0/16', 4) RETURNING id")
+        .bind(fx.org_id).fetch_one(&fx.pool).await.unwrap();
+    let (subnet_id,): (Uuid,) = sqlx::query_as(
+        "INSERT INTO net.subnet (organization_id, pool_id, subnet_code, display_name,
+                                 network, scope_level, scope_entity_id, status)
+         VALUES ($1, $2, 'HIER-SUB', 'hier subnet', '10.66.1.0/24',
+                 'Building', $3, 'Active') RETURNING id")
+        .bind(fx.org_id).bind(ip_id).bind(building_a)
+        .fetch_one(&fx.pool).await.unwrap();
+
+    repo.create(&CreateScopeGrantBody {
+        organization_id: fx.org_id, user_id: 42,
+        action: "write".into(), entity_type: "Subnet".into(),
+        scope_type: "Building".into(), scope_entity_id: Some(building_a),
+        notes: None,
+    }, Some(99)).await.expect("grant");
+
+    let d = scope_grants::has_permission(
+        &fx.pool, fx.org_id, 42, "write", "Subnet", Some(subnet_id)
+    ).await.expect("subnet check");
+    assert!(d.allowed,
+        "Building-scoped Subnet grant must match a subnet with matching scope_level + scope_entity_id");
+}
+
+#[tokio::test]
+#[ignore]
 async fn building_scoped_grant_allows_devices_in_that_building_only() {
     let Some(pool) = pool_or_skip("building_scoped_grant_allows_devices_in_that_building_only").await else { return; };
     let fx = TenantFixture::new(pool).await.expect("fixture");
