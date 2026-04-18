@@ -1100,10 +1100,14 @@ async fn dispatch_apply(
     match (item.entity_type.as_str(), item.action) {
         ("Device", ChangeSetAction::Rename) =>
             apply_device_rename(pool, item, org_id, correlation_id, user_id).await,
+        ("Link", ChangeSetAction::Rename) =>
+            apply_link_rename(pool, item, org_id, correlation_id, user_id).await,
+        ("Server", ChangeSetAction::Rename) =>
+            apply_server_rename(pool, item, org_id, correlation_id, user_id).await,
         (et, act) => Err(EngineError::bad_request(format!(
-            "Apply not yet implemented for ({et}, {}). Device/Rename is \
-             the only concrete path in this slice; other combinations \
-             are queued for follow-on slices.", act.as_str()))),
+            "Apply not yet implemented for ({et}, {}). Rename is supported \
+             for Device / Link / Server; Create / Update / Delete paths \
+             arrive in follow-on slices.", act.as_str()))),
     }
 }
 
@@ -1178,6 +1182,140 @@ async fn apply_device_rename(
     Ok(())
 }
 
+async fn apply_link_rename(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    let entity_id = item.entity_id.ok_or_else(|| EngineError::bad_request(
+        "Link/Rename item is missing entity_id"))?;
+    let after = item.after_json.as_ref().ok_or_else(|| EngineError::bad_request(
+        "Link/Rename item is missing after_json"))?;
+    let new_link_code = after.get("linkCode").or_else(|| after.get("link_code"))
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| EngineError::bad_request(
+            "after_json.linkCode (or link_code) is required for Link/Rename"))?;
+
+    let mut tx = pool.begin().await?;
+
+    // OCC via expected_version when supplied; otherwise accept any version.
+    let updated: Option<(String, i32)> = match item.expected_version {
+        Some(ev) => sqlx::query_as(
+            "UPDATE net.link
+                SET link_code = $3, updated_at = now(), version = version + 1
+              WHERE id = $1 AND organization_id = $2
+                AND version = $4 AND deleted_at IS NULL
+              RETURNING link_code, version")
+            .bind(entity_id).bind(org_id).bind(new_link_code).bind(ev)
+            .fetch_optional(&mut *tx).await?,
+        None => sqlx::query_as(
+            "UPDATE net.link
+                SET link_code = $3, updated_at = now(), version = version + 1
+              WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
+              RETURNING link_code, version")
+            .bind(entity_id).bind(org_id).bind(new_link_code)
+            .fetch_optional(&mut *tx).await?,
+    };
+    let (_, new_version) = updated.ok_or_else(|| EngineError::bad_request(format!(
+        "Link {entity_id} not found, version mismatch, or deleted.")))?;
+
+    sqlx::query(
+        "UPDATE net.change_set_item
+            SET applied_at = now(), apply_error = NULL, updated_at = now()
+          WHERE id = $1 AND organization_id = $2")
+        .bind(item.id).bind(org_id).execute(&mut *tx).await?;
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "Link",
+        entity_id: Some(entity_id),
+        action: "Renamed",
+        actor_user_id: user_id,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: Some(correlation_id),
+        details: serde_json::json!({
+            "from": item.before_json.as_ref().and_then(|b| {
+                b.get("linkCode").or_else(|| b.get("link_code"))
+            }),
+            "to": new_link_code,
+            "new_version": new_version,
+            "change_set_item_id": item.id,
+        }),
+    }).await?;
+
+    tx.commit().await?;
+    Ok(())
+}
+
+async fn apply_server_rename(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    let entity_id = item.entity_id.ok_or_else(|| EngineError::bad_request(
+        "Server/Rename item is missing entity_id"))?;
+    let after = item.after_json.as_ref().ok_or_else(|| EngineError::bad_request(
+        "Server/Rename item is missing after_json"))?;
+    let new_hostname = after.get("hostname").and_then(|v| v.as_str())
+        .ok_or_else(|| EngineError::bad_request(
+            "after_json.hostname is required for Server/Rename"))?;
+
+    let mut tx = pool.begin().await?;
+
+    let updated: Option<(String, i32)> = match item.expected_version {
+        Some(ev) => sqlx::query_as(
+            "UPDATE net.server
+                SET hostname = $3, updated_at = now(), version = version + 1
+              WHERE id = $1 AND organization_id = $2
+                AND version = $4 AND deleted_at IS NULL
+              RETURNING hostname, version")
+            .bind(entity_id).bind(org_id).bind(new_hostname).bind(ev)
+            .fetch_optional(&mut *tx).await?,
+        None => sqlx::query_as(
+            "UPDATE net.server
+                SET hostname = $3, updated_at = now(), version = version + 1
+              WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
+              RETURNING hostname, version")
+            .bind(entity_id).bind(org_id).bind(new_hostname)
+            .fetch_optional(&mut *tx).await?,
+    };
+    let (_, new_version) = updated.ok_or_else(|| EngineError::bad_request(format!(
+        "Server {entity_id} not found, version mismatch, or deleted.")))?;
+
+    sqlx::query(
+        "UPDATE net.change_set_item
+            SET applied_at = now(), apply_error = NULL, updated_at = now()
+          WHERE id = $1 AND organization_id = $2")
+        .bind(item.id).bind(org_id).execute(&mut *tx).await?;
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "Server",
+        entity_id: Some(entity_id),
+        action: "Renamed",
+        actor_user_id: user_id,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: Some(correlation_id),
+        details: serde_json::json!({
+            "from": item.before_json.as_ref().and_then(|b| b.get("hostname")),
+            "to": new_hostname,
+            "new_version": new_version,
+            "change_set_item_id": item.id,
+        }),
+    }).await?;
+
+    tx.commit().await?;
+    Ok(())
+}
+
 // ─── Rollback execution ──────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Serialize)]
@@ -1230,9 +1368,13 @@ async fn dispatch_rollback(
     match (item.entity_type.as_str(), item.action) {
         ("Device", ChangeSetAction::Rename) =>
             rollback_device_rename(pool, item, org_id, correlation_id, user_id).await,
+        ("Link", ChangeSetAction::Rename) =>
+            rollback_link_rename(pool, item, org_id, correlation_id, user_id).await,
+        ("Server", ChangeSetAction::Rename) =>
+            rollback_server_rename(pool, item, org_id, correlation_id, user_id).await,
         (et, act) => Err(EngineError::bad_request(format!(
-            "Rollback not yet implemented for ({et}, {}). Device/Rename is \
-             the only concrete path in this slice.", act.as_str()))),
+            "Rollback not yet implemented for ({et}, {}). Rename rollback \
+             supported for Device / Link / Server.", act.as_str()))),
     }
 }
 
@@ -1300,6 +1442,135 @@ async fn rollback_device_rename(
         details: serde_json::json!({
             "from": applied_hostname,
             "to": original_hostname,
+            "new_version": new_version,
+            "change_set_item_id": item.id,
+        }),
+    }).await?;
+
+    tx.commit().await?;
+    Ok(())
+}
+
+async fn rollback_link_rename(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    let entity_id = item.entity_id.ok_or_else(|| EngineError::bad_request(
+        "Link/Rename item is missing entity_id"))?;
+    let before = item.before_json.as_ref().ok_or_else(|| EngineError::bad_request(
+        "Link/Rename rollback requires before_json"))?;
+    let after = item.after_json.as_ref().ok_or_else(|| EngineError::bad_request(
+        "Link/Rename rollback requires after_json"))?;
+
+    let original = before.get("linkCode").or_else(|| before.get("link_code"))
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| EngineError::bad_request(
+            "before_json.linkCode (or link_code) is required for Link/Rename rollback"))?;
+    let applied = after.get("linkCode").or_else(|| after.get("link_code"))
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| EngineError::bad_request(
+            "after_json.linkCode (or link_code) is required for Link/Rename rollback"))?;
+
+    let mut tx = pool.begin().await?;
+
+    // Surprise-safety: only reverse if the link still carries the value we applied.
+    let reverted: Option<(String, i32)> = sqlx::query_as(
+        "UPDATE net.link
+            SET link_code = $3, updated_at = now(), version = version + 1
+          WHERE id = $1 AND organization_id = $2
+            AND link_code = $4 AND deleted_at IS NULL
+          RETURNING link_code, version")
+        .bind(entity_id).bind(org_id).bind(original).bind(applied)
+        .fetch_optional(&mut *tx).await?;
+    let (_, new_version) = reverted.ok_or_else(|| EngineError::bad_request(format!(
+        "Link {entity_id} link_code no longer matches the applied value \
+         '{applied}' — rollback aborted. Someone may have renamed it again.")))?;
+
+    sqlx::query(
+        "UPDATE net.change_set_item
+            SET applied_at = NULL, updated_at = now()
+          WHERE id = $1 AND organization_id = $2")
+        .bind(item.id).bind(org_id).execute(&mut *tx).await?;
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "Link",
+        entity_id: Some(entity_id),
+        action: "RolledBack",
+        actor_user_id: user_id,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: Some(correlation_id),
+        details: serde_json::json!({
+            "from": applied,
+            "to": original,
+            "new_version": new_version,
+            "change_set_item_id": item.id,
+        }),
+    }).await?;
+
+    tx.commit().await?;
+    Ok(())
+}
+
+async fn rollback_server_rename(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    let entity_id = item.entity_id.ok_or_else(|| EngineError::bad_request(
+        "Server/Rename item is missing entity_id"))?;
+    let before = item.before_json.as_ref().ok_or_else(|| EngineError::bad_request(
+        "Server/Rename rollback requires before_json"))?;
+    let after = item.after_json.as_ref().ok_or_else(|| EngineError::bad_request(
+        "Server/Rename rollback requires after_json"))?;
+
+    let original = before.get("hostname").and_then(|v| v.as_str())
+        .ok_or_else(|| EngineError::bad_request(
+            "before_json.hostname is required for Server/Rename rollback"))?;
+    let applied = after.get("hostname").and_then(|v| v.as_str())
+        .ok_or_else(|| EngineError::bad_request(
+            "after_json.hostname is required for Server/Rename rollback"))?;
+
+    let mut tx = pool.begin().await?;
+
+    let reverted: Option<(String, i32)> = sqlx::query_as(
+        "UPDATE net.server
+            SET hostname = $3, updated_at = now(), version = version + 1
+          WHERE id = $1 AND organization_id = $2
+            AND hostname = $4 AND deleted_at IS NULL
+          RETURNING hostname, version")
+        .bind(entity_id).bind(org_id).bind(original).bind(applied)
+        .fetch_optional(&mut *tx).await?;
+    let (_, new_version) = reverted.ok_or_else(|| EngineError::bad_request(format!(
+        "Server {entity_id} hostname no longer matches the applied value \
+         '{applied}' — rollback aborted.")))?;
+
+    sqlx::query(
+        "UPDATE net.change_set_item
+            SET applied_at = NULL, updated_at = now()
+          WHERE id = $1 AND organization_id = $2")
+        .bind(item.id).bind(org_id).execute(&mut *tx).await?;
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "Server",
+        entity_id: Some(entity_id),
+        action: "RolledBack",
+        actor_user_id: user_id,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: Some(correlation_id),
+        details: serde_json::json!({
+            "from": applied,
+            "to": original,
             "new_version": new_version,
             "change_set_item_id": item.id,
         }),
