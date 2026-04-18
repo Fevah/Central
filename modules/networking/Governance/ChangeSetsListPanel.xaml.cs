@@ -160,6 +160,40 @@ public partial class ChangeSetsListPanel : UserControl
         if (row is not null) OpenDetailDialog(row);
     }
 
+    // ─── Context menu (right-click on row) ──────────────────────────────
+    //
+    // Items are gated on the row's Status: e.g. Apply is only sensible
+    // when the Set is Approved; Cancel only works from non-terminal
+    // states. Disabling rather than hiding keeps the menu's shape
+    // consistent so admins can learn it by muscle memory.
+
+    private void OnContextMenuOpened(object sender, RoutedEventArgs e)
+    {
+        var row = CurrentRow();
+        var status = row?.Status ?? "";
+        bool draft      = status == "Draft";
+        bool submitted  = status == "Submitted";
+        bool approved   = status == "Approved";
+        bool applied    = status == "Applied";
+        bool terminal   = status is "Rejected" or "Cancelled" or "RolledBack";
+
+        CtxAddItemMenu.IsEnabled  = draft;
+        CtxSubmitMenu.IsEnabled   = draft;
+        CtxDecideMenu.IsEnabled   = submitted;
+        CtxApplyMenu.IsEnabled    = approved;
+        CtxRollbackMenu.IsEnabled = applied;
+        CtxCancelMenu.IsEnabled   = !terminal && !applied; // cancel is pre-apply
+    }
+
+    private void CtxDetails(object sender, RoutedEventArgs e) => RunWithSelection("inspect", OpenDetailDialog);
+    private void CtxAddItem(object sender, RoutedEventArgs e) => RunWithSelection("add an item to", OpenAddItemDialog);
+    private void CtxSubmit(object sender, RoutedEventArgs e)  => RunWithSelection("Submit", OpenSubmitDialog);
+    private void CtxDecide(object sender, RoutedEventArgs e)  => RunWithSelection("record a decision on", OpenDecideDialog);
+    private void CtxApply(object sender, RoutedEventArgs e)   => RunWithSelection("Apply", ConfirmAndApply);
+    private void CtxRollback(object sender, RoutedEventArgs e) => RunWithSelection("Rollback", ConfirmAndRollback);
+    private void CtxCancel(object sender, RoutedEventArgs e)  => RunWithSelection("Cancel", ConfirmAndCancel);
+    private void CtxRefresh(object sender, RoutedEventArgs e) => _ = ReloadAsync();
+
     private void OpenDetailDialog(ChangeSetRow row)
     {
         var dialog = new ChangeSetDetailDialog(_baseUrl!, _tenantId, _actorUserId, row)
