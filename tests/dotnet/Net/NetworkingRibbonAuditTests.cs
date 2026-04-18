@@ -96,6 +96,13 @@ public class NetworkingRibbonAuditTests
     [InlineData("Servers",  "Edit Server",     "servers",  "action:edit")]
     [InlineData("Servers",  "Delete Server",   "servers",  "action:delete")]
     [InlineData("Servers",  "Ping NICs",       "servers",  "action:pingNics")]
+    [InlineData("Governance", "New Change Set",   "changesets", "action:new")]
+    [InlineData("Governance", "Add Item",         "changesets", "action:addItem")]
+    [InlineData("Governance", "Submit",           "changesets", "action:submit")]
+    [InlineData("Governance", "Approve / Reject", "changesets", "action:decide")]
+    [InlineData("Governance", "Apply",            "changesets", "action:apply")]
+    [InlineData("Governance", "Rollback",         "changesets", "action:rollback")]
+    [InlineData("Governance", "Cancel",           "changesets", "action:cancel")]
     public void NavigateButton_PublishesCorrectTargetAndAction(
         string groupHeader, string buttonContent, string expectedPanel, string expectedAction)
     {

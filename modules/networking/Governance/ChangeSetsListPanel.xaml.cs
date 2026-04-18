@@ -84,6 +84,9 @@ public partial class ChangeSetsListPanel : UserControl
             case "action:new":
                 OpenNewChangeSetDialog();
                 break;
+            case "action:addItem":
+                RunWithSelection("add an item to", OpenAddItemDialog);
+                break;
             case "action:submit":
                 RunWithSelection("Submit", OpenSubmitDialog);
                 break;
@@ -142,6 +145,25 @@ public partial class ChangeSetsListPanel : UserControl
         {
             _ = ReloadAsync();
         }
+    }
+
+    // ─── Add Item ───────────────────────────────────────────────────────
+
+    private void OpenAddItemDialog(ChangeSetRow row)
+    {
+        if (row.Status != "Draft")
+        {
+            MessageBox.Show(
+                $"Items can only be added to a Change Set in Draft. " +
+                $"This set is {row.Status}.\n\nCancel + re-draft, or submit as-is.",
+                "Set not in Draft", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var dialog = new AddChangeSetItemDialog(_baseUrl!, _tenantId, _actorUserId, row)
+        {
+            Owner = Window.GetWindow(this),
+        };
+        if (dialog.ShowDialog() == true) _ = ReloadAsync();
     }
 
     // ─── Submit ─────────────────────────────────────────────────────────
