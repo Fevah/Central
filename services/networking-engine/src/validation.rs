@@ -411,6 +411,107 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Error,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "vlan.vlan_id_valid_range",
+        name: "VLAN IDs within 1-4094",
+        description: "IEEE 802.1Q allocates VLAN ids 1-4094 (0 is 'untagged', \
+                      4095 is reserved). A vlan_id outside that range is the \
+                      switch's config generator waiting to fail at deploy time.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "mlag_domain.domain_id_valid_range",
+        name: "MLAG domain IDs within 1-4094",
+        description: "PicOS (FS) MLAG domain ids must sit in 1-4094. Out-of-range \
+                      values produce config the switch rejects at commit.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "subnet.matches_pool_family",
+        name: "Subnet family matches its pool",
+        description: "A subnet carved from an IP pool must share that pool's \
+                      address family — IPv4 subnet from an IPv4 pool, IPv6 from \
+                      IPv6. Mismatches are import / migration errors.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server_profile.nic_count_positive",
+        name: "Server profile NIC count > 0",
+        description: "ServerCreationService.CreateWithFanOutAsync refuses to run \
+                      on a zero-NIC profile, but the row itself isn't constrained. \
+                      A NicCount of 0 silently blocks every server using the \
+                      profile.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server_nic.mlag_side_valid",
+        name: "Server NIC mlag_side is 'A' or 'B'",
+        description: "MlagSide is a small A/B discriminator driving the fan-out \
+                      target. Any other value is corrupt import data; config \
+                      generation skips the NIC silently.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "device.unique_mac_address",
+        name: "Device MAC addresses unique within tenant",
+        description: "Two non-deleted devices must not share a mac_address. A \
+                      duplicate is either a clone of a replacement device the \
+                      original wasn't retired from, or a genuine MAC collision \
+                      that needs operator attention.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server.unique_mac_address",
+        name: "Server MAC addresses unique within tenant",
+        description: "Same as device.unique_mac_address but for servers.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "device_role.naming_template_not_empty",
+        name: "Device roles must carry a naming template",
+        description: "Every role should have a naming_template so the resolver \
+                      produces deterministic hostnames. Empty templates force the \
+                      resolver to the global fallback, which may produce \
+                      ambiguous names across buildings.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "asn_allocation.allocated_to_set",
+        name: "ASN allocations should carry allocated_to info",
+        description: "allocated_to_type + allocated_to_id together identify what \
+                      the ASN was issued for. Missing either leaves the \
+                      allocation orphaned for audit purposes (no way to trace \
+                      which device / server / building is using it).",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "asn_pool.range_not_empty",
+        name: "ASN pool ranges must be non-empty",
+        description: "Parallel to asn_block.range_not_empty — net.asn_pool's \
+                      asn_first must be ≤ asn_last. An inverted pool range \
+                      makes every block carved from it empty-by-construction.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -631,6 +732,16 @@ async fn dispatch(
         "server.loopback_in_loopback_subnet"   => run_server_loopback_in_loopback_subnet(pool, org_id, severity, out).await,
         "asn_block.range_not_empty"            => run_asn_block_range(pool, org_id, severity, out).await,
         "vlan_block.range_not_empty"           => run_vlan_block_range(pool, org_id, severity, out).await,
+        "vlan.vlan_id_valid_range"             => run_vlan_id_range(pool, org_id, severity, out).await,
+        "mlag_domain.domain_id_valid_range"    => run_mlag_domain_id_range(pool, org_id, severity, out).await,
+        "subnet.matches_pool_family"           => run_subnet_matches_pool_family(pool, org_id, severity, out).await,
+        "server_profile.nic_count_positive"    => run_server_profile_nic_count_positive(pool, org_id, severity, out).await,
+        "server_nic.mlag_side_valid"           => run_server_nic_mlag_side(pool, org_id, severity, out).await,
+        "device.unique_mac_address"            => run_device_unique_mac(pool, org_id, severity, out).await,
+        "server.unique_mac_address"            => run_server_unique_mac(pool, org_id, severity, out).await,
+        "device_role.naming_template_not_empty" => run_device_role_template_set(pool, org_id, severity, out).await,
+        "asn_allocation.allocated_to_set"      => run_asn_allocation_target_set(pool, org_id, severity, out).await,
+        "asn_pool.range_not_empty"             => run_asn_pool_range(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
     }
@@ -1469,6 +1580,217 @@ async fn run_vlan_block_range(
     Ok(())
 }
 
+async fn run_vlan_id_range(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32)> = sqlx::query_as(
+        "SELECT id, vlan_id FROM net.vlan
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND (vlan_id < 1 OR vlan_id > 4094)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, vlan_id) in rows {
+        out.push(Violation {
+            rule_code: "vlan.vlan_id_valid_range".into(),
+            severity, entity_type: "Vlan".into(), entity_id: Some(id),
+            message: format!("VLAN id {vlan_id} is outside IEEE 802.1Q range 1-4094."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_mlag_domain_id_range(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32)> = sqlx::query_as(
+        "SELECT id, domain_id FROM net.mlag_domain
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND (domain_id < 1 OR domain_id > 4094)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, did) in rows {
+        out.push(Violation {
+            rule_code: "mlag_domain.domain_id_valid_range".into(),
+            severity, entity_type: "MlagDomain".into(), entity_id: Some(id),
+            message: format!("MLAG domain_id {did} outside PicOS range 1-4094."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_subnet_matches_pool_family(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    // family(inet) returns 4 or 6. Mismatched families usually surface
+    // as a GIST EXCLUDE error at INSERT, but a pre-existing row predating
+    // the constraint could slip through.
+    let rows: Vec<(Uuid, String, i32, String, i32)> = sqlx::query_as(
+        "SELECT s.id, s.subnet_code, family(s.network), p.pool_code, family(p.network)
+           FROM net.subnet s
+           JOIN net.ip_pool p ON p.id = s.pool_id
+          WHERE s.organization_id = $1
+            AND s.deleted_at IS NULL
+            AND p.deleted_at IS NULL
+            AND family(s.network) <> family(p.network)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, sfam, pool_code, pfam) in rows {
+        out.push(Violation {
+            rule_code: "subnet.matches_pool_family".into(),
+            severity, entity_type: "Subnet".into(), entity_id: Some(id),
+            message: format!(
+                "Subnet '{code}' is IPv{sfam} but pool '{pool_code}' is IPv{pfam}."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_server_profile_nic_count_positive(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i32)> = sqlx::query_as(
+        "SELECT id, profile_code, nic_count
+           FROM net.server_profile
+          WHERE organization_id = $1 AND deleted_at IS NULL AND nic_count <= 0")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, nic_count) in rows {
+        out.push(Violation {
+            rule_code: "server_profile.nic_count_positive".into(),
+            severity, entity_type: "ServerProfile".into(), entity_id: Some(id),
+            message: format!(
+                "Profile '{code}' has nic_count={nic_count} — fan-out refuses zero/negative."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_server_nic_mlag_side(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32, String)> = sqlx::query_as(
+        "SELECT id, nic_index, mlag_side
+           FROM net.server_nic
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND mlag_side NOT IN ('A','B')")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, idx, side) in rows {
+        out.push(Violation {
+            rule_code: "server_nic.mlag_side_valid".into(),
+            severity, entity_type: "ServerNic".into(), entity_id: Some(id),
+            message: format!("NIC index {idx}: mlag_side='{side}' — expected 'A' or 'B'."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_device_unique_mac(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    // macaddr comparison — ::text for portability through sqlx + joining
+    // on the dup CTE.
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT d.id, d.hostname, d.mac_address::text
+           FROM net.device d
+           JOIN (
+             SELECT mac_address
+               FROM net.device
+              WHERE organization_id = $1 AND deleted_at IS NULL AND mac_address IS NOT NULL
+              GROUP BY mac_address
+             HAVING COUNT(*) > 1
+           ) dup ON dup.mac_address = d.mac_address
+          WHERE d.organization_id = $1 AND d.deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname, mac) in rows {
+        out.push(Violation {
+            rule_code: "device.unique_mac_address".into(),
+            severity, entity_type: "Device".into(), entity_id: Some(id),
+            message: format!("Device '{hostname}' has duplicate MAC {mac}."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_server_unique_mac(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT s.id, s.hostname, s.mac_address::text
+           FROM net.server s
+           JOIN (
+             SELECT mac_address
+               FROM net.server
+              WHERE organization_id = $1 AND deleted_at IS NULL AND mac_address IS NOT NULL
+              GROUP BY mac_address
+             HAVING COUNT(*) > 1
+           ) dup ON dup.mac_address = s.mac_address
+          WHERE s.organization_id = $1 AND s.deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname, mac) in rows {
+        out.push(Violation {
+            rule_code: "server.unique_mac_address".into(),
+            severity, entity_type: "Server".into(), entity_id: Some(id),
+            message: format!("Server '{hostname}' has duplicate MAC {mac}."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_device_role_template_set(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, role_code
+           FROM net.device_role
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND (naming_template IS NULL OR btrim(naming_template) = '')")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "device_role.naming_template_not_empty".into(),
+            severity, entity_type: "DeviceRole".into(), entity_id: Some(id),
+            message: format!("Role '{code}' has no naming_template — naming resolver falls back to default."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_asn_allocation_target_set(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i64)> = sqlx::query_as(
+        "SELECT id, asn
+           FROM net.asn_allocation
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND (allocated_to_type IS NULL OR allocated_to_id IS NULL
+                 OR btrim(allocated_to_type) = '')")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, asn) in rows {
+        out.push(Violation {
+            rule_code: "asn_allocation.allocated_to_set".into(),
+            severity, entity_type: "AsnAllocation".into(), entity_id: Some(id),
+            message: format!("ASN {asn} has no allocated_to_type/id — orphaned for audit."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_asn_pool_range(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i64, i64)> = sqlx::query_as(
+        "SELECT id, pool_code, asn_first, asn_last
+           FROM net.asn_pool
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND asn_first > asn_last")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, first, last) in rows {
+        out.push(Violation {
+            rule_code: "asn_pool.range_not_empty".into(),
+            severity, entity_type: "AsnPool".into(), entity_id: Some(id),
+            message: format!(
+                "Pool '{code}' has inverted range [{first}, {last}] — every block carved from it is empty."),
+        });
+    }
+    Ok(())
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -1575,6 +1897,16 @@ mod tests {
             "server.loopback_in_loopback_subnet",
             "asn_block.range_not_empty",
             "vlan_block.range_not_empty",
+            "vlan.vlan_id_valid_range",
+            "mlag_domain.domain_id_valid_range",
+            "subnet.matches_pool_family",
+            "server_profile.nic_count_positive",
+            "server_nic.mlag_side_valid",
+            "device.unique_mac_address",
+            "server.unique_mac_address",
+            "device_role.naming_template_not_empty",
+            "asn_allocation.allocated_to_set",
+            "asn_pool.range_not_empty",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
