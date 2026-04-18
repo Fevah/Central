@@ -608,3 +608,179 @@ async fn dhcp_relay_import_forbidden_without_grant() {
     assert!(err.contains("Forbidden"), "err: {err}");
     assert_eq!(fx.count_dhcp_relay_targets().await, 0);
 }
+
+// ─── Link import tests ───────────────────────────────────────────────────
+//
+// Link import is the most structurally complex of the bulk importers —
+// one CSV row materialises three DB rows (1 link + 2 endpoints) in a
+// single transaction. These tests pin the decomposition invariants.
+
+/// Extends FullFixture with 2 devices (DEV-A, DEV-B) that link
+/// imports can reference as endpoint hostnames. Also seeds a
+/// 'P2P' link_type since a fresh tenant doesn't have any by default.
+struct LinkFixture {
+    full: FullFixture,
+    device_a_hostname: String,
+    device_b_hostname: String,
+}
+
+impl LinkFixture {
+    async fn new(pool: PgPool) -> sqlx::Result<Self> {
+        let full = FullFixture::new(pool).await?;
+        let org = full.pools.tenant.org_id;
+        let pool = full.pools.tenant.pool.clone();
+
+        // Seed a device_role + two devices in the tenant so link
+        // endpoints have something to reference.
+        let (role_id,): (Uuid,) = sqlx::query_as(
+            "SELECT id FROM net.device_role
+              WHERE organization_id = $1 AND role_code = 'Core'
+              AND deleted_at IS NULL")
+            .bind(org).fetch_one(&pool).await?;
+        let (building_id,): (Uuid,) = sqlx::query_as(
+            "SELECT id FROM net.building
+              WHERE organization_id = $1 AND building_code = 'IT-B'
+              AND deleted_at IS NULL")
+            .bind(org).fetch_one(&pool).await?;
+        sqlx::query(
+            "INSERT INTO net.device (organization_id, device_role_id, building_id,
+                                     hostname, status)
+             VALUES ($1, $2, $3, 'DEV-A', 'Active'),
+                    ($1, $2, $3, 'DEV-B', 'Active')")
+            .bind(org).bind(role_id).bind(building_id).execute(&pool).await?;
+
+        // Seed a 'P2P' link_type.
+        sqlx::query(
+            "INSERT INTO net.link_type (organization_id, type_code, display_name,
+                                        naming_template, required_endpoints, status)
+             VALUES ($1, 'P2P', 'Point-to-Point', '{device_a}-to-{device_b}', 2, 'Active')")
+            .bind(org).execute(&pool).await?;
+
+        Ok(Self { full, device_a_hostname: "DEV-A".into(), device_b_hostname: "DEV-B".into() })
+    }
+
+    async fn count_links(&self) -> i64 {
+        let (n,): (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM net.link
+              WHERE organization_id = $1 AND deleted_at IS NULL")
+            .bind(self.full.pools.tenant.org_id)
+            .fetch_one(&self.full.pools.tenant.pool).await.unwrap();
+        n
+    }
+
+    async fn count_endpoints(&self) -> i64 {
+        let (n,): (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM net.link_endpoint
+              WHERE organization_id = $1 AND deleted_at IS NULL")
+            .bind(self.full.pools.tenant.org_id)
+            .fetch_one(&self.full.pools.tenant.pool).await.unwrap();
+        n
+    }
+}
+
+const LINK_HEADER: &str = "link_code,link_type,vlan_id,subnet_code,device_a,port_a,ip_a,device_b,port_b,ip_b,status\r\n";
+
+#[tokio::test]
+#[ignore]
+async fn link_import_happy_path_writes_one_link_plus_two_endpoints() {
+    let Some(pool) = pool_or_skip("link_import_happy_path_writes_one_link_plus_two_endpoints").await else { return; };
+    let fx = LinkFixture::new(pool).await.expect("fixture");
+
+    let csv = format!(
+        "{LINK_HEADER}\
+         LINK-1,P2P,,,{a},xe-1/1/1,10.0.0.1,{b},xe-1/1/1,10.0.0.2,Active\r\n",
+        a = fx.device_a_hostname, b = fx.device_b_hostname);
+    let result = bulk_import::import_links(
+        &fx.full.pools.tenant.pool, fx.full.pools.tenant.org_id, &csv, false, None,
+    ).await.expect("apply");
+    assert_eq!(result.valid, 1);
+    assert!(result.applied);
+    assert_eq!(fx.count_links().await, 1, "exactly one link row");
+    assert_eq!(fx.count_endpoints().await, 2,
+        "exactly TWO endpoint rows (A + B) from one CSV row");
+}
+
+#[tokio::test]
+#[ignore]
+async fn link_import_rejects_unknown_device_hostname() {
+    let Some(pool) = pool_or_skip("link_import_rejects_unknown_device_hostname").await else { return; };
+    let fx = LinkFixture::new(pool).await.expect("fixture");
+
+    // device_b doesn't exist in the tenant — validation fails.
+    let csv = format!(
+        "{LINK_HEADER}\
+         LINK-2,P2P,,,{a},xe-1/1/1,,DEV-GHOST,xe-1/1/1,,Active\r\n",
+        a = fx.device_a_hostname);
+    let result = bulk_import::import_links(
+        &fx.full.pools.tenant.pool, fx.full.pools.tenant.org_id, &csv, false, None,
+    ).await.expect("apply");
+    assert_eq!(result.invalid, 1);
+    assert!(!result.applied);
+    assert!(result.outcomes[0].errors.iter().any(|e| e.contains("DEV-GHOST")),
+        "unknown device_b should be flagged: {:?}", result.outcomes[0].errors);
+    assert_eq!(fx.count_links().await, 0);
+    assert_eq!(fx.count_endpoints().await, 0,
+        "no partial writes — link + endpoints stay zero");
+}
+
+#[tokio::test]
+#[ignore]
+async fn link_import_rejects_unknown_link_type() {
+    let Some(pool) = pool_or_skip("link_import_rejects_unknown_link_type").await else { return; };
+    let fx = LinkFixture::new(pool).await.expect("fixture");
+
+    let csv = format!(
+        "{LINK_HEADER}\
+         LINK-X,Bogus,,,{a},,,{b},,,Active\r\n",
+        a = fx.device_a_hostname, b = fx.device_b_hostname);
+    let result = bulk_import::import_links(
+        &fx.full.pools.tenant.pool, fx.full.pools.tenant.org_id, &csv, false, None,
+    ).await.expect("apply");
+    assert_eq!(result.invalid, 1);
+    assert!(!result.applied);
+    assert!(result.outcomes[0].errors.iter().any(|e| e.contains("Bogus")),
+        "unknown link_type should be flagged: {:?}", result.outcomes[0].errors);
+}
+
+#[tokio::test]
+#[ignore]
+async fn link_import_rejects_duplicate_link_code() {
+    let Some(pool) = pool_or_skip("link_import_rejects_duplicate_link_code").await else { return; };
+    let fx = LinkFixture::new(pool).await.expect("fixture");
+
+    let csv = format!(
+        "{LINK_HEADER}\
+         LINK-DUP,P2P,,,{a},,,{b},,,Active\r\n",
+        a = fx.device_a_hostname, b = fx.device_b_hostname);
+    bulk_import::import_links(&fx.full.pools.tenant.pool, fx.full.pools.tenant.org_id, &csv, false, None)
+        .await.expect("seed apply");
+    assert_eq!(fx.count_links().await, 1);
+
+    let result = bulk_import::import_links(
+        &fx.full.pools.tenant.pool, fx.full.pools.tenant.org_id, &csv, false, None,
+    ).await.expect("re-apply");
+    assert_eq!(result.invalid, 1);
+    assert!(!result.applied);
+    assert!(result.outcomes[0].errors.iter().any(|e| e.contains("already exists")),
+        "dup link_code should surface: {:?}", result.outcomes[0].errors);
+    assert_eq!(fx.count_links().await, 1, "no second link row created");
+    assert_eq!(fx.count_endpoints().await, 2,
+        "endpoint count unchanged — dup-rejected link doesn't smuggle endpoints in");
+}
+
+#[tokio::test]
+#[ignore]
+async fn link_import_forbidden_without_write_link_grant() {
+    let Some(pool) = pool_or_skip("link_import_forbidden_without_write_link_grant").await else { return; };
+    let fx = LinkFixture::new(pool).await.expect("fixture");
+
+    let csv = format!(
+        "{LINK_HEADER}\
+         LINK-Z,P2P,,,{a},,,{b},,,Active\r\n",
+        a = fx.device_a_hostname, b = fx.device_b_hostname);
+    let err = bulk_import::import_links(
+        &fx.full.pools.tenant.pool, fx.full.pools.tenant.org_id, &csv, false, Some(42),
+    ).await.unwrap_err().to_string();
+    assert!(err.contains("Forbidden"), "err: {err}");
+    assert_eq!(fx.count_links().await, 0);
+}

@@ -1331,6 +1331,329 @@ fn validate_dhcp_relay_row(
     }
 }
 
+// ─── Link import ─────────────────────────────────────────────────────────
+
+/// Column order mirrors `bulk_export::export_links_csv`. One CSV row
+/// decomposes on apply into 1 `net.link` row + 2 `net.link_endpoint`
+/// rows (A side = order 0, B side = order 1). The whole decomposition
+/// lands in one transaction — either all three rows materialise or
+/// none do.
+///
+/// `ip_a` / `ip_b` are accepted-for-reference-but-ignored-on-apply.
+/// Resolving them to `net.ip_address` rows needs subnet context the
+/// import flow doesn't carry (the subnet_code column alone isn't
+/// enough — a pair of endpoints on a P2P link typically sits in a
+/// /30 that's carved separately). Operators create the IP rows via
+/// the IP-allocation CRUD and link them to endpoints afterwards; a
+/// future "link import with auto-allocate" slice can remove that
+/// step once the semantics are pinned down.
+const LINK_COLUMNS: &[&str] = &[
+    "link_code", "link_type", "vlan_id", "subnet_code",
+    "device_a", "port_a", "ip_a",
+    "device_b", "port_b", "ip_b",
+    "status",
+];
+
+pub async fn import_links(
+    pool: &PgPool,
+    org_id: Uuid,
+    body: &str,
+    dry_run: bool,
+    user_id: Option<i32>,
+) -> Result<ImportValidationResult, EngineError> {
+    scope_grants::require_permission(
+        pool, org_id, user_id, "write", "Link", None,
+    ).await?;
+
+    let rows = parse_csv(body)?;
+    if rows.is_empty() {
+        return Ok(ImportValidationResult {
+            total_rows: 0, valid: 0, invalid: 0,
+            dry_run, applied: false, outcomes: vec![],
+        });
+    }
+
+    let header = &rows[0];
+    if header.len() != LINK_COLUMNS.len()
+        || !header.iter().zip(LINK_COLUMNS).all(|(a,b)| a.eq_ignore_ascii_case(b))
+    {
+        return Err(EngineError::bad_request(format!(
+            "link import header must be: {}", LINK_COLUMNS.join(","))));
+    }
+
+    // FK maps — link_type, vlan, subnet, device.
+    let type_rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, type_code FROM net.link_type
+          WHERE organization_id = $1 AND deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let link_type_codes: std::collections::HashSet<String> =
+        type_rows.iter().map(|(_, c)| c.clone()).collect();
+    let link_type_to_id: std::collections::HashMap<String, Uuid> =
+        type_rows.into_iter().map(|(id, c)| (c, id)).collect();
+
+    let vlan_rows: Vec<(Uuid, i32)> = sqlx::query_as(
+        "SELECT id, vlan_id FROM net.vlan
+          WHERE organization_id = $1 AND deleted_at IS NULL
+          ORDER BY vlan_id")
+        .bind(org_id).fetch_all(pool).await?;
+    let mut vlan_numeric_to_id: std::collections::HashMap<i32, Uuid> = std::collections::HashMap::new();
+    for (id, n) in vlan_rows {
+        vlan_numeric_to_id.entry(n).or_insert(id);
+    }
+
+    let subnet_rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, subnet_code FROM net.subnet
+          WHERE organization_id = $1 AND deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let subnet_codes: std::collections::HashSet<String> =
+        subnet_rows.iter().map(|(_, c)| c.clone()).collect();
+    let subnet_code_to_id: std::collections::HashMap<String, Uuid> =
+        subnet_rows.into_iter().map(|(id, c)| (c, id)).collect();
+
+    let device_rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, hostname FROM net.device
+          WHERE organization_id = $1 AND deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let device_hostnames: std::collections::HashSet<String> =
+        device_rows.iter().map(|(_, h)| h.clone()).collect();
+    let device_hostname_to_id: std::collections::HashMap<String, Uuid> =
+        device_rows.into_iter().map(|(id, h)| (h, id)).collect();
+
+    // Existing link_codes — dup detection.
+    let existing_codes: Vec<(String,)> = sqlx::query_as(
+        "SELECT link_code FROM net.link
+          WHERE organization_id = $1 AND deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let existing_codes: std::collections::HashSet<String> =
+        existing_codes.into_iter().map(|(c,)| c).collect();
+
+    let mut outcomes: Vec<ImportRowOutcome> = Vec::with_capacity(rows.len().saturating_sub(1));
+    for (i, row) in rows.iter().enumerate().skip(1) {
+        let row_number = i + 1;
+        outcomes.push(validate_link_row(
+            row, row_number,
+            &link_type_codes, &vlan_numeric_to_id, &subnet_codes,
+            &device_hostnames, &existing_codes,
+        ));
+    }
+
+    let valid   = outcomes.iter().filter(|o| o.ok).count();
+    let invalid = outcomes.len() - valid;
+    if dry_run || invalid > 0 {
+        return Ok(ImportValidationResult {
+            total_rows: outcomes.len(),
+            valid, invalid,
+            dry_run, applied: false, outcomes,
+        });
+    }
+
+    let mut tx = pool.begin().await?;
+    for (outcome_idx, row) in rows.iter().enumerate().skip(1).map(|(_, r)| r).enumerate() {
+        let link_code   = row[0].trim();
+        let link_type   = row[1].trim();
+        let vlan_str    = row[2].trim();
+        let subnet_code = row[3].trim();
+        let device_a    = row[4].trim();
+        let port_a      = row[5].trim();
+        // row[6] = ip_a — ignored on apply (see module doc)
+        let device_b    = row[7].trim();
+        let port_b      = row[8].trim();
+        // row[9] = ip_b — ignored
+        let status      = row[10].trim();
+
+        let type_id = link_type_to_id.get(link_type).copied()
+            .expect("validator enforced link_type exists");
+        let vlan_uuid = if vlan_str.is_empty() { None } else {
+            vlan_str.parse::<i32>().ok().and_then(|n| vlan_numeric_to_id.get(&n).copied())
+        };
+        let subnet_id_val = if subnet_code.is_empty() { None }
+                            else { subnet_code_to_id.get(subnet_code).copied() };
+        let device_a_id = device_hostname_to_id.get(device_a).copied()
+            .expect("validator enforced device_a exists");
+        let device_b_id = device_hostname_to_id.get(device_b).copied()
+            .expect("validator enforced device_b exists");
+        let status_val  = if status.is_empty() { "Planned" } else { status };
+        let port_a_opt: Option<&str> = if port_a.is_empty() { None } else { Some(port_a) };
+        let port_b_opt: Option<&str> = if port_b.is_empty() { None } else { Some(port_b) };
+
+        // 1/3: link row
+        let link_insert: Result<(Uuid,), sqlx::Error> = sqlx::query_as(
+            "INSERT INTO net.link
+                (organization_id, link_type_id, link_code,
+                 vlan_id, subnet_id, status, created_by, updated_by)
+             VALUES ($1, $2, $3, $4, $5,
+                     $6::net.entity_status, $7, $7)
+             RETURNING id")
+            .bind(org_id)
+            .bind(type_id)
+            .bind(link_code)
+            .bind(vlan_uuid)
+            .bind(subnet_id_val)
+            .bind(status_val)
+            .bind(user_id)
+            .fetch_one(&mut *tx).await;
+
+        let link_id = match link_insert {
+            Ok((id,)) => id,
+            Err(e) => {
+                let o = &mut outcomes[outcome_idx];
+                o.ok = false;
+                o.errors.push(format!("database INSERT (link) failed: {e}"));
+                return Ok(ImportValidationResult {
+                    total_rows: outcomes.len(),
+                    valid: outcomes.iter().filter(|o| o.ok).count(),
+                    invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                    dry_run: false, applied: false, outcomes,
+                });
+            }
+        };
+
+        // 2/3: A endpoint
+        let ep_a_insert: Result<(), sqlx::Error> = sqlx::query(
+            "INSERT INTO net.link_endpoint
+                (organization_id, link_id, endpoint_order, device_id,
+                 interface_name, status, created_by, updated_by)
+             VALUES ($1, $2, 0, $3, $4, 'Active'::net.entity_status, $5, $5)")
+            .bind(org_id).bind(link_id).bind(device_a_id).bind(port_a_opt).bind(user_id)
+            .execute(&mut *tx).await.map(|_| ());
+        if let Err(e) = ep_a_insert {
+            let o = &mut outcomes[outcome_idx];
+            o.ok = false;
+            o.errors.push(format!("database INSERT (endpoint A) failed: {e}"));
+            return Ok(ImportValidationResult {
+                total_rows: outcomes.len(),
+                valid: outcomes.iter().filter(|o| o.ok).count(),
+                invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                dry_run: false, applied: false, outcomes,
+            });
+        }
+
+        // 3/3: B endpoint
+        let ep_b_insert: Result<(), sqlx::Error> = sqlx::query(
+            "INSERT INTO net.link_endpoint
+                (organization_id, link_id, endpoint_order, device_id,
+                 interface_name, status, created_by, updated_by)
+             VALUES ($1, $2, 1, $3, $4, 'Active'::net.entity_status, $5, $5)")
+            .bind(org_id).bind(link_id).bind(device_b_id).bind(port_b_opt).bind(user_id)
+            .execute(&mut *tx).await.map(|_| ());
+        if let Err(e) = ep_b_insert {
+            let o = &mut outcomes[outcome_idx];
+            o.ok = false;
+            o.errors.push(format!("database INSERT (endpoint B) failed: {e}"));
+            return Ok(ImportValidationResult {
+                total_rows: outcomes.len(),
+                valid: outcomes.iter().filter(|o| o.ok).count(),
+                invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                dry_run: false, applied: false, outcomes,
+            });
+        }
+
+        audit::append_tx(&mut tx, &AuditEvent {
+            organization_id: org_id,
+            source_service: "networking-engine",
+            entity_type: "Link",
+            entity_id: Some(link_id),
+            action: "Created",
+            actor_user_id: user_id,
+            actor_display: None, client_ip: None, correlation_id: None,
+            details: serde_json::json!({
+                "source": "bulk_import",
+                "link_code": link_code,
+                "link_type": link_type,
+                "device_a": device_a,
+                "device_b": device_b,
+            }),
+        }).await?;
+    }
+    tx.commit().await?;
+
+    Ok(ImportValidationResult {
+        total_rows: outcomes.len(),
+        valid, invalid: 0,
+        dry_run: false, applied: true, outcomes,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn validate_link_row(
+    row: &[String],
+    row_number: usize,
+    link_type_codes: &std::collections::HashSet<String>,
+    vlan_numeric_to_id: &std::collections::HashMap<i32, Uuid>,
+    subnet_codes: &std::collections::HashSet<String>,
+    device_hostnames: &std::collections::HashSet<String>,
+    existing_codes: &std::collections::HashSet<String>,
+) -> ImportRowOutcome {
+    let mut errors = Vec::new();
+    if row.len() != LINK_COLUMNS.len() {
+        errors.push(format!("expected {} columns, got {}", LINK_COLUMNS.len(), row.len()));
+        return ImportRowOutcome {
+            row_number, ok: false, errors,
+            identifier: row.first().cloned().unwrap_or_default(),
+        };
+    }
+
+    let link_code   = row[0].trim();
+    let link_type   = row[1].trim();
+    let vlan_str    = row[2].trim();
+    let subnet_code = row[3].trim();
+    let device_a    = row[4].trim();
+    let device_b    = row[7].trim();
+    let status      = row[10].trim();
+
+    if link_code.is_empty() {
+        errors.push("link_code is required".into());
+    } else if existing_codes.contains(link_code) {
+        errors.push(format!(
+            "link_code '{link_code}' already exists — update mode not yet supported"));
+    }
+    if link_type.is_empty() {
+        errors.push("link_type is required".into());
+    } else if !link_type_codes.contains(link_type) {
+        errors.push(format!(
+            "link_type '{link_type}' not found in this tenant's link_type catalog"));
+    }
+    if !vlan_str.is_empty() {
+        match vlan_str.parse::<i32>() {
+            Ok(n) if !(1..=4094).contains(&n) =>
+                errors.push(format!("vlan_id {n} is outside the 1-4094 range")),
+            Ok(n) if !vlan_numeric_to_id.contains_key(&n) =>
+                errors.push(format!(
+                    "vlan_id {n} not found in this tenant's vlan catalog")),
+            Ok(_) => {},
+            Err(_) => errors.push(format!("vlan_id '{vlan_str}' is not a valid integer")),
+        }
+    }
+    if !subnet_code.is_empty() && !subnet_codes.contains(subnet_code) {
+        errors.push(format!(
+            "subnet_code '{subnet_code}' not found in this tenant's subnet catalog"));
+    }
+    if device_a.is_empty() {
+        errors.push("device_a is required".into());
+    } else if !device_hostnames.contains(device_a) {
+        errors.push(format!(
+            "device_a '{device_a}' not found in this tenant's device catalog"));
+    }
+    if device_b.is_empty() {
+        errors.push("device_b is required".into());
+    } else if !device_hostnames.contains(device_b) {
+        errors.push(format!(
+            "device_b '{device_b}' not found in this tenant's device catalog"));
+    }
+    if !status.is_empty() &&
+        !matches!(status, "Planned"|"Reserved"|"Active"|"Deprecated"|"Retired")
+    {
+        errors.push(format!("status '{status}' must be Planned/Reserved/Active/Deprecated/Retired"));
+    }
+
+    ImportRowOutcome {
+        row_number,
+        ok: errors.is_empty(),
+        errors,
+        identifier: link_code.to_string(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

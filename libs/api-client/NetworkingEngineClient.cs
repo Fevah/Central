@@ -556,6 +556,19 @@ public class NetworkingEngineClient : IDisposable
         string csvBody, bool dryRun = true, CancellationToken ct = default)
         => PostCsvAsync("/api/net/servers/import", organizationId, csvBody, dryRun, ct);
 
+    /// <summary>Bulk import links. One CSV row → 1 net.link +
+    /// 2 net.link_endpoint rows in a single transaction. Required:
+    /// link_code, link_type (must resolve), device_a, device_b
+    /// (hostnames must exist). Optional: vlan_id, subnet_code,
+    /// port_a, port_b, status. ip_a + ip_b are accepted but
+    /// ignored on apply — resolving them to net.ip_address rows
+    /// needs subnet context the import flow doesn't carry; operators
+    /// wire IPs via the IP-allocation CRUD after the link import
+    /// lands.</summary>
+    public Task<ImportValidationResultDto> ImportLinksCsvAsync(Guid organizationId,
+        string csvBody, bool dryRun = true, CancellationToken ct = default)
+        => PostCsvAsync("/api/net/links/import", organizationId, csvBody, dryRun, ct);
+
     /// <summary>Bulk import DHCP relay targets. Required: vlan_id
     /// (must exist in the tenant's VLAN catalog), server_ip. First-
     /// wins when multiple blocks have the same numeric vlan_id —

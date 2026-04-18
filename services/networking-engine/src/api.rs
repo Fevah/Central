@@ -145,6 +145,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/subnets/import",                   post(import_subnets_csv))
         .route("/api/net/servers/import",                   post(import_servers_csv))
         .route("/api/net/dhcp-relay-targets/import",        post(import_dhcp_relay_targets_csv))
+        .route("/api/net/links/import",                     post(import_links_csv))
         // Bulk edit (Phase 10) — same-value-for-all transactional
         // update across a selected set of rows; dryRun preview.
         .route("/api/net/devices/bulk-edit",                post(bulk_edit_devices_handler))
@@ -1237,6 +1238,19 @@ async fn import_dhcp_relay_targets_csv(
 ) -> Result<impl IntoResponse, EngineError> {
     let user_id = header_user_id(&headers);
     let result = bulk_import::import_dhcp_relay_targets(
+        &s.pool, q.organization_id, &body, q.dry_run, user_id
+    ).await?;
+    Ok(Json(result))
+}
+
+async fn import_links_csv(
+    State(s): State<AppState>,
+    Query(q): Query<bulk_import::ImportQuery>,
+    headers: HeaderMap,
+    body: String,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    let result = bulk_import::import_links(
         &s.pool, q.organization_id, &body, q.dry_run, user_id
     ).await?;
     Ok(Json(result))
