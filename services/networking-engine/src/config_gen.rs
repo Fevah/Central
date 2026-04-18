@@ -544,6 +544,7 @@ impl Renderer for PicosRenderer {
         render_ip_routing_section(&mut out, ctx);
         render_qos_preset_section(&mut out, ctx);
         render_port_qos_bindings_section(&mut out, ctx);
+        render_voice_vlan_preset_section(&mut out, ctx);
         render_loopback_section(&mut out, ctx);
         render_management_interface_section(&mut out, ctx);
         render_vlans_section(&mut out, ctx);
@@ -663,6 +664,28 @@ const QOS_PRESET_LINES: &[&str] = &[
     "set class-of-service scheduler-profile qos-flex-profile forwarding-class fc-transactional scheduler \"sched-transactional\"",
     "set class-of-service scheduler-profile qos-flex-profile forwarding-class fc-bulk scheduler \"sched-bulk\"",
     "set class-of-service scheduler-profile qos-flex-profile forwarding-class fc-best-effort scheduler \"sched-best-effort\"",
+];
+
+/// Voice-VLAN preset — 4 fixed lines matching the customer's Avaya
+/// deployment (OUI `c8:1f:ea:XX:XX:XX`, local-priority 6, DSCP 46).
+/// Sits at legacy step 4 so it lands after the QoS block (whose
+/// forwarding classes it relies on) and before the VLAN catalog.
+/// When a different tenant brings a non-Avaya voice vendor we'll
+/// move this to a per-tenant settings table; today it matches the
+/// only production deployment, so const is honest.
+fn render_voice_vlan_preset_section(out: &mut String, _ctx: &DeviceContext) {
+    for line in VOICE_VLAN_PRESET_LINES {
+        out.push_str(line);
+        out.push('\n');
+    }
+    out.push('\n');
+}
+
+const VOICE_VLAN_PRESET_LINES: &[&str] = &[
+    "set vlans voice-vlan mac-address c8:1f:ea:66:72:b6 mask ff:ff:ff:00:00:00",
+    "set vlans voice-vlan mac-address c8:1f:ea:66:72:b6 description \"Avaya\"",
+    "set vlans voice-vlan local-priority 6",
+    "set vlans voice-vlan dscp 46",
 ];
 
 /// Per-port QoS bindings — one classifier + one scheduler-profile
@@ -1134,8 +1157,11 @@ mod tests {
     #[test]
     fn picos_omits_vlan_section_when_none() {
         let out = PicosRenderer::render(&fixture("CORE02", vec![]));
-        assert!(!out.contains("set vlans"),
-            "no vlan lines should appear when the context has no vlans:\n{out}");
+        // Tightened past `"set vlans"` to `"set vlans vlan-id"` — the
+        // voice-VLAN preset legitimately emits `set vlans voice-vlan`
+        // lines regardless of per-device VLAN catalog contents.
+        assert!(!out.contains("set vlans vlan-id"),
+            "no VLAN catalog lines should appear when the context has no vlans:\n{out}");
     }
 
     #[test]
@@ -1454,6 +1480,48 @@ mod tests {
         );
         assert_eq!(out, "MEP-91-Core",
             "unparseable device_code should leave {{instance}} empty");
+    }
+
+    #[test]
+    fn picos_emits_voice_vlan_preset_lines() {
+        let out = PicosRenderer::render(&fixture("CORE02", vec![]));
+        assert!(out.contains("set vlans voice-vlan mac-address c8:1f:ea:66:72:b6 mask ff:ff:ff:00:00:00"),
+            "voice-vlan MAC/mask line missing:\n{out}");
+        assert!(out.contains(r#"set vlans voice-vlan mac-address c8:1f:ea:66:72:b6 description "Avaya""#),
+            "voice-vlan Avaya description line missing:\n{out}");
+        assert!(out.contains("set vlans voice-vlan local-priority 6"),
+            "voice-vlan local-priority line missing:\n{out}");
+        assert!(out.contains("set vlans voice-vlan dscp 46"),
+            "voice-vlan DSCP line missing:\n{out}");
+    }
+
+    #[test]
+    fn picos_voice_vlan_preset_emits_expected_line_count() {
+        let out = PicosRenderer::render(&fixture("CORE02", vec![]));
+        let voice_lines = out.lines()
+            .filter(|l| l.starts_with("set vlans voice-vlan"))
+            .count();
+        assert_eq!(voice_lines, VOICE_VLAN_PRESET_LINES.len(),
+            "voice VLAN line count drift:\n{out}");
+    }
+
+    #[test]
+    fn picos_voice_vlan_preset_lands_after_qos_and_before_vlan_catalog() {
+        // Legacy step 4 — after class-of-service definitions (voice
+        // DSCP refers to a forwarding-class from QoS), before the
+        // per-VLAN `set vlans vlan-id` catalog block.
+        let ctx = fixture_with_vlans_and_svis(
+            vec![VlanLine { vlan_id: 101, display_name: "IT".into(), description: None }],
+            vec![],
+        );
+        let out = PicosRenderer::render(&ctx);
+        let qos_last   = out.find(r#"scheduler "sched-best-effort""#).expect("QoS preset present");
+        let voice      = out.find("set vlans voice-vlan mac-address").expect("voice preset present");
+        let first_vlan = out.find("set vlans vlan-id 101 description").expect("VLAN catalog present");
+        assert!(qos_last < voice,
+            "voice VLAN must land AFTER QoS preset:\n{out}");
+        assert!(voice < first_vlan,
+            "voice VLAN must land BEFORE per-VLAN catalog lines:\n{out}");
     }
 
     #[test]
