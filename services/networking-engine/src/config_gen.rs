@@ -26,6 +26,7 @@ use uuid::Uuid;
 
 use crate::cli_flavor::{self, FlavorMeta};
 use crate::error::EngineError;
+use crate::naming::{self, DeviceNamingContext};
 
 // ─── Public surface ──────────────────────────────────────────────────────
 
@@ -199,15 +200,55 @@ async fn fetch_context(
     org_id: Uuid,
     device_id: Uuid,
 ) -> Result<DeviceContext, EngineError> {
-    let dev: Option<(String, Option<String>)> = sqlx::query_as(
-        "SELECT d.hostname, d.management_ip::text AS mgmt
-           FROM net.device d
-          WHERE d.id = $1 AND d.organization_id = $2 AND d.deleted_at IS NULL")
+    // Pull everything needed to *derive* the hostname from the
+    // device_role naming_template (migration 093). Falls back to the
+    // stored hostname when the template is empty or unresolvable so
+    // operators can always force-override by clearing the template.
+    type DeviceRow = (
+        String,          // stored hostname
+        Option<String>,  // device_code (used as {instance})
+        Option<String>,  // management_ip text
+        Option<String>,  // role_code
+        Option<String>,  // naming_template
+        Option<String>,  // region_code
+        Option<String>,  // site_code
+        Option<String>,  // building_code
+        Option<String>,  // rack_code
+    );
+    let dev: Option<DeviceRow> = sqlx::query_as(
+        r#"SELECT d.hostname,
+                  d.device_code,
+                  d.management_ip::text                   AS mgmt,
+                  dr.role_code,
+                  NULLIF(dr.naming_template, '')          AS naming_template,
+                  r.region_code,
+                  s.site_code,
+                  b.building_code,
+                  rk.rack_code
+             FROM net.device d
+             LEFT JOIN net.device_role dr ON dr.id = d.device_role_id AND dr.deleted_at IS NULL
+             LEFT JOIN net.building    b  ON b.id  = d.building_id    AND b.deleted_at IS NULL
+             LEFT JOIN net.site        s  ON s.id  = b.site_id        AND s.deleted_at IS NULL
+             LEFT JOIN net.region      r  ON r.id  = s.region_id      AND r.deleted_at IS NULL
+             LEFT JOIN net.rack        rk ON rk.id = d.rack_id        AND rk.deleted_at IS NULL
+            WHERE d.id = $1 AND d.organization_id = $2 AND d.deleted_at IS NULL"#)
         .bind(device_id)
         .bind(org_id)
         .fetch_optional(pool)
         .await?;
-    let (hostname, mgmt) = dev.ok_or_else(|| EngineError::container_not_found("device", device_id))?;
+    let (stored_hostname, device_code, mgmt, role_code, naming_template,
+         region_code, site_code, building_code, rack_code)
+        = dev.ok_or_else(|| EngineError::container_not_found("device", device_id))?;
+    let hostname = resolve_device_hostname(
+        &stored_hostname,
+        naming_template.as_deref(),
+        role_code.as_deref(),
+        region_code.as_deref(),
+        site_code.as_deref(),
+        building_code.as_deref(),
+        rack_code.as_deref(),
+        device_code.as_deref(),
+    );
 
     // Loopback: `net.device` has no direct FK to its loopback IP. Devices
     // live in a LOOPBACK-coded subnet via net.ip_address.assigned_to_id
@@ -462,6 +503,47 @@ fn render_header(out: &mut String, ctx: &DeviceContext) {
 fn render_system_section(out: &mut String, ctx: &DeviceContext) {
     out.push_str(&format!("set system hostname \"{}\"\n", escape_picos(&ctx.hostname)));
     out.push('\n');
+}
+
+/// Resolve the emitted hostname from the device_role `naming_template`
+/// plus the hierarchy codes (region / site / building / rack / role)
+/// and the device's `device_code` (used as the `{instance}` token).
+/// Returns the stored hostname verbatim if the template is missing /
+/// unresolvable — that's the operator's escape hatch for devices
+/// whose name shouldn't come from a convention.
+///
+/// `device_code` is parsed for a trailing numeric instance (e.g.
+/// `"02"` → `Some(2)`). Non-numeric codes fall through and the
+/// `{instance}` token substitutes to empty.
+#[allow(clippy::too_many_arguments)]
+fn resolve_device_hostname(
+    stored: &str,
+    naming_template: Option<&str>,
+    role_code: Option<&str>,
+    region_code: Option<&str>,
+    site_code: Option<&str>,
+    building_code: Option<&str>,
+    rack_code: Option<&str>,
+    device_code: Option<&str>,
+) -> String {
+    let Some(tpl) = naming_template.filter(|t| !t.is_empty()) else {
+        return stored.to_string();
+    };
+    let instance = device_code.and_then(|c| c.trim().parse::<i32>().ok());
+    let ctx = DeviceNamingContext {
+        region_code:      region_code.map(str::to_string),
+        site_code:        site_code.map(str::to_string),
+        building_code:    building_code.map(str::to_string),
+        rack_code:        rack_code.map(str::to_string),
+        role_code:        role_code.map(str::to_string),
+        instance,
+        instance_padding: 2,
+    };
+    let resolved = naming::expand_device(tpl, &ctx);
+    // If expansion produces nothing useful (e.g. tokens all empty,
+    // separators left hanging), fall back to stored. This protects
+    // against half-modelled devices producing `"--"` etc.
+    if resolved.trim().is_empty() { stored.to_string() } else { resolved }
 }
 
 /// Split a Postgres `inet` text value like `"10.255.91.2/32"` or
@@ -989,6 +1071,102 @@ mod tests {
         // But the rest of the BGP section must still render.
         assert!(out.contains("local-as \"65112\""));
         assert!(out.contains("redistribute connected"));
+    }
+
+    // ── Hostname template resolution ─────────────────────────────────
+
+    #[test]
+    fn resolve_hostname_expands_tokens_from_hierarchy() {
+        let out = resolve_device_hostname(
+            "stored-ignored",
+            Some("{building_code}-CORE{instance}"),
+            Some("Core"),
+            Some("MP"),
+            Some("MEP"),
+            Some("MEP-91"),
+            None,
+            Some("2"),
+        );
+        assert_eq!(out, "MEP-91-CORE02",
+            "template should expand building + instance tokens");
+    }
+
+    #[test]
+    fn resolve_hostname_falls_back_to_stored_when_template_missing() {
+        let out = resolve_device_hostname(
+            "OLD-HOST01",
+            None,
+            Some("Core"), Some("MP"), Some("MEP"), Some("MEP-91"), None, Some("2"),
+        );
+        assert_eq!(out, "OLD-HOST01",
+            "no template → stored hostname is emitted verbatim");
+    }
+
+    #[test]
+    fn resolve_hostname_falls_back_when_template_is_empty_string() {
+        let out = resolve_device_hostname(
+            "STORED-HOST",
+            Some(""),
+            Some("Core"), None, None, None, None, None,
+        );
+        assert_eq!(out, "STORED-HOST",
+            "empty template string → fall back to stored");
+    }
+
+    #[test]
+    fn resolve_hostname_leaves_missing_tokens_as_empty_but_keeps_literals() {
+        // Template has {site_code} but we pass None — the literal
+        // separators ("-") are preserved even if the token is empty.
+        let out = resolve_device_hostname(
+            "stored-ignored",
+            Some("{site_code}-{role_code}{instance}"),
+            Some("Core"),
+            None, None, None, None,
+            Some("1"),
+        );
+        assert_eq!(out, "-Core01",
+            "missing site_code should still emit literal separator");
+    }
+
+    #[test]
+    fn resolve_hostname_falls_back_when_expansion_yields_whitespace_only() {
+        // Defensive: every token missing AND template is pure tokens →
+        // expansion is empty. Falling back to stored prevents emitting
+        // `set system hostname ""`.
+        let out = resolve_device_hostname(
+            "FALLBACK",
+            Some("{site_code}{building_code}{role_code}"),
+            None, None, None, None, None, None,
+        );
+        assert_eq!(out, "FALLBACK",
+            "all tokens empty → expansion empty → fall back to stored");
+    }
+
+    #[test]
+    fn resolve_hostname_parses_device_code_as_instance_number() {
+        // device_code "02" → instance 2 → zero-padded back to "02"
+        // via the default padding=2 convention.
+        let out = resolve_device_hostname(
+            "stored",
+            Some("{role_code}{instance}"),
+            Some("L1Core"), None, None, None, None,
+            Some("2"),
+        );
+        assert_eq!(out, "L1Core02");
+    }
+
+    #[test]
+    fn resolve_hostname_non_numeric_device_code_yields_empty_instance() {
+        // Non-numeric device_code (e.g. "A") can't be parsed — {instance}
+        // substitutes empty, the rest of the template still renders.
+        let out = resolve_device_hostname(
+            "stored",
+            Some("{building_code}-{role_code}{instance}"),
+            Some("Core"), None, None, Some("MEP-91"), None,
+            Some("A"),
+        );
+        assert_eq!(out, "MEP-91-Core",
+            "unparseable device_code should leave {{instance}} empty");
     }
 
     #[test]
