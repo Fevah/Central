@@ -28,6 +28,9 @@ use crate::config_gen;
 use crate::dhcp_relay::{
     CreateDhcpRelayBody, DhcpRelayRepo, ListDhcpRelayQuery, UpdateDhcpRelayBody,
 };
+use crate::saved_views::{
+    CreateSavedViewBody, ListSavedViewsQuery, SavedViewRepo, UpdateSavedViewBody,
+};
 use crate::scope_grants::{
     self, CreateScopeGrantBody, ListScopeGrantsQuery, ScopeGrantRepo,
 };
@@ -155,6 +158,13 @@ pub fn build_router(state: AppState) -> Router {
         // 6 entity types. RBAC filters results post-fetch so the
         // caller only sees rows they have read on.
         .route("/api/net/search",                           get(global_search_handler))
+        // Saved views (Phase 10) — per-user named search queries,
+        // managed personally not through scope_grants. Ownership
+        // check is baked into every handler via user_id from the
+        // X-User-Id header.
+        .route("/api/net/saved-views",                      get(list_saved_views).post(create_saved_view))
+        .route("/api/net/saved-views/:id",
+               get(get_saved_view).put(update_saved_view).delete(delete_saved_view))
         // XLSX round-trip (Phase 10) — xlsx is a pure transport
         // adapter over the CSV paths. Every entity gets .xlsx on
         // both sides symmetrically with the CSV surface.
@@ -1482,6 +1492,64 @@ async fn import_links_xlsx(
         &s.pool, q.organization_id, &csv, q.dry_run, user_id
     ).await?;
     Ok(Json(result))
+}
+
+// ─── Saved view handlers ─────────────────────────────────────────────────
+
+async fn list_saved_views(
+    State(s): State<AppState>,
+    Query(q): Query<ListSavedViewsQuery>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    let repo = SavedViewRepo::new(s.pool);
+    Ok(Json(repo.list(&q, user_id).await?))
+}
+
+async fn get_saved_view(
+    State(s): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    let repo = SavedViewRepo::new(s.pool);
+    Ok(Json(repo.get(id, q.organization_id, user_id).await?))
+}
+
+async fn create_saved_view(
+    State(s): State<AppState>,
+    headers: HeaderMap,
+    Json(body): Json<CreateSavedViewBody>,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    let repo = SavedViewRepo::new(s.pool);
+    let out = repo.create(&body, user_id).await?;
+    Ok((StatusCode::CREATED, Json(out)))
+}
+
+async fn update_saved_view(
+    State(s): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+    Json(body): Json<UpdateSavedViewBody>,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    let repo = SavedViewRepo::new(s.pool);
+    Ok(Json(repo.update(id, q.organization_id, &body, user_id).await?))
+}
+
+async fn delete_saved_view(
+    State(s): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    let repo = SavedViewRepo::new(s.pool);
+    repo.soft_delete(id, q.organization_id, user_id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 async fn global_search_handler(

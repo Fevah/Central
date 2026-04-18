@@ -705,6 +705,45 @@ public class NetworkingEngineClient : IDisposable
             ?? throw new NetworkingEngineException(0, $"POST {path} returned null body");
     }
 
+    // ─── Saved views (Phase 10) ──────────────────────────────────────────
+
+    /// <summary>List the caller's own saved views (scoped by
+    /// X-User-Id). Service calls without the header get an empty
+    /// list — saved views are personal state.</summary>
+    public Task<List<SavedViewDto>> ListSavedViewsAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<SavedViewDto>>(
+            $"/api/net/saved-views?organizationId={organizationId}", ct);
+
+    public Task<SavedViewDto> GetSavedViewAsync(Guid id, Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<SavedViewDto>(
+            $"/api/net/saved-views/{id}?organizationId={organizationId}", ct);
+
+    public Task<SavedViewDto> CreateSavedViewAsync(CreateSavedViewRequest request,
+        CancellationToken ct = default)
+        => PostAsync<SavedViewDto>("/api/net/saved-views", request, ct);
+
+    public async Task<SavedViewDto> UpdateSavedViewAsync(Guid id, Guid organizationId,
+        string name, string q, string? entityTypes, object? filters,
+        string? notes, int version, CancellationToken ct = default)
+    {
+        var resp = await _http.PutAsJsonAsync(
+            $"/api/net/saved-views/{id}?organizationId={organizationId}",
+            new { name, q, entityTypes, filters, notes, version }, Json, ct);
+        await EnsureSuccessAsync(resp, ct);
+        return (await resp.Content.ReadFromJsonAsync<SavedViewDto>(Json, ct))
+            ?? throw new NetworkingEngineException(0, "PUT returned null body");
+    }
+
+    public async Task DeleteSavedViewAsync(Guid id, Guid organizationId,
+        CancellationToken ct = default)
+    {
+        var resp = await _http.DeleteAsync(
+            $"/api/net/saved-views/{id}?organizationId={organizationId}", ct);
+        await EnsureSuccessAsync(resp, ct);
+    }
+
     // ─── Global search (Phase 10) ────────────────────────────────────────
 
     /// <summary>Full-text search across devices / vlans / subnets /
@@ -1212,3 +1251,13 @@ public record PermissionDecisionDto(bool Allowed, Guid? MatchedGrantId);
 /// Postgres ts_rank and is higher for better matches.</summary>
 public record SearchResultDto(string EntityType, Guid Id, string Label,
     float Rank, string Snippet);
+
+// ─── Saved views (Phase 10) ───────────────────────────────────────────
+
+public record SavedViewDto(Guid Id, Guid OrganizationId, int UserId, string Name,
+    string Q, string? EntityTypes, object Filters, string Status, int Version,
+    DateTime CreatedAt, DateTime UpdatedAt, string? Notes);
+
+public record CreateSavedViewRequest(Guid OrganizationId, string Name,
+    string Q = "", string? EntityTypes = null, object? Filters = null,
+    string? Notes = null);
