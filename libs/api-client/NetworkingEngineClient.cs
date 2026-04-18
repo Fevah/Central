@@ -705,6 +705,67 @@ public class NetworkingEngineClient : IDisposable
             ?? throw new NetworkingEngineException(0, $"POST {path} returned null body");
     }
 
+    // ─── XLSX round-trip (Phase 10) ──────────────────────────────────────
+
+    /// <summary>Download a tenant's devices as an XLSX workbook.
+    /// Returns the raw file bytes so callers can save-as or stream
+    /// to a browser. Same columns as <see cref="ExportDevicesCsvAsync"/>
+    /// — xlsx is a pure transport adapter over the CSV path.</summary>
+    public Task<byte[]> ExportDevicesXlsxAsync(Guid organizationId, CancellationToken ct = default)
+        => GetBytesAsync($"/api/net/devices/export.xlsx?organizationId={organizationId}", ct);
+
+    public Task<byte[]> ExportVlansXlsxAsync(Guid organizationId, CancellationToken ct = default)
+        => GetBytesAsync($"/api/net/vlans/export.xlsx?organizationId={organizationId}", ct);
+
+    public Task<byte[]> ExportSubnetsXlsxAsync(Guid organizationId, CancellationToken ct = default)
+        => GetBytesAsync($"/api/net/subnets/export.xlsx?organizationId={organizationId}", ct);
+
+    public Task<byte[]> ExportServersXlsxAsync(Guid organizationId, CancellationToken ct = default)
+        => GetBytesAsync($"/api/net/servers/export.xlsx?organizationId={organizationId}", ct);
+
+    public Task<byte[]> ExportLinksXlsxAsync(Guid organizationId, CancellationToken ct = default)
+        => GetBytesAsync($"/api/net/links/export.xlsx?organizationId={organizationId}", ct);
+
+    public Task<byte[]> ExportDhcpRelayTargetsXlsxAsync(Guid organizationId, CancellationToken ct = default)
+        => GetBytesAsync($"/api/net/dhcp-relay-targets/export.xlsx?organizationId={organizationId}", ct);
+
+    public Task<ImportValidationResultDto> ImportDevicesXlsxAsync(Guid organizationId,
+        byte[] xlsxBytes, bool dryRun = true, CancellationToken ct = default)
+        => PostXlsxAsync("/api/net/devices/import.xlsx", organizationId, xlsxBytes, dryRun, ct);
+
+    public Task<ImportValidationResultDto> ImportVlansXlsxAsync(Guid organizationId,
+        byte[] xlsxBytes, bool dryRun = true, CancellationToken ct = default)
+        => PostXlsxAsync("/api/net/vlans/import.xlsx", organizationId, xlsxBytes, dryRun, ct);
+
+    public Task<ImportValidationResultDto> ImportSubnetsXlsxAsync(Guid organizationId,
+        byte[] xlsxBytes, bool dryRun = true, CancellationToken ct = default)
+        => PostXlsxAsync("/api/net/subnets/import.xlsx", organizationId, xlsxBytes, dryRun, ct);
+
+    public Task<ImportValidationResultDto> ImportServersXlsxAsync(Guid organizationId,
+        byte[] xlsxBytes, bool dryRun = true, CancellationToken ct = default)
+        => PostXlsxAsync("/api/net/servers/import.xlsx", organizationId, xlsxBytes, dryRun, ct);
+
+    public Task<ImportValidationResultDto> ImportLinksXlsxAsync(Guid organizationId,
+        byte[] xlsxBytes, bool dryRun = true, CancellationToken ct = default)
+        => PostXlsxAsync("/api/net/links/import.xlsx", organizationId, xlsxBytes, dryRun, ct);
+
+    public Task<ImportValidationResultDto> ImportDhcpRelayTargetsXlsxAsync(Guid organizationId,
+        byte[] xlsxBytes, bool dryRun = true, CancellationToken ct = default)
+        => PostXlsxAsync("/api/net/dhcp-relay-targets/import.xlsx", organizationId, xlsxBytes, dryRun, ct);
+
+    private async Task<ImportValidationResultDto> PostXlsxAsync(string path,
+        Guid organizationId, byte[] xlsxBytes, bool dryRun, CancellationToken ct)
+    {
+        var url = $"{path}?organizationId={organizationId}&dryRun={(dryRun ? "true" : "false")}";
+        var content = new ByteArrayContent(xlsxBytes);
+        content.Headers.ContentType = new MediaTypeHeaderValue(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        var resp = await _http.PostAsync(url, content, ct);
+        await EnsureSuccessAsync(resp, ct);
+        return (await resp.Content.ReadFromJsonAsync<ImportValidationResultDto>(Json, ct))
+            ?? throw new NetworkingEngineException(0, $"POST {path} returned null body");
+    }
+
     // ─── Transport helpers ──────────────────────────────────────────────
 
     private static string BuildQuery(params (string key, string? value)[] parts)
@@ -730,6 +791,16 @@ public class NetworkingEngineClient : IDisposable
         var resp = await _http.GetAsync(url, ct);
         await EnsureSuccessAsync(resp, ct);
         return await resp.Content.ReadAsStringAsync(ct);
+    }
+
+    /// <summary>GET the raw response body as bytes. Used by the
+    /// .xlsx export endpoints — XLSX is a binary format that must
+    /// stay exactly as the server produced it.</summary>
+    private async Task<byte[]> GetBytesAsync(string url, CancellationToken ct)
+    {
+        var resp = await _http.GetAsync(url, ct);
+        await EnsureSuccessAsync(resp, ct);
+        return await resp.Content.ReadAsByteArrayAsync(ct);
     }
 
     private async Task<T> PostAsync<T>(string url, object body, CancellationToken ct)

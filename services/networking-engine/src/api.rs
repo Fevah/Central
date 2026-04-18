@@ -22,6 +22,7 @@ use crate::bulk_edit::{
 };
 use crate::bulk_export;
 use crate::bulk_import;
+use crate::xlsx_codec;
 use crate::cli_flavor::{self, ListFlavorsQuery, SetFlavorConfigBody};
 use crate::config_gen;
 use crate::dhcp_relay::{
@@ -149,6 +150,21 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/servers/import",                   post(import_servers_csv))
         .route("/api/net/dhcp-relay-targets/import",        post(import_dhcp_relay_targets_csv))
         .route("/api/net/links/import",                     post(import_links_csv))
+        // XLSX round-trip (Phase 10) — xlsx is a pure transport
+        // adapter over the CSV paths. Every entity gets .xlsx on
+        // both sides symmetrically with the CSV surface.
+        .route("/api/net/devices/export.xlsx",              get(export_devices_xlsx))
+        .route("/api/net/vlans/export.xlsx",                get(export_vlans_xlsx))
+        .route("/api/net/subnets/export.xlsx",              get(export_subnets_xlsx))
+        .route("/api/net/servers/export.xlsx",              get(export_servers_xlsx))
+        .route("/api/net/links/export.xlsx",                get(export_links_xlsx))
+        .route("/api/net/dhcp-relay-targets/export.xlsx",   get(export_dhcp_relay_xlsx))
+        .route("/api/net/devices/import.xlsx",              post(import_devices_xlsx))
+        .route("/api/net/vlans/import.xlsx",                post(import_vlans_xlsx))
+        .route("/api/net/subnets/import.xlsx",              post(import_subnets_xlsx))
+        .route("/api/net/servers/import.xlsx",              post(import_servers_xlsx))
+        .route("/api/net/links/import.xlsx",                post(import_links_xlsx))
+        .route("/api/net/dhcp-relay-targets/import.xlsx",   post(import_dhcp_relay_xlsx))
         // Bulk edit (Phase 10) — same-value-for-all transactional
         // update across a selected set of rows; dryRun preview.
         .route("/api/net/devices/bulk-edit",                post(bulk_edit_devices_handler))
@@ -1303,6 +1319,176 @@ async fn import_links_csv(
     let user_id = header_user_id(&headers);
     let result = bulk_import::import_links(
         &s.pool, q.organization_id, &body, q.dry_run, user_id
+    ).await?;
+    Ok(Json(result))
+}
+
+// ─── XLSX transport adapters ─────────────────────────────────────────────
+//
+// Each export.xlsx handler runs the existing CSV export then wraps
+// the output as a workbook via xlsx_codec::csv_body_to_xlsx. Each
+// import.xlsx handler does the reverse: reads the uploaded xlsx
+// body, converts to CSV, feeds to the existing CSV import path.
+//
+// Sheet name matches the entity; download filename matches the
+// sheet so operators see a self-describing file in their downloads
+// folder.
+
+fn xlsx_download_headers(filename: &'static str) -> [(axum::http::header::HeaderName, axum::http::HeaderValue); 2] {
+    use axum::http::{HeaderValue, header};
+    let disp = match filename {
+        "devices.xlsx"            => HeaderValue::from_static("attachment; filename=\"devices.xlsx\""),
+        "vlans.xlsx"              => HeaderValue::from_static("attachment; filename=\"vlans.xlsx\""),
+        "subnets.xlsx"            => HeaderValue::from_static("attachment; filename=\"subnets.xlsx\""),
+        "servers.xlsx"            => HeaderValue::from_static("attachment; filename=\"servers.xlsx\""),
+        "links.xlsx"              => HeaderValue::from_static("attachment; filename=\"links.xlsx\""),
+        "dhcp-relay-targets.xlsx" => HeaderValue::from_static("attachment; filename=\"dhcp-relay-targets.xlsx\""),
+        _                         => HeaderValue::from_static("attachment"),
+    };
+    [
+        (header::CONTENT_TYPE,
+         HeaderValue::from_static("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")),
+        (header::CONTENT_DISPOSITION, disp),
+    ]
+}
+
+async fn export_devices_xlsx(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let csv = bulk_export::export_devices_csv(&s.pool, q.organization_id).await?;
+    let xlsx = xlsx_codec::csv_body_to_xlsx(&csv, "devices")?;
+    Ok((xlsx_download_headers("devices.xlsx"), xlsx))
+}
+
+async fn export_vlans_xlsx(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let csv = bulk_export::export_vlans_csv(&s.pool, q.organization_id).await?;
+    let xlsx = xlsx_codec::csv_body_to_xlsx(&csv, "vlans")?;
+    Ok((xlsx_download_headers("vlans.xlsx"), xlsx))
+}
+
+async fn export_subnets_xlsx(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let csv = bulk_export::export_subnets_csv(&s.pool, q.organization_id).await?;
+    let xlsx = xlsx_codec::csv_body_to_xlsx(&csv, "subnets")?;
+    Ok((xlsx_download_headers("subnets.xlsx"), xlsx))
+}
+
+async fn export_servers_xlsx(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let csv = bulk_export::export_servers_csv(&s.pool, q.organization_id).await?;
+    let xlsx = xlsx_codec::csv_body_to_xlsx(&csv, "servers")?;
+    Ok((xlsx_download_headers("servers.xlsx"), xlsx))
+}
+
+async fn export_links_xlsx(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let csv = bulk_export::export_links_csv(&s.pool, q.organization_id).await?;
+    let xlsx = xlsx_codec::csv_body_to_xlsx(&csv, "links")?;
+    Ok((xlsx_download_headers("links.xlsx"), xlsx))
+}
+
+async fn export_dhcp_relay_xlsx(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let csv = bulk_export::export_dhcp_relay_targets_csv(&s.pool, q.organization_id).await?;
+    let xlsx = xlsx_codec::csv_body_to_xlsx(&csv, "dhcp-relay-targets")?;
+    Ok((xlsx_download_headers("dhcp-relay-targets.xlsx"), xlsx))
+}
+
+// Import.xlsx handlers take raw bytes (axum::body::Bytes) and
+// delegate to the CSV import path after decoding.
+
+async fn import_devices_xlsx(
+    State(s): State<AppState>,
+    Query(q): Query<bulk_import::ImportQuery>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    let csv = xlsx_codec::xlsx_bytes_to_csv(&body)?;
+    let result = bulk_import::import_devices(
+        &s.pool, q.organization_id, &csv, q.dry_run, user_id
+    ).await?;
+    Ok(Json(result))
+}
+
+async fn import_vlans_xlsx(
+    State(s): State<AppState>,
+    Query(q): Query<bulk_import::ImportQuery>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    let csv = xlsx_codec::xlsx_bytes_to_csv(&body)?;
+    let result = bulk_import::import_vlans(
+        &s.pool, q.organization_id, &csv, q.dry_run, user_id
+    ).await?;
+    Ok(Json(result))
+}
+
+async fn import_subnets_xlsx(
+    State(s): State<AppState>,
+    Query(q): Query<bulk_import::ImportQuery>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    let csv = xlsx_codec::xlsx_bytes_to_csv(&body)?;
+    let result = bulk_import::import_subnets(
+        &s.pool, q.organization_id, &csv, q.dry_run, user_id
+    ).await?;
+    Ok(Json(result))
+}
+
+async fn import_servers_xlsx(
+    State(s): State<AppState>,
+    Query(q): Query<bulk_import::ImportQuery>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    let csv = xlsx_codec::xlsx_bytes_to_csv(&body)?;
+    let result = bulk_import::import_servers(
+        &s.pool, q.organization_id, &csv, q.dry_run, user_id
+    ).await?;
+    Ok(Json(result))
+}
+
+async fn import_links_xlsx(
+    State(s): State<AppState>,
+    Query(q): Query<bulk_import::ImportQuery>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    let csv = xlsx_codec::xlsx_bytes_to_csv(&body)?;
+    let result = bulk_import::import_links(
+        &s.pool, q.organization_id, &csv, q.dry_run, user_id
+    ).await?;
+    Ok(Json(result))
+}
+
+async fn import_dhcp_relay_xlsx(
+    State(s): State<AppState>,
+    Query(q): Query<bulk_import::ImportQuery>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    let csv = xlsx_codec::xlsx_bytes_to_csv(&body)?;
+    let result = bulk_import::import_dhcp_relay_targets(
+        &s.pool, q.organization_id, &csv, q.dry_run, user_id
     ).await?;
     Ok(Json(result))
 }

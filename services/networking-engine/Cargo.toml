@@ -20,6 +20,12 @@ tower-http = { version = "0.6", features = ["trace", "cors"] }
 ipnetwork = "0.20"
 sha2 = "0.10"
 hex = "0.4"
+# XLSX round-trip over the existing CSV pipeline. `calamine` reads
+# xls/xlsx/xlsb/ods (pure Rust, no native deps); `rust_xlsxwriter`
+# emits xlsx (pure Rust, simpler API than `xlsx`). Both land as
+# thin adapters at the transport layer in `xlsx_codec.rs`.
+calamine = "0.26"
+rust_xlsxwriter = "0.82"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

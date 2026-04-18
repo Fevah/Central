@@ -32,3 +32,4 @@ pub mod scope_grants;
 pub mod server_fanout;
 pub mod tenant_config;
 pub mod validation;
+pub mod xlsx_codec;
