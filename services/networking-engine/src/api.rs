@@ -16,6 +16,10 @@ use uuid::Uuid;
 
 use crate::allocation::AllocationService;
 use crate::audit::{self, ListAuditQuery, VerifyChainQuery};
+use crate::change_sets::{
+    AddItemBody, ChangeSetRepo, CreateChangeSetBody, GetChangeSetQuery,
+    ListChangeSetsQuery, SubmitBody,
+};
 use crate::error::EngineError;
 use crate::ip_allocation::IpAllocationService;
 use crate::models::{PoolScopeLevel, ShelfResourceType};
@@ -62,6 +66,11 @@ pub fn build_router(state: AppState) -> Router {
         // Audit (Phase 8 foundation)
         .route("/api/net/audit", get(list_audit))
         .route("/api/net/audit/verify", get(verify_audit_chain))
+        // Change Sets (Phase 8a)
+        .route("/api/net/change-sets", get(list_change_sets).post(create_change_set))
+        .route("/api/net/change-sets/:id", get(get_change_set))
+        .route("/api/net/change-sets/:id/items", post(add_change_set_item))
+        .route("/api/net/change-sets/:id/submit", post(submit_change_set))
         .with_state(state)
 }
 
@@ -399,4 +408,67 @@ async fn regenerate_apply(
     Json(req): Json<RegenerateApplyRequest>,
 ) -> Result<impl IntoResponse, EngineError> {
     Ok(Json(regenerate::apply(&s.pool, &req).await?))
+}
+
+// ─── Change Sets (Phase 8a) ──────────────────────────────────────────────
+
+async fn list_change_sets(
+    State(s): State<AppState>,
+    Query(q): Query<ListChangeSetsQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = ChangeSetRepo::new(s.pool);
+    Ok(Json(repo.list(&q).await?))
+}
+
+async fn create_change_set(
+    State(s): State<AppState>,
+    headers: HeaderMap,
+    Json(body): Json<CreateChangeSetBody>,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = ChangeSetRepo::new(s.pool);
+    let user_id = header_user_id(&headers);
+    let out = repo.create(&body, user_id).await?;
+    Ok((StatusCode::CREATED, Json(out)))
+}
+
+#[derive(Serialize)]
+struct ChangeSetWithItems {
+    #[serde(flatten)]
+    set: crate::change_sets::ChangeSet,
+    items: Vec<crate::change_sets::ChangeSetItem>,
+}
+
+async fn get_change_set(
+    State(s): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(q): Query<GetChangeSetQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = ChangeSetRepo::new(s.pool);
+    let (set, items) = repo.get(id, q.organization_id).await?;
+    Ok(Json(ChangeSetWithItems { set, items }))
+}
+
+async fn add_change_set_item(
+    State(s): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+    Json(body): Json<AddItemBody>,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = ChangeSetRepo::new(s.pool);
+    let user_id = header_user_id(&headers);
+    let out = repo.add_item(id, q.organization_id, &body, user_id).await?;
+    Ok((StatusCode::CREATED, Json(out)))
+}
+
+async fn submit_change_set(
+    State(s): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+    Json(body): Json<SubmitBody>,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = ChangeSetRepo::new(s.pool);
+    let user_id = header_user_id(&headers);
+    Ok(Json(repo.submit(id, q.organization_id, &body, user_id).await?))
 }

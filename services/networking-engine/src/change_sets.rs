@@ -1,0 +1,733 @@
+//! Change Sets — Phase 8a governance.
+//!
+//! A Change Set groups related entity mutations behind one approvable
+//! envelope. Lifecycle: `Draft → Submitted → (Approved | Rejected) →
+//! (Applied | Cancelled | RolledBack)`. This slice ships the draft side:
+//! create, list, get, add/remove items, submit. Approve / reject / apply /
+//! rollback arrive in follow-on slices.
+//!
+//! ## Invariants enforced here
+//!
+//! - Items are mutable only while the parent Set is `Draft`. Once
+//!   `Submitted`, adding / editing items requires cancelling and
+//!   re-drafting.
+//! - `submit` is a one-shot transition: `Draft → Submitted`. Anything else
+//!   (resubmitting an approved Set, submitting a rejected one, submitting
+//!   an empty Draft) errors out.
+//! - `item_order` is dense-1-based — engine assigns it on add so callers
+//!   can't leave gaps.
+//!
+//! All mutations stamp audit entries with `correlation_id` set to the Set's
+//! own id so forensic queries can join back cleanly.
+
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
+use uuid::Uuid;
+
+use crate::audit::{self, AuditEvent};
+use crate::error::EngineError;
+
+// ─── Status + action enums ───────────────────────────────────────────────
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum ChangeSetStatus {
+    Draft, Submitted, Approved, Rejected, Applied, RolledBack, Cancelled,
+}
+
+impl ChangeSetStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Draft => "Draft", Self::Submitted => "Submitted",
+            Self::Approved => "Approved", Self::Rejected => "Rejected",
+            Self::Applied => "Applied", Self::RolledBack => "RolledBack",
+            Self::Cancelled => "Cancelled",
+        }
+    }
+
+    pub fn from_db(s: &str) -> Result<Self, EngineError> {
+        match s {
+            "Draft" => Ok(Self::Draft),
+            "Submitted" => Ok(Self::Submitted),
+            "Approved" => Ok(Self::Approved),
+            "Rejected" => Ok(Self::Rejected),
+            "Applied" => Ok(Self::Applied),
+            "RolledBack" => Ok(Self::RolledBack),
+            "Cancelled" => Ok(Self::Cancelled),
+            other => Err(EngineError::bad_request(format!(
+                "Unknown change_set_status '{other}'"))),
+        }
+    }
+
+    #[allow(dead_code)] // Consumed by approve/reject/cancel paths in the next slice.
+    pub fn is_terminal(&self) -> bool {
+        matches!(self, Self::Rejected | Self::Applied | Self::Cancelled)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub enum ChangeSetAction { Create, Update, Delete, Rename }
+
+impl ChangeSetAction {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Create => "Create", Self::Update => "Update",
+            Self::Delete => "Delete", Self::Rename => "Rename",
+        }
+    }
+
+    pub fn from_db(s: &str) -> Result<Self, EngineError> {
+        match s {
+            "Create" => Ok(Self::Create), "Update" => Ok(Self::Update),
+            "Delete" => Ok(Self::Delete), "Rename" => Ok(Self::Rename),
+            other => Err(EngineError::bad_request(format!(
+                "Unknown change_set_action '{other}'"))),
+        }
+    }
+}
+
+// ─── DTOs ────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeSet {
+    pub id: Uuid,
+    pub organization_id: Uuid,
+    pub title: String,
+    pub description: Option<String>,
+    pub status: ChangeSetStatus,
+    pub requested_by: Option<i32>,
+    pub requested_by_display: Option<String>,
+    pub submitted_by: Option<i32>,
+    pub submitted_at: Option<DateTime<Utc>>,
+    pub approved_at: Option<DateTime<Utc>>,
+    pub applied_at: Option<DateTime<Utc>>,
+    pub rolled_back_at: Option<DateTime<Utc>>,
+    pub cancelled_at: Option<DateTime<Utc>>,
+    pub required_approvals: Option<i32>,
+    pub correlation_id: Uuid,
+    pub version: i32,
+    pub item_count: i64,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeSetItem {
+    pub id: Uuid,
+    pub change_set_id: Uuid,
+    pub item_order: i32,
+    pub entity_type: String,
+    pub entity_id: Option<Uuid>,
+    pub action: ChangeSetAction,
+    pub before_json: Option<serde_json::Value>,
+    pub after_json: Option<serde_json::Value>,
+    pub expected_version: Option<i32>,
+    pub applied_at: Option<DateTime<Utc>>,
+    pub apply_error: Option<String>,
+    pub notes: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateChangeSetBody {
+    pub organization_id: Uuid,
+    pub title: String,
+    pub description: Option<String>,
+    pub requested_by_display: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AddItemBody {
+    pub entity_type: String,
+    pub entity_id: Option<Uuid>,
+    pub action: ChangeSetAction,
+    pub before_json: Option<serde_json::Value>,
+    pub after_json: Option<serde_json::Value>,
+    pub expected_version: Option<i32>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SubmitBody {
+    /// How many approvals this Set needs before apply is possible. The
+    /// per-entity-type policy table lands in a follow-on slice; for now
+    /// the caller supplies the threshold explicitly. Capped at >=1 to
+    /// prevent accidental auto-approval by passing 0.
+    #[serde(default = "default_required_approvals")]
+    pub required_approvals: i32,
+}
+
+fn default_required_approvals() -> i32 { 1 }
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListChangeSetsQuery {
+    pub organization_id: Uuid,
+    pub status: Option<String>,
+    #[serde(default = "default_list_limit")]
+    pub limit: i64,
+}
+
+fn default_list_limit() -> i64 { 50 }
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetChangeSetQuery { pub organization_id: Uuid }
+
+// ─── Repo ────────────────────────────────────────────────────────────────
+
+#[derive(Clone)]
+pub struct ChangeSetRepo { pool: PgPool }
+
+impl ChangeSetRepo {
+    pub fn new(pool: PgPool) -> Self { Self { pool } }
+
+    pub async fn create(
+        &self,
+        body: &CreateChangeSetBody,
+        user_id: Option<i32>,
+    ) -> Result<ChangeSet, EngineError> {
+        if body.title.trim().is_empty() {
+            return Err(EngineError::bad_request("Change Set title is required"));
+        }
+
+        let mut tx = self.pool.begin().await?;
+        let row = sqlx::query_as::<_, ChangeSetRow>(
+            "INSERT INTO net.change_set
+                (organization_id, title, description, status,
+                 requested_by, requested_by_display,
+                 lock_state, created_by, updated_by)
+             VALUES ($1, $2, $3, 'Draft'::net.change_set_status,
+                     $4, $5, 'Open'::net.lock_state, $4, $4)
+             RETURNING id, organization_id, title, description,
+                       status::text AS status, requested_by, requested_by_display,
+                       submitted_by, submitted_at, approved_at, applied_at,
+                       rolled_back_at, cancelled_at, required_approvals,
+                       correlation_id, version, created_at, updated_at")
+            .bind(body.organization_id)
+            .bind(&body.title)
+            .bind(body.description.as_deref())
+            .bind(user_id)
+            .bind(body.requested_by_display.as_deref())
+            .fetch_one(&mut *tx)
+            .await?;
+
+        audit::append_tx(&mut tx, &AuditEvent {
+            organization_id: body.organization_id,
+            source_service: "networking-engine",
+            entity_type: "ChangeSet",
+            entity_id: Some(row.id),
+            action: "Drafted",
+            actor_user_id: user_id,
+            actor_display: body.requested_by_display.as_deref(),
+            client_ip: None,
+            correlation_id: Some(row.correlation_id),
+            details: serde_json::json!({ "title": row.title }),
+        }).await?;
+
+        tx.commit().await?;
+        row.into_dto(0)
+    }
+
+    pub async fn list(&self, q: &ListChangeSetsQuery) -> Result<Vec<ChangeSet>, EngineError> {
+        let limit = q.limit.clamp(1, 500);
+        let rows: Vec<ChangeSetRow> = sqlx::query_as(
+            "SELECT cs.id, cs.organization_id, cs.title, cs.description,
+                    cs.status::text AS status, cs.requested_by, cs.requested_by_display,
+                    cs.submitted_by, cs.submitted_at, cs.approved_at, cs.applied_at,
+                    cs.rolled_back_at, cs.cancelled_at, cs.required_approvals,
+                    cs.correlation_id, cs.version, cs.created_at, cs.updated_at
+               FROM net.change_set cs
+              WHERE cs.organization_id = $1
+                AND cs.deleted_at IS NULL
+                AND ($2::text IS NULL OR cs.status::text = $2)
+              ORDER BY cs.created_at DESC
+              LIMIT $3")
+            .bind(q.organization_id)
+            .bind(q.status.as_deref())
+            .bind(limit)
+            .fetch_all(&self.pool)
+            .await?;
+        // Item counts in a single batch query so the list endpoint stays O(1) round-trips.
+        let ids: Vec<Uuid> = rows.iter().map(|r| r.id).collect();
+        let counts: Vec<(Uuid, i64)> = if ids.is_empty() {
+            Vec::new()
+        } else {
+            sqlx::query_as(
+                "SELECT change_set_id, COUNT(*)::bigint
+                   FROM net.change_set_item
+                  WHERE change_set_id = ANY($1) AND deleted_at IS NULL
+                  GROUP BY change_set_id")
+                .bind(&ids)
+                .fetch_all(&self.pool)
+                .await?
+        };
+        let mut by_id = std::collections::HashMap::new();
+        for (k, v) in counts { by_id.insert(k, v); }
+
+        rows.into_iter()
+            .map(|r| { let c = by_id.get(&r.id).copied().unwrap_or(0); r.into_dto(c) })
+            .collect()
+    }
+
+    pub async fn get(&self, id: Uuid, org_id: Uuid) -> Result<(ChangeSet, Vec<ChangeSetItem>), EngineError> {
+        let row: Option<ChangeSetRow> = sqlx::query_as(
+            "SELECT id, organization_id, title, description,
+                    status::text AS status, requested_by, requested_by_display,
+                    submitted_by, submitted_at, approved_at, applied_at,
+                    rolled_back_at, cancelled_at, required_approvals,
+                    correlation_id, version, created_at, updated_at
+               FROM net.change_set
+              WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL")
+            .bind(id)
+            .bind(org_id)
+            .fetch_optional(&self.pool)
+            .await?;
+        let row = row.ok_or_else(|| EngineError::container_not_found("change_set", id))?;
+
+        let items: Vec<ChangeSetItemRow> = sqlx::query_as(
+            "SELECT id, change_set_id, item_order, entity_type, entity_id,
+                    action::text AS action, before_json, after_json,
+                    expected_version, applied_at, apply_error, notes, created_at
+               FROM net.change_set_item
+              WHERE change_set_id = $1 AND deleted_at IS NULL
+              ORDER BY item_order")
+            .bind(id)
+            .fetch_all(&self.pool)
+            .await?;
+        let count = items.len() as i64;
+        let dtos = items.into_iter().map(|r| r.into_dto()).collect::<Result<Vec<_>, _>>()?;
+        Ok((row.into_dto(count)?, dtos))
+    }
+
+    pub async fn add_item(
+        &self,
+        set_id: Uuid,
+        org_id: Uuid,
+        body: &AddItemBody,
+        user_id: Option<i32>,
+    ) -> Result<ChangeSetItem, EngineError> {
+        validate_item(body)?;
+
+        let mut tx = self.pool.begin().await?;
+
+        // Guard: parent Set must be Draft. Select with FOR UPDATE so a
+        // concurrent submit can't sneak in between our read and our
+        // insert.
+        let parent: Option<(String, Uuid)> = sqlx::query_as(
+            "SELECT status::text, correlation_id
+               FROM net.change_set
+              WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
+              FOR UPDATE")
+            .bind(set_id)
+            .bind(org_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+        let (status_str, correlation_id) = parent
+            .ok_or_else(|| EngineError::container_not_found("change_set", set_id))?;
+        let status = ChangeSetStatus::from_db(&status_str)?;
+        if status != ChangeSetStatus::Draft {
+            return Err(EngineError::bad_request(format!(
+                "Cannot add items to a Change Set in status '{}'. \
+                 Items are editable only in Draft.", status.as_str())));
+        }
+
+        // Dense item_order: max(order) + 1, starting at 1. Concurrent inserts
+        // are serialised by the FOR UPDATE lock on the parent above.
+        let next_order: i32 = sqlx::query_scalar(
+            "SELECT COALESCE(MAX(item_order), 0) + 1
+               FROM net.change_set_item
+              WHERE change_set_id = $1 AND deleted_at IS NULL")
+            .bind(set_id)
+            .fetch_one(&mut *tx)
+            .await?;
+
+        let row: ChangeSetItemRow = sqlx::query_as(
+            "INSERT INTO net.change_set_item
+                (organization_id, change_set_id, item_order, entity_type,
+                 entity_id, action, before_json, after_json,
+                 expected_version, notes)
+             VALUES ($1, $2, $3, $4, $5, $6::net.change_set_action, $7, $8, $9, $10)
+             RETURNING id, change_set_id, item_order, entity_type, entity_id,
+                       action::text AS action, before_json, after_json,
+                       expected_version, applied_at, apply_error, notes, created_at")
+            .bind(org_id)
+            .bind(set_id)
+            .bind(next_order)
+            .bind(&body.entity_type)
+            .bind(body.entity_id)
+            .bind(body.action.as_str())
+            .bind(&body.before_json)
+            .bind(&body.after_json)
+            .bind(body.expected_version)
+            .bind(body.notes.as_deref())
+            .fetch_one(&mut *tx)
+            .await?;
+
+        audit::append_tx(&mut tx, &AuditEvent {
+            organization_id: org_id,
+            source_service: "networking-engine",
+            entity_type: "ChangeSetItem",
+            entity_id: Some(row.id),
+            action: "ItemAdded",
+            actor_user_id: user_id,
+            actor_display: None,
+            client_ip: None,
+            correlation_id: Some(correlation_id),
+            details: serde_json::json!({
+                "change_set_id": set_id,
+                "item_order": next_order,
+                "target_entity_type": body.entity_type,
+                "target_action": body.action.as_str(),
+            }),
+        }).await?;
+
+        tx.commit().await?;
+        row.into_dto()
+    }
+
+    pub async fn submit(
+        &self,
+        set_id: Uuid,
+        org_id: Uuid,
+        body: &SubmitBody,
+        user_id: Option<i32>,
+    ) -> Result<ChangeSet, EngineError> {
+        if body.required_approvals < 1 {
+            return Err(EngineError::bad_request(
+                "required_approvals must be >= 1 — explicit zero would bypass approval entirely"));
+        }
+
+        let mut tx = self.pool.begin().await?;
+
+        // Must have at least one item — you can't submit an empty intent.
+        let item_count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*)::bigint FROM net.change_set_item
+              WHERE change_set_id = $1 AND deleted_at IS NULL")
+            .bind(set_id)
+            .fetch_one(&mut *tx)
+            .await?;
+        if item_count == 0 {
+            return Err(EngineError::bad_request(
+                "Cannot submit an empty Change Set — add at least one item first."));
+        }
+
+        // Transition Draft → Submitted. Status change is atomic with the
+        // submitted_at / required_approvals stamp + the audit entry.
+        let row: Option<ChangeSetRow> = sqlx::query_as(
+            "UPDATE net.change_set
+                SET status             = 'Submitted'::net.change_set_status,
+                    submitted_at       = now(),
+                    submitted_by       = $3,
+                    required_approvals = $4,
+                    updated_at         = now(),
+                    updated_by         = $3,
+                    version            = version + 1
+              WHERE id = $1 AND organization_id = $2
+                AND status = 'Draft'::net.change_set_status
+                AND deleted_at IS NULL
+              RETURNING id, organization_id, title, description,
+                        status::text AS status, requested_by, requested_by_display,
+                        submitted_by, submitted_at, approved_at, applied_at,
+                        rolled_back_at, cancelled_at, required_approvals,
+                        correlation_id, version, created_at, updated_at")
+            .bind(set_id)
+            .bind(org_id)
+            .bind(user_id)
+            .bind(body.required_approvals)
+            .fetch_optional(&mut *tx)
+            .await?;
+
+        let row = row.ok_or_else(|| EngineError::bad_request(
+            "Change Set not in Draft, already submitted, or wrong tenant — re-fetch and retry."))?;
+
+        audit::append_tx(&mut tx, &AuditEvent {
+            organization_id: org_id,
+            source_service: "networking-engine",
+            entity_type: "ChangeSet",
+            entity_id: Some(row.id),
+            action: "Submitted",
+            actor_user_id: user_id,
+            actor_display: None,
+            client_ip: None,
+            correlation_id: Some(row.correlation_id),
+            details: serde_json::json!({
+                "required_approvals": body.required_approvals,
+                "item_count": item_count,
+            }),
+        }).await?;
+
+        tx.commit().await?;
+        row.into_dto(item_count)
+    }
+}
+
+// ─── Validation ──────────────────────────────────────────────────────────
+
+pub(crate) fn validate_item(body: &AddItemBody) -> Result<(), EngineError> {
+    if body.entity_type.trim().is_empty() {
+        return Err(EngineError::bad_request("entity_type is required"));
+    }
+    match body.action {
+        ChangeSetAction::Create => {
+            if body.entity_id.is_some() {
+                return Err(EngineError::bad_request(
+                    "Create items must not carry entity_id — the id is assigned at apply time"));
+            }
+            if body.after_json.is_none() {
+                return Err(EngineError::bad_request(
+                    "Create items must carry after_json"));
+            }
+        }
+        ChangeSetAction::Update | ChangeSetAction::Rename => {
+            if body.entity_id.is_none() {
+                return Err(EngineError::bad_request(
+                    "Update/Rename items require entity_id"));
+            }
+            if body.after_json.is_none() {
+                return Err(EngineError::bad_request(
+                    "Update/Rename items must carry after_json"));
+            }
+        }
+        ChangeSetAction::Delete => {
+            if body.entity_id.is_none() {
+                return Err(EngineError::bad_request(
+                    "Delete items require entity_id"));
+            }
+            if body.after_json.is_some() {
+                return Err(EngineError::bad_request(
+                    "Delete items must not carry after_json"));
+            }
+        }
+    }
+    Ok(())
+}
+
+// ─── Row adapters ────────────────────────────────────────────────────────
+
+#[derive(sqlx::FromRow)]
+struct ChangeSetRow {
+    id: Uuid,
+    organization_id: Uuid,
+    title: String,
+    description: Option<String>,
+    status: String,
+    requested_by: Option<i32>,
+    requested_by_display: Option<String>,
+    submitted_by: Option<i32>,
+    submitted_at: Option<DateTime<Utc>>,
+    approved_at: Option<DateTime<Utc>>,
+    applied_at: Option<DateTime<Utc>>,
+    rolled_back_at: Option<DateTime<Utc>>,
+    cancelled_at: Option<DateTime<Utc>>,
+    required_approvals: Option<i32>,
+    correlation_id: Uuid,
+    version: i32,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
+}
+
+impl ChangeSetRow {
+    fn into_dto(self, item_count: i64) -> Result<ChangeSet, EngineError> {
+        Ok(ChangeSet {
+            id: self.id,
+            organization_id: self.organization_id,
+            title: self.title,
+            description: self.description,
+            status: ChangeSetStatus::from_db(&self.status)?,
+            requested_by: self.requested_by,
+            requested_by_display: self.requested_by_display,
+            submitted_by: self.submitted_by,
+            submitted_at: self.submitted_at,
+            approved_at: self.approved_at,
+            applied_at: self.applied_at,
+            rolled_back_at: self.rolled_back_at,
+            cancelled_at: self.cancelled_at,
+            required_approvals: self.required_approvals,
+            correlation_id: self.correlation_id,
+            version: self.version,
+            item_count,
+            created_at: self.created_at,
+            updated_at: self.updated_at,
+        })
+    }
+}
+
+#[derive(sqlx::FromRow)]
+struct ChangeSetItemRow {
+    id: Uuid,
+    change_set_id: Uuid,
+    item_order: i32,
+    entity_type: String,
+    entity_id: Option<Uuid>,
+    action: String,
+    before_json: Option<serde_json::Value>,
+    after_json: Option<serde_json::Value>,
+    expected_version: Option<i32>,
+    applied_at: Option<DateTime<Utc>>,
+    apply_error: Option<String>,
+    notes: Option<String>,
+    created_at: DateTime<Utc>,
+}
+
+impl ChangeSetItemRow {
+    fn into_dto(self) -> Result<ChangeSetItem, EngineError> {
+        Ok(ChangeSetItem {
+            id: self.id,
+            change_set_id: self.change_set_id,
+            item_order: self.item_order,
+            entity_type: self.entity_type,
+            entity_id: self.entity_id,
+            action: ChangeSetAction::from_db(&self.action)?,
+            before_json: self.before_json,
+            after_json: self.after_json,
+            expected_version: self.expected_version,
+            applied_at: self.applied_at,
+            apply_error: self.apply_error,
+            notes: self.notes,
+            created_at: self.created_at,
+        })
+    }
+}
+
+// ─── Tests ───────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn v(j: serde_json::Value) -> Option<serde_json::Value> { Some(j) }
+
+    #[test]
+    fn create_requires_after_json_and_no_entity_id() {
+        // Missing after_json.
+        assert!(validate_item(&AddItemBody {
+            entity_type: "Device".into(), entity_id: None,
+            action: ChangeSetAction::Create,
+            before_json: None, after_json: None,
+            expected_version: None, notes: None,
+        }).is_err());
+
+        // entity_id supplied is wrong for Create.
+        assert!(validate_item(&AddItemBody {
+            entity_type: "Device".into(), entity_id: Some(Uuid::new_v4()),
+            action: ChangeSetAction::Create,
+            before_json: None, after_json: v(serde_json::json!({})),
+            expected_version: None, notes: None,
+        }).is_err());
+
+        // Happy path.
+        assert!(validate_item(&AddItemBody {
+            entity_type: "Device".into(), entity_id: None,
+            action: ChangeSetAction::Create,
+            before_json: None, after_json: v(serde_json::json!({"hostname":"x"})),
+            expected_version: None, notes: None,
+        }).is_ok());
+    }
+
+    #[test]
+    fn update_and_rename_require_entity_id_and_after_json() {
+        for action in [ChangeSetAction::Update, ChangeSetAction::Rename] {
+            // Missing entity_id.
+            assert!(validate_item(&AddItemBody {
+                entity_type: "Device".into(), entity_id: None,
+                action,
+                before_json: None, after_json: v(serde_json::json!({})),
+                expected_version: None, notes: None,
+            }).is_err());
+
+            // Missing after_json.
+            assert!(validate_item(&AddItemBody {
+                entity_type: "Device".into(), entity_id: Some(Uuid::new_v4()),
+                action,
+                before_json: None, after_json: None,
+                expected_version: None, notes: None,
+            }).is_err());
+
+            // Happy path.
+            assert!(validate_item(&AddItemBody {
+                entity_type: "Device".into(), entity_id: Some(Uuid::new_v4()),
+                action,
+                before_json: None, after_json: v(serde_json::json!({})),
+                expected_version: None, notes: None,
+            }).is_ok());
+        }
+    }
+
+    #[test]
+    fn delete_requires_entity_id_and_rejects_after_json() {
+        // Missing entity_id.
+        assert!(validate_item(&AddItemBody {
+            entity_type: "Device".into(), entity_id: None,
+            action: ChangeSetAction::Delete,
+            before_json: None, after_json: None,
+            expected_version: None, notes: None,
+        }).is_err());
+
+        // after_json must not be present for Delete.
+        assert!(validate_item(&AddItemBody {
+            entity_type: "Device".into(), entity_id: Some(Uuid::new_v4()),
+            action: ChangeSetAction::Delete,
+            before_json: None, after_json: v(serde_json::json!({})),
+            expected_version: None, notes: None,
+        }).is_err());
+
+        // Happy path.
+        assert!(validate_item(&AddItemBody {
+            entity_type: "Device".into(), entity_id: Some(Uuid::new_v4()),
+            action: ChangeSetAction::Delete,
+            before_json: None, after_json: None,
+            expected_version: None, notes: None,
+        }).is_ok());
+    }
+
+    #[test]
+    fn empty_entity_type_rejected() {
+        assert!(validate_item(&AddItemBody {
+            entity_type: "   ".into(), entity_id: Some(Uuid::new_v4()),
+            action: ChangeSetAction::Update,
+            before_json: None, after_json: v(serde_json::json!({})),
+            expected_version: None, notes: None,
+        }).is_err());
+    }
+
+    #[test]
+    fn status_terminal_classification() {
+        assert!(ChangeSetStatus::Rejected.is_terminal());
+        assert!(ChangeSetStatus::Applied.is_terminal());
+        assert!(ChangeSetStatus::Cancelled.is_terminal());
+        assert!(!ChangeSetStatus::Draft.is_terminal());
+        assert!(!ChangeSetStatus::Submitted.is_terminal());
+        assert!(!ChangeSetStatus::Approved.is_terminal());
+        assert!(!ChangeSetStatus::RolledBack.is_terminal());
+    }
+
+    #[test]
+    fn status_from_db_round_trips_every_variant() {
+        for v in [
+            ChangeSetStatus::Draft, ChangeSetStatus::Submitted,
+            ChangeSetStatus::Approved, ChangeSetStatus::Rejected,
+            ChangeSetStatus::Applied, ChangeSetStatus::RolledBack,
+            ChangeSetStatus::Cancelled,
+        ] {
+            assert_eq!(ChangeSetStatus::from_db(v.as_str()).unwrap(), v);
+        }
+        assert!(ChangeSetStatus::from_db("Invalid").is_err());
+    }
+
+    #[test]
+    fn action_from_db_round_trips_every_variant() {
+        for v in [ChangeSetAction::Create, ChangeSetAction::Update,
+                  ChangeSetAction::Delete, ChangeSetAction::Rename] {
+            assert_eq!(ChangeSetAction::from_db(v.as_str()).unwrap(), v);
+        }
+        assert!(ChangeSetAction::from_db("Explode").is_err());
+    }
+}
