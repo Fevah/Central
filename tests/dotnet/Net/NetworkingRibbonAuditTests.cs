@@ -108,7 +108,7 @@ public class NetworkingRibbonAuditTests
     [InlineData("Governance", "Rename Device",    "changesets", "action:renameDevice")]
     [InlineData("Validation", "Run All",          "validation", "action:runAll")]
     [InlineData("Validation", "Run Selected",     "validation", "action:runSelected")]
-    [InlineData("Validation", "Toggle Rule",      "validation", "action:toggleRule")]
+    [InlineData("Validation", "Edit Rule",        "validation", "action:editRule")]
     public void NavigateButton_PublishesCorrectTargetAndAction(
         string groupHeader, string buttonContent, string expectedPanel, string expectedAction)
     {

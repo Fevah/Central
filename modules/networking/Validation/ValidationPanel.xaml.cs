@@ -77,10 +77,15 @@ public partial class ValidationPanel : UserControl
         {
             case "action:runAll":      _ = RunAsync(null); break;
             case "action:runSelected": RunSelected();      break;
-            case "action:toggleRule":  _ = ToggleSelectedAsync(); break;
+            case "action:editRule":    EditSelected();     break;
             default:                   _ = ReloadAsync();   break;
         }
     }
+
+    /// <summary>Double-click a rule row to open the edit dialog — the
+    /// main path for admins who are already hovering the grid.</summary>
+    private void OnRuleDoubleClick(object sender, DevExpress.Xpf.Grid.RowDoubleClickEventArgs e)
+        => EditSelected();
 
     private void OnRefresh(RefreshPanelMessage msg)
     {
@@ -183,48 +188,24 @@ public partial class ValidationPanel : UserControl
         "Error" => 0, "Warning" => 1, "Info" => 2, _ => 3,
     };
 
-    // ─── Toggle rule enabled ────────────────────────────────────────────
+    // ─── Edit rule (full config) ────────────────────────────────────────
 
-    private async Task ToggleSelectedAsync()
+    private void EditSelected()
     {
         var rule = RulesGrid.CurrentItem as ResolvedRuleDto;
         if (rule is null)
         {
             MessageBox.Show(
-                "Select a rule to toggle.",
+                "Select a rule to edit.",
                 "No rule selected", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
+        if (string.IsNullOrEmpty(_baseUrl) || _tenantId == Guid.Empty) return;
 
-        var next = !rule.EffectiveEnabled;
-        var confirm = MessageBox.Show(
-            $"{(next ? "Enable" : "Disable")} rule '{rule.Code}' for this tenant?\n\n" +
-            $"Default is {(rule.DefaultEnabled ? "enabled" : "disabled")}; " +
-            $"this flips to an explicit tenant override.",
-            "Toggle rule", MessageBoxButton.YesNo, MessageBoxImage.Question);
-        if (confirm != MessageBoxResult.Yes) return;
-
-        try
+        var dialog = new EditRuleDialog(_baseUrl!, _tenantId, _actorUserId, rule)
         {
-            using var client = new NetworkingEngineClient(_baseUrl!);
-            if (_actorUserId is int uid) client.SetActorUserId(uid);
-            await client.SetRuleConfigAsync(_tenantId, rule.Code, enabled: next);
-            await ReloadAsync();
-        }
-        catch (NetworkingEngineException ex)
-        {
-            MessageBox.Show($"Engine error ({ex.StatusCode}): {ex.Message}",
-                "Toggle failed", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-        catch (HttpRequestException ex)
-        {
-            MessageBox.Show($"Network error: {ex.Message}",
-                "Toggle failed", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show($"Failed: {ex.Message}",
-                "Toggle failed", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+            Owner = Window.GetWindow(this),
+        };
+        if (dialog.ShowDialog() == true) _ = ReloadAsync();
     }
 }

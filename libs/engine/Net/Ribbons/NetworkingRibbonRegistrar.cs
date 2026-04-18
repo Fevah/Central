@@ -157,8 +157,8 @@ public static class NetworkingRibbonRegistrar
                     () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelValidation, "action:runAll")));
                 group.AddButton("Run Selected",     P.ValidationRun,     "Arrow_Right_16x16",
                     () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelValidation, "action:runSelected")));
-                group.AddButton("Toggle Rule",      P.ValidationConfigure, "Check_16x16",
-                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelValidation, "action:toggleRule")));
+                group.AddButton("Edit Rule",        P.ValidationConfigure, "EditItem_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelValidation, "action:editRule")));
                 group.AddButton("Refresh",          P.ValidationRead,    "Refresh_16x16",
                     () => PanelMessageBus.Publish(new RefreshPanelMessage(PanelValidation)));
             });

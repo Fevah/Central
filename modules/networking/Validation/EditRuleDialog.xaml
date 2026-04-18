@@ -1,0 +1,70 @@
+<dxc:DXWindow x:Class="Central.Module.Networking.Validation.EditRuleDialog"
+              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+              xmlns:dxc="http://schemas.devexpress.com/winfx/2008/xaml/core"
+              xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+              Title="Edit Validation Rule"
+              Width="520" Height="440"
+              WindowStartupLocation="CenterOwner"
+              ResizeMode="NoResize">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" x:Name="CodeLabel"
+                   FontWeight="SemiBold" FontFamily="Cascadia Mono, Consolas"
+                   Foreground="#D0D0D0" Margin="0,0,0,4"/>
+        <TextBlock Grid.Row="1" x:Name="NameLabel" Foreground="#B0B0B0"
+                   Margin="0,0,0,4"/>
+        <TextBlock Grid.Row="2" x:Name="DescriptionLabel" Foreground="#909090"
+                   FontSize="11" TextWrapping="Wrap" Margin="0,0,0,10"/>
+
+        <TextBlock Grid.Row="3" x:Name="CategoryLabel" Foreground="#707070"
+                   FontSize="11" Margin="0,0,0,10"/>
+
+        <!-- Enabled -->
+        <CheckBox Grid.Row="4" x:Name="EnabledCheck" Content="Enabled for this tenant"
+                  Margin="0,0,0,4"/>
+        <TextBlock Grid.Row="5" x:Name="EnabledDefaultHint"
+                   Foreground="#707070" FontSize="11" Margin="18,0,0,12"/>
+
+        <!-- Severity override -->
+        <TextBlock Grid.Row="6" Text="Severity override" Foreground="#B0B0B0" Margin="0,0,0,4"/>
+        <dxe:ComboBoxEdit Grid.Row="7" x:Name="SeverityCombo" IsTextEditable="False">
+            <dxe:ComboBoxEdit.Items>
+                <dxe:ComboBoxEditItem Content="(use default)"/>
+                <dxe:ComboBoxEditItem Content="Error"/>
+                <dxe:ComboBoxEditItem Content="Warning"/>
+                <dxe:ComboBoxEditItem Content="Info"/>
+            </dxe:ComboBoxEdit.Items>
+        </dxe:ComboBoxEdit>
+        <TextBlock Grid.Row="8" x:Name="SeverityDefaultHint"
+                   Foreground="#707070" FontSize="11" Margin="0,4,0,8"/>
+
+        <TextBlock Grid.Row="9" Margin="0,0,0,8"
+                   Foreground="#707070" FontSize="11" TextWrapping="Wrap"
+                   Text="Tenant override replaces the code-owned catalog default. Clearing severity override + matching default enabled removes the row entirely — admins can 'unset' a rule back to catalog defaults."/>
+
+        <TextBlock Grid.Row="10" x:Name="ErrorLabel" Foreground="#E06464"
+                   TextWrapping="Wrap" Margin="0,0,0,8" Visibility="Collapsed"/>
+
+        <StackPanel Grid.Row="11" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Cancel" Width="90" Margin="0,0,8,0"
+                    Click="OnCancel" IsCancel="True"/>
+            <Button x:Name="OkButton" Content="Save" Width="90"
+                    Click="OnOk" IsDefault="True"/>
+        </StackPanel>
+    </Grid>
+</dxc:DXWindow>
