@@ -118,6 +118,87 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Error,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "hierarchy.building_requires_site",
+        name: "Building must have a site",
+        description: "Every non-deleted building must carry a site_id. A \
+                      building orphaned from its site breaks region / site-code \
+                      naming templates and scope-based RBAC.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "hierarchy.site_requires_region",
+        name: "Site must have a region",
+        description: "Every non-deleted site must carry a region_id so \
+                      downstream buildings can resolve their region_code token.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "asn_allocation.value_in_block_range",
+        name: "ASN allocations lie within their block's range",
+        description: "Every allocation's asn column must fall inside the \
+                      [asn_first, asn_last] of its containing block. The \
+                      AllocationService enforces this on create, but legacy \
+                      imports may not.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "vlan.value_in_block_range",
+        name: "VLANs lie within their block's range",
+        description: "Every VLAN's vlan_id must fall inside its containing \
+                      block's [vlan_first, vlan_last] range.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "device.active_requires_building",
+        name: "Active device must have a building",
+        description: "Any device in status='Active' must carry a building_id. \
+                      Unsited Active devices bypass scope-based RBAC and \
+                      cannot feed into naming templates.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "link.endpoints_distinct_devices",
+        name: "Link endpoints must be different devices",
+        description: "A link with both endpoints on the same device_id is \
+                      almost always a data-entry error. Loopback-style \
+                      self-peering links should use a dedicated type, not \
+                      reuse the standard link types.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "ip_address.contained_in_subnet",
+        name: "IP address is inside its subnet's CIDR",
+        description: "Every ip_address.address must be a host inside \
+                      subnet.network. Mismatches usually mean a subnet was \
+                      resized after addresses were allocated.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "subnet.scope_entity_present_when_non_free",
+        name: "Scoped subnets must carry scope_entity_id",
+        description: "Subnets with scope_level other than 'Free' must point \
+                      at a hierarchy entity (region / site / building / etc.). \
+                      'Free' means the subnet exists but hasn't been bound \
+                      yet — scope_entity_id should be NULL in that case.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -303,12 +384,20 @@ async fn dispatch(
     out: &mut Vec<Violation>,
 ) -> Result<(), EngineError> {
     match code {
-        "device.hostname_required"        => run_device_hostname_required(pool, org_id, severity, out).await,
-        "server.hostname_required"        => run_server_hostname_required(pool, org_id, severity, out).await,
-        "link.endpoint_count"             => run_link_endpoint_count(pool, org_id, severity, out).await,
+        "device.hostname_required"         => run_device_hostname_required(pool, org_id, severity, out).await,
+        "server.hostname_required"         => run_server_hostname_required(pool, org_id, severity, out).await,
+        "link.endpoint_count"              => run_link_endpoint_count(pool, org_id, severity, out).await,
         "server.nic_count_matches_profile" => run_server_nic_count(pool, org_id, severity, out).await,
-        "loopback.ipv4_slash_32"          => run_loopback_v4_slash_32(pool, org_id, severity, out).await,
-        "vlan.unique_per_block"           => run_vlan_unique_per_block(pool, org_id, severity, out).await,
+        "loopback.ipv4_slash_32"           => run_loopback_v4_slash_32(pool, org_id, severity, out).await,
+        "vlan.unique_per_block"            => run_vlan_unique_per_block(pool, org_id, severity, out).await,
+        "hierarchy.building_requires_site"    => run_building_requires_site(pool, org_id, severity, out).await,
+        "hierarchy.site_requires_region"      => run_site_requires_region(pool, org_id, severity, out).await,
+        "asn_allocation.value_in_block_range" => run_asn_in_block_range(pool, org_id, severity, out).await,
+        "vlan.value_in_block_range"           => run_vlan_in_block_range(pool, org_id, severity, out).await,
+        "device.active_requires_building"     => run_active_device_requires_building(pool, org_id, severity, out).await,
+        "link.endpoints_distinct_devices"     => run_link_endpoints_distinct(pool, org_id, severity, out).await,
+        "ip_address.contained_in_subnet"      => run_ip_contained_in_subnet(pool, org_id, severity, out).await,
+        "subnet.scope_entity_present_when_non_free" => run_subnet_scope_entity_present(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
     }
@@ -466,6 +555,190 @@ async fn run_vlan_unique_per_block(
     Ok(())
 }
 
+async fn run_building_requires_site(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, building_code
+           FROM net.building
+          WHERE organization_id = $1 AND deleted_at IS NULL AND site_id IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "hierarchy.building_requires_site".into(),
+            severity, entity_type: "Building".into(), entity_id: Some(id),
+            message: format!("Building '{code}' has no site_id."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_site_requires_region(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, site_code
+           FROM net.site
+          WHERE organization_id = $1 AND deleted_at IS NULL AND region_id IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "hierarchy.site_requires_region".into(),
+            severity, entity_type: "Site".into(), entity_id: Some(id),
+            message: format!("Site '{code}' has no region_id."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_asn_in_block_range(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i64, i64, i64)> = sqlx::query_as(
+        "SELECT a.id, a.asn, b.asn_first, b.asn_last
+           FROM net.asn_allocation a
+           JOIN net.asn_block b ON b.id = a.block_id
+          WHERE a.organization_id = $1
+            AND a.deleted_at IS NULL
+            AND b.deleted_at IS NULL
+            AND (a.asn < b.asn_first OR a.asn > b.asn_last)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, asn, first, last) in rows {
+        out.push(Violation {
+            rule_code: "asn_allocation.value_in_block_range".into(),
+            severity, entity_type: "AsnAllocation".into(), entity_id: Some(id),
+            message: format!("ASN {asn} is outside block range [{first}, {last}]."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_vlan_in_block_range(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32, i32, i32)> = sqlx::query_as(
+        "SELECT v.id, v.vlan_id, b.vlan_first, b.vlan_last
+           FROM net.vlan v
+           JOIN net.vlan_block b ON b.id = v.block_id
+          WHERE v.organization_id = $1
+            AND v.deleted_at IS NULL
+            AND b.deleted_at IS NULL
+            AND (v.vlan_id < b.vlan_first OR v.vlan_id > b.vlan_last)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, vlan_id, first, last) in rows {
+        out.push(Violation {
+            rule_code: "vlan.value_in_block_range".into(),
+            severity, entity_type: "Vlan".into(), entity_id: Some(id),
+            message: format!("VLAN id {vlan_id} is outside block range [{first}, {last}]."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_active_device_requires_building(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    // status is a net.entity_status enum — compare via ::text so we don't
+    // have to teach sqlx about the custom type binding.
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, hostname
+           FROM net.device
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND status::text = 'Active'
+            AND building_id IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname) in rows {
+        out.push(Violation {
+            rule_code: "device.active_requires_building".into(),
+            severity, entity_type: "Device".into(), entity_id: Some(id),
+            message: format!("Active device '{hostname}' has no building_id."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_link_endpoints_distinct(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    // A link is offending if its two endpoints point at the same
+    // device_id. The COUNT DISTINCT + NOT NULL filter keeps us from
+    // flagging links where both endpoints are still unresolved
+    // (device_id NULL on both sides).
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT l.id, l.link_code
+           FROM net.link l
+          WHERE l.organization_id = $1 AND l.deleted_at IS NULL
+            AND (SELECT COUNT(DISTINCT e.device_id)
+                   FROM net.link_endpoint e
+                  WHERE e.link_id = l.id
+                    AND e.device_id IS NOT NULL
+                    AND e.deleted_at IS NULL) = 1
+            AND (SELECT COUNT(e.id)
+                   FROM net.link_endpoint e
+                  WHERE e.link_id = l.id
+                    AND e.device_id IS NOT NULL
+                    AND e.deleted_at IS NULL) = 2")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, link_code) in rows {
+        out.push(Violation {
+            rule_code: "link.endpoints_distinct_devices".into(),
+            severity, entity_type: "Link".into(), entity_id: Some(id),
+            message: format!("Link '{link_code}' has both endpoints on the same device."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_ip_contained_in_subnet(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    // Postgres's inet / cidr <<= operator is "is contained by". The
+    // address cast forces the comparison into the inet space even if
+    // the ip_address.address column is stored as varchar.
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT ip.id, ip.address::text, s.network::text
+           FROM net.ip_address ip
+           JOIN net.subnet s ON s.id = ip.subnet_id
+          WHERE ip.organization_id = $1
+            AND ip.deleted_at IS NULL
+            AND s.deleted_at IS NULL
+            AND NOT (ip.address <<= s.network)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, addr, network) in rows {
+        out.push(Violation {
+            rule_code: "ip_address.contained_in_subnet".into(),
+            severity, entity_type: "IpAddress".into(), entity_id: Some(id),
+            message: format!("Address {addr} is not inside subnet {network}."),
+        });
+    }
+    Ok(())
+}
+
+async fn run_subnet_scope_entity_present(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    // Warning — non-Free scope but no scope_entity_id. The reverse
+    // (Free scope but scope_entity_id set) is treated as benign staleness.
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT id, subnet_code, scope_level
+           FROM net.subnet
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND scope_level <> 'Free'
+            AND scope_entity_id IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, level) in rows {
+        out.push(Violation {
+            rule_code: "subnet.scope_entity_present_when_non_free".into(),
+            severity, entity_type: "Subnet".into(), entity_id: Some(id),
+            message: format!(
+                "Subnet '{code}' claims scope_level '{level}' but has no scope_entity_id."),
+        });
+    }
+    Ok(())
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -543,6 +816,14 @@ mod tests {
             "server.nic_count_matches_profile",
             "loopback.ipv4_slash_32",
             "vlan.unique_per_block",
+            "hierarchy.building_requires_site",
+            "hierarchy.site_requires_region",
+            "asn_allocation.value_in_block_range",
+            "vlan.value_in_block_range",
+            "device.active_requires_building",
+            "link.endpoints_distinct_devices",
+            "ip_address.contained_in_subnet",
+            "subnet.scope_entity_present_when_non_free",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {

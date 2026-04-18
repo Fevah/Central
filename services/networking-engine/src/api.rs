@@ -68,6 +68,7 @@ pub fn build_router(state: AppState) -> Router {
         // Audit (Phase 8 foundation)
         .route("/api/net/audit", get(list_audit))
         .route("/api/net/audit/verify", get(verify_audit_chain))
+        .route("/api/net/audit/entity/:entity_type/:entity_id", get(entity_audit_timeline))
         // Change Sets (Phase 8a)
         .route("/api/net/change-sets", get(list_change_sets).post(create_change_set))
         .route("/api/net/change-sets/:id", get(get_change_set))
@@ -413,6 +414,23 @@ async fn verify_audit_chain(
     Query(q): Query<VerifyChainQuery>,
 ) -> Result<impl IntoResponse, EngineError> {
     Ok(Json(audit::verify_chain(&s.pool, &q).await?))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct EntityTimelineQuery {
+    organization_id: Uuid,
+    #[serde(default)]
+    limit: Option<i64>,
+}
+
+async fn entity_audit_timeline(
+    State(s): State<AppState>,
+    Path((entity_type, entity_id)): Path<(String, Uuid)>,
+    Query(q): Query<EntityTimelineQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    Ok(Json(audit::entity_timeline(
+        &s.pool, q.organization_id, &entity_type, entity_id, q.limit).await?))
 }
 
 async fn regenerate_apply(

@@ -224,6 +224,16 @@ pub struct ListAuditQuery {
     pub entity_id: Option<Uuid>,
     pub action: Option<String>,
     pub actor_user_id: Option<i32>,
+    /// Filter to entries for one Change Set — join with
+    /// change_set.correlation_id for "show me every lifecycle event of
+    /// this Set".
+    pub correlation_id: Option<Uuid>,
+    /// Lower bound on created_at (inclusive). "Everything since I was
+    /// last on call" is the intended query shape.
+    pub from_at: Option<DateTime<Utc>>,
+    /// Upper bound on created_at (inclusive). Combined with from_at
+    /// gives a tight date-window for forensic review.
+    pub to_at: Option<DateTime<Utc>>,
     #[serde(default = "default_limit")]
     pub limit: i64,
     /// Return rows with sequence_id strictly less than this (descending
@@ -380,22 +390,67 @@ pub async fn list(pool: &PgPool, q: &ListAuditQuery) -> Result<Vec<AuditRow>, En
                 correlation_id, details, prev_hash, entry_hash, created_at
            FROM net.audit_entry
           WHERE organization_id = $1
-            AND ($2::text IS NULL OR entity_type  = $2)
-            AND ($3::uuid IS NULL OR entity_id    = $3)
-            AND ($4::text IS NULL OR action       = $4)
-            AND ($5::int  IS NULL OR actor_user_id = $5)
-            AND ($6::bigint IS NULL OR sequence_id < $6)
+            AND ($2::text IS NULL OR entity_type    = $2)
+            AND ($3::uuid IS NULL OR entity_id      = $3)
+            AND ($4::text IS NULL OR action         = $4)
+            AND ($5::int  IS NULL OR actor_user_id  = $5)
+            AND ($6::uuid IS NULL OR correlation_id = $6)
+            AND ($7::timestamptz IS NULL OR created_at >= $7)
+            AND ($8::timestamptz IS NULL OR created_at <= $8)
+            AND ($9::bigint IS NULL OR sequence_id < $9)
           ORDER BY sequence_id DESC
-          LIMIT $7")
+          LIMIT $10")
         .bind(q.organization_id)
         .bind(q.entity_type.as_deref())
         .bind(q.entity_id)
         .bind(q.action.as_deref())
         .bind(q.actor_user_id)
+        .bind(q.correlation_id)
+        .bind(q.from_at)
+        .bind(q.to_at)
         .bind(q.before_sequence_id)
         .bind(limit)
         .fetch_all(pool)
         .await?;
+    Ok(rows)
+}
+
+/// Entity-scoped chronological timeline. Powers "show me everything that
+/// has ever happened to this device / link / server" forensics. Rows are
+/// returned in ascending sequence_id order so the UI reads left-to-right.
+///
+/// `limit` is optional (None = everything). Per-entity histories are
+/// typically small (tens of rows); if a pathological one grows into
+/// thousands, fall back to `list()` with `entity_type` + `entity_id` +
+/// `before_sequence_id` pagination.
+pub async fn entity_timeline(
+    pool: &PgPool,
+    org_id: Uuid,
+    entity_type: &str,
+    entity_id: Uuid,
+    limit: Option<i64>,
+) -> Result<Vec<AuditRow>, EngineError> {
+    let rows: Vec<AuditRow> = match limit {
+        Some(l) => sqlx::query_as(
+            "SELECT id, organization_id, sequence_id, source_service, entity_type,
+                    entity_id, action, actor_user_id, actor_display,
+                    correlation_id, details, prev_hash, entry_hash, created_at
+               FROM net.audit_entry
+              WHERE organization_id = $1 AND entity_type = $2 AND entity_id = $3
+              ORDER BY sequence_id ASC
+              LIMIT $4")
+            .bind(org_id).bind(entity_type).bind(entity_id).bind(l.clamp(1, 10_000))
+            .fetch_all(pool).await?,
+        None => sqlx::query_as(
+            "SELECT id, organization_id, sequence_id, source_service, entity_type,
+                    entity_id, action, actor_user_id, actor_display,
+                    correlation_id, details, prev_hash, entry_hash, created_at
+               FROM net.audit_entry
+              WHERE organization_id = $1 AND entity_type = $2 AND entity_id = $3
+              ORDER BY sequence_id ASC")
+            .bind(org_id).bind(entity_type).bind(entity_id)
+            .fetch_all(pool).await?,
+    };
     Ok(rows)
 }
 
