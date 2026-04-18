@@ -109,6 +109,7 @@ public class NetworkingRibbonAuditTests
     [InlineData("Validation", "Run All",          "validation", "action:runAll")]
     [InlineData("Validation", "Run Selected",     "validation", "action:runSelected")]
     [InlineData("Validation", "Edit Rule",        "validation", "action:editRule")]
+    [InlineData("Validation", "Export Violations","validation", "action:exportViolations")]
     public void NavigateButton_PublishesCorrectTargetAndAction(
         string groupHeader, string buttonContent, string expectedPanel, string expectedAction)
     {

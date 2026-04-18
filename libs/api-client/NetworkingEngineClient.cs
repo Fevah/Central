@@ -262,12 +262,14 @@ public class NetworkingEngineClient : IDisposable
     /// as a string (text/csv or application/x-ndjson).</summary>
     public async Task<string> ExportAuditAsync(Guid organizationId, string format,
         string? entityType = null, Guid? entityId = null, DateTime? fromAt = null,
-        DateTime? toAt = null, long? limit = null, CancellationToken ct = default)
+        DateTime? toAt = null, long? limit = null, Guid? correlationId = null,
+        CancellationToken ct = default)
     {
         var qs = BuildQuery(("organizationId", organizationId.ToString()),
                             ("format", format),
                             ("entityType", entityType),
                             ("entityId", entityId?.ToString()),
+                            ("correlationId", correlationId?.ToString()),
                             ("fromAt", fromAt?.ToString("o")),
                             ("toAt", toAt?.ToString("o")),
                             ("limit", limit?.ToString()));

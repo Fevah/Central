@@ -1,11 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Windows;
 using Central.ApiClient;
+using MessageBox = System.Windows.MessageBox;
+using MessageBoxButton = System.Windows.MessageBoxButton;
+using MessageBoxImage = System.Windows.MessageBoxImage;
 
 namespace Central.Module.Networking.Governance;
 
@@ -45,6 +49,49 @@ public partial class ChangeSetDetailDialog : DevExpress.Xpf.Core.DXWindow
     }
 
     private async void OnRefresh(object sender, RoutedEventArgs e) => await LoadAsync();
+
+    /// <summary>Server-side CSV export for the audit slice threaded by
+    /// this Set's correlation_id. Engine does the formatting — we just
+    /// stream the body to a file the admin picks. Useful for handing a
+    /// change-set history to auditors without pasting screenshots.</summary>
+    private async void OnExportAudit(object sender, RoutedEventArgs e)
+    {
+        if (_correlationId is not Guid cid)
+        {
+            MessageBox.Show("No data loaded yet.",
+                "Wait", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var save = new Microsoft.Win32.SaveFileDialog
+        {
+            FileName = $"changeset-audit-{_setId}-{DateTime.Now:yyyyMMdd-HHmmss}.csv",
+            Filter = "CSV file (*.csv)|*.csv|All files (*.*)|*.*",
+            DefaultExt = ".csv",
+        };
+        if (save.ShowDialog() != true) return;
+
+        ExportAuditButton.IsEnabled = false;
+        StatusLabel.Text = "Exporting audit CSV…";
+        try
+        {
+            using var client = new NetworkingEngineClient(_baseUrl);
+            if (_actorUserId is int uid) client.SetActorUserId(uid);
+
+            // Server-side CSV: audit.rs::render_csv. The ExportQuery's
+            // correlationId filter narrows to just this Set's history.
+            var csv = await client.ExportAuditAsync(_tenantId, "csv",
+                entityType: null, entityId: null,
+                fromAt: null, toAt: null, limit: null,
+                correlationId: cid);
+            File.WriteAllText(save.FileName, csv);
+            StatusLabel.Text = $"Exported to {save.FileName}";
+        }
+        catch (Exception ex)
+        {
+            StatusLabel.Text = $"Export failed: {ex.Message}";
+        }
+        finally { ExportAuditButton.IsEnabled = true; }
+    }
 
     private void OnClose(object sender, RoutedEventArgs e)
     {

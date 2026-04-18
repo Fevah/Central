@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -78,6 +80,7 @@ public partial class ValidationPanel : UserControl
             case "action:runAll":      _ = RunAsync(null); break;
             case "action:runSelected": RunSelected();      break;
             case "action:editRule":    EditSelected();     break;
+            case "action:exportViolations": ExportViolations(); break;
             default:                   _ = ReloadAsync();   break;
         }
     }
@@ -187,6 +190,80 @@ public partial class ValidationPanel : UserControl
     {
         "Error" => 0, "Warning" => 1, "Info" => 2, _ => 3,
     };
+
+    // ─── Export violations ──────────────────────────────────────────────
+
+    /// <summary>Writes the currently-displayed violations to a CSV file
+    /// of the admin's choosing. Client-side render — the engine only
+    /// emits JSON for validation results, and the list is small enough
+    /// (thousands at most) that local rendering is fine.</summary>
+    private void ExportViolations()
+    {
+        var src = ViolationsGrid.ItemsSource as IEnumerable<ViolationDto>;
+        if (src is null)
+        {
+            MessageBox.Show(
+                "No violations to export — run validation first.",
+                "Empty", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        var rows = src.ToList();
+        if (rows.Count == 0)
+        {
+            MessageBox.Show(
+                "No violations from the last run.",
+                "Empty", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var save = new Microsoft.Win32.SaveFileDialog
+        {
+            FileName = $"validation-violations-{DateTime.Now:yyyyMMdd-HHmmss}.csv",
+            Filter = "CSV file (*.csv)|*.csv|All files (*.*)|*.*",
+            DefaultExt = ".csv",
+        };
+        if (save.ShowDialog() != true) return;
+
+        try
+        {
+            var sb = new StringBuilder(rows.Count * 120);
+            sb.AppendLine("severity,rule_code,entity_type,entity_id,message");
+            foreach (var v in rows)
+            {
+                sb.Append(CsvField(v.Severity)).Append(',');
+                sb.Append(CsvField(v.RuleCode)).Append(',');
+                sb.Append(CsvField(v.EntityType)).Append(',');
+                sb.Append(CsvField(v.EntityId?.ToString() ?? "")).Append(',');
+                sb.Append(CsvField(v.Message));
+                sb.Append('\n');
+            }
+            File.WriteAllText(save.FileName, sb.ToString(), Encoding.UTF8);
+            RunSummaryLabel.Text = $"Exported {rows.Count} violation{(rows.Count == 1 ? "" : "s")} to {save.FileName}";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Export failed: {ex.Message}",
+                "Export failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>RFC 4180 CSV field escaping — wrap in quotes when the
+    /// value contains comma/quote/newline/CR; double embedded quotes.
+    /// Mirrors the engine's push_csv_field helper in audit.rs.</summary>
+    private static string CsvField(string s)
+    {
+        if (!(s.Contains(',') || s.Contains('"') || s.Contains('\n') || s.Contains('\r')))
+            return s;
+        var sb = new StringBuilder(s.Length + 8);
+        sb.Append('"');
+        foreach (var ch in s)
+        {
+            if (ch == '"') sb.Append('"');
+            sb.Append(ch);
+        }
+        sb.Append('"');
+        return sb.ToString();
+    }
 
     // ─── Edit rule (full config) ────────────────────────────────────────
 
