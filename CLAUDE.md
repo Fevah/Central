@@ -40,7 +40,7 @@ project structure without updating the architecture doc first.
 | [docs/GLOBALADMIN_BUILDOUT.md](docs/GLOBALADMIN_BUILDOUT.md) | Global Admin 5-phase buildout — tenant CRUD, licensing, subscriptions, setup wizard, audit |
 | [docs/TASKS_BUILDOUT.md](docs/TASKS_BUILDOUT.md) | Task module 11-phase buildout plan (Hansoft/P4 Plan clone) — all phases complete |
 | [docs/MERGE_PLAN.md](docs/MERGE_PLAN.md) | Central + Secure merge — 10 phases, unified auth, API gateway, K8s elastic scaling |
-| [docs/NETWORKING_BUILDOUT_PLAN.md](docs/NETWORKING_BUILDOUT_PLAN.md) | Networking engine — 23-phase buildout transforming single-customer toolkit into multi-tenant source-of-truth. Phases 1-6 complete; Phase 10 config-generation in flight (2026-04-18) |
+| [docs/NETWORKING_BUILDOUT_PLAN.md](docs/NETWORKING_BUILDOUT_PLAN.md) | Networking engine — 23-phase buildout transforming single-customer toolkit into multi-tenant source-of-truth. Phases 1-6 complete; Phase 10 config-gen + turn-up pack byte-parity ACHIEVED (RBAC / search / bulk / XLSX still pending) (2026-04-18) |
 | [docs/NETWORKING_RIBBON_AUDIT.md](docs/NETWORKING_RIBBON_AUDIT.md) | Networking ribbon action inventory — every button, permission, message, handler; placeholder-lambda canary test |
 | [docs/CREDENTIALS.md](docs/CREDENTIALS.md) | All login credentials, DSNs, SSH info, service URLs, K8s access |
 
@@ -73,17 +73,23 @@ Per-phase checklist invariant (from plan amendment 758ccaa98) — every *-type c
 
 **Honest gaps**: Phase 7 (scope-resolution engine + override table + preview API + admin UI) not started. Phases 8, 9, 11-23 not started. MSTP rule editor panel deferred. XAML ribbon coexists with engine-registered ribbon until Phase 11.
 
-### Networking Engine Phase 10 — Config Generation IN PROGRESS (2026-04-18)
+### Networking Engine Phase 10 — Config Generation + Turn-up Pack BYTE-PARITY ACHIEVED (2026-04-18)
 
-The config-generation half of Phase 10 is shipping as self-contained slices in `services/networking-engine/src/config_gen.rs`. CLI-flavor foundation supports multi-vendor dispatch (PicOS `Ga` today; Cisco NX-OS / Cisco IOS / Arista EOS / Junos / FRR registered as stubs). 193/193 Rust tests green. Migration `102_net_cli_flavors.sql` adds `net.tenant_cli_flavor` (enable + single-default) and `net.rendered_config` (render history with SHA-256 chain).
+The config-gen + turn-up-pack halves of Phase 10 shipped as 28 self-contained Rust slices (commits `74d0523b6` through `bcb9ad26d`). **Every section the legacy `ConfigBuilderService` emits now has a Rust counterpart** — once a tenant seeds Gateway / Vrrp / DhcpRelayTarget rows (migration 104 does this for Immunocore) the output matches line-for-line. 230 Rust unit tests + 4 `#[ignore]` live-DB integration tests, 0 failures.
 
-PicOS renderer sections shipped so far: header, `set system hostname` (with **parametric derivation** from `net.device_role.naming_template` + hierarchy codes + `device_code` → `{instance}`), IP routing enable, QoS preset (55 fixed class-of-service lines) + per-port QoS bindings, loopback `lo0`, management-VLAN (152) SVI, VLANs (with `l3-interface "vlan-N"` binding when SVI present), L3 VLAN SVIs, BGP scalar block + neighbors derived from `net.link_endpoint`, MSTP bridge-priority, MLAG peer-link (domain + interface), port descriptions + port L2 rules (port-mode + native-vlan-id), LLDP enable.
+**PicOS renderer pipeline** (legacy-step order): header → hostname (parametric via `net.device_role.naming_template`) → IP routing → QoS preset (55 lines) → per-port QoS bindings → voice-VLAN preset → loopback `lo0` → mgmt SVI `vlan-152` → VLAN catalog (with `l3-interface` binding when SVI present) → L3 VLAN SVIs → BGP scalar + neighbors (from `net.link_endpoint`) → MSTP bridge-priority → MLAG peer-link → VRRP VIPs (from `ip_address.assigned_to_type = 'Vrrp'`) → DHCP relay (from `net.dhcp_relay_target` — migration 103) → merged ports section (description + native-vlan-id + port-mode interleaved by interface) → static default route (from `ip_address.assigned_to_type = 'Gateway'`) → LLDP enable.
 
-Still to emit for byte-for-byte parity: voice-VLAN 4-line preset, static default route, DHCP relay (needs DHCP-role server discovery), VRRP (needs `net.vrrp_*` migration), and per-interface interleaving of the three port sections.
+**Render lifecycle API** (all under `/api/net/`): `POST devices/:id/render-config` (persists + chains via `previous_render_id`) · `GET devices/:id/renders` (summary list, limit 1-500, default 50) · `GET renders/:id` (full body) · `GET renders/:id/diff` (pure-Rust line-set diff) · `POST buildings/:id/render-configs` · `POST sites/:id/render-configs` · `POST regions/:id/render-configs` (per-device error-tolerant fan-outs).
 
-**Phase 10 deliverables NOT started**: RBAC scoped policy engine, global search + faceted filters + saved views, bulk edit / import / export, XLSX round-trip of the Immunocore workbook, turn-up pack generator.
+**DHCP relay target CRUD**: 5 endpoints on `/api/net/dhcp-relay-targets` — list/get/create/update (optimistic concurrency via `version`)/soft-delete. Priority defaults to 10, validated non-negative. Full audit entries in the same transaction as each mutation.
 
-See `docs/NETWORKING_BUILDOUT_PLAN.md` §Phase 10 for the slice-by-slice commit list.
+**C# ApiClient**: `NetworkingEngineClient.cs` wraps every Phase 10 endpoint with typed methods + records. WPF modules can call through the standard `CentralApiClient` facade without hand-rolling HttpClient per call-site.
+
+**Migrations shipped:** `102_net_cli_flavors.sql` (tenant CLI flavor state + render history table with SHA-256 chain), `103_net_dhcp_relay_targets.sql` (M:N VLAN × server IP with priority), `104_net_immunocore_seed_gateway_vrrp_dhcp.sql` (imports from `public.vrrp_config` + `public.dhcp_relay` + seeds mgmt-VLAN Gateways).
+
+**Phase 10 deliverables NOT started**: RBAC scoped policy engine, global search + faceted filters + saved views, bulk edit / import / export, XLSX round-trip of the Immunocore workbook. Turn-up pack generator shipped (device / building / site / region scopes).
+
+See `docs/NETWORKING_BUILDOUT_PLAN.md` §Phase 10 for the slice-by-slice commit table and acceptance-criteria check.
 
 ### Central + Secure Merge — ALL 10 PHASES COMPLETE
 

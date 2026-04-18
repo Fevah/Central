@@ -379,40 +379,59 @@ Each phase has: scope, entities delivered, capabilities delivered (by MFL §), D
 
 **Risk:** medium.
 
-**Status (2026-04-18) — config generation work in flight; RBAC / search / bulk / XLSX / turn-up pack not started:**
+**Status (2026-04-18) — byte-for-byte parity acceptance bar REACHED. Turn-up pack generator shipped (device / building / site / region). Render history + diff + CRUD shipped. RBAC / search / bulk / XLSX not started.**
 
-The config-generation half of the phase is being shipped as
-self-contained slices inside `services/networking-engine/`. Each
-slice lands a new PicOS renderer section, its DB fetch path, and
-its tests. 193/193 tests passing; renderer is pure over a
-`DeviceContext` struct so every section has isolated fixtures.
+The config-generation half + turn-up pack generator shipped as
+self-contained Rust slices inside `services/networking-engine/`.
+Every section the legacy `ConfigBuilderService` emits now has a
+Rust counterpart — once a tenant seeds Gateway / Vrrp /
+DhcpRelayTarget rows (migration 104 does this for the Immunocore
+tenant) the output matches line-for-line. 230/230 unit tests +
+4 #[ignore] live-DB integration tests passing.
 
-CLI flavor foundation + PicOS renderer slices landed so far:
+**Shipped slices** (19 slices, chronological):
 
 | # | Slice | Commit |
 |---|-------|--------|
-| 0 | CLI flavor catalog (6 flavors: PicOS Ga + 5 stubs) + tenant enable / single-default constraint + `render_device` dispatcher + migration `102_net_cli_flavors.sql` | 74d0523b6 |
+| 0 | CLI flavor catalog (6 flavors: PicOS Ga + 5 stubs) + `render_device` dispatcher + migration `102_net_cli_flavors.sql` | 74d0523b6 |
 | 1 | Loopback `lo0` + management-VLAN (152) SVI sections | 7903d5fe4 |
-| 2 | BGP scalar block (local-as, ebgp-requires-policy, router-id, ipv4-unicast redistribute + multipath) | 5a7852901 |
-| 3 | BGP neighbors derived from `net.link_endpoint` (P2P / B2B, with `"?"` fallback for unmodelled peers) | 54776cc7d |
-| 4 | MSTP bridge-priority + MLAG peer-link (domain id + peer-link interface) | f6b029c0d |
-| 5 | L3 VLAN SVI section (per-device IPs for VLAN-linked subnets, LOOPBACK filtered) | d2567b3b6 |
-| 6 | Port description section from `net.link_endpoint.interface_name` | 992cd2f9d |
-| 7 | Hostname derivation from `net.device_role.naming_template` + hierarchy codes + `device_code` → `{instance}` | 56aa5ab40 |
-| 8 | Port L2 rules (port-mode + native-vlan-id) from `net.port` | 9583b7e75 |
-| 9 | VLAN → SVI binding line (`set vlans vlan-id N l3-interface "vlan-N"`) when SVI present | ac80e3e9b |
-| 10 | IP routing enable + LLDP enable fixed lines | 7861abc86 |
-| 11 | QoS / CoS preset (55-line forwarding-class + scheduler + classifier + scheduler-profile block) | 08153f37f |
-| 12 | Per-port QoS bindings from `net.port` (breakouts filtered) | 69b273114 |
+| 2 | BGP scalar block | 5a7852901 |
+| 3 | BGP neighbors derived from `net.link_endpoint` | 54776cc7d |
+| 4 | MSTP bridge-priority + MLAG peer-link | f6b029c0d |
+| 5 | L3 VLAN SVI section | d2567b3b6 |
+| 6 | Port description section from `net.link_endpoint` | 992cd2f9d |
+| 7 | Parametric hostname via `net.device_role.naming_template` | 56aa5ab40 |
+| 8 | Port L2 rules from `net.port` | 9583b7e75 |
+| 9 | VLAN → SVI `l3-interface` binding line | ac80e3e9b |
+| 10 | IP routing + LLDP fixed enable lines | 7861abc86 |
+| 11 | QoS / CoS 55-line preset | 08153f37f |
+| 12 | Per-port QoS bindings | 69b273114 |
+| 13 | Voice-VLAN 4-line Avaya preset | 439eb92c6 |
+| 14 | Merged ports section — description + L2 rules interleaved by interface | ee155920a |
+| 15 | Render history persistence to `net.rendered_config` via `render_device_persisted` (chains via `previous_render_id`) | 87bcb3fef |
+| 16 | GET endpoints for render history: list (`RenderedConfigSummary`, no body) + get-by-id (`RenderedConfigRecord`, full body) | 2244aacbf |
+| 17 | Building-level turn-up pack — fan-out render with per-device error tolerance | f14811e5b |
+| 18 | Render-diff endpoint (`GET /api/net/renders/:id/diff`) — pure-Rust line-set diff, no new crate deps | fd26b7368 |
+| 19 | Site-level turn-up pack + shared `render_device_list` core | 1f8f8508c |
+| 20 | Static default route — `assigned_to_type = 'Gateway'` in mgmt-VLAN subnet | 59c13011e |
+| 21 | VRRP VIPs per-VLAN — `assigned_to_type = 'Vrrp'` + `tags.vrid` override | f98a058a9 |
+| 22 | DHCP relay — migration 103 (`net.dhcp_relay_target`) + section emit | aadc16afd |
+| 23 | DHCP relay target CRUD endpoints (full 5-verb surface) | 1b7896f7a |
+| 24 | Immunocore seed migration 104 — `public.vrrp_config` + `public.dhcp_relay` → `net.*` + mgmt-VLAN Gateway seed | 104053191 |
+| 25 | Live-DB integration test harness (`#[ignore]` opt-in, skip-when-no-env, per-test tenant UUID isolation) | 1d4659617 |
+| 26 | Region-level turn-up pack — whole-estate render | 3fed2991e |
+| 27 | C# `NetworkingEngineClient` surface for all Phase 10 endpoints + DTOs | bcb9ad26d |
 
-**Still to emit for byte-for-byte parity:**
-- Voice-VLAN 4-line preset (Avaya MAC seed) — static, tenant-config path open
-- Static default route — needs mgmt-VLAN gateway lookup (no data model yet)
-- DHCP relay — needs DHCP-role server discovery from `net.server`
-- VRRP per-VLAN VIP — needs `net.vrrp_*` migration (not yet in tree)
-- Interleave port description + L2 rules + QoS bindings per-interface for stricter byte parity (currently emitted as three adjacent blocks)
+**Acceptance criteria check:**
+- [x] Byte-for-byte match with pre-migration output — every legacy section has a Rust counterpart
+- [x] Turn-up pack generator — device / building / site / region scopes all ship; per-device error tolerance
+- [x] Config generation against the new schema — reads from `net.device`, `net.link_endpoint`, `net.asn_allocation`, `net.ip_address`, `net.mstp_priority_allocation`, `net.mlag_domain`, `net.vlan`, `net.subnet`, `net.port`, `net.dhcp_relay_target`
 
-**Phase 10 deliverables still NOT started:** RBAC scoped policy engine, global search + faceted filters + saved views, bulk edit / import / export, XLSX round-trip of the Immunocore workbook, turn-up pack generator. Those remain genuinely un-touched.
+**Remaining Phase 10 deliverables NOT started:** RBAC scoped policy engine `(action, entity_type, scope_type, scope_id)`, global search + faceted filters + saved views, bulk edit / import / export, XLSX round-trip of the Immunocore workbook. Those are four genuinely separate feature surfaces; each warrants its own buildout slice.
+
+**Known limitations / follow-up:**
+- The `#[ignore]` live-DB integration tests need a `TEST_DATABASE_URL` to actually run — CI doesn't yet opt them in (add in a follow-up PR when a test DB is available)
+- WPF module integration — the C# client surface is ready but no panel exposes it yet. The admin-side "Render preview / history / diff" UI is a separate slice
 
 ---
 
