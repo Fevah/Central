@@ -18,6 +18,9 @@ use crate::allocation::AllocationService;
 use crate::audit::{self, ExportQuery, ListAuditQuery, VerifyChainQuery};
 use crate::cli_flavor::{self, ListFlavorsQuery, SetFlavorConfigBody};
 use crate::config_gen;
+use crate::dhcp_relay::{
+    CreateDhcpRelayBody, DhcpRelayRepo, ListDhcpRelayQuery, UpdateDhcpRelayBody,
+};
 use crate::change_sets::{
     AddItemBody, CancelBody, ChangeSetRepo, CreateChangeSetBody, DecisionBody,
     GetChangeSetQuery, ListChangeSetsQuery, SubmitBody,
@@ -108,6 +111,13 @@ pub fn build_router(state: AppState) -> Router {
         // Building- / site-level turn-up packs: fan-out render + persist
         .route("/api/net/buildings/:id/render-configs",     post(render_building_configs))
         .route("/api/net/sites/:id/render-configs",         post(render_site_configs))
+        // DHCP relay targets: M:N between VLANs + DHCP server IPs,
+        // consumed by config-gen. CRUD follows the NamingOverride shape.
+        .route("/api/net/dhcp-relay-targets",               get(list_dhcp_relay).post(create_dhcp_relay))
+        .route("/api/net/dhcp-relay-targets/:id",
+               get(get_dhcp_relay)
+                   .put(update_dhcp_relay)
+                   .delete(delete_dhcp_relay))
         .with_state(state)
 }
 
@@ -934,4 +944,58 @@ async fn render_site_configs(
     Ok(Json(config_gen::render_site_persisted(
         &s.pool, q.organization_id, site_id, rendered_by
     ).await?))
+}
+
+// ─── DHCP relay target handlers ──────────────────────────────────────────
+
+async fn list_dhcp_relay(
+    State(s): State<AppState>,
+    Query(q): Query<ListDhcpRelayQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = DhcpRelayRepo::new(s.pool);
+    Ok(Json(repo.list(&q).await?))
+}
+
+async fn get_dhcp_relay(
+    State(s): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = DhcpRelayRepo::new(s.pool);
+    Ok(Json(repo.get(id, q.organization_id).await?))
+}
+
+async fn create_dhcp_relay(
+    State(s): State<AppState>,
+    headers: HeaderMap,
+    Json(body): Json<CreateDhcpRelayBody>,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = DhcpRelayRepo::new(s.pool);
+    let user_id = header_user_id(&headers);
+    let out = repo.create(&body, user_id).await?;
+    Ok((StatusCode::CREATED, Json(out)))
+}
+
+async fn update_dhcp_relay(
+    State(s): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+    Json(body): Json<UpdateDhcpRelayBody>,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = DhcpRelayRepo::new(s.pool);
+    let user_id = header_user_id(&headers);
+    Ok(Json(repo.update(id, q.organization_id, &body, user_id).await?))
+}
+
+async fn delete_dhcp_relay(
+    State(s): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = DhcpRelayRepo::new(s.pool);
+    let user_id = header_user_id(&headers);
+    repo.soft_delete(id, q.organization_id, user_id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }

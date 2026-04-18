@@ -16,6 +16,7 @@ mod audit;
 mod change_sets;
 mod cli_flavor;
 mod config_gen;
+mod dhcp_relay;
 mod error;
 mod hash;
 mod ip_allocation;
