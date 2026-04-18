@@ -73,6 +73,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/change-sets/:id/submit", post(submit_change_set))
         .route("/api/net/change-sets/:id/decisions", post(record_decision))
         .route("/api/net/change-sets/:id/cancel", post(cancel_change_set))
+        .route("/api/net/change-sets/:id/apply", post(apply_change_set))
         .with_state(state)
 }
 
@@ -500,4 +501,15 @@ async fn cancel_change_set(
     let user_id = header_user_id(&headers);
     let notes = body.and_then(|b| b.0.notes);
     Ok(Json(repo.cancel(id, q.organization_id, user_id, notes.as_deref()).await?))
+}
+
+async fn apply_change_set(
+    State(s): State<AppState>,
+    Path(id): Path<Uuid>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, EngineError> {
+    let repo = ChangeSetRepo::new(s.pool);
+    let user_id = header_user_id(&headers);
+    Ok(Json(repo.apply(id, q.organization_id, user_id).await?))
 }

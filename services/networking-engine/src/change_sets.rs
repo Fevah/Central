@@ -439,6 +439,131 @@ impl ChangeSetRepo {
         row.into_dto()
     }
 
+    /// Apply an Approved Set — execute every item in item_order, stamping
+    /// per-item `applied_at` + audit entries (correlation_id = Set's
+    /// correlation_id). On all-success, Set transitions Approved → Applied.
+    /// On any failure, the Set stays Approved and apply_error is filled on
+    /// the offending item row — admins can retry apply and already-applied
+    /// items are skipped (idempotent).
+    ///
+    /// This slice ships the Device / Rename concrete path only. Other
+    /// (entity_type, action) pairs are surfaced as per-item errors
+    /// ("NotImplementedYet") rather than failing the whole Set, so a
+    /// mixed Set's Device renames still land while other item types
+    /// queue for future slices.
+    pub async fn apply(
+        &self,
+        set_id: Uuid,
+        org_id: Uuid,
+        user_id: Option<i32>,
+    ) -> Result<ApplyResult, EngineError> {
+        // Precondition: Set must be Approved. Load under FOR UPDATE so a
+        // concurrent cancel / rollback can't race the apply.
+        let mut guard_tx = self.pool.begin().await?;
+        let parent: Option<ChangeSetRow> = sqlx::query_as(
+            "SELECT id, organization_id, title, description,
+                    status::text AS status, requested_by, requested_by_display,
+                    submitted_by, submitted_at, approved_at, applied_at,
+                    rolled_back_at, cancelled_at, required_approvals,
+                    correlation_id, version, created_at, updated_at
+               FROM net.change_set
+              WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
+              FOR UPDATE")
+            .bind(set_id)
+            .bind(org_id)
+            .fetch_optional(&mut *guard_tx)
+            .await?;
+        let parent = parent
+            .ok_or_else(|| EngineError::container_not_found("change_set", set_id))?;
+        let status = ChangeSetStatus::from_db(&parent.status)?;
+        if status != ChangeSetStatus::Approved {
+            return Err(EngineError::bad_request(format!(
+                "Cannot apply a Change Set in status '{}'. Only Approved Sets \
+                 are eligible for apply.", status.as_str())));
+        }
+        guard_tx.commit().await?; // Release the FOR UPDATE before the long per-item loop.
+        let correlation_id = parent.correlation_id;
+
+        // Pull items in order, skipping already-applied ones (idempotent retry).
+        let items: Vec<ChangeSetItemRow> = sqlx::query_as(
+            "SELECT id, change_set_id, item_order, entity_type, entity_id,
+                    action::text AS action, before_json, after_json,
+                    expected_version, applied_at, apply_error, notes, created_at
+               FROM net.change_set_item
+              WHERE change_set_id = $1 AND deleted_at IS NULL
+              ORDER BY item_order")
+            .bind(set_id)
+            .fetch_all(&self.pool)
+            .await?;
+
+        let mut outcomes = Vec::with_capacity(items.len());
+        for item_row in items {
+            let already_done = item_row.applied_at.is_some();
+            let item = item_row.into_dto()?;
+            if already_done {
+                outcomes.push(ApplyItemOutcome {
+                    item_id: item.id, item_order: item.item_order,
+                    success: true, error: None, skipped: true,
+                });
+                continue;
+            }
+            let outcome = apply_one(&self.pool, &item, org_id, correlation_id, user_id).await;
+            outcomes.push(outcome);
+        }
+
+        let all_ok = outcomes.iter().all(|o| o.success);
+        let final_set = if all_ok {
+            // Transition to Applied atomically with an audit entry.
+            let mut tx = self.pool.begin().await?;
+            let row: ChangeSetRow = sqlx::query_as(
+                "UPDATE net.change_set
+                    SET status     = 'Applied'::net.change_set_status,
+                        applied_at = now(),
+                        updated_at = now(),
+                        updated_by = $3,
+                        version    = version + 1
+                  WHERE id = $1 AND organization_id = $2
+                    AND status = 'Approved'::net.change_set_status
+                  RETURNING id, organization_id, title, description,
+                            status::text AS status, requested_by, requested_by_display,
+                            submitted_by, submitted_at, approved_at, applied_at,
+                            rolled_back_at, cancelled_at, required_approvals,
+                            correlation_id, version, created_at, updated_at")
+                .bind(set_id)
+                .bind(org_id)
+                .bind(user_id)
+                .fetch_one(&mut *tx)
+                .await?;
+            audit::append_tx(&mut tx, &AuditEvent {
+                organization_id: org_id,
+                source_service: "networking-engine",
+                entity_type: "ChangeSet",
+                entity_id: Some(set_id),
+                action: "Applied",
+                actor_user_id: user_id,
+                actor_display: None,
+                client_ip: None,
+                correlation_id: Some(correlation_id),
+                details: serde_json::json!({ "items_applied": outcomes.len() }),
+            }).await?;
+            tx.commit().await?;
+            row
+        } else {
+            parent
+        };
+
+        let item_count = outcomes.len() as i64;
+        let applied_count = outcomes.iter().filter(|o| o.success).count();
+        let failed_count = outcomes.iter().filter(|o| !o.success).count();
+
+        Ok(ApplyResult {
+            change_set: final_set.into_dto(item_count)?,
+            outcomes,
+            applied_count,
+            failed_count,
+        })
+    }
+
     /// Withdraw a Set before it's applied. Valid from any non-terminal
     /// non-Applied state: `Draft`, `Submitted`, or `Approved`. `Applied`
     /// Sets are reversed via `rollback`, not `cancel`.
@@ -773,6 +898,152 @@ pub(crate) fn validate_item(body: &AddItemBody) -> Result<(), EngineError> {
             }
         }
     }
+    Ok(())
+}
+
+// ─── Apply execution ─────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApplyResult {
+    pub change_set: ChangeSet,
+    pub outcomes: Vec<ApplyItemOutcome>,
+    pub applied_count: usize,
+    pub failed_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApplyItemOutcome {
+    pub item_id: Uuid,
+    pub item_order: i32,
+    pub success: bool,
+    pub error: Option<String>,
+    /// True when this item was already applied in a prior apply() run.
+    pub skipped: bool,
+}
+
+/// Execute one item. Per-item transaction so one failure doesn't roll
+/// back the rest — partial-apply is expected and admins retry.
+async fn apply_one(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> ApplyItemOutcome {
+    let result = dispatch_apply(pool, item, org_id, correlation_id, user_id).await;
+    match result {
+        Ok(()) => ApplyItemOutcome {
+            item_id: item.id, item_order: item.item_order,
+            success: true, error: None, skipped: false,
+        },
+        Err(e) => {
+            // Record the error on the item row so retry + admin UI both
+            // see it. Best-effort — if the error stamp itself fails we
+            // swallow it (we don't want to mask the original error).
+            let _ = sqlx::query(
+                "UPDATE net.change_set_item
+                    SET apply_error = $3, updated_at = now()
+                  WHERE id = $1 AND organization_id = $2")
+                .bind(item.id)
+                .bind(org_id)
+                .bind(e.to_string())
+                .execute(pool)
+                .await;
+            ApplyItemOutcome {
+                item_id: item.id, item_order: item.item_order,
+                success: false, error: Some(e.to_string()), skipped: false,
+            }
+        }
+    }
+}
+
+async fn dispatch_apply(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    match (item.entity_type.as_str(), item.action) {
+        ("Device", ChangeSetAction::Rename) =>
+            apply_device_rename(pool, item, org_id, correlation_id, user_id).await,
+        (et, act) => Err(EngineError::bad_request(format!(
+            "Apply not yet implemented for ({et}, {}). Device/Rename is \
+             the only concrete path in this slice; other combinations \
+             are queued for follow-on slices.", act.as_str()))),
+    }
+}
+
+async fn apply_device_rename(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    let entity_id = item.entity_id.ok_or_else(|| EngineError::bad_request(
+        "Device/Rename item is missing entity_id"))?;
+    let after = item.after_json.as_ref().ok_or_else(|| EngineError::bad_request(
+        "Device/Rename item is missing after_json"))?;
+    let new_hostname = after.get("hostname").and_then(|v| v.as_str()).ok_or_else(||
+        EngineError::bad_request("after_json.hostname is required for Device/Rename"))?;
+
+    let mut tx = pool.begin().await?;
+
+    // Version precondition: if the item specifies expected_version, enforce
+    // it. Otherwise accept whatever the current version is (rename items
+    // can be drafted without the ui knowing the version).
+    let updated: Option<(String, i32)> = match item.expected_version {
+        Some(ev) => sqlx::query_as(
+            "UPDATE net.device
+                SET hostname = $3, updated_at = now(), version = version + 1
+              WHERE id = $1 AND organization_id = $2
+                AND version = $4 AND deleted_at IS NULL
+              RETURNING hostname, version")
+            .bind(entity_id).bind(org_id).bind(new_hostname).bind(ev)
+            .fetch_optional(&mut *tx).await?,
+        None => sqlx::query_as(
+            "UPDATE net.device
+                SET hostname = $3, updated_at = now(), version = version + 1
+              WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
+              RETURNING hostname, version")
+            .bind(entity_id).bind(org_id).bind(new_hostname)
+            .fetch_optional(&mut *tx).await?,
+    };
+    let (_, new_version) = updated.ok_or_else(|| EngineError::bad_request(format!(
+        "Device {entity_id} not found, version mismatch, or deleted.")))?;
+
+    // Stamp applied_at on the item row.
+    sqlx::query(
+        "UPDATE net.change_set_item
+            SET applied_at = now(), apply_error = NULL, updated_at = now()
+          WHERE id = $1 AND organization_id = $2")
+        .bind(item.id)
+        .bind(org_id)
+        .execute(&mut *tx)
+        .await?;
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "Device",
+        entity_id: Some(entity_id),
+        action: "Renamed",
+        actor_user_id: user_id,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: Some(correlation_id),
+        details: serde_json::json!({
+            "from": item.before_json.as_ref().and_then(|b| b.get("hostname")),
+            "to": new_hostname,
+            "new_version": new_version,
+            "change_set_item_id": item.id,
+        }),
+    }).await?;
+
+    tx.commit().await?;
     Ok(())
 }
 
