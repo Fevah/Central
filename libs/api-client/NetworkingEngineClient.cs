@@ -226,6 +226,21 @@ public class NetworkingEngineClient : IDisposable
         => GetAsync<List<VlanBlockDto>>(
             $"/api/net/vlan-blocks?organizationId={organizationId}", ct);
 
+    public Task<List<AsnBlockDto>> ListAsnBlocksAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<AsnBlockDto>>(
+            $"/api/net/asn-blocks?organizationId={organizationId}", ct);
+
+    public Task<List<MlagPoolDto>> ListMlagPoolsAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<MlagPoolDto>>(
+            $"/api/net/mlag-pools?organizationId={organizationId}", ct);
+
+    public Task<List<IpPoolDto>> ListIpPoolsAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<IpPoolDto>>(
+            $"/api/net/ip-pools?organizationId={organizationId}", ct);
+
     public Task<ChangeSetDto> CancelChangeSetAsync(Guid setId, Guid organizationId,
         string? notes = null, CancellationToken ct = default)
         => PostAsync<ChangeSetDto>(
@@ -638,3 +653,16 @@ public record DeviceListRowDto(Guid Id, string Hostname, string? RoleCode,
 // VLAN block list (picker)
 public record VlanBlockDto(Guid Id, string BlockCode, string DisplayName,
     int VlanFirst, int VlanLast, long Available);
+
+// ASN block list (picker)
+public record AsnBlockDto(Guid Id, string BlockCode, string DisplayName,
+    long AsnFirst, long AsnLast, long Available);
+
+// MLAG pool list (picker)
+public record MlagPoolDto(Guid Id, string PoolCode, string DisplayName,
+    int DomainFirst, int DomainLast, long Available);
+
+// IP pool list (picker) — availability depends on prefix length the
+// admin wants to carve, so pre-computation would be misleading
+public record IpPoolDto(Guid Id, string PoolCode, string DisplayName,
+    string Network, int Family);

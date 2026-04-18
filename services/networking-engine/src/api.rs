@@ -85,8 +85,11 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/locks/:table/:id", axum::routing::patch(set_entity_lock))
         // Device list (thin read — powers WPF pickers)
         .route("/api/net/devices", get(list_devices))
-        // VLAN block list (thin read — powers WPF VLAN-create picker)
+        // Thin pool/block reads (WPF convenience-form pickers)
         .route("/api/net/vlan-blocks", get(list_vlan_blocks))
+        .route("/api/net/asn-blocks",  get(list_asn_blocks))
+        .route("/api/net/mlag-pools",  get(list_mlag_pools))
+        .route("/api/net/ip-pools",    get(list_ip_pools))
         // Validation rules (Phase 9a)
         .route("/api/net/validation/rules", get(list_validation_rules))
         .route("/api/net/validation/rules/:code", axum::routing::put(set_validation_rule_config))
@@ -501,6 +504,104 @@ async fn list_vlan_blocks(
            FROM net.vlan_block b
           WHERE b.organization_id = $1 AND b.deleted_at IS NULL
           ORDER BY b.block_code")
+        .bind(q.organization_id)
+        .fetch_all(&s.pool)
+        .await?;
+    Ok(Json(rows))
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct AsnBlockListRow {
+    id: Uuid,
+    block_code: String,
+    display_name: String,
+    asn_first: i64,
+    asn_last: i64,
+    available: i64,
+}
+
+async fn list_asn_blocks(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    // Same shape as list_vlan_blocks. ASN ranges are bigint so the
+    // "available" math uses int8; a full-range check could overflow
+    // an i32 but never an i64.
+    let rows: Vec<AsnBlockListRow> = sqlx::query_as(
+        "SELECT b.id, b.block_code, b.display_name, b.asn_first, b.asn_last,
+                (b.asn_last - b.asn_first + 1 - COALESCE((
+                    SELECT COUNT(*) FROM net.asn_allocation a
+                     WHERE a.block_id = b.id AND a.deleted_at IS NULL
+                ), 0))::bigint AS available
+           FROM net.asn_block b
+          WHERE b.organization_id = $1 AND b.deleted_at IS NULL
+          ORDER BY b.block_code")
+        .bind(q.organization_id)
+        .fetch_all(&s.pool)
+        .await?;
+    Ok(Json(rows))
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct MlagPoolListRow {
+    id: Uuid,
+    pool_code: String,
+    display_name: String,
+    domain_first: i32,
+    domain_last: i32,
+    available: i64,
+}
+
+async fn list_mlag_pools(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    // MLAG uniqueness is tenant-wide (per allocation.rs) — the "used"
+    // count for a pool is effectively "any MLAG allocated from this
+    // pool that isn't soft-deleted". AllocationService.allocate_mlag_domain
+    // enforces the tenant-wide uniqueness via fetch_used_mlag_domains.
+    let rows: Vec<MlagPoolListRow> = sqlx::query_as(
+        "SELECT p.id, p.pool_code, p.display_name, p.domain_first, p.domain_last,
+                (p.domain_last - p.domain_first + 1 - COALESCE((
+                    SELECT COUNT(*) FROM net.mlag_domain m
+                     WHERE m.pool_id = p.id AND m.deleted_at IS NULL
+                ), 0))::bigint AS available
+           FROM net.mlag_domain_pool p
+          WHERE p.organization_id = $1 AND p.deleted_at IS NULL
+          ORDER BY p.pool_code")
+        .bind(q.organization_id)
+        .fetch_all(&s.pool)
+        .await?;
+    Ok(Json(rows))
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct IpPoolListRow {
+    id: Uuid,
+    pool_code: String,
+    display_name: String,
+    network: String,  // cidr::text
+    family: i32,      // 4 or 6
+}
+
+async fn list_ip_pools(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    // IP-pool availability depends on the prefix_length the admin
+    // wants to carve, so we don't pre-compute it here — the picker
+    // shows the range and family, carving-failure surfaces cleanly
+    // at apply time. This keeps the query O(pools) rather than
+    // O(pools × allocated-subnets) which on a dense tenant is orders
+    // of magnitude different.
+    let rows: Vec<IpPoolListRow> = sqlx::query_as(
+        "SELECT id, pool_code, display_name, network::text, family(network) AS family
+           FROM net.ip_pool
+          WHERE organization_id = $1 AND deleted_at IS NULL
+          ORDER BY family(network), pool_code")
         .bind(q.organization_id)
         .fetch_all(&s.pool)
         .await?;

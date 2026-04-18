@@ -1,0 +1,88 @@
+<dxc:DXWindow x:Class="Central.Module.Networking.Governance.CreateSubnetItemDialog"
+              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+              xmlns:dxc="http://schemas.devexpress.com/winfx/2008/xaml/core"
+              xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+              xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+              Title="Carve Subnet (Add Item)"
+              Width="760" Height="660"
+              WindowStartupLocation="CenterOwner"
+              ResizeMode="CanResize" MinWidth="600" MinHeight="540">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" x:Name="HeaderLabel"
+                   FontWeight="SemiBold" Foreground="#D0D0D0" Margin="0,0,0,8"/>
+        <TextBlock Grid.Row="1" TextWrapping="Wrap" FontSize="11" Foreground="#909090"
+                   Margin="0,0,0,10"
+                   Text="Subnet is carved from the pool at apply time — engine finds the lowest-aligned free CIDR of the requested prefix length. Admins don't pick the exact network; they pick the pool + prefix + code + scope."/>
+
+        <TextBlock Grid.Row="2" Text="Pool" Foreground="#B0B0B0"/>
+        <dxg:GridControl Grid.Row="3" x:Name="PoolsGrid"
+                         AutoGenerateColumns="None" SelectionMode="Row"
+                         ShowBorder="True" Margin="0,4,0,8">
+            <dxg:GridControl.View>
+                <dxg:TableView AutoWidth="True" ShowIndicator="False" AllowEditing="False"/>
+            </dxg:GridControl.View>
+            <dxg:GridControl.Columns>
+                <dxg:GridColumn FieldName="PoolCode"    Header="Code"    Width="120"/>
+                <dxg:GridColumn FieldName="DisplayName" Header="Name"    Width="*"/>
+                <dxg:GridColumn FieldName="Network"     Header="Network" Width="180"/>
+                <dxg:GridColumn FieldName="Family"      Header="v4/v6"   Width="60"/>
+            </dxg:GridControl.Columns>
+        </dxg:GridControl>
+
+        <TextBlock Grid.Row="4" Text="Prefix length (/N)" Foreground="#B0B0B0"/>
+        <dxe:SpinEdit Grid.Row="5" x:Name="PrefixEdit" Value="30" MinValue="0" MaxValue="128"
+                      IsFloatValue="False" Margin="0,4,0,8"/>
+
+        <TextBlock Grid.Row="6" Text="Subnet code (e.g. 'MEP-91-MGMT')" Foreground="#B0B0B0"/>
+        <TextBox   Grid.Row="7" x:Name="SubnetCodeBox" Margin="0,4,0,8"/>
+
+        <TextBlock Grid.Row="8" Text="Display name" Foreground="#B0B0B0"/>
+        <TextBox   Grid.Row="9" x:Name="DisplayNameBox" Margin="0,4,0,8"/>
+
+        <TextBlock Grid.Row="10" Text="Scope" Foreground="#B0B0B0"/>
+        <Grid Grid.Row="11" Margin="0,4,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="150"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <dxe:ComboBoxEdit Grid.Column="0" x:Name="ScopeCombo" IsTextEditable="False" SelectedIndex="0">
+                <dxe:ComboBoxEdit.Items>
+                    <dxe:ComboBoxEditItem Content="Free"/>
+                    <dxe:ComboBoxEditItem Content="Region"/>
+                    <dxe:ComboBoxEditItem Content="Site"/>
+                    <dxe:ComboBoxEditItem Content="Building"/>
+                    <dxe:ComboBoxEditItem Content="Floor"/>
+                    <dxe:ComboBoxEditItem Content="Room"/>
+                </dxe:ComboBoxEdit.Items>
+            </dxe:ComboBoxEdit>
+            <TextBox Grid.Column="1" x:Name="ScopeEntityIdBox" Margin="8,0,0,0"
+                     ToolTip="Scope entity UUID — leave blank when scope is 'Free'"/>
+        </Grid>
+
+        <TextBlock Grid.Row="12" x:Name="ErrorLabel" Foreground="#E06464"
+                   TextWrapping="Wrap" Margin="0,0,0,8" Visibility="Collapsed"/>
+
+        <StackPanel Grid.Row="13" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Cancel" Width="90" Margin="0,0,8,0" Click="OnCancel" IsCancel="True"/>
+            <Button x:Name="OkButton" Content="Add Create Item" Width="140" Click="OnOk" IsDefault="True"/>
+        </StackPanel>
+    </Grid>
+</dxc:DXWindow>

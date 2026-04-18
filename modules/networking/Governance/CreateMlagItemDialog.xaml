@@ -1,0 +1,76 @@
+<dxc:DXWindow x:Class="Central.Module.Networking.Governance.CreateMlagItemDialog"
+              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+              xmlns:dxc="http://schemas.devexpress.com/winfx/2008/xaml/core"
+              xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+              xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+              Title="Create MLAG Domain (Add Item)"
+              Width="680" Height="580"
+              WindowStartupLocation="CenterOwner"
+              ResizeMode="CanResize" MinWidth="560" MinHeight="480">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" x:Name="HeaderLabel"
+                   FontWeight="SemiBold" Foreground="#D0D0D0" Margin="0,0,0,8"/>
+        <TextBlock Grid.Row="1" TextWrapping="Wrap" FontSize="11" Foreground="#909090"
+                   Margin="0,0,0,10"
+                   Text="MLAG uniqueness is tenant-wide (not pool-wide): the engine picks a domain id that's free across the whole tenant, not just this pool. Admin chooses the pool + display name + optional scope."/>
+
+        <TextBlock Grid.Row="2" Text="Pool" Foreground="#B0B0B0"/>
+        <dxg:GridControl Grid.Row="3" x:Name="PoolsGrid"
+                         AutoGenerateColumns="None" SelectionMode="Row"
+                         ShowBorder="True" Margin="0,4,0,8">
+            <dxg:GridControl.View>
+                <dxg:TableView AutoWidth="True" ShowIndicator="False" AllowEditing="False"/>
+            </dxg:GridControl.View>
+            <dxg:GridControl.Columns>
+                <dxg:GridColumn FieldName="PoolCode"    Header="Code"    Width="120"/>
+                <dxg:GridColumn FieldName="DisplayName" Header="Name"    Width="*"/>
+                <dxg:GridColumn FieldName="DomainFirst" Header="First"   Width="60"/>
+                <dxg:GridColumn FieldName="DomainLast"  Header="Last"    Width="60"/>
+                <dxg:GridColumn FieldName="Available"   Header="Free"    Width="60"/>
+            </dxg:GridControl.Columns>
+        </dxg:GridControl>
+
+        <TextBlock Grid.Row="4" Text="Display name" Foreground="#B0B0B0"/>
+        <TextBox   Grid.Row="5" x:Name="DisplayNameBox" Margin="0,4,0,8"/>
+
+        <TextBlock Grid.Row="6" Text="Scope" Foreground="#B0B0B0"/>
+        <Grid Grid.Row="7" Margin="0,4,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="150"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <dxe:ComboBoxEdit Grid.Column="0" x:Name="ScopeCombo" IsTextEditable="False" SelectedIndex="0">
+                <dxe:ComboBoxEdit.Items>
+                    <dxe:ComboBoxEditItem Content="Free"/>
+                    <dxe:ComboBoxEditItem Content="Region"/>
+                    <dxe:ComboBoxEditItem Content="Site"/>
+                    <dxe:ComboBoxEditItem Content="Building"/>
+                </dxe:ComboBoxEdit.Items>
+            </dxe:ComboBoxEdit>
+            <TextBox Grid.Column="1" x:Name="ScopeEntityIdBox" Margin="8,0,0,0"
+                     ToolTip="Scope entity UUID — leave blank when scope is 'Free'"/>
+        </Grid>
+
+        <TextBlock Grid.Row="8" x:Name="ErrorLabel" Foreground="#E06464"
+                   TextWrapping="Wrap" Margin="0,0,0,8" Visibility="Collapsed"/>
+
+        <StackPanel Grid.Row="9" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Cancel" Width="90" Margin="0,0,8,0" Click="OnCancel" IsCancel="True"/>
+            <Button x:Name="OkButton" Content="Add Create Item" Width="140" Click="OnOk" IsDefault="True"/>
+        </StackPanel>
+    </Grid>
+</dxc:DXWindow>

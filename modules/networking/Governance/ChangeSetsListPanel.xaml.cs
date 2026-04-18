@@ -99,6 +99,15 @@ public partial class ChangeSetsListPanel : UserControl
             case "action:createVlan":
                 RunWithSelection("add a VLAN create to", OpenCreateVlanDialog);
                 break;
+            case "action:createAsn":
+                RunWithSelection("add an ASN create to", OpenCreateAsnDialog);
+                break;
+            case "action:createMlag":
+                RunWithSelection("add an MLAG create to", OpenCreateMlagDialog);
+                break;
+            case "action:createSubnet":
+                RunWithSelection("add a subnet carve to", OpenCreateSubnetDialog);
+                break;
             case "action:submit":
                 RunWithSelection("Submit", OpenSubmitDialog);
                 break;
@@ -264,6 +273,36 @@ public partial class ChangeSetsListPanel : UserControl
     {
         if (!RequireDraft(row)) return;
         var dialog = new CreateVlanItemDialog(_baseUrl!, _tenantId, _actorUserId, row)
+        {
+            Owner = Window.GetWindow(this),
+        };
+        if (dialog.ShowDialog() == true) _ = ReloadAsync();
+    }
+
+    private void OpenCreateAsnDialog(ChangeSetRow row)
+    {
+        if (!RequireDraft(row)) return;
+        var dialog = new CreateAsnItemDialog(_baseUrl!, _tenantId, _actorUserId, row)
+        {
+            Owner = Window.GetWindow(this),
+        };
+        if (dialog.ShowDialog() == true) _ = ReloadAsync();
+    }
+
+    private void OpenCreateMlagDialog(ChangeSetRow row)
+    {
+        if (!RequireDraft(row)) return;
+        var dialog = new CreateMlagItemDialog(_baseUrl!, _tenantId, _actorUserId, row)
+        {
+            Owner = Window.GetWindow(this),
+        };
+        if (dialog.ShowDialog() == true) _ = ReloadAsync();
+    }
+
+    private void OpenCreateSubnetDialog(ChangeSetRow row)
+    {
+        if (!RequireDraft(row)) return;
+        var dialog = new CreateSubnetItemDialog(_baseUrl!, _tenantId, _actorUserId, row)
         {
             Owner = Window.GetWindow(this),
         };
