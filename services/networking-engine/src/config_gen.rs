@@ -516,6 +516,7 @@ impl Renderer for PicosRenderer {
         render_header(&mut out, ctx);
         render_system_section(&mut out, ctx);
         render_ip_routing_section(&mut out, ctx);
+        render_qos_preset_section(&mut out, ctx);
         render_loopback_section(&mut out, ctx);
         render_management_interface_section(&mut out, ctx);
         render_vlans_section(&mut out, ctx);
@@ -554,6 +555,88 @@ fn render_ip_routing_section(out: &mut String, _ctx: &DeviceContext) {
     out.push_str("set ip routing enable true\n");
     out.push('\n');
 }
+
+/// QoS / Class-of-Service preset — the fixed customer-wide DSCP
+/// mapping + scheduler topology Immunocore runs on every PicOS
+/// switch today. Forwarding classes, schedulers, classifier, and
+/// scheduler-profile are all defined here. Per-interface bindings
+/// (classifier + scheduler-profile per port) are a separate slice
+/// because they're device-data-driven (one pair per `net.port` row)
+/// rather than fixed. When a tenant ever ships a different QoS
+/// policy we'll lift this into a per-tenant config table; for now
+/// the block is a static const to match legacy byte-for-byte.
+fn render_qos_preset_section(out: &mut String, _ctx: &DeviceContext) {
+    for line in QOS_PRESET_LINES {
+        out.push_str(line);
+        out.push('\n');
+    }
+    out.push('\n');
+}
+
+const QOS_PRESET_LINES: &[&str] = &[
+    // Forwarding classes — 1-to-1 with the customer's application
+    // taxonomy (voice > network-control > video > realtime >
+    // signaling > transactional > bulk > best-effort).
+    "set class-of-service forwarding-class fc-best-effort",
+    "set class-of-service forwarding-class fc-bulk local-priority 1",
+    "set class-of-service forwarding-class fc-network-control local-priority 7",
+    "set class-of-service forwarding-class fc-realtime local-priority 4",
+    "set class-of-service forwarding-class fc-signaling local-priority 3",
+    "set class-of-service forwarding-class fc-transactional local-priority 2",
+    "set class-of-service forwarding-class fc-video local-priority 5",
+    "set class-of-service forwarding-class fc-voice-ef local-priority 6",
+    // Schedulers — Strict-Priority for network-control and voice;
+    // Weighted-Fair-Queueing for the rest, weight tuned to match
+    // the bandwidth split the customer's ISP contracts allow.
+    "set class-of-service scheduler sched-network-control mode \"SP\"",
+    "set class-of-service scheduler sched-voice mode \"SP\"",
+    "set class-of-service scheduler sched-video mode \"WFQ\"",
+    "set class-of-service scheduler sched-video weight 6",
+    "set class-of-service scheduler sched-realtime mode \"WFQ\"",
+    "set class-of-service scheduler sched-realtime weight 4",
+    "set class-of-service scheduler sched-signaling mode \"WFQ\"",
+    "set class-of-service scheduler sched-signaling weight 2",
+    "set class-of-service scheduler sched-transactional mode \"WFQ\"",
+    "set class-of-service scheduler sched-transactional weight 6",
+    "set class-of-service scheduler sched-bulk mode \"WFQ\"",
+    "set class-of-service scheduler sched-bulk weight 2",
+    "set class-of-service scheduler sched-best-effort mode \"WFQ\"",
+    "set class-of-service scheduler sched-best-effort weight 10",
+    // Classifier — DSCP code-point → forwarding-class mapping.
+    "set class-of-service classifier qos-dscp-classifier trust-mode \"dscp\"",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-network-control code-point 48",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-network-control code-point 56",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-voice-ef code-point 44",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-voice-ef code-point 46",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-video code-point 34",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-video code-point 36",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-video code-point 38",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-video code-point 40",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-realtime code-point 26",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-realtime code-point 28",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-realtime code-point 30",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-realtime code-point 32",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-signaling code-point 18",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-signaling code-point 20",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-signaling code-point 22",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-signaling code-point 24",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-transactional code-point 10",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-transactional code-point 12",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-transactional code-point 14",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-transactional code-point 16",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-bulk code-point 1",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-bulk code-point 8",
+    "set class-of-service classifier qos-dscp-classifier forwarding-class fc-best-effort code-point 0",
+    // Scheduler-profile — ties each forwarding-class to its scheduler.
+    "set class-of-service scheduler-profile qos-flex-profile forwarding-class fc-network-control scheduler \"sched-network-control\"",
+    "set class-of-service scheduler-profile qos-flex-profile forwarding-class fc-voice-ef scheduler \"sched-voice\"",
+    "set class-of-service scheduler-profile qos-flex-profile forwarding-class fc-video scheduler \"sched-video\"",
+    "set class-of-service scheduler-profile qos-flex-profile forwarding-class fc-realtime scheduler \"sched-realtime\"",
+    "set class-of-service scheduler-profile qos-flex-profile forwarding-class fc-signaling scheduler \"sched-signaling\"",
+    "set class-of-service scheduler-profile qos-flex-profile forwarding-class fc-transactional scheduler \"sched-transactional\"",
+    "set class-of-service scheduler-profile qos-flex-profile forwarding-class fc-bulk scheduler \"sched-bulk\"",
+    "set class-of-service scheduler-profile qos-flex-profile forwarding-class fc-best-effort scheduler \"sched-best-effort\"",
+];
 
 /// LLDP enable — same universal-today, toggle-tomorrow stance as
 /// `render_ip_routing_section`. Legacy emits this as the last
@@ -1301,6 +1384,47 @@ mod tests {
         );
         assert_eq!(out, "MEP-91-Core",
             "unparseable device_code should leave {{instance}} empty");
+    }
+
+    #[test]
+    fn picos_emits_qos_preset_forwarding_class_lines() {
+        let out = PicosRenderer::render(&fixture("CORE02", vec![]));
+        // Spot-check one line from each block — full list is covered
+        // by the count check below.
+        assert!(out.contains("set class-of-service forwarding-class fc-voice-ef local-priority 6"),
+            "voice forwarding-class line missing:\n{out}");
+        assert!(out.contains(r#"set class-of-service scheduler sched-voice mode "SP""#),
+            "voice scheduler line missing:\n{out}");
+        assert!(out.contains(r#"set class-of-service classifier qos-dscp-classifier trust-mode "dscp""#),
+            "classifier trust-mode line missing:\n{out}");
+        assert!(out.contains(r#"set class-of-service scheduler-profile qos-flex-profile forwarding-class fc-voice-ef scheduler "sched-voice""#),
+            "scheduler-profile binding line missing:\n{out}");
+    }
+
+    #[test]
+    fn picos_qos_preset_emits_expected_line_count() {
+        // If the preset ever needs to grow/shrink, the change lands
+        // here too — prevents silent drift from the customer's
+        // documented QoS policy.
+        let out = PicosRenderer::render(&fixture("CORE02", vec![]));
+        let qos_lines = out.lines()
+            .filter(|l| l.starts_with("set class-of-service"))
+            .count();
+        assert_eq!(qos_lines, QOS_PRESET_LINES.len(),
+            "QoS line count drift vs QOS_PRESET_LINES const:\n{out}");
+    }
+
+    #[test]
+    fn picos_qos_preset_lands_after_ip_routing_and_before_loopback() {
+        // Legacy step 3 — right after ip routing, well before any
+        // per-device L3 content.
+        let ctx = fixture_with_addrs("CORE02", Some("10.255.91.2/32"), None);
+        let out = PicosRenderer::render(&ctx);
+        let ip_routing = out.find("ip routing enable").expect("ip routing present");
+        let qos_first  = out.find("class-of-service forwarding-class").expect("QoS present");
+        let loopback   = out.find("loopback lo0").expect("loopback present");
+        assert!(ip_routing < qos_first && qos_first < loopback,
+            "QoS must sit between ip routing and loopback:\n{out}");
     }
 
     #[test]
