@@ -672,6 +672,26 @@ public class NetworkingEngineClient : IDisposable
         => BulkEditAsync("/api/net/subnets/bulk-edit", organizationId,
             new { subnetIds, field, value }, dryRun, ct);
 
+    /// <summary>Bulk edit servers. Whitelisted fields: profile_code,
+    /// building_code, management_ip, status, notes. hostname stays
+    /// gated behind single-row CRUD; ASN / loopback /
+    /// server_profile_id are mutated via the allocation service
+    /// not here.</summary>
+    public Task<BulkEditResultDto> BulkEditServersAsync(Guid organizationId,
+        IReadOnlyList<Guid> serverIds, string field, string value,
+        bool dryRun = true, CancellationToken ct = default)
+        => BulkEditAsync("/api/net/servers/bulk-edit", organizationId,
+            new { serverIds, field, value }, dryRun, ct);
+
+    /// <summary>Bulk edit DHCP relay targets. Whitelisted fields:
+    /// priority, status, notes. vlan_id + server_ip stay gated —
+    /// changing the identity of a relay at scale makes no sense.</summary>
+    public Task<BulkEditResultDto> BulkEditDhcpRelayTargetsAsync(Guid organizationId,
+        IReadOnlyList<Guid> targetIds, string field, string value,
+        bool dryRun = true, CancellationToken ct = default)
+        => BulkEditAsync("/api/net/dhcp-relay-targets/bulk-edit", organizationId,
+            new { targetIds, field, value }, dryRun, ct);
+
     /// <summary>Shared POST helper for every bulk-edit endpoint.
     /// Each entity's method differs only in the body shape (its id
     /// list field name) + the URL path.</summary>

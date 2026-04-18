@@ -85,6 +85,22 @@ pub struct BulkEditSubnetsBody {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct BulkEditServersBody {
+    pub server_ids: Vec<Uuid>,
+    pub field: String,
+    pub value: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BulkEditDhcpRelayTargetsBody {
+    pub target_ids: Vec<Uuid>,
+    pub field: String,
+    pub value: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BulkEditQuery {
     pub organization_id: Uuid,
     #[serde(default = "default_dry_run")]
@@ -786,6 +802,377 @@ async fn apply_subnet_field_update(
                  updated_by = $4, version = version + 1
               WHERE id = $1 AND organization_id = $2 AND version = $5 AND deleted_at IS NULL")
             .bind(subnet_id).bind(org_id).bind(value_opt).bind(user_id).bind(current_version),
+        _ => unreachable!(),
+    };
+    Ok(query.execute(&mut **tx).await?.rows_affected())
+}
+
+// ─── Server bulk edit ────────────────────────────────────────────────────
+
+const EDITABLE_SERVER_FIELDS: &[&str] = &[
+    "profile_code", "building_code", "management_ip", "status", "notes",
+];
+
+pub fn is_editable_server_field(name: &str) -> bool {
+    EDITABLE_SERVER_FIELDS.iter().any(|f| *f == name)
+}
+
+pub async fn bulk_edit_servers(
+    pool: &PgPool,
+    org_id: Uuid,
+    req: &BulkEditServersBody,
+    dry_run: bool,
+    user_id: Option<i32>,
+) -> Result<BulkEditResult, EngineError> {
+    if !is_editable_server_field(&req.field) {
+        return Err(EngineError::bad_request(format!(
+            "field '{}' is not editable via bulk-edit (allowed: {})",
+            req.field, EDITABLE_SERVER_FIELDS.join(","))));
+    }
+    match req.field.as_str() {
+        "status"        => validate_status(&req.value).map_err(EngineError::bad_request)?,
+        "management_ip" => validate_management_ip(&req.value).map_err(EngineError::bad_request)?,
+        "profile_code" | "building_code" | "notes" => {}
+        _ => unreachable!(),
+    }
+    if req.server_ids.is_empty() {
+        return Ok(BulkEditResult {
+            total: 0, succeeded: 0, failed: 0,
+            dry_run, applied: false, outcomes: vec![],
+        });
+    }
+
+    let profile_id_opt = resolve_code_or_null(
+        pool, org_id, "net.server_profile", "profile_code", &req.value,
+    ).await?;
+    let building_id_opt = resolve_code_or_null(
+        pool, org_id, "net.building", "building_code", &req.value,
+    ).await?;
+    match req.field.as_str() {
+        "profile_code" if !req.value.is_empty() && profile_id_opt.is_none() =>
+            return Err(EngineError::bad_request(format!(
+                "profile_code '{}' not found in this tenant's server_profile catalog",
+                req.value))),
+        "building_code" if !req.value.is_empty() && building_id_opt.is_none() =>
+            return Err(EngineError::bad_request(format!(
+                "building_code '{}' not found in this tenant's building catalog",
+                req.value))),
+        _ => {}
+    }
+
+    let targets: Vec<(Uuid, String, i32)> = sqlx::query_as(
+        "SELECT id, hostname, version FROM net.server
+          WHERE organization_id = $1 AND id = ANY($2) AND deleted_at IS NULL")
+        .bind(org_id).bind(&req.server_ids)
+        .fetch_all(pool).await?;
+
+    let mut outcomes: Vec<BulkEditOutcome> = req.server_ids.iter().map(|id| {
+        if let Some((_, hn, _)) = targets.iter().find(|(t, _, _)| t == id) {
+            BulkEditOutcome { id: *id, hostname: hn.clone(), ok: true, error: None }
+        } else {
+            BulkEditOutcome {
+                id: *id, hostname: String::new(), ok: false,
+                error: Some("server not found in this tenant (or soft-deleted)".into()),
+            }
+        }
+    }).collect();
+    let any_missing = outcomes.iter().any(|o| !o.ok);
+    if dry_run || any_missing {
+        return Ok(BulkEditResult {
+            total: outcomes.len(),
+            succeeded: outcomes.iter().filter(|o| o.ok).count(),
+            failed:    outcomes.iter().filter(|o| !o.ok).count(),
+            dry_run, applied: false, outcomes,
+        });
+    }
+
+    // RBAC — Server has hierarchy expansion (building→site→region)
+    // so scoped grants on the containing hierarchy match cleanly.
+    if let Some(uid) = user_id {
+        for sid in &req.server_ids {
+            let d = crate::scope_grants::has_permission(
+                pool, org_id, uid, "write", "Server", Some(*sid)
+            ).await?;
+            if !d.allowed { return Err(EngineError::forbidden(uid, "write", "Server")); }
+        }
+    }
+
+    let mut tx = pool.begin().await?;
+    for (target_id, target_hostname, current_version) in &targets {
+        let outcome_idx = outcomes.iter().position(|o| &o.id == target_id).unwrap();
+
+        let update_result = apply_server_field_update(
+            &mut tx, org_id, *target_id, *current_version, &req.field,
+            &req.value, profile_id_opt, building_id_opt, user_id,
+        ).await;
+
+        match update_result {
+            Ok(n) if n == 1 => {}
+            Ok(_) => {
+                outcomes[outcome_idx].ok = false;
+                outcomes[outcome_idx].error = Some(
+                    "concurrent write detected (version changed between read and write)".into());
+                return Ok(BulkEditResult {
+                    total: outcomes.len(),
+                    succeeded: outcomes.iter().filter(|o| o.ok).count(),
+                    failed:    outcomes.iter().filter(|o| !o.ok).count(),
+                    dry_run: false, applied: false, outcomes,
+                });
+            }
+            Err(e) => {
+                outcomes[outcome_idx].ok = false;
+                outcomes[outcome_idx].error = Some(format!("database UPDATE failed: {e}"));
+                return Ok(BulkEditResult {
+                    total: outcomes.len(),
+                    succeeded: outcomes.iter().filter(|o| o.ok).count(),
+                    failed:    outcomes.iter().filter(|o| !o.ok).count(),
+                    dry_run: false, applied: false, outcomes,
+                });
+            }
+        }
+
+        audit::append_tx(&mut tx, &AuditEvent {
+            organization_id: org_id,
+            source_service: "networking-engine",
+            entity_type: "Server",
+            entity_id: Some(*target_id),
+            action: "BulkEdited",
+            actor_user_id: user_id,
+            actor_display: None, client_ip: None, correlation_id: None,
+            details: serde_json::json!({
+                "source": "bulk_edit",
+                "hostname": target_hostname,
+                "field": req.field,
+                "new_value": req.value,
+            }),
+        }).await?;
+    }
+    tx.commit().await?;
+
+    let total = outcomes.len();
+    Ok(BulkEditResult {
+        total, succeeded: total, failed: 0,
+        dry_run: false, applied: true, outcomes,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn apply_server_field_update(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    org_id: Uuid, server_id: Uuid, current_version: i32,
+    field: &str, value: &str, profile_id_opt: Option<Uuid>,
+    building_id_opt: Option<Uuid>, user_id: Option<i32>,
+) -> Result<u64, sqlx::Error> {
+    let value_opt: Option<&str> = if value.is_empty() { None } else { Some(value) };
+    let query = match field {
+        "status" => sqlx::query(
+            "UPDATE net.server SET status = $3::net.entity_status, updated_at = now(),
+                 updated_by = $4, version = version + 1
+              WHERE id = $1 AND organization_id = $2 AND version = $5 AND deleted_at IS NULL")
+            .bind(server_id).bind(org_id).bind(value).bind(user_id).bind(current_version),
+        "management_ip" => sqlx::query(
+            "UPDATE net.server SET management_ip = $3::inet, updated_at = now(),
+                 updated_by = $4, version = version + 1
+              WHERE id = $1 AND organization_id = $2 AND version = $5 AND deleted_at IS NULL")
+            .bind(server_id).bind(org_id).bind(value_opt).bind(user_id).bind(current_version),
+        "notes" => sqlx::query(
+            "UPDATE net.server SET notes = $3, updated_at = now(),
+                 updated_by = $4, version = version + 1
+              WHERE id = $1 AND organization_id = $2 AND version = $5 AND deleted_at IS NULL")
+            .bind(server_id).bind(org_id).bind(value_opt).bind(user_id).bind(current_version),
+        "profile_code" => sqlx::query(
+            "UPDATE net.server SET server_profile_id = $3, updated_at = now(),
+                 updated_by = $4, version = version + 1
+              WHERE id = $1 AND organization_id = $2 AND version = $5 AND deleted_at IS NULL")
+            .bind(server_id).bind(org_id).bind(profile_id_opt).bind(user_id).bind(current_version),
+        "building_code" => sqlx::query(
+            "UPDATE net.server SET building_id = $3, updated_at = now(),
+                 updated_by = $4, version = version + 1
+              WHERE id = $1 AND organization_id = $2 AND version = $5 AND deleted_at IS NULL")
+            .bind(server_id).bind(org_id).bind(building_id_opt).bind(user_id).bind(current_version),
+        _ => unreachable!(),
+    };
+    Ok(query.execute(&mut **tx).await?.rows_affected())
+}
+
+// ─── DHCP relay target bulk edit ─────────────────────────────────────────
+
+const EDITABLE_DHCP_RELAY_FIELDS: &[&str] = &[
+    "priority", "status", "notes",
+];
+
+pub fn is_editable_dhcp_relay_field(name: &str) -> bool {
+    EDITABLE_DHCP_RELAY_FIELDS.iter().any(|f| *f == name)
+}
+
+fn validate_priority(v: &str) -> Result<(), String> {
+    if v.is_empty() { return Ok(()); }
+    match v.parse::<i32>() {
+        Ok(p) if p < 0 => Err(format!("priority '{p}' must be non-negative")),
+        Ok(_) => Ok(()),
+        Err(_) => Err(format!("priority '{v}' is not a valid integer")),
+    }
+}
+
+pub async fn bulk_edit_dhcp_relay_targets(
+    pool: &PgPool,
+    org_id: Uuid,
+    req: &BulkEditDhcpRelayTargetsBody,
+    dry_run: bool,
+    user_id: Option<i32>,
+) -> Result<BulkEditResult, EngineError> {
+    if !is_editable_dhcp_relay_field(&req.field) {
+        return Err(EngineError::bad_request(format!(
+            "field '{}' is not editable via bulk-edit (allowed: {})",
+            req.field, EDITABLE_DHCP_RELAY_FIELDS.join(","))));
+    }
+    match req.field.as_str() {
+        "status"   => validate_status(&req.value).map_err(EngineError::bad_request)?,
+        "priority" => validate_priority(&req.value).map_err(EngineError::bad_request)?,
+        "notes"    => {}
+        _ => unreachable!(),
+    }
+    if req.target_ids.is_empty() {
+        return Ok(BulkEditResult {
+            total: 0, succeeded: 0, failed: 0,
+            dry_run, applied: false, outcomes: vec![],
+        });
+    }
+
+    // Display key for the outcome is "vlan_id:server_ip" — the
+    // natural human-readable identifier for a relay target.
+    let targets: Vec<(Uuid, i32, String, i32)> = sqlx::query_as(
+        "SELECT drt.id, v.vlan_id, host(drt.server_ip), drt.version
+           FROM net.dhcp_relay_target drt
+           JOIN net.vlan v ON v.id = drt.vlan_id AND v.deleted_at IS NULL
+          WHERE drt.organization_id = $1
+            AND drt.id = ANY($2)
+            AND drt.deleted_at IS NULL")
+        .bind(org_id).bind(&req.target_ids)
+        .fetch_all(pool).await?;
+
+    let mut outcomes: Vec<BulkEditOutcome> = req.target_ids.iter().map(|id| {
+        if let Some((_, vid, ip, _)) = targets.iter().find(|(t, _, _, _)| t == id) {
+            BulkEditOutcome {
+                id: *id,
+                hostname: format!("vlan-{vid}:{ip}"),
+                ok: true, error: None,
+            }
+        } else {
+            BulkEditOutcome {
+                id: *id, hostname: String::new(), ok: false,
+                error: Some("dhcp relay target not found in this tenant (or soft-deleted)".into()),
+            }
+        }
+    }).collect();
+    let any_missing = outcomes.iter().any(|o| !o.ok);
+    if dry_run || any_missing {
+        return Ok(BulkEditResult {
+            total: outcomes.len(),
+            succeeded: outcomes.iter().filter(|o| o.ok).count(),
+            failed:    outcomes.iter().filter(|o| !o.ok).count(),
+            dry_run, applied: false, outcomes,
+        });
+    }
+
+    if let Some(uid) = user_id {
+        for tid in &req.target_ids {
+            let d = crate::scope_grants::has_permission(
+                pool, org_id, uid, "write", "DhcpRelayTarget", Some(*tid)
+            ).await?;
+            if !d.allowed {
+                return Err(EngineError::forbidden(uid, "write", "DhcpRelayTarget"));
+            }
+        }
+    }
+
+    let mut tx = pool.begin().await?;
+    for (target_id, vid, ip, current_version) in &targets {
+        let outcome_idx = outcomes.iter().position(|o| &o.id == target_id).unwrap();
+
+        let update_result = apply_dhcp_relay_field_update(
+            &mut tx, org_id, *target_id, *current_version, &req.field, &req.value, user_id,
+        ).await;
+
+        match update_result {
+            Ok(n) if n == 1 => {}
+            Ok(_) => {
+                outcomes[outcome_idx].ok = false;
+                outcomes[outcome_idx].error = Some(
+                    "concurrent write detected (version changed between read and write)".into());
+                return Ok(BulkEditResult {
+                    total: outcomes.len(),
+                    succeeded: outcomes.iter().filter(|o| o.ok).count(),
+                    failed:    outcomes.iter().filter(|o| !o.ok).count(),
+                    dry_run: false, applied: false, outcomes,
+                });
+            }
+            Err(e) => {
+                outcomes[outcome_idx].ok = false;
+                outcomes[outcome_idx].error = Some(format!("database UPDATE failed: {e}"));
+                return Ok(BulkEditResult {
+                    total: outcomes.len(),
+                    succeeded: outcomes.iter().filter(|o| o.ok).count(),
+                    failed:    outcomes.iter().filter(|o| !o.ok).count(),
+                    dry_run: false, applied: false, outcomes,
+                });
+            }
+        }
+
+        audit::append_tx(&mut tx, &AuditEvent {
+            organization_id: org_id,
+            source_service: "networking-engine",
+            entity_type: "DhcpRelayTarget",
+            entity_id: Some(*target_id),
+            action: "BulkEdited",
+            actor_user_id: user_id,
+            actor_display: None, client_ip: None, correlation_id: None,
+            details: serde_json::json!({
+                "source": "bulk_edit",
+                "vlan_id": vid,
+                "server_ip": ip,
+                "field": req.field,
+                "new_value": req.value,
+            }),
+        }).await?;
+    }
+    tx.commit().await?;
+
+    let total = outcomes.len();
+    Ok(BulkEditResult {
+        total, succeeded: total, failed: 0,
+        dry_run: false, applied: true, outcomes,
+    })
+}
+
+async fn apply_dhcp_relay_field_update(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    org_id: Uuid, target_id: Uuid, current_version: i32,
+    field: &str, value: &str, user_id: Option<i32>,
+) -> Result<u64, sqlx::Error> {
+    let value_opt: Option<&str> = if value.is_empty() { None } else { Some(value) };
+    let query = match field {
+        "priority" => {
+            // Validator already enforced parse + non-negative; this
+            // fallback is defensive (empty string → 10, which is the
+            // DB default for new rows).
+            let p: i32 = value.parse().unwrap_or(10);
+            sqlx::query(
+                "UPDATE net.dhcp_relay_target SET priority = $3, updated_at = now(),
+                     updated_by = $4, version = version + 1
+                  WHERE id = $1 AND organization_id = $2 AND version = $5 AND deleted_at IS NULL")
+                .bind(target_id).bind(org_id).bind(p).bind(user_id).bind(current_version)
+        }
+        "status" => sqlx::query(
+            "UPDATE net.dhcp_relay_target SET status = $3::net.entity_status, updated_at = now(),
+                 updated_by = $4, version = version + 1
+              WHERE id = $1 AND organization_id = $2 AND version = $5 AND deleted_at IS NULL")
+            .bind(target_id).bind(org_id).bind(value).bind(user_id).bind(current_version),
+        "notes" => sqlx::query(
+            "UPDATE net.dhcp_relay_target SET notes = $3, updated_at = now(),
+                 updated_by = $4, version = version + 1
+              WHERE id = $1 AND organization_id = $2 AND version = $5 AND deleted_at IS NULL")
+            .bind(target_id).bind(org_id).bind(value_opt).bind(user_id).bind(current_version),
         _ => unreachable!(),
     };
     Ok(query.execute(&mut **tx).await?.rows_affected())

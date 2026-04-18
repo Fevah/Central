@@ -343,7 +343,10 @@ async fn bulk_edit_notes_clears_to_null_on_empty_value() {
 // Extend the device bulk-edit invariants (whitelist / happy-path /
 // missing-id / forbidden / empty-value handling) to VLANs + subnets.
 
-use networking_engine::bulk_edit::{BulkEditVlansBody, BulkEditSubnetsBody};
+use networking_engine::bulk_edit::{
+    BulkEditDhcpRelayTargetsBody, BulkEditServersBody,
+    BulkEditSubnetsBody, BulkEditVlansBody,
+};
 
 /// Fixture with 1 tenant + 1 vlan_pool/block + 2 VLANs + 1 ip_pool
 /// + 2 subnets. Enough rows to drive bulk-edit happy paths +
@@ -535,6 +538,228 @@ async fn subnet_bulk_edit_forbidden_without_grant() {
         value: "Deprecated".into(),
     };
     let err = bulk_edit::bulk_edit_subnets(&fx.pool, fx.org_id, &req, false, Some(42))
+        .await.unwrap_err().to_string();
+    assert!(err.contains("Forbidden"), "err: {err}");
+}
+
+// ─── Server + DHCP relay target bulk edit tests ──────────────────────────
+
+/// Fixture with a server_profile + 2 servers + a VLAN + 2 dhcp relay
+/// targets. Bulk-edit tests for both entity types share this setup.
+struct ServerDhcpFixture {
+    pool: PgPool,
+    org_id: Uuid,
+    server_a: Uuid,
+    server_b: Uuid,
+    target_a: Uuid,
+    target_b: Uuid,
+}
+
+impl ServerDhcpFixture {
+    async fn new(pool: PgPool) -> sqlx::Result<Self> {
+        let org_id = Uuid::new_v4();
+        sqlx::query(
+            "INSERT INTO central_platform.tenants (id, slug, display_name, status)
+             VALUES ($1, $2, $2, 'Active') ON CONFLICT (id) DO NOTHING")
+            .bind(org_id).bind(format!("sd-itest-{org_id}"))
+            .execute(&pool).await?;
+
+        let region_id: (Uuid,) = sqlx::query_as(
+            "INSERT INTO net.region (organization_id, region_code, display_name, status)
+             VALUES ($1, 'SD-R', 'SD Region', 'Active') RETURNING id")
+            .bind(org_id).fetch_one(&pool).await?;
+        let site_id: (Uuid,) = sqlx::query_as(
+            "INSERT INTO net.site (organization_id, region_id, site_code, display_name,
+                                   city, country, timezone, site_number, status)
+             VALUES ($1, $2, 'SD-S', 'SD Site', 'C', 'UK', 'UTC', 1, 'Active') RETURNING id")
+            .bind(org_id).bind(region_id.0).fetch_one(&pool).await?;
+        let building_id: (Uuid,) = sqlx::query_as(
+            "INSERT INTO net.building (organization_id, site_id, building_code,
+                                       display_name, building_number, status)
+             VALUES ($1, $2, 'SD-B', 'SD Building', '1', 'Active') RETURNING id")
+            .bind(org_id).bind(site_id.0).fetch_one(&pool).await?;
+
+        let profile_id: (Uuid,) = sqlx::query_as(
+            "INSERT INTO net.server_profile (organization_id, profile_code,
+                                             display_name, nic_count, naming_template)
+             VALUES ($1, 'SD-SP', 'SD profile', 4,
+                     '{building_code}-SRV{instance}') RETURNING id")
+            .bind(org_id).fetch_one(&pool).await?;
+
+        let server_a: (Uuid,) = sqlx::query_as(
+            "INSERT INTO net.server (organization_id, server_profile_id, building_id,
+                                     hostname, status)
+             VALUES ($1, $2, $3, 'SRV-A', 'Planned') RETURNING id")
+            .bind(org_id).bind(profile_id.0).bind(building_id.0).fetch_one(&pool).await?;
+        let server_b: (Uuid,) = sqlx::query_as(
+            "INSERT INTO net.server (organization_id, server_profile_id, building_id,
+                                     hostname, status)
+             VALUES ($1, $2, $3, 'SRV-B', 'Planned') RETURNING id")
+            .bind(org_id).bind(profile_id.0).bind(building_id.0).fetch_one(&pool).await?;
+
+        // VLAN + relay targets (use the simplest vlan_pool/block path).
+        let vp_id: (Uuid,) = sqlx::query_as(
+            "INSERT INTO net.vlan_pool (organization_id, pool_code, display_name,
+                                        vlan_first, vlan_last)
+             VALUES ($1, 'SD-VP', 'SD pool', 1, 4094) RETURNING id")
+            .bind(org_id).fetch_one(&pool).await?;
+        let vb_id: (Uuid,) = sqlx::query_as(
+            "INSERT INTO net.vlan_block (organization_id, pool_id, block_code, display_name,
+                                         vlan_first, vlan_last, scope_level)
+             VALUES ($1, $2, 'SD-VB', 'SD block', 1, 4094, 'Free') RETURNING id")
+            .bind(org_id).bind(vp_id.0).fetch_one(&pool).await?;
+        let vlan_id: (Uuid,) = sqlx::query_as(
+            "INSERT INTO net.vlan (organization_id, pool_id, block_id,
+                                   vlan_id, display_name, scope_level, status)
+             VALUES ($1, $2, $3, 120, 'SD-VLAN', 'Free', 'Active') RETURNING id")
+            .bind(org_id).bind(vp_id.0).bind(vb_id.0).fetch_one(&pool).await?;
+
+        let target_a: (Uuid,) = sqlx::query_as(
+            "INSERT INTO net.dhcp_relay_target
+                (organization_id, vlan_id, server_ip, priority, notes,
+                 status, lock_state)
+             VALUES ($1, $2, '10.55.0.10'::inet, 10, NULL,
+                     'Active'::net.entity_status, 'Open'::net.lock_state)
+             RETURNING id")
+            .bind(org_id).bind(vlan_id.0).fetch_one(&pool).await?;
+        let target_b: (Uuid,) = sqlx::query_as(
+            "INSERT INTO net.dhcp_relay_target
+                (organization_id, vlan_id, server_ip, priority, notes,
+                 status, lock_state)
+             VALUES ($1, $2, '10.55.0.11'::inet, 20, NULL,
+                     'Active'::net.entity_status, 'Open'::net.lock_state)
+             RETURNING id")
+            .bind(org_id).bind(vlan_id.0).fetch_one(&pool).await?;
+
+        Ok(Self { pool, org_id,
+                   server_a: server_a.0, server_b: server_b.0,
+                   target_a: target_a.0, target_b: target_b.0 })
+    }
+
+    async fn server_status(&self, id: Uuid) -> String {
+        let (s,): (String,) = sqlx::query_as(
+            "SELECT status::text FROM net.server WHERE id = $1")
+            .bind(id).fetch_one(&self.pool).await.unwrap();
+        s
+    }
+
+    async fn target_priority(&self, id: Uuid) -> i32 {
+        let (p,): (i32,) = sqlx::query_as(
+            "SELECT priority FROM net.dhcp_relay_target WHERE id = $1")
+            .bind(id).fetch_one(&self.pool).await.unwrap();
+        p
+    }
+}
+
+impl Drop for ServerDhcpFixture {
+    fn drop(&mut self) {
+        let pool = self.pool.clone();
+        let org_id = self.org_id;
+        tokio::spawn(async move {
+            let _ = sqlx::query("DELETE FROM central_platform.tenants WHERE id = $1")
+                .bind(org_id).execute(&pool).await;
+        });
+    }
+}
+
+#[tokio::test]
+#[ignore]
+async fn server_bulk_edit_status_updates_every_selected() {
+    let Some(pool) = pool_or_skip("server_bulk_edit_status_updates_every_selected").await else { return; };
+    let fx = ServerDhcpFixture::new(pool).await.expect("fixture");
+
+    let req = BulkEditServersBody {
+        server_ids: vec![fx.server_a, fx.server_b],
+        field: "status".into(),
+        value: "Active".into(),
+    };
+    let result = bulk_edit::bulk_edit_servers(&fx.pool, fx.org_id, &req, false, None)
+        .await.expect("apply");
+    assert!(result.applied);
+    assert_eq!(fx.server_status(fx.server_a).await, "Active");
+    assert_eq!(fx.server_status(fx.server_b).await, "Active");
+}
+
+#[tokio::test]
+#[ignore]
+async fn server_bulk_edit_rejects_non_whitelisted_field() {
+    let Some(pool) = pool_or_skip("server_bulk_edit_rejects_non_whitelisted_field").await else { return; };
+    let fx = ServerDhcpFixture::new(pool).await.expect("fixture");
+
+    let req = BulkEditServersBody {
+        server_ids: vec![fx.server_a],
+        field: "hostname".into(),
+        value: "NEW-NAME".into(),
+    };
+    let err = bulk_edit::bulk_edit_servers(&fx.pool, fx.org_id, &req, false, None)
+        .await.unwrap_err().to_string();
+    assert!(err.contains("not editable"), "err: {err}");
+}
+
+#[tokio::test]
+#[ignore]
+async fn server_bulk_edit_forbidden_without_grant() {
+    let Some(pool) = pool_or_skip("server_bulk_edit_forbidden_without_grant").await else { return; };
+    let fx = ServerDhcpFixture::new(pool).await.expect("fixture");
+
+    let req = BulkEditServersBody {
+        server_ids: vec![fx.server_a],
+        field: "status".into(),
+        value: "Active".into(),
+    };
+    let err = bulk_edit::bulk_edit_servers(&fx.pool, fx.org_id, &req, false, Some(42))
+        .await.unwrap_err().to_string();
+    assert!(err.contains("Forbidden"), "err: {err}");
+}
+
+#[tokio::test]
+#[ignore]
+async fn dhcp_relay_bulk_edit_priority_updates_every_selected() {
+    let Some(pool) = pool_or_skip("dhcp_relay_bulk_edit_priority_updates_every_selected").await else { return; };
+    let fx = ServerDhcpFixture::new(pool).await.expect("fixture");
+
+    let req = BulkEditDhcpRelayTargetsBody {
+        target_ids: vec![fx.target_a, fx.target_b],
+        field: "priority".into(),
+        value: "30".into(),
+    };
+    let result = bulk_edit::bulk_edit_dhcp_relay_targets(&fx.pool, fx.org_id, &req, false, None)
+        .await.expect("apply");
+    assert!(result.applied);
+    assert_eq!(fx.target_priority(fx.target_a).await, 30);
+    assert_eq!(fx.target_priority(fx.target_b).await, 30);
+}
+
+#[tokio::test]
+#[ignore]
+async fn dhcp_relay_bulk_edit_rejects_negative_priority() {
+    let Some(pool) = pool_or_skip("dhcp_relay_bulk_edit_rejects_negative_priority").await else { return; };
+    let fx = ServerDhcpFixture::new(pool).await.expect("fixture");
+
+    let req = BulkEditDhcpRelayTargetsBody {
+        target_ids: vec![fx.target_a],
+        field: "priority".into(),
+        value: "-5".into(),
+    };
+    let err = bulk_edit::bulk_edit_dhcp_relay_targets(&fx.pool, fx.org_id, &req, false, None)
+        .await.unwrap_err().to_string();
+    assert!(err.contains("non-negative"), "err: {err}");
+    assert_eq!(fx.target_priority(fx.target_a).await, 10,
+        "rejected call must not mutate DB");
+}
+
+#[tokio::test]
+#[ignore]
+async fn dhcp_relay_bulk_edit_forbidden_without_grant() {
+    let Some(pool) = pool_or_skip("dhcp_relay_bulk_edit_forbidden_without_grant").await else { return; };
+    let fx = ServerDhcpFixture::new(pool).await.expect("fixture");
+
+    let req = BulkEditDhcpRelayTargetsBody {
+        target_ids: vec![fx.target_a],
+        field: "notes".into(),
+        value: "hello".into(),
+    };
+    let err = bulk_edit::bulk_edit_dhcp_relay_targets(&fx.pool, fx.org_id, &req, false, Some(42))
         .await.unwrap_err().to_string();
     assert!(err.contains("Forbidden"), "err: {err}");
 }
