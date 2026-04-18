@@ -21,6 +21,7 @@
     xmlns:srvViews="clr-namespace:Central.Module.Networking.Servers;assembly=Central.Module.Networking"
     xmlns:govViews="clr-namespace:Central.Module.Networking.Governance;assembly=Central.Module.Networking"
     xmlns:valViews="clr-namespace:Central.Module.Networking.Validation;assembly=Central.Module.Networking"
+    xmlns:audViews="clr-namespace:Central.Module.Networking.Audit;assembly=Central.Module.Networking"
     xmlns:admViews="clr-namespace:Central.Module.Global.Admin;assembly=Central.Module.Global"
     xmlns:sdViews="clr-namespace:Central.Module.ServiceDesk.Views;assembly=Central.Module.ServiceDesk"
     xmlns:taskViews="clr-namespace:Central.Module.Projects;assembly=Central.Module.Projects"
@@ -599,6 +600,10 @@
                                            Glyph="{dx:DXImage Image=Validation_16x16}"
                                            RibbonStyle="SmallWithText"
                                            IsChecked="{Binding IsValidationPanelOpen, Mode=TwoWay}" />
+                        <dxb:BarCheckItem  Content="Audit"
+                                           Glyph="{dx:DXImage Image=History_16x16}"
+                                           RibbonStyle="SmallWithText"
+                                           IsChecked="{Binding IsAuditPanelOpen, Mode=TwoWay}" />
                         <dxb:BarCheckItem  Content="Devices"
                                            Glyph="{dx:DXImage Image=Grid_16x16}"
                                            RibbonStyle="SmallWithText"
@@ -1231,6 +1236,13 @@
                                         Caption="Validation"
                                         AllowClose="True">
                         <valViews:ValidationPanel x:Name="ValidationPanelView" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- Audit Viewer Panel (Phase 9 — Rust-backed) -->
+                    <dxdo:DocumentPanel x:Name="AuditPanel"
+                                        Caption="Audit"
+                                        AllowClose="True">
+                        <audViews:AuditViewerPanel x:Name="AuditViewerPanelView" />
                     </dxdo:DocumentPanel>
 
                     <!-- Devices Panel (extracted to Module.Devices) -->

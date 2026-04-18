@@ -1,0 +1,88 @@
+<UserControl x:Class="Central.Module.Networking.Audit.AuditViewerPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:dxg="http://schemas.devexpress.com/winfx/2008/xaml/grid"
+             xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+             Background="Transparent">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Status bar -->
+        <Border Grid.Row="0" BorderBrush="#333" BorderThickness="0,0,0,1" Padding="8,4">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Audit" FontWeight="SemiBold" Foreground="#D0D0D0"/>
+                <TextBlock Text=" · " Foreground="#707070"/>
+                <TextBlock x:Name="StatusLabel" Foreground="#909090"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Filter bar -->
+        <Grid Grid.Row="1" Margin="8,6,8,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="160"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="140"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="80"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="150"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="150"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="220"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0" Text="Entity:" VerticalAlignment="Center" Margin="0,0,4,0" Foreground="#B0B0B0"/>
+            <dxe:ComboBoxEdit Grid.Column="1" x:Name="EntityTypeCombo"
+                              IsTextEditable="True" NullText="(any)"/>
+
+            <TextBlock Grid.Column="2" Text="Action:" VerticalAlignment="Center" Margin="10,0,4,0" Foreground="#B0B0B0"/>
+            <TextBox   Grid.Column="3" x:Name="ActionBox"/>
+
+            <TextBlock Grid.Column="4" Text="Actor:" VerticalAlignment="Center" Margin="10,0,4,0" Foreground="#B0B0B0"/>
+            <TextBox   Grid.Column="5" x:Name="ActorBox"/>
+
+            <TextBlock Grid.Column="6" Text="From:" VerticalAlignment="Center" Margin="10,0,4,0" Foreground="#B0B0B0"/>
+            <dxe:DateEdit Grid.Column="7" x:Name="FromDate"/>
+
+            <TextBlock Grid.Column="8" Text="To:" VerticalAlignment="Center" Margin="10,0,4,0" Foreground="#B0B0B0"/>
+            <dxe:DateEdit Grid.Column="9" x:Name="ToDate"/>
+
+            <TextBlock Grid.Column="10" Text="Correlation:" VerticalAlignment="Center" Margin="10,0,4,0" Foreground="#B0B0B0"/>
+            <TextBox    Grid.Column="11" x:Name="CorrelationBox"/>
+
+            <Button Grid.Column="13" x:Name="RunButton" Content="Run Query" Width="100"
+                    Click="OnRun" Margin="8,0,0,0"/>
+        </Grid>
+
+        <!-- Result grid -->
+        <dxg:GridControl Grid.Row="2" x:Name="AuditGrid"
+                         AutoGenerateColumns="None"
+                         SelectionMode="Row"
+                         ShowBorder="False">
+            <dxg:GridControl.View>
+                <dxg:TableView AutoWidth="True"
+                               ShowIndicator="False"
+                               ShowGroupPanel="True"
+                               AllowEditing="False"/>
+            </dxg:GridControl.View>
+            <dxg:GridControl.Columns>
+                <dxg:GridColumn FieldName="SequenceId"    Header="Seq"          Width="50"/>
+                <dxg:GridColumn FieldName="CreatedAt"     Header="At"           Width="150"/>
+                <dxg:GridColumn FieldName="EntityType"    Header="Entity"       Width="130"/>
+                <dxg:GridColumn FieldName="EntityId"      Header="Entity ID"    Width="240"/>
+                <dxg:GridColumn FieldName="Action"        Header="Action"       Width="140"/>
+                <dxg:GridColumn FieldName="ActorDisplay"  Header="Actor"        Width="130"/>
+                <dxg:GridColumn FieldName="CorrelationId" Header="Correlation"  Width="240"/>
+                <dxg:GridColumn FieldName="DetailsText"   Header="Details"      Width="*"/>
+            </dxg:GridControl.Columns>
+        </dxg:GridControl>
+    </Grid>
+</UserControl>

@@ -33,6 +33,7 @@ public static class NetworkingRibbonRegistrar
     public const string PanelServers  = "servers";
     public const string PanelChangeSets = "changesets";
     public const string PanelValidation = "validation";
+    public const string PanelAudit      = "audit";
 
     public static void BuildRibbon(IRibbonBuilder ribbon, int sortOrder)
     {
@@ -165,6 +166,20 @@ public static class NetworkingRibbonRegistrar
                     () => PanelMessageBus.Publish(new RefreshPanelMessage(PanelValidation)));
             });
 
+            // ── Audit (Phase 9) ──────────────────────────────────────────
+            // Tenant-wide audit browser. Filters + verify-chain + export.
+            page.AddGroup("Audit", group =>
+            {
+                group.AddButton("Run Query",       P.AuditRead,    "FindData_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelAudit, "action:runQuery")));
+                group.AddButton("Verify Chain",    P.AuditVerify,  "CheckAll_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelAudit, "action:verifyChain")));
+                group.AddButton("Export CSV",      P.AuditRead,    "ExportFile_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelAudit, "action:exportCsv")));
+                group.AddButton("Refresh",         P.AuditRead,    "Refresh_16x16",
+                    () => PanelMessageBus.Publish(new RefreshPanelMessage(PanelAudit)));
+            });
+
             page.AddGroup("Panels", group =>
             {
                 group.AddCheckButton("Hierarchy",      panelId: "HierarchyPanel");
@@ -172,6 +187,7 @@ public static class NetworkingRibbonRegistrar
                 group.AddCheckButton("Servers",        panelId: "ServersPanel");
                 group.AddCheckButton("Change Sets",    panelId: "ChangeSetsPanel");
                 group.AddCheckButton("Validation",     panelId: "ValidationPanel");
+                group.AddCheckButton("Audit",          panelId: "AuditPanel");
                 group.AddCheckButton("IPAM",           panelId: "DevicesPanel");
                 group.AddCheckButton("Device Details", panelId: "DeviceDetailPanel");
                 group.AddCheckButton("Switches",       panelId: "SwitchesPanel");

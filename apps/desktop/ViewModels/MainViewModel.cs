@@ -344,6 +344,11 @@ public class MainViewModel : INotifyPropertyChanged
     private bool _isValidationPanelOpen;
     public bool IsValidationPanelOpen { get => _isValidationPanelOpen; set { _isValidationPanelOpen = value; OnPropertyChanged(); } }
 
+    /// <summary>Phase-9 audit viewer — tenant-wide browse/filter of
+    /// net.audit_entry with chain-verify + export.</summary>
+    private bool _isAuditPanelOpen;
+    public bool IsAuditPanelOpen { get => _isAuditPanelOpen; set { _isAuditPanelOpen = value; OnPropertyChanged(); } }
+
     private bool _isSettingsPanelOpen;
     public bool IsSettingsPanelOpen
     {

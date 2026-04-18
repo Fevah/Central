@@ -33,18 +33,19 @@ public class NetworkingRibbonAuditTests
     }
 
     [Fact]
-    public void HasNineFunctionalGroupsPlusPanels()
+    public void HasTenFunctionalGroupsPlusPanels()
     {
         // Spec: Devices, Switches, Links, Routing, VLANs, Servers,
-        // Governance, Validation, Panels. Validation group added in
-        // Phase 9a — surfaces named-rule execution (run-all / run-selected
-        // / toggle / refresh) against the Rust networking-engine.
+        // Governance, Validation, Audit, Panels. Audit group added
+        // alongside the standalone audit viewer panel — filter +
+        // verify-chain + export CSV against the tenant's net.audit_entry
+        // stream (Rust-backed, correlation-id threaded).
         var rb = new RibbonBuilder();
         NetworkingRibbonRegistrar.BuildRibbon(rb, 20);
         var groups = rb.Pages[0].Groups.Select(g => g.Header).ToList();
         Assert.Equal(
             new[] { "Devices", "Switches", "Links", "Routing", "VLANs",
-                    "Servers", "Governance", "Validation", "Panels" },
+                    "Servers", "Governance", "Validation", "Audit", "Panels" },
             groups);
     }
 
@@ -110,6 +111,9 @@ public class NetworkingRibbonAuditTests
     [InlineData("Validation", "Run Selected",     "validation", "action:runSelected")]
     [InlineData("Validation", "Edit Rule",        "validation", "action:editRule")]
     [InlineData("Validation", "Export Violations","validation", "action:exportViolations")]
+    [InlineData("Audit",      "Run Query",        "audit",      "action:runQuery")]
+    [InlineData("Audit",      "Verify Chain",     "audit",      "action:verifyChain")]
+    [InlineData("Audit",      "Export CSV",       "audit",      "action:exportCsv")]
     public void NavigateButton_PublishesCorrectTargetAndAction(
         string groupHeader, string buttonContent, string expectedPanel, string expectedAction)
     {

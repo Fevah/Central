@@ -247,4 +247,11 @@ public static class P
     public const string ValidationRead      = "net:validation:read";
     public const string ValidationRun       = "net:validation:run";
     public const string ValidationConfigure = "net:validation:configure";
+
+    // Networking audit — Phase 9's hash-chained audit log. Read covers
+    // the list / entity-timeline / export surface; Verify runs the chain
+    // walker (tamper detector) which is a more privileged operation —
+    // the output tells you whether to trust your own audit history.
+    public const string AuditRead   = "net:audit:read";
+    public const string AuditVerify = "net:audit:verify";
 }
