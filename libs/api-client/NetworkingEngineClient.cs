@@ -218,6 +218,14 @@ public class NetworkingEngineClient : IDisposable
         => GetAsync<List<DeviceListRowDto>>(
             $"/api/net/devices?organizationId={organizationId}", ct);
 
+    /// <summary>List VLAN blocks + per-block availability. Powers the
+    /// WPF Create VLAN picker so admins see "VLAN 100-199 · 12 free"
+    /// instead of a UUID they'd have to copy from another tool.</summary>
+    public Task<List<VlanBlockDto>> ListVlanBlocksAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<VlanBlockDto>>(
+            $"/api/net/vlan-blocks?organizationId={organizationId}", ct);
+
     public Task<ChangeSetDto> CancelChangeSetAsync(Guid setId, Guid organizationId,
         string? notes = null, CancellationToken ct = default)
         => PostAsync<ChangeSetDto>(
@@ -626,3 +634,7 @@ public record LockedRowDto(Guid Id, string TableName, string DisplayLabel,
 // Device list (picker)
 public record DeviceListRowDto(Guid Id, string Hostname, string? RoleCode,
     string? BuildingCode, string Status, int Version);
+
+// VLAN block list (picker)
+public record VlanBlockDto(Guid Id, string BlockCode, string DisplayName,
+    int VlanFirst, int VlanLast, long Available);

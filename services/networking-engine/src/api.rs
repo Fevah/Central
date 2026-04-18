@@ -85,6 +85,8 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/locks/:table/:id", axum::routing::patch(set_entity_lock))
         // Device list (thin read — powers WPF pickers)
         .route("/api/net/devices", get(list_devices))
+        // VLAN block list (thin read — powers WPF VLAN-create picker)
+        .route("/api/net/vlan-blocks", get(list_vlan_blocks))
         // Validation rules (Phase 9a)
         .route("/api/net/validation/rules", get(list_validation_rules))
         .route("/api/net/validation/rules/:code", axum::routing::put(set_validation_rule_config))
@@ -470,6 +472,39 @@ struct DeviceListRow {
     building_code: Option<String>,
     status: String,
     version: i32,
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct VlanBlockListRow {
+    id: Uuid,
+    block_code: String,
+    display_name: String,
+    vlan_first: i32,
+    vlan_last: i32,
+    available: i64,   // vlan_last - vlan_first + 1 - allocated count
+}
+
+async fn list_vlan_blocks(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    // Rows + per-block availability count — one query via a LEFT JOIN
+    // on net.vlan so the picker can show "VLAN 100-199 · 12 free" at
+    // a glance without a per-row round-trip.
+    let rows: Vec<VlanBlockListRow> = sqlx::query_as(
+        "SELECT b.id, b.block_code, b.display_name, b.vlan_first, b.vlan_last,
+                (b.vlan_last - b.vlan_first + 1 - COALESCE((
+                    SELECT COUNT(*) FROM net.vlan v
+                     WHERE v.block_id = b.id AND v.deleted_at IS NULL
+                ), 0))::bigint AS available
+           FROM net.vlan_block b
+          WHERE b.organization_id = $1 AND b.deleted_at IS NULL
+          ORDER BY b.block_code")
+        .bind(q.organization_id)
+        .fetch_all(&s.pool)
+        .await?;
+    Ok(Json(rows))
 }
 
 async fn list_devices(

@@ -135,6 +135,8 @@ public static class NetworkingRibbonRegistrar
                     () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelChangeSets, "action:updateDevice")));
                 group.AddButton("Delete Device",   P.ChangeSetsWrite,   "Delete_16x16",
                     () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelChangeSets, "action:deleteDevice")));
+                group.AddButton("Create VLAN",     P.ChangeSetsWrite,   "NewItem_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelChangeSets, "action:createVlan")));
                 group.AddButton("Submit",          P.ChangeSetsWrite,   "Submit_16x16",
                     () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelChangeSets, "action:submit")));
                 group.AddButton("Approve / Reject", P.ChangeSetsApprove, "Apply_16x16",

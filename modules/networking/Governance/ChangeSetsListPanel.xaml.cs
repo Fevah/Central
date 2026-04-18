@@ -96,6 +96,9 @@ public partial class ChangeSetsListPanel : UserControl
             case "action:deleteDevice":
                 RunWithSelection("add a device delete to", OpenDeleteDeviceDialog);
                 break;
+            case "action:createVlan":
+                RunWithSelection("add a VLAN create to", OpenCreateVlanDialog);
+                break;
             case "action:submit":
                 RunWithSelection("Submit", OpenSubmitDialog);
                 break;
@@ -251,6 +254,16 @@ public partial class ChangeSetsListPanel : UserControl
     {
         if (!RequireDraft(row)) return;
         var dialog = new DeleteDeviceItemDialog(_baseUrl!, _tenantId, _actorUserId, row)
+        {
+            Owner = Window.GetWindow(this),
+        };
+        if (dialog.ShowDialog() == true) _ = ReloadAsync();
+    }
+
+    private void OpenCreateVlanDialog(ChangeSetRow row)
+    {
+        if (!RequireDraft(row)) return;
+        var dialog = new CreateVlanItemDialog(_baseUrl!, _tenantId, _actorUserId, row)
         {
             Owner = Window.GetWindow(this),
         };
