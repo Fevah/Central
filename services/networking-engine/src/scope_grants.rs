@@ -240,10 +240,16 @@ pub struct PermissionDecision {
 /// Check whether `user_id` may perform `action` on `entity_type` /
 /// `entity_id` in tenant `org_id`.
 ///
-/// v1 only matches Global + EntityId scopes. Region / Site /
-/// Building scopes are stored but don't yet contribute to the
-/// decision — that expansion lands in a follow-on slice so this
-/// first resolver stays simple + auditable.
+/// Matches Global + EntityId for every entity_type; for entity
+/// types with a modelled hierarchy (`Device` today) ALSO matches
+/// Region / Site / Building grants by walking the containing
+/// chain. Entity types without hierarchy support land on the
+/// Global+EntityId path alone, same as the v1 resolver — safe
+/// default: "not yet expanded" never becomes a silent over-grant.
+///
+/// Adding hierarchy for a new entity type = one match arm in
+/// `entity_hierarchy_sql` and no changes here. The grant-match
+/// SQL stays the same shape.
 pub async fn has_permission(
     pool: &PgPool,
     org_id: Uuid,
@@ -252,9 +258,15 @@ pub async fn has_permission(
     entity_type: &str,
     entity_id: Option<Uuid>,
 ) -> Result<PermissionDecision, EngineError> {
-    // Single query checks both scope flavours — Global (no
-    // scope_entity_id) OR EntityId (scope_entity_id = entity_id).
-    // LIMIT 1 gives us the first-matching grant for the audit id.
+    // If we can resolve the entity's hierarchy codes, widen the
+    // match to include Region / Site / Building scopes. Only
+    // entity types with a modelled hierarchy return Some here.
+    let hierarchy = if let Some(eid) = entity_id {
+        fetch_entity_hierarchy(pool, org_id, entity_type, eid).await?
+    } else {
+        None
+    };
+
     let row: Option<(Uuid,)> = sqlx::query_as(
         "SELECT id FROM net.scope_grant
           WHERE organization_id = $1
@@ -265,6 +277,9 @@ pub async fn has_permission(
             AND (
                 scope_type = 'Global'
                 OR (scope_type = 'EntityId' AND scope_entity_id = $5)
+                OR (scope_type = 'Building' AND scope_entity_id = $6)
+                OR (scope_type = 'Site'     AND scope_entity_id = $7)
+                OR (scope_type = 'Region'   AND scope_entity_id = $8)
             )
           LIMIT 1")
         .bind(org_id)
@@ -272,12 +287,107 @@ pub async fn has_permission(
         .bind(action)
         .bind(entity_type)
         .bind(entity_id)
+        .bind(hierarchy.as_ref().and_then(|h| h.building_id))
+        .bind(hierarchy.as_ref().and_then(|h| h.site_id))
+        .bind(hierarchy.as_ref().and_then(|h| h.region_id))
         .fetch_optional(pool)
         .await?;
     Ok(match row {
         Some((grant_id,)) => PermissionDecision { allowed: true, matched_grant_id: Some(grant_id) },
         None              => PermissionDecision { allowed: false, matched_grant_id: None },
     })
+}
+
+/// Resolved hierarchy codes for an entity. Any field may be None
+/// when the entity isn't linked to that tier (e.g. a device without
+/// a building, or a building without a site).
+#[derive(Debug, Clone, Default)]
+struct EntityHierarchy {
+    building_id: Option<Uuid>,
+    site_id: Option<Uuid>,
+    region_id: Option<Uuid>,
+}
+
+/// Walk the containing hierarchy for a given entity. Returns None
+/// for entity types that don't have a modelled hierarchy yet —
+/// resolver then falls back to Global+EntityId-only matching.
+///
+/// **Adding a new entity type:** copy the Device match arm, swap
+/// the table + FK columns, and hierarchy-scoped grants on that
+/// entity type start matching immediately.
+async fn fetch_entity_hierarchy(
+    pool: &PgPool,
+    org_id: Uuid,
+    entity_type: &str,
+    entity_id: Uuid,
+) -> Result<Option<EntityHierarchy>, EngineError> {
+    match entity_type {
+        "Device" => {
+            let row: Option<(Option<Uuid>, Option<Uuid>, Option<Uuid>)> = sqlx::query_as(
+                "SELECT d.building_id, b.site_id, s.region_id
+                   FROM net.device d
+                   LEFT JOIN net.building b ON b.id = d.building_id AND b.deleted_at IS NULL
+                   LEFT JOIN net.site     s ON s.id = b.site_id     AND s.deleted_at IS NULL
+                  WHERE d.id = $1 AND d.organization_id = $2 AND d.deleted_at IS NULL")
+                .bind(entity_id)
+                .bind(org_id)
+                .fetch_optional(pool)
+                .await?;
+            Ok(row.map(|(b, s, r)| EntityHierarchy {
+                building_id: b, site_id: s, region_id: r,
+            }))
+        }
+        "Server" => {
+            let row: Option<(Option<Uuid>, Option<Uuid>, Option<Uuid>)> = sqlx::query_as(
+                "SELECT srv.building_id, b.site_id, s.region_id
+                   FROM net.server srv
+                   LEFT JOIN net.building b ON b.id = srv.building_id AND b.deleted_at IS NULL
+                   LEFT JOIN net.site     s ON s.id = b.site_id       AND s.deleted_at IS NULL
+                  WHERE srv.id = $1 AND srv.organization_id = $2 AND srv.deleted_at IS NULL")
+                .bind(entity_id)
+                .bind(org_id)
+                .fetch_optional(pool)
+                .await?;
+            Ok(row.map(|(b, s, r)| EntityHierarchy {
+                building_id: b, site_id: s, region_id: r,
+            }))
+        }
+        // Building / Site / Region are themselves the hierarchy —
+        // walk up from the entity_id directly.
+        "Building" => {
+            let row: Option<(Option<Uuid>, Option<Uuid>)> = sqlx::query_as(
+                "SELECT b.site_id, s.region_id
+                   FROM net.building b
+                   LEFT JOIN net.site s ON s.id = b.site_id AND s.deleted_at IS NULL
+                  WHERE b.id = $1 AND b.organization_id = $2 AND b.deleted_at IS NULL")
+                .bind(entity_id)
+                .bind(org_id)
+                .fetch_optional(pool)
+                .await?;
+            Ok(row.map(|(s, r)| EntityHierarchy {
+                building_id: Some(entity_id),
+                site_id: s, region_id: r,
+            }))
+        }
+        "Site" => {
+            let row: Option<(Option<Uuid>,)> = sqlx::query_as(
+                "SELECT region_id FROM net.site
+                  WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL")
+                .bind(entity_id)
+                .bind(org_id)
+                .fetch_optional(pool)
+                .await?;
+            Ok(row.map(|(r,)| EntityHierarchy {
+                building_id: None,
+                site_id: Some(entity_id),
+                region_id: r,
+            }))
+        }
+        // Entity types without modelled hierarchy fall back to
+        // Global+EntityId-only matching. Adding a new one here
+        // = copy a match arm above.
+        _ => Ok(None),
+    }
 }
 
 #[cfg(test)]

@@ -34,6 +34,12 @@ pub enum EngineError {
     #[error("Lock violation: {message}")]
     LockViolation { message: String },
 
+    /// RBAC resolver denied the action. Carries user_id + action +
+    /// entity_type so logs / UI messages can explain which specific
+    /// grant the caller is missing.
+    #[error("Forbidden: user {user_id} lacks '{action}' permission on {entity_type}")]
+    Forbidden { user_id: i32, action: String, entity_type: String },
+
     #[error("Database error: {0}")]
     Db(sqlx::Error),
 }
@@ -82,6 +88,10 @@ impl EngineError {
         Self::BadRequest(s.into())
     }
 
+    pub fn forbidden(user_id: i32, action: impl Into<String>, entity_type: impl Into<String>) -> Self {
+        Self::Forbidden { user_id, action: action.into(), entity_type: entity_type.into() }
+    }
+
     fn status(&self) -> StatusCode {
         match self {
             Self::PoolExhausted { .. } => StatusCode::CONFLICT,
@@ -91,6 +101,7 @@ impl EngineError {
             Self::BadCidr(_) => StatusCode::UNPROCESSABLE_ENTITY,
             Self::BadRequest(_) => StatusCode::BAD_REQUEST,
             Self::LockViolation { .. } => StatusCode::CONFLICT,
+            Self::Forbidden { .. } => StatusCode::FORBIDDEN,
             Self::Db(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -104,6 +115,7 @@ impl EngineError {
             Self::BadCidr(_) => "bad_cidr",
             Self::BadRequest(_) => "bad_request",
             Self::LockViolation { .. } => "lock_violation",
+            Self::Forbidden { .. } => "forbidden",
             Self::Db(_) => "db_error",
         }
     }

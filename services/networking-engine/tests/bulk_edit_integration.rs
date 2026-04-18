@@ -9,6 +9,7 @@
 //! ```
 
 use networking_engine::bulk_edit::{self, BulkEditDevicesBody};
+use networking_engine::scope_grants::{CreateScopeGrantBody, ScopeGrantRepo};
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use std::env;
 use uuid::Uuid;
@@ -205,6 +206,111 @@ async fn bulk_edit_validates_invalid_status_value_before_write() {
         .await.unwrap_err().to_string();
     assert!(err.contains("Decommissioned"), "err should quote the bad value: {err}");
     assert_eq!(fx.status_of(fx.device_a).await, "Planned");
+}
+
+// ─── RBAC enforcement ────────────────────────────────────────────────────
+//
+// bulk_edit_devices enforces `write` on Device for every target in
+// the batch when a user_id is passed. Service-to-service calls
+// (no user_id) bypass — preserves backward compat during the RBAC
+// rollout.
+
+#[tokio::test]
+#[ignore]
+async fn bulk_edit_bypasses_rbac_when_no_user_id_passed() {
+    // No user_id = service call; shouldn't require any grants.
+    let Some(pool) = pool_or_skip("bulk_edit_bypasses_rbac_when_no_user_id_passed").await else { return; };
+    let fx = TwoDeviceFixture::new(pool).await.expect("fixture");
+
+    let req = BulkEditDevicesBody {
+        device_ids: vec![fx.device_a],
+        field: "status".into(),
+        value: "Active".into(),
+    };
+    let result = bulk_edit::bulk_edit_devices(&fx.pool, fx.org_id, &req, false, None)
+        .await.expect("service-call bypass");
+    assert!(result.applied, "no-user-id calls must bypass RBAC entirely");
+    assert_eq!(fx.status_of(fx.device_a).await, "Active");
+}
+
+#[tokio::test]
+#[ignore]
+async fn bulk_edit_forbidden_when_user_lacks_write_grant() {
+    let Some(pool) = pool_or_skip("bulk_edit_forbidden_when_user_lacks_write_grant").await else { return; };
+    let fx = TwoDeviceFixture::new(pool).await.expect("fixture");
+
+    // user_id 42 has no grants — should be denied with a 403.
+    let req = BulkEditDevicesBody {
+        device_ids: vec![fx.device_a],
+        field: "status".into(),
+        value: "Active".into(),
+    };
+    let err = bulk_edit::bulk_edit_devices(&fx.pool, fx.org_id, &req, false, Some(42))
+        .await.unwrap_err().to_string();
+    assert!(err.contains("Forbidden"), "err should be a Forbidden variant: {err}");
+    assert_eq!(fx.status_of(fx.device_a).await, "Planned",
+        "denied call must not touch DB");
+}
+
+#[tokio::test]
+#[ignore]
+async fn bulk_edit_allowed_with_global_write_grant() {
+    let Some(pool) = pool_or_skip("bulk_edit_allowed_with_global_write_grant").await else { return; };
+    let fx = TwoDeviceFixture::new(pool).await.expect("fixture");
+
+    // Seed a Global write:Device grant for user 42.
+    ScopeGrantRepo::new(fx.pool.clone()).create(&CreateScopeGrantBody {
+        organization_id: fx.org_id,
+        user_id: 42,
+        action: "write".into(),
+        entity_type: "Device".into(),
+        scope_type: "Global".into(),
+        scope_entity_id: None,
+        notes: None,
+    }, Some(99)).await.expect("global grant");
+
+    let req = BulkEditDevicesBody {
+        device_ids: vec![fx.device_a, fx.device_b],
+        field: "status".into(),
+        value: "Active".into(),
+    };
+    let result = bulk_edit::bulk_edit_devices(&fx.pool, fx.org_id, &req, false, Some(42))
+        .await.expect("applies with grant");
+    assert!(result.applied);
+    assert_eq!(fx.status_of(fx.device_a).await, "Active");
+    assert_eq!(fx.status_of(fx.device_b).await, "Active");
+}
+
+#[tokio::test]
+#[ignore]
+async fn bulk_edit_forbidden_when_one_target_outside_scoped_grant() {
+    // EntityId grant on device_a only; batch tries to touch both
+    // devices → whole batch forbidden (all-or-nothing).
+    let Some(pool) = pool_or_skip("bulk_edit_forbidden_when_one_target_outside_scoped_grant").await else { return; };
+    let fx = TwoDeviceFixture::new(pool).await.expect("fixture");
+
+    ScopeGrantRepo::new(fx.pool.clone()).create(&CreateScopeGrantBody {
+        organization_id: fx.org_id,
+        user_id: 42,
+        action: "write".into(),
+        entity_type: "Device".into(),
+        scope_type: "EntityId".into(),
+        scope_entity_id: Some(fx.device_a),
+        notes: None,
+    }, Some(99)).await.expect("partial grant");
+
+    let req = BulkEditDevicesBody {
+        device_ids: vec![fx.device_a, fx.device_b],
+        field: "status".into(),
+        value: "Active".into(),
+    };
+    let err = bulk_edit::bulk_edit_devices(&fx.pool, fx.org_id, &req, false, Some(42))
+        .await.unwrap_err().to_string();
+    assert!(err.contains("Forbidden"));
+    // Neither device must be written — grant covered one, but the
+    // batch is atomic so the whole thing fails.
+    assert_eq!(fx.status_of(fx.device_a).await, "Planned");
+    assert_eq!(fx.status_of(fx.device_b).await, "Planned");
 }
 
 #[tokio::test]

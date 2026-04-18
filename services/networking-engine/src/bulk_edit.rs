@@ -51,6 +51,7 @@ use uuid::Uuid;
 
 use crate::audit::{self, AuditEvent};
 use crate::error::EngineError;
+use crate::scope_grants;
 
 // ─── Request / response types ────────────────────────────────────────────
 
@@ -190,6 +191,22 @@ pub async fn bulk_edit_devices(
                 "building_code '{}' not found in this tenant's building catalog",
                 req.value))),
         _ => {}
+    }
+
+    // RBAC — opt-in enforcement. When `user_id` is None (service-to-
+    // service calls during the RBAC transition), bypass; otherwise
+    // every target device must pass a `write` on Device check,
+    // otherwise the whole batch is forbidden. Keeps the transactional
+    // semantics: one denied device fails the whole operation.
+    if let Some(uid) = user_id {
+        for device_id in &req.device_ids {
+            let decision = scope_grants::has_permission(
+                pool, org_id, uid, "write", "Device", Some(*device_id)
+            ).await?;
+            if !decision.allowed {
+                return Err(EngineError::forbidden(uid, "write", "Device"));
+            }
+        }
     }
 
     // Snapshot the selected rows (id, hostname, version) so the
