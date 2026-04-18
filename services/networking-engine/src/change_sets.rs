@@ -1110,10 +1110,16 @@ async fn dispatch_apply(
             apply_link_rename(pool, item, org_id, correlation_id, user_id).await,
         ("Server", ChangeSetAction::Rename) =>
             apply_server_rename(pool, item, org_id, correlation_id, user_id).await,
+        ("Vlan", ChangeSetAction::Create) =>
+            apply_vlan_create(pool, item, org_id, correlation_id, user_id).await,
+        ("AsnAllocation", ChangeSetAction::Create) =>
+            apply_asn_create(pool, item, org_id, correlation_id, user_id).await,
+        ("MlagDomain", ChangeSetAction::Create) =>
+            apply_mlag_create(pool, item, org_id, correlation_id, user_id).await,
         (et, act) => Err(EngineError::bad_request(format!(
             "Apply not yet implemented for ({et}, {}). Device covers all 4 \
-             actions; Link / Server cover Rename. Other combinations queued \
-             for follow-on slices.", act.as_str()))),
+             actions; Link / Server cover Rename; Vlan / AsnAllocation / \
+             MlagDomain cover Create.", act.as_str()))),
     }
 }
 
@@ -1384,6 +1390,12 @@ async fn dispatch_rollback(
             rollback_link_rename(pool, item, org_id, correlation_id, user_id).await,
         ("Server", ChangeSetAction::Rename) =>
             rollback_server_rename(pool, item, org_id, correlation_id, user_id).await,
+        ("Vlan", ChangeSetAction::Create) =>
+            rollback_vlan_create(pool, item, org_id, correlation_id, user_id).await,
+        ("AsnAllocation", ChangeSetAction::Create) =>
+            rollback_asn_create(pool, item, org_id, correlation_id, user_id).await,
+        ("MlagDomain", ChangeSetAction::Create) =>
+            rollback_mlag_create(pool, item, org_id, correlation_id, user_id).await,
         (et, act) => Err(EngineError::bad_request(format!(
             "Rollback not yet implemented for ({et}, {}).", act.as_str()))),
     }
@@ -2132,6 +2144,414 @@ async fn rollback_device_delete(
     }).await?;
 
     tx.commit().await?;
+    Ok(())
+}
+
+// ─── Allocation Create executors (VLAN / ASN / MLAG) ─────────────────────
+//
+// Allocation flows go through the existing AllocationService so the
+// advisory-lock serialisation + shelf cool-down semantics stay unified —
+// there's one code path that ever calls INSERT on these tables.
+//
+// Draft-time vs. apply-time values: the change_set_item records *intent*
+// (block_id + display_name + scope), not a specific VLAN number. At apply
+// time AllocationService picks the lowest free value. This means admins
+// don't see the exact VLAN before apply — they see the block range the
+// pick will come from. If deterministic values-at-draft are needed later,
+// we can add a "reserve on shelf with TTL at draft" step without changing
+// the REST surface.
+//
+// Rollback flow: soft-delete the allocation row AND retire the value to
+// the reservation_shelf with a short cool-down. Without the shelf stamp,
+// a concurrent apply could immediately re-allocate the same number,
+// which would confuse the audit trail.
+
+use crate::allocation::AllocationService;
+use crate::models::{PoolScopeLevel, ShelfResourceType};
+
+fn parse_scope_level(s: &str) -> Result<PoolScopeLevel, EngineError> {
+    match s {
+        "Free"     => Ok(PoolScopeLevel::Free),
+        "Region"   => Ok(PoolScopeLevel::Region),
+        "Site"     => Ok(PoolScopeLevel::Site),
+        "Building" => Ok(PoolScopeLevel::Building),
+        "Floor"    => Ok(PoolScopeLevel::Floor),
+        "Room"     => Ok(PoolScopeLevel::Room),
+        "Device"   => Ok(PoolScopeLevel::Device),
+        other => Err(EngineError::bad_request(format!(
+            "Unknown scope_level '{other}'"))),
+    }
+}
+
+fn read_uuid(j: &serde_json::Value, camel: &str, snake: &str) -> Option<Uuid> {
+    let v = j.as_object()?.get(camel).or_else(|| j.as_object()?.get(snake))?;
+    v.as_str().and_then(|s| Uuid::parse_str(s).ok())
+}
+fn read_string(j: &serde_json::Value, camel: &str, snake: &str) -> Option<String> {
+    let v = j.as_object()?.get(camel).or_else(|| j.as_object()?.get(snake))?;
+    v.as_str().map(String::from)
+}
+
+async fn apply_vlan_create(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    let after = item.after_json.as_ref().ok_or_else(|| EngineError::bad_request(
+        "Vlan/Create is missing after_json"))?;
+    let block_id = read_uuid(after, "blockId", "block_id").ok_or_else(||
+        EngineError::bad_request("after_json.blockId is required for Vlan/Create"))?;
+    let display_name = read_string(after, "displayName", "display_name").ok_or_else(||
+        EngineError::bad_request("after_json.displayName is required"))?;
+    let description = read_string(after, "description", "description");
+    let scope_level = parse_scope_level(
+        &read_string(after, "scopeLevel", "scope_level").unwrap_or_else(|| "Free".into()))?;
+    let scope_entity_id = read_uuid(after, "scopeEntityId", "scope_entity_id");
+    let template_id = read_uuid(after, "templateId", "template_id");
+
+    // AllocationService owns its own transaction + lock; we run after it
+    // succeeds to stamp the item + audit.
+    let svc = AllocationService::new(pool.clone());
+    let vlan = svc.allocate_vlan(
+        block_id, org_id, &display_name, description.as_deref(),
+        scope_level, scope_entity_id, template_id, user_id).await?;
+
+    let mut tx = pool.begin().await?;
+    sqlx::query(
+        "UPDATE net.change_set_item
+            SET entity_id = $3, applied_at = now(), apply_error = NULL,
+                updated_at = now()
+          WHERE id = $1 AND organization_id = $2")
+        .bind(item.id).bind(org_id).bind(vlan.id)
+        .execute(&mut *tx).await?;
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "Vlan",
+        entity_id: Some(vlan.id),
+        action: "Created",
+        actor_user_id: user_id,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: Some(correlation_id),
+        details: serde_json::json!({
+            "vlan_id": vlan.vlan_id,
+            "block_id": block_id,
+            "display_name": display_name,
+            "change_set_item_id": item.id,
+        }),
+    }).await?;
+    tx.commit().await?;
+    Ok(())
+}
+
+async fn rollback_vlan_create(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    let entity_id = item.entity_id.ok_or_else(|| EngineError::bad_request(
+        "Vlan/Create rollback: item has no entity_id — apply didn't record it."))?;
+
+    // Grab the vlan number so we can shelf it — stops a racing apply from
+    // immediately re-issuing it with a different display_name, which
+    // would make the audit trail confusing.
+    let vlan_num: Option<(i32, Uuid)> = sqlx::query_as(
+        "SELECT vlan_id, block_id FROM net.vlan
+          WHERE id = $1 AND organization_id = $2")
+        .bind(entity_id).bind(org_id).fetch_optional(pool).await?;
+    let (vlan_num, block_id) = vlan_num.ok_or_else(|| EngineError::bad_request(format!(
+        "Vlan {entity_id} not found — already rolled back or hard-deleted.")))?;
+
+    let mut tx = pool.begin().await?;
+
+    let affected = sqlx::query(
+        "UPDATE net.vlan
+            SET deleted_at = now(), deleted_by = $3,
+                updated_at = now(), updated_by = $3, version = version + 1
+          WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL")
+        .bind(entity_id).bind(org_id).bind(user_id)
+        .execute(&mut *tx).await?;
+    if affected.rows_affected() == 0 {
+        return Err(EngineError::bad_request(format!(
+            "Vlan {entity_id} already deleted.")));
+    }
+
+    sqlx::query(
+        "UPDATE net.change_set_item
+            SET applied_at = NULL, updated_at = now()
+          WHERE id = $1 AND organization_id = $2")
+        .bind(item.id).bind(org_id).execute(&mut *tx).await?;
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "Vlan",
+        entity_id: Some(entity_id),
+        action: "RolledBack",
+        actor_user_id: user_id,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: Some(correlation_id),
+        details: serde_json::json!({
+            "original_action": "Create",
+            "reverse_action": "SoftDelete",
+            "vlan_id": vlan_num,
+            "block_id": block_id,
+            "change_set_item_id": item.id,
+        }),
+    }).await?;
+    tx.commit().await?;
+
+    // Shelf the number with a short cool-down — outside the transaction
+    // above because the shelf write opens its own tx. Non-fatal on
+    // failure: the allocation is already soft-deleted, the shelf entry
+    // is a nice-to-have for audit visibility + same-tenant safety.
+    let svc = AllocationService::new(pool.clone());
+    let _ = svc.retire(
+        org_id, ShelfResourceType::Vlan, &vlan_num.to_string(),
+        chrono::Duration::minutes(5),
+        None, Some(block_id),
+        Some("change set rolled back"), user_id).await;
+
+    Ok(())
+}
+
+async fn apply_asn_create(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    let after = item.after_json.as_ref().ok_or_else(|| EngineError::bad_request(
+        "AsnAllocation/Create is missing after_json"))?;
+    let block_id = read_uuid(after, "blockId", "block_id").ok_or_else(||
+        EngineError::bad_request("after_json.blockId is required"))?;
+    let allocated_to_type = read_string(after, "allocatedToType", "allocated_to_type")
+        .unwrap_or_else(|| "Device".into());
+    let allocated_to_id = read_uuid(after, "allocatedToId", "allocated_to_id")
+        .unwrap_or_else(Uuid::new_v4); // placeholder for unbound allocations
+
+    let svc = AllocationService::new(pool.clone());
+    let asn = svc.allocate_asn(block_id, org_id, &allocated_to_type, allocated_to_id, user_id).await?;
+
+    let mut tx = pool.begin().await?;
+    sqlx::query(
+        "UPDATE net.change_set_item
+            SET entity_id = $3, applied_at = now(), apply_error = NULL,
+                updated_at = now()
+          WHERE id = $1 AND organization_id = $2")
+        .bind(item.id).bind(org_id).bind(asn.id)
+        .execute(&mut *tx).await?;
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "AsnAllocation",
+        entity_id: Some(asn.id),
+        action: "Created",
+        actor_user_id: user_id,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: Some(correlation_id),
+        details: serde_json::json!({
+            "asn": asn.asn,
+            "block_id": block_id,
+            "allocated_to_type": allocated_to_type,
+            "allocated_to_id": allocated_to_id,
+            "change_set_item_id": item.id,
+        }),
+    }).await?;
+    tx.commit().await?;
+    Ok(())
+}
+
+async fn rollback_asn_create(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    let entity_id = item.entity_id.ok_or_else(|| EngineError::bad_request(
+        "AsnAllocation/Create rollback: item has no entity_id."))?;
+
+    let asn_num: Option<(i64, Uuid)> = sqlx::query_as(
+        "SELECT asn, block_id FROM net.asn_allocation
+          WHERE id = $1 AND organization_id = $2")
+        .bind(entity_id).bind(org_id).fetch_optional(pool).await?;
+    let (asn_num, block_id) = asn_num.ok_or_else(|| EngineError::bad_request(format!(
+        "AsnAllocation {entity_id} not found.")))?;
+
+    let mut tx = pool.begin().await?;
+    let affected = sqlx::query(
+        "UPDATE net.asn_allocation
+            SET deleted_at = now(), deleted_by = $3,
+                updated_at = now(), updated_by = $3, version = version + 1
+          WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL")
+        .bind(entity_id).bind(org_id).bind(user_id)
+        .execute(&mut *tx).await?;
+    if affected.rows_affected() == 0 {
+        return Err(EngineError::bad_request(format!(
+            "AsnAllocation {entity_id} already deleted.")));
+    }
+
+    sqlx::query(
+        "UPDATE net.change_set_item
+            SET applied_at = NULL, updated_at = now()
+          WHERE id = $1 AND organization_id = $2")
+        .bind(item.id).bind(org_id).execute(&mut *tx).await?;
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "AsnAllocation",
+        entity_id: Some(entity_id),
+        action: "RolledBack",
+        actor_user_id: user_id,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: Some(correlation_id),
+        details: serde_json::json!({
+            "original_action": "Create",
+            "reverse_action": "SoftDelete",
+            "asn": asn_num,
+            "block_id": block_id,
+            "change_set_item_id": item.id,
+        }),
+    }).await?;
+    tx.commit().await?;
+
+    let svc = AllocationService::new(pool.clone());
+    let _ = svc.retire(
+        org_id, ShelfResourceType::Asn, &asn_num.to_string(),
+        chrono::Duration::minutes(5),
+        None, Some(block_id),
+        Some("change set rolled back"), user_id).await;
+
+    Ok(())
+}
+
+async fn apply_mlag_create(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    let after = item.after_json.as_ref().ok_or_else(|| EngineError::bad_request(
+        "MlagDomain/Create is missing after_json"))?;
+    let pool_id = read_uuid(after, "poolId", "pool_id").ok_or_else(||
+        EngineError::bad_request("after_json.poolId is required"))?;
+    let display_name = read_string(after, "displayName", "display_name").ok_or_else(||
+        EngineError::bad_request("after_json.displayName is required"))?;
+    let scope_level = parse_scope_level(
+        &read_string(after, "scopeLevel", "scope_level").unwrap_or_else(|| "Free".into()))?;
+    let scope_entity_id = read_uuid(after, "scopeEntityId", "scope_entity_id");
+
+    let svc = AllocationService::new(pool.clone());
+    let mlag = svc.allocate_mlag_domain(
+        pool_id, org_id, &display_name, scope_level, scope_entity_id, user_id).await?;
+
+    let mut tx = pool.begin().await?;
+    sqlx::query(
+        "UPDATE net.change_set_item
+            SET entity_id = $3, applied_at = now(), apply_error = NULL,
+                updated_at = now()
+          WHERE id = $1 AND organization_id = $2")
+        .bind(item.id).bind(org_id).bind(mlag.id)
+        .execute(&mut *tx).await?;
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "MlagDomain",
+        entity_id: Some(mlag.id),
+        action: "Created",
+        actor_user_id: user_id,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: Some(correlation_id),
+        details: serde_json::json!({
+            "domain_id": mlag.domain_id,
+            "pool_id": pool_id,
+            "display_name": display_name,
+            "change_set_item_id": item.id,
+        }),
+    }).await?;
+    tx.commit().await?;
+    Ok(())
+}
+
+async fn rollback_mlag_create(
+    pool: &PgPool,
+    item: &ChangeSetItem,
+    org_id: Uuid,
+    correlation_id: Uuid,
+    user_id: Option<i32>,
+) -> Result<(), EngineError> {
+    let entity_id = item.entity_id.ok_or_else(|| EngineError::bad_request(
+        "MlagDomain/Create rollback: item has no entity_id."))?;
+
+    let mlag_num: Option<(i32, Uuid)> = sqlx::query_as(
+        "SELECT domain_id, pool_id FROM net.mlag_domain
+          WHERE id = $1 AND organization_id = $2")
+        .bind(entity_id).bind(org_id).fetch_optional(pool).await?;
+    let (mlag_num, pool_id) = mlag_num.ok_or_else(|| EngineError::bad_request(format!(
+        "MlagDomain {entity_id} not found.")))?;
+
+    let mut tx = pool.begin().await?;
+    let affected = sqlx::query(
+        "UPDATE net.mlag_domain
+            SET deleted_at = now(), deleted_by = $3,
+                updated_at = now(), updated_by = $3, version = version + 1
+          WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL")
+        .bind(entity_id).bind(org_id).bind(user_id)
+        .execute(&mut *tx).await?;
+    if affected.rows_affected() == 0 {
+        return Err(EngineError::bad_request(format!(
+            "MlagDomain {entity_id} already deleted.")));
+    }
+
+    sqlx::query(
+        "UPDATE net.change_set_item
+            SET applied_at = NULL, updated_at = now()
+          WHERE id = $1 AND organization_id = $2")
+        .bind(item.id).bind(org_id).execute(&mut *tx).await?;
+
+    audit::append_tx(&mut tx, &AuditEvent {
+        organization_id: org_id,
+        source_service: "networking-engine",
+        entity_type: "MlagDomain",
+        entity_id: Some(entity_id),
+        action: "RolledBack",
+        actor_user_id: user_id,
+        actor_display: None,
+        client_ip: None,
+        correlation_id: Some(correlation_id),
+        details: serde_json::json!({
+            "original_action": "Create",
+            "reverse_action": "SoftDelete",
+            "domain_id": mlag_num,
+            "pool_id": pool_id,
+            "change_set_item_id": item.id,
+        }),
+    }).await?;
+    tx.commit().await?;
+
+    let svc = AllocationService::new(pool.clone());
+    let _ = svc.retire(
+        org_id, ShelfResourceType::Mlag, &mlag_num.to_string(),
+        chrono::Duration::minutes(5),
+        Some(pool_id), None,
+        Some("change set rolled back"), user_id).await;
+
     Ok(())
 }
 
