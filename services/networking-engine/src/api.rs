@@ -16,6 +16,7 @@ use uuid::Uuid;
 
 use crate::allocation::AllocationService;
 use crate::audit::{self, ExportQuery, ListAuditQuery, VerifyChainQuery};
+use crate::bulk_export;
 use crate::cli_flavor::{self, ListFlavorsQuery, SetFlavorConfigBody};
 use crate::config_gen;
 use crate::dhcp_relay::{
@@ -119,6 +120,10 @@ pub fn build_router(state: AppState) -> Router {
                get(get_dhcp_relay)
                    .put(update_dhcp_relay)
                    .delete(delete_dhcp_relay))
+        // Bulk export: flat dump of net.device as CSV. First of the
+        // Phase 10 bulk surfaces; sibling entities (links, VLANs,
+        // servers) follow once the pattern stabilises.
+        .route("/api/net/devices/export",                   get(export_devices))
         .with_state(state)
 }
 
@@ -1014,4 +1019,22 @@ async fn delete_dhcp_relay(
     let user_id = header_user_id(&headers);
     repo.soft_delete(id, q.organization_id, user_id).await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+// ─── Bulk export handlers ────────────────────────────────────────────────
+
+async fn export_devices(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    use axum::http::{HeaderValue, header};
+    let body = bulk_export::export_devices_csv(&s.pool, q.organization_id).await?;
+    // text/csv + the standard Content-Disposition so browsers offer
+    // a filename when the URL is opened directly rather than fetched
+    // by a JS client.
+    let headers: [(header::HeaderName, HeaderValue); 2] = [
+        (header::CONTENT_TYPE, HeaderValue::from_static("text/csv; charset=utf-8")),
+        (header::CONTENT_DISPOSITION, HeaderValue::from_static("attachment; filename=\"devices.csv\"")),
+    ];
+    Ok((headers, body))
 }
