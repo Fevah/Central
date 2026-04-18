@@ -101,6 +101,21 @@ pub struct DeviceContext {
     pub loopback: Option<String>,
     pub management_ip: Option<String>,
     pub vlans: Vec<VlanLine>,
+    pub bgp: Option<BgpContext>,
+}
+
+/// BGP scalar context — local AS + router-id source. Neighbors are
+/// intentionally *not* pulled from `public.bgp_neighbors` here; that
+/// table is the SSH-synced read-back of what's currently on the switch
+/// rather than the target state we want to emit. A follow-on slice
+/// will derive neighbors from `net.link_endpoint` so the generated
+/// config reflects topology, not live device state.
+#[derive(Debug, Clone)]
+pub struct BgpContext {
+    pub local_as: i64,
+    /// Defaults to 4 (customer standard across every PicOS core today —
+    /// see `CLAUDE.md` "BGP ECMP max-paths 4 on all core switches").
+    pub max_paths: i32,
 }
 
 #[derive(Debug, Clone)]
@@ -146,6 +161,20 @@ async fn fetch_context(
         .fetch_optional(pool)
         .await?;
 
+    // BGP local-as: resolved via the device's asn_allocation_id FK,
+    // NOT from public.bgp_config (which is the SSH-synced read-back of
+    // live state, not the target-state source of truth).
+    let asn: Option<(i64,)> = sqlx::query_as(
+        "SELECT aa.asn
+           FROM net.device d
+           JOIN net.asn_allocation aa
+             ON aa.id = d.asn_allocation_id AND aa.deleted_at IS NULL
+          WHERE d.id = $1 AND d.organization_id = $2 AND d.deleted_at IS NULL")
+        .bind(device_id)
+        .bind(org_id)
+        .fetch_optional(pool)
+        .await?;
+
     // VLANs the device terminates — for now, every VLAN in the tenant's
     // active rows. Real scoping (VLAN's scope_level / scope_entity_id
     // intersects device's building) comes in a follow-on slice.
@@ -167,6 +196,7 @@ async fn fetch_context(
         vlans: vlan_rows.into_iter().map(|(vid, name, desc)| VlanLine {
             vlan_id: vid, display_name: name, description: desc,
         }).collect(),
+        bgp: asn.map(|(n,)| BgpContext { local_as: n, max_paths: 4 }),
     })
 }
 
@@ -191,7 +221,9 @@ impl Renderer for PicosRenderer {
         render_loopback_section(&mut out, ctx);
         render_management_interface_section(&mut out, ctx);
         render_vlans_section(&mut out, ctx);
-        // TODO(follow-on): render_bgp, render_mlag_peer, render_mstp, render_ports.
+        render_bgp_scalar_section(&mut out, ctx);
+        // TODO(follow-on): render_bgp_neighbors (derived from
+        // net.link_endpoint), render_mlag_peer, render_mstp, render_ports.
         out
     }
 }
@@ -257,6 +289,27 @@ fn render_vlans_section(out: &mut String, ctx: &DeviceContext) {
     out.push('\n');
 }
 
+/// Scalar BGP section — local-as, ebgp-requires-policy, router-id,
+/// and the two fixed `ipv4-unicast` lines that match the legacy
+/// `ConfigBuilderService` output byte-for-byte. Neighbors aren't
+/// emitted here; they need link-topology derivation and land in a
+/// follow-on slice.
+fn render_bgp_scalar_section(out: &mut String, ctx: &DeviceContext) {
+    let Some(bgp) = ctx.bgp.as_ref() else { return; };
+    out.push_str(&format!("set protocols bgp local-as \"{}\"\n", bgp.local_as));
+    out.push_str("set protocols bgp ebgp-requires-policy false\n");
+    if let Some(lb) = ctx.loopback.as_deref() {
+        if let Some((host, _)) = split_inet_text(lb) {
+            out.push_str(&format!("set protocols bgp router-id {}\n", host));
+        }
+    }
+    out.push_str("set protocols bgp ipv4-unicast redistribute connected\n");
+    out.push_str(&format!(
+        "set protocols bgp ipv4-unicast multipath ebgp maximum-paths {}\n",
+        bgp.max_paths));
+    out.push('\n');
+}
+
 /// PicOS string escaping — escape embedded double quotes and
 /// backslashes so the `"..."` literal stays valid. PicOS doesn't
 /// document a rich escape grammar beyond that, so we stop there.
@@ -285,6 +338,7 @@ mod tests {
             loopback: None,
             management_ip: None,
             vlans,
+            bgp: None,
         }
     }
 
@@ -299,6 +353,22 @@ mod tests {
             loopback: loopback.map(Into::into),
             management_ip: mgmt.map(Into::into),
             vlans: vec![],
+            bgp: None,
+        }
+    }
+
+    fn fixture_with_bgp(
+        hostname: &str,
+        loopback: Option<&str>,
+        bgp: Option<BgpContext>,
+    ) -> DeviceContext {
+        DeviceContext {
+            device_id: Uuid::nil(),
+            hostname: hostname.into(),
+            loopback: loopback.map(Into::into),
+            management_ip: None,
+            vlans: vec![],
+            bgp,
         }
     }
 
@@ -406,6 +476,60 @@ mod tests {
         assert_eq!(split_inet_text("10.255.91.2/abc"),  None); // non-numeric prefix
         assert_eq!(split_inet_text("/32"),              None); // empty host
         assert_eq!(split_inet_text(""),                 None);
+    }
+
+    #[test]
+    fn picos_emits_bgp_scalar_block_with_router_id_when_loopback_present() {
+        let ctx = fixture_with_bgp(
+            "CORE02",
+            Some("10.255.91.2/32"),
+            Some(BgpContext { local_as: 65112, max_paths: 4 }),
+        );
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains("set protocols bgp local-as \"65112\""),
+            "local-as line missing:\n{out}");
+        assert!(out.contains("set protocols bgp ebgp-requires-policy false"),
+            "ebgp-requires-policy line missing:\n{out}");
+        assert!(out.contains("set protocols bgp router-id 10.255.91.2"),
+            "router-id line missing (should be bare host, no prefix):\n{out}");
+        assert!(out.contains("set protocols bgp ipv4-unicast redistribute connected"),
+            "redistribute connected line missing:\n{out}");
+        assert!(out.contains("set protocols bgp ipv4-unicast multipath ebgp maximum-paths 4"),
+            "multipath line missing:\n{out}");
+    }
+
+    #[test]
+    fn picos_omits_router_id_when_loopback_absent_but_keeps_rest_of_bgp() {
+        let ctx = fixture_with_bgp(
+            "CORE02",
+            None,
+            Some(BgpContext { local_as: 65112, max_paths: 4 }),
+        );
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains("set protocols bgp local-as \"65112\""),
+            "local-as line should still render without loopback:\n{out}");
+        assert!(!out.contains("router-id"),
+            "no loopback → skip router-id line:\n{out}");
+    }
+
+    #[test]
+    fn picos_omits_bgp_section_when_asn_absent() {
+        let ctx = fixture_with_bgp("CORE02", Some("10.255.91.2/32"), None);
+        let out = PicosRenderer::render(&ctx);
+        assert!(!out.contains("protocols bgp"),
+            "no ASN → skip entire BGP section:\n{out}");
+    }
+
+    #[test]
+    fn picos_respects_custom_max_paths() {
+        let ctx = fixture_with_bgp(
+            "CORE02",
+            None,
+            Some(BgpContext { local_as: 65112, max_paths: 8 }),
+        );
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains("multipath ebgp maximum-paths 8"),
+            "max_paths 8 should pass through:\n{out}");
     }
 
     #[test]
