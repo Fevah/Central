@@ -323,6 +323,45 @@ impl ChangeSetRepo {
             .collect()
     }
 
+    /// Look up a Change Set by its `correlation_id`. Powers the "audit
+    /// row → Set detail" drill-down from the tenant-wide audit viewer.
+    /// Returns None when no Set has this correlation id (entity-level
+    /// audit entries touched outside a Change Set are the common case).
+    pub async fn get_by_correlation(
+        &self,
+        correlation_id: Uuid,
+        org_id: Uuid,
+    ) -> Result<Option<(ChangeSet, Vec<ChangeSetItem>)>, EngineError> {
+        let row: Option<ChangeSetRow> = sqlx::query_as(
+            "SELECT id, organization_id, title, description,
+                    status::text AS status, requested_by, requested_by_display,
+                    submitted_by, submitted_at, approved_at, applied_at,
+                    rolled_back_at, cancelled_at, required_approvals,
+                    correlation_id, version, created_at, updated_at
+               FROM net.change_set
+              WHERE correlation_id = $1 AND organization_id = $2 AND deleted_at IS NULL")
+            .bind(correlation_id)
+            .bind(org_id)
+            .fetch_optional(&self.pool)
+            .await?;
+        let Some(row) = row else { return Ok(None); };
+        let set_id = row.id;
+
+        let items: Vec<ChangeSetItemRow> = sqlx::query_as(
+            "SELECT id, change_set_id, item_order, entity_type, entity_id,
+                    action::text AS action, before_json, after_json,
+                    expected_version, applied_at, apply_error, notes, created_at
+               FROM net.change_set_item
+              WHERE change_set_id = $1 AND deleted_at IS NULL
+              ORDER BY item_order")
+            .bind(set_id)
+            .fetch_all(&self.pool)
+            .await?;
+        let count = items.len() as i64;
+        let dtos = items.into_iter().map(|r| r.into_dto()).collect::<Result<Vec<_>, _>>()?;
+        Ok(Some((row.into_dto(count)?, dtos)))
+    }
+
     /// Every approval decision recorded on a Change Set, chronologically.
     /// Used by the WPF detail dialog's Approvals tab and by forensic
     /// queries that want a quick "who decided what" view without walking

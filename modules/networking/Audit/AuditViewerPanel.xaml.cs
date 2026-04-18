@@ -106,6 +106,94 @@ public partial class AuditViewerPanel : UserControl
 
     public Task ReloadAsync() => RunQueryAsync();
 
+    /// <summary>Double-click an audit row to drill into the Change Set
+    /// that produced it, if any. Rows without a correlation_id (or where
+    /// the correlation doesn't match a Set — ad-hoc entity audits from
+    /// e.g. allocation retires) get a polite info prompt instead of a
+    /// silent no-op.</summary>
+    private async void OnAuditRowDoubleClick(object sender,
+        DevExpress.Xpf.Grid.RowDoubleClickEventArgs e)
+    {
+        // Map back to the underlying DTO via the grid's current index —
+        // we built the ItemsSource from _lastResult so indexes line up.
+        var disp = AuditGrid.CurrentItem as AuditDisplayRow;
+        if (disp is null) return;
+        var source = _lastResult.FirstOrDefault(r => r.SequenceId == disp.SequenceId);
+        if (source is null) return;
+
+        if (source.CorrelationId is not Guid cid)
+        {
+            MessageBox.Show(
+                "This audit row has no correlation id — it wasn't produced by a Change Set.",
+                "No Change Set to drill into",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        await DrillIntoSetByCorrelationAsync(cid);
+    }
+
+    private async Task DrillIntoSetByCorrelationAsync(Guid correlationId)
+    {
+        if (string.IsNullOrEmpty(_baseUrl) || _tenantId == Guid.Empty) return;
+        try
+        {
+            using var client = new NetworkingEngineClient(_baseUrl);
+            if (_actorUserId is int uid) client.SetActorUserId(uid);
+
+            var detail = await client.GetChangeSetByCorrelationAsync(correlationId, _tenantId);
+            if (detail is null)
+            {
+                MessageBox.Show(
+                    $"No Change Set found for correlation id {correlationId}. The row likely came from an entity-level audit outside any Set (e.g. a direct allocation retire).",
+                    "Not linked to a Change Set",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            // Project the ChangeSetDetailDto into the ChangeSetRow shape
+            // the Governance detail dialog expects. The dialog owns its
+            // own reload from the engine, so we only need enough here
+            // to drive the header + the initial fetch.
+            var row = new Central.Module.Networking.Governance.ChangeSetRow
+            {
+                Id = detail.Id,
+                Title = detail.Title,
+                Status = detail.Status,
+                ItemCount = detail.ItemCount,
+                RequestedByDisplay = detail.RequestedByDisplay,
+                RequiredApprovals = detail.RequiredApprovals,
+                CreatedAt = detail.CreatedAt,
+                SubmittedAt = detail.SubmittedAt,
+                ApprovedAt = detail.ApprovedAt,
+                AppliedAt = detail.AppliedAt,
+                RolledBackAt = detail.RolledBackAt,
+                CancelledAt = detail.CancelledAt,
+                Version = detail.Version,
+            };
+            var dialog = new Central.Module.Networking.Governance.ChangeSetDetailDialog(
+                _baseUrl!, _tenantId, _actorUserId, row)
+            {
+                Owner = Window.GetWindow(this),
+            };
+            dialog.ShowDialog();
+        }
+        catch (NetworkingEngineException ex)
+        {
+            MessageBox.Show($"Engine error ({ex.StatusCode}): {ex.Message}",
+                "Drill-down failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        catch (HttpRequestException ex)
+        {
+            MessageBox.Show($"Network error: {ex.Message}",
+                "Drill-down failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed: {ex.Message}",
+                "Drill-down failed", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     // ─── Run query ──────────────────────────────────────────────────────
 
     private async Task RunQueryAsync()

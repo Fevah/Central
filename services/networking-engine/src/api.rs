@@ -73,6 +73,7 @@ pub fn build_router(state: AppState) -> Router {
         // Change Sets (Phase 8a)
         .route("/api/net/change-sets", get(list_change_sets).post(create_change_set))
         .route("/api/net/change-sets/:id", get(get_change_set))
+        .route("/api/net/change-sets/by-correlation/:correlation_id", get(get_change_set_by_correlation))
         .route("/api/net/change-sets/:id/items", post(add_change_set_item))
         .route("/api/net/change-sets/:id/submit", post(submit_change_set))
         .route("/api/net/change-sets/:id/decisions", post(record_decision).get(list_decisions))
@@ -539,6 +540,22 @@ async fn get_change_set(
     let repo = ChangeSetRepo::new(s.pool);
     let (set, items) = repo.get(id, q.organization_id).await?;
     Ok(Json(ChangeSetWithItems { set, items }))
+}
+
+/// Look up a Set by the correlation id threaded into its audit entries.
+/// 200 with the detail envelope when found, 404 when not — the caller
+/// (WPF audit viewer drill-down) treats 404 as "this audit row isn't
+/// tied to a Change Set, open nothing".
+async fn get_change_set_by_correlation(
+    State(s): State<AppState>,
+    Path(correlation_id): Path<Uuid>,
+    Query(q): Query<GetChangeSetQuery>,
+) -> Result<Response, EngineError> {
+    let repo = ChangeSetRepo::new(s.pool);
+    match repo.get_by_correlation(correlation_id, q.organization_id).await? {
+        Some((set, items)) => Ok(Json(ChangeSetWithItems { set, items }).into_response()),
+        None => Ok(StatusCode::NOT_FOUND.into_response()),
+    }
 }
 
 async fn add_change_set_item(

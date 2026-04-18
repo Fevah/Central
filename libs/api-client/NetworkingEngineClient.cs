@@ -174,6 +174,20 @@ public class NetworkingEngineClient : IDisposable
         CancellationToken ct = default)
         => GetAsync<ChangeSetDetailDto>($"/api/net/change-sets/{id}?organizationId={organizationId}", ct);
 
+    /// <summary>Resolve a Change Set from the correlation id stamped on its
+    /// audit entries. Returns null when the id doesn't map to a Set (the
+    /// common case for entity-level audits that happened outside any
+    /// Change Set, like ad-hoc allocation retires).</summary>
+    public async Task<ChangeSetDetailDto?> GetChangeSetByCorrelationAsync(
+        Guid correlationId, Guid organizationId, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync(
+            $"/api/net/change-sets/by-correlation/{correlationId}?organizationId={organizationId}", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        await EnsureSuccessAsync(resp, ct);
+        return await resp.Content.ReadFromJsonAsync<ChangeSetDetailDto>(Json, ct);
+    }
+
     public Task<ChangeSetItemDto> AddChangeSetItemAsync(Guid setId, Guid organizationId,
         AddChangeSetItemRequest request, CancellationToken ct = default)
         => PostAsync<ChangeSetItemDto>(

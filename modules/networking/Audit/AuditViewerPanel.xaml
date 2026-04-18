@@ -71,7 +71,8 @@
                 <dxg:TableView AutoWidth="True"
                                ShowIndicator="False"
                                ShowGroupPanel="True"
-                               AllowEditing="False"/>
+                               AllowEditing="False"
+                               RowDoubleClick="OnAuditRowDoubleClick"/>
             </dxg:GridControl.View>
             <dxg:GridControl.Columns>
                 <dxg:GridColumn FieldName="SequenceId"    Header="Seq"          Width="50"/>
