@@ -582,6 +582,23 @@ pub struct DeviceContext {
     /// renderer then skips the static route line entirely rather
     /// than guessing from a `.254` convention.
     pub default_gateway: Option<String>,
+    /// VRRP virtual-IPs the device should announce per-VLAN. One row
+    /// per VLAN × VIP — derived from `net.ip_address` rows with
+    /// `assigned_to_type = 'Vrrp'` in subnets belonging to VLANs
+    /// this device has an SVI on. Tenants without seeded Vrrp IPs
+    /// get an empty list and the VRRP section skips entirely.
+    pub vrrp_vips: Vec<VrrpVipLine>,
+}
+
+#[derive(Debug, Clone)]
+pub struct VrrpVipLine {
+    pub vlan_id: i32,
+    pub virtual_ip: String,
+    /// VRRP group identifier — same VRID across the pair of switches
+    /// that announce the VIP. Defaults to 1; tenants can override
+    /// per-VIP by tagging the `net.ip_address` row with
+    /// `{"vrid": N}`.
+    pub vrid: i32,
 }
 
 #[derive(Debug, Clone)]
@@ -816,6 +833,36 @@ async fn fetch_context(
             .await?
     } else { None };
 
+    // VRRP VIPs for the VLANs this device has an SVI on. Filtering
+    // to "SVI VLANs on this device" prevents a core switch from
+    // announcing VRRP on every tenant VLAN just because the VIPs are
+    // seeded globally — a switch only cares about VLANs it L3-
+    // terminates. The subquery mirrors the SVI fetch below so a VLAN
+    // that shows up as an SVI here also shows up as a VRRP candidate.
+    let vrrp_rows: Vec<(i32, String, i32)> = sqlx::query_as(
+        r#"SELECT v.vlan_id, host(ip.address), COALESCE((ip.tags->>'vrid')::int, 1)
+             FROM net.ip_address ip
+             JOIN net.subnet s ON s.id = ip.subnet_id AND s.deleted_at IS NULL
+             JOIN net.vlan   v ON v.id = s.vlan_id     AND v.deleted_at IS NULL
+            WHERE ip.organization_id  = $1
+              AND ip.assigned_to_type = 'Vrrp'
+              AND ip.deleted_at       IS NULL
+              AND s.vlan_id IN (
+                  SELECT s2.vlan_id
+                    FROM net.ip_address dev_ip
+                    JOIN net.subnet s2 ON s2.id = dev_ip.subnet_id
+                     AND s2.deleted_at IS NULL
+                   WHERE dev_ip.organization_id  = $1
+                     AND dev_ip.assigned_to_id   = $2
+                     AND dev_ip.assigned_to_type = 'Device'
+                     AND dev_ip.deleted_at       IS NULL
+                     AND s2.vlan_id              IS NOT NULL)
+            ORDER BY v.vlan_id, ip.address"#)
+        .bind(org_id)
+        .bind(device_id)
+        .fetch_all(pool)
+        .await?;
+
     // MSTP priority — unique per (org, device) so one row or none.
     let mstp: Option<(i32,)> = sqlx::query_as(
         "SELECT priority
@@ -992,6 +1039,9 @@ async fn fetch_context(
             .collect(),
         port_qos_bindings: port_qos_rows.into_iter().map(|(n,)| n).collect(),
         default_gateway: default_gateway.map(|(g,)| g),
+        vrrp_vips: vrrp_rows.into_iter()
+            .map(|(vid, ip, vrid)| VrrpVipLine { vlan_id: vid, virtual_ip: ip, vrid })
+            .collect(),
     })
 }
 
@@ -1024,6 +1074,7 @@ impl Renderer for PicosRenderer {
         render_bgp_scalar_section(&mut out, ctx);
         render_mstp_section(&mut out, ctx);
         render_mlag_section(&mut out, ctx);
+        render_vrrp_section(&mut out, ctx);
         render_ports_section(&mut out, ctx);
         render_static_route_section(&mut out, ctx);
         render_lldp_section(&mut out, ctx);
@@ -1173,6 +1224,21 @@ fn render_port_qos_bindings_section(out: &mut String, ctx: &DeviceContext) {
         out.push_str(&format!(
             "set class-of-service interface {} scheduler-profile \"qos-flex-profile\"\n",
             iface));
+    }
+    out.push('\n');
+}
+
+/// VRRP section — one line per VLAN × VIP. VRID defaults to 1; if
+/// the tenant tagged the VRRP `net.ip_address` row with
+/// `{"vrid": N}`, that value flows through instead. Position is
+/// legacy step 12 — after MLAG (which the pair of redundant
+/// switches it sits on also runs) and before the ports section.
+fn render_vrrp_section(out: &mut String, ctx: &DeviceContext) {
+    if ctx.vrrp_vips.is_empty() { return; }
+    for v in &ctx.vrrp_vips {
+        out.push_str(&format!(
+            "set protocols vrrp interface vlan-{} vrid {} ip {}\n",
+            v.vlan_id, v.vrid, v.virtual_ip));
     }
     out.push('\n');
 }
@@ -1459,6 +1525,7 @@ mod tests {
             port_l2_rules: vec![],
             port_qos_bindings: vec![],
             default_gateway: None,
+            vrrp_vips: vec![],
         }
     }
 
@@ -1482,6 +1549,7 @@ mod tests {
             port_l2_rules: vec![],
             port_qos_bindings: vec![],
             default_gateway: None,
+            vrrp_vips: vec![],
         }
     }
 
@@ -1514,6 +1582,7 @@ mod tests {
             port_l2_rules: vec![],
             port_qos_bindings: vec![],
             default_gateway: None,
+            vrrp_vips: vec![],
         }
     }
 
@@ -1533,6 +1602,7 @@ mod tests {
             port_l2_rules: vec![],
             port_qos_bindings: vec![],
             default_gateway: None,
+            vrrp_vips: vec![],
         }
     }
 
@@ -1552,6 +1622,7 @@ mod tests {
             port_l2_rules: vec![],
             port_qos_bindings: vec![],
             default_gateway: None,
+            vrrp_vips: vec![],
         }
     }
 
@@ -1574,6 +1645,7 @@ mod tests {
             port_l2_rules: vec![],
             port_qos_bindings: vec![],
             default_gateway: None,
+            vrrp_vips: vec![],
         }
     }
 
@@ -1593,6 +1665,7 @@ mod tests {
             port_l2_rules: rules,
             port_qos_bindings: vec![],
             default_gateway: None,
+            vrrp_vips: vec![],
         }
     }
 
@@ -1615,6 +1688,7 @@ mod tests {
             port_l2_rules: l2s,
             port_qos_bindings: vec![],
             default_gateway: None,
+            vrrp_vips: vec![],
         }
     }
 
@@ -1634,6 +1708,7 @@ mod tests {
             port_l2_rules: vec![],
             port_qos_bindings: ports.into_iter().map(String::from).collect(),
             default_gateway: None,
+            vrrp_vips: vec![],
         }
     }
 
@@ -1653,6 +1728,27 @@ mod tests {
             port_l2_rules: vec![],
             port_qos_bindings: vec![],
             default_gateway: gateway.map(String::from),
+            vrrp_vips: vec![],
+        }
+    }
+
+    fn fixture_with_vrrp(vips: Vec<VrrpVipLine>) -> DeviceContext {
+        DeviceContext {
+            device_id: Uuid::nil(),
+            hostname: "CORE02".into(),
+            loopback: None,
+            management_ip: None,
+            vlans: vec![],
+            bgp: None,
+            bgp_neighbors: vec![],
+            mstp_priority: None,
+            mlag: None,
+            l3_svis: vec![],
+            port_descriptions: vec![],
+            port_l2_rules: vec![],
+            port_qos_bindings: vec![],
+            default_gateway: None,
+            vrrp_vips: vips,
         }
     }
 
@@ -1675,6 +1771,7 @@ mod tests {
             port_l2_rules: vec![],
             port_qos_bindings: vec![],
             default_gateway: None,
+            vrrp_vips: vec![],
         }
     }
 
@@ -2174,6 +2271,74 @@ mod tests {
         let loopback   = out.find("loopback lo0").expect("loopback present");
         assert!(ip_routing < qos_first && qos_first < loopback,
             "QoS must sit between ip routing and loopback:\n{out}");
+    }
+
+    #[test]
+    fn picos_emits_vrrp_line_per_vip_with_default_vrid_1() {
+        let ctx = fixture_with_vrrp(vec![
+            VrrpVipLine { vlan_id: 101, virtual_ip: "10.11.101.254".into(), vrid: 1 },
+            VrrpVipLine { vlan_id: 120, virtual_ip: "10.11.120.254".into(), vrid: 1 },
+        ]);
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains("set protocols vrrp interface vlan-101 vrid 1 ip 10.11.101.254"),
+            "vlan-101 VRRP line missing:\n{out}");
+        assert!(out.contains("set protocols vrrp interface vlan-120 vrid 1 ip 10.11.120.254"),
+            "vlan-120 VRRP line missing:\n{out}");
+    }
+
+    #[test]
+    fn picos_vrrp_respects_custom_vrid_from_context() {
+        // Tenant tagged a VRRP ip_address row with {"vrid": 12} — the
+        // fetch layer flows that through to the context; the renderer
+        // emits it verbatim.
+        let ctx = fixture_with_vrrp(vec![
+            VrrpVipLine { vlan_id: 101, virtual_ip: "10.12.101.254".into(), vrid: 12 },
+        ]);
+        let out = PicosRenderer::render(&ctx);
+        assert!(out.contains("set protocols vrrp interface vlan-101 vrid 12 ip 10.12.101.254"),
+            "custom vrid should pass through:\n{out}");
+    }
+
+    #[test]
+    fn picos_omits_vrrp_section_when_no_vips_seeded() {
+        let out = PicosRenderer::render(&fixture_with_vrrp(vec![]));
+        assert!(!out.contains("protocols vrrp"),
+            "no VRRP VIPs → no VRRP lines:\n{out}");
+    }
+
+    #[test]
+    fn picos_vrrp_lands_after_mlag_and_before_ports() {
+        // Legacy step 12 — after MLAG (peer-link already set up) and
+        // before the ports section (which is step 7/8 in legacy but
+        // has moved later in our pipeline to keep per-port lines
+        // clustered together).
+        let ctx = fixture_with_vrrp(vec![
+            VrrpVipLine { vlan_id: 101, virtual_ip: "10.11.101.254".into(), vrid: 1 },
+        ]);
+        let out = PicosRenderer::render(&ctx);
+        // Use class-of-service forwarding-class (first QoS preset
+        // line) as an earlier anchor — VRRP should follow it.
+        let qos = out.find("class-of-service forwarding-class").expect("QoS preset present");
+        let vrrp = out.find("protocols vrrp interface").expect("VRRP present");
+        let lldp = out.find("protocols lldp enable").expect("LLDP present");
+        assert!(qos < vrrp, "VRRP must come AFTER QoS preset:\n{out}");
+        assert!(vrrp < lldp, "VRRP must come BEFORE LLDP:\n{out}");
+    }
+
+    #[test]
+    fn picos_vrrp_lines_emit_in_vlan_id_order() {
+        // Fetch query ORDER BYs v.vlan_id; renderer must preserve.
+        let ctx = fixture_with_vrrp(vec![
+            VrrpVipLine { vlan_id:  82, virtual_ip: "10.11.82.254".into(),  vrid: 1 },
+            VrrpVipLine { vlan_id: 101, virtual_ip: "10.11.101.254".into(), vrid: 1 },
+            VrrpVipLine { vlan_id: 120, virtual_ip: "10.11.120.254".into(), vrid: 1 },
+        ]);
+        let out = PicosRenderer::render(&ctx);
+        let p82  = out.find("vlan-82 vrid").expect("82 present");
+        let p101 = out.find("vlan-101 vrid").expect("101 present");
+        let p120 = out.find("vlan-120 vrid").expect("120 present");
+        assert!(p82 < p101 && p101 < p120,
+            "VRRP lines must stay in vlan_id order:\n{out}");
     }
 
     #[test]
