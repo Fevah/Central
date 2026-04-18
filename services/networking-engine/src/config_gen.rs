@@ -515,6 +515,7 @@ impl Renderer for PicosRenderer {
         let mut out = String::with_capacity(256 + ctx.vlans.len() * 80);
         render_header(&mut out, ctx);
         render_system_section(&mut out, ctx);
+        render_ip_routing_section(&mut out, ctx);
         render_loopback_section(&mut out, ctx);
         render_management_interface_section(&mut out, ctx);
         render_vlans_section(&mut out, ctx);
@@ -524,9 +525,10 @@ impl Renderer for PicosRenderer {
         render_mlag_section(&mut out, ctx);
         render_port_descriptions_section(&mut out, ctx);
         render_port_l2_rules_section(&mut out, ctx);
-        // TODO(follow-on): vlan members range on trunks, render_vrrp,
-        // render_dhcp_relay, render_static_routes, render_lldp,
-        // render_qos_preset.
+        render_lldp_section(&mut out, ctx);
+        // TODO(follow-on): render_vrrp (needs net.vrrp_*),
+        // render_dhcp_relay (needs DHCP-role server discovery),
+        // render_static_routes, render_qos_preset, render_voice_vlan.
         out
     }
 }
@@ -540,6 +542,25 @@ fn render_header(out: &mut String, ctx: &DeviceContext) {
 
 fn render_system_section(out: &mut String, ctx: &DeviceContext) {
     out.push_str(&format!("set system hostname \"{}\"\n", escape_picos(&ctx.hostname)));
+    out.push('\n');
+}
+
+/// IP routing enable — emitted unconditionally today. Every production
+/// PicOS switch in the Immunocore footprint needs it on. When a tenant
+/// ever wants to ship pure-L2 switches we'll gate this on a tenant
+/// toggle; until then the slice stays universal to keep parity with
+/// the legacy `ConfigBuilderService` step 2.
+fn render_ip_routing_section(out: &mut String, _ctx: &DeviceContext) {
+    out.push_str("set ip routing enable true\n");
+    out.push('\n');
+}
+
+/// LLDP enable — same universal-today, toggle-tomorrow stance as
+/// `render_ip_routing_section`. Legacy emits this as the last
+/// configurable section before the management-IP comment, so we
+/// match that position in the file.
+fn render_lldp_section(out: &mut String, _ctx: &DeviceContext) {
+    out.push_str("set protocols lldp enable true\n");
     out.push('\n');
 }
 
@@ -1280,6 +1301,48 @@ mod tests {
         );
         assert_eq!(out, "MEP-91-Core",
             "unparseable device_code should leave {{instance}} empty");
+    }
+
+    #[test]
+    fn picos_emits_ip_routing_enable_line() {
+        let out = PicosRenderer::render(&fixture("CORE02", vec![]));
+        assert!(out.contains("set ip routing enable true"),
+            "IP routing enable line missing:\n{out}");
+    }
+
+    #[test]
+    fn picos_emits_lldp_enable_line() {
+        let out = PicosRenderer::render(&fixture("CORE02", vec![]));
+        assert!(out.contains("set protocols lldp enable true"),
+            "LLDP enable line missing:\n{out}");
+    }
+
+    #[test]
+    fn picos_ip_routing_lands_before_vlans_and_lldp_lands_after_port_rules() {
+        // Matches legacy ConfigBuilderService section order: IP routing
+        // is step 2 (right after system), LLDP is step 15 (late). Any
+        // reorder would break diffs against prior generations.
+        let ctx = fixture_with_vlans_and_svis(
+            vec![VlanLine { vlan_id: 101, display_name: "IT".into(), description: None }],
+            vec![L3SviLine { vlan_id: 101, address: "10.11.101.2/24".into() }],
+        );
+        let out = PicosRenderer::render(&ctx);
+        let ip_routing = out.find("ip routing enable").expect("ip routing present");
+        let first_vlan = out.find("set vlans vlan-id").expect("vlan present");
+        let lldp       = out.find("protocols lldp enable").expect("lldp present");
+        assert!(ip_routing < first_vlan,
+            "ip routing must come before VLAN section:\n{out}");
+        assert!(first_vlan < lldp,
+            "LLDP must come after VLAN section (late in file):\n{out}");
+    }
+
+    #[test]
+    fn picos_emits_each_protocol_enable_line_exactly_once() {
+        let out = PicosRenderer::render(&fixture("CORE02", vec![]));
+        assert_eq!(out.matches("ip routing enable true").count(), 1,
+            "ip routing enable must not duplicate:\n{out}");
+        assert_eq!(out.matches("protocols lldp enable true").count(), 1,
+            "lldp enable must not duplicate:\n{out}");
     }
 
     #[test]
