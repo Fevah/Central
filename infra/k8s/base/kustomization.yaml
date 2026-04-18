@@ -25,6 +25,7 @@ resources:
   - db-migrations.yaml
   - db-backup.yaml
   - tenant-provisioner.yaml
+  - networking-engine.yaml
   - postgres-logical-subscriber.yaml
 
 # Generate ConfigMap with all migration files from db/migrations/
@@ -106,5 +107,21 @@ configMapGenerator:
       - ../../../db/migrations/083_module_catalog_reconcile.sql
       - ../../../db/migrations/084_net_schema_foundation.sql
       - ../../../db/migrations/085_net_hierarchy.sql
+      - ../../../db/migrations/086_net_pools.sql
+      - ../../../db/migrations/087_net_immunocore_import.sql
+      - ../../../db/migrations/088_net_devices.sql
+      - ../../../db/migrations/089_net_device_import.sql
+      - ../../../db/migrations/090_net_device_dual_write.sql
+      - ../../../db/migrations/091_net_links.sql
+      - ../../../db/migrations/092_net_link_import.sql
+      - ../../../db/migrations/093_net_device_naming.sql
+      - ../../../db/migrations/094_net_servers.sql
+      - ../../../db/migrations/095_net_server_import.sql
+      - ../../../db/migrations/096_net_server_dual_write.sql
+      - ../../../db/migrations/097_net_naming_overrides.sql
+      - ../../../db/migrations/098_net_audit_entry.sql
+      - ../../../db/migrations/099_net_governance.sql
+      - ../../../db/migrations/100_net_enforce_lock_state.sql
+      - ../../../db/migrations/101_net_validation_rules.sql
     options:
       disableNameSuffixHash: true

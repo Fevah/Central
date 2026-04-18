@@ -1,0 +1,55 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Central Tenant Provisioner — Rust service.
+# Mirrors the networking-engine build shape (dependency layer, release bin,
+# distroless-ish runtime). Extra runtime need: postgresql-client so
+# pg_dump / pg_restore are available for the dedicated-DB provisioning flow.
+# Build context is the repo root (podman build . -f services/tenant-provisioner/Containerfile).
+# ═══════════════════════════════════════════════════════════════════════════
+
+FROM rust:1.83-slim-bookworm AS build
+WORKDIR /src
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+        pkg-config libssl-dev ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+# Dependency prefetch — stamp a stub main and build to warm the cargo cache.
+COPY services/tenant-provisioner/Cargo.toml services/tenant-provisioner/Cargo.lock ./
+RUN mkdir -p src \
+ && echo 'fn main() { println!("prefetch"); }' > src/main.rs \
+ && cargo build --release \
+ && rm -rf src target/release/tenant-provisioner target/release/deps/tenant_provisioner*
+
+COPY services/tenant-provisioner/src ./src
+RUN cargo build --release
+
+# ─── Runtime stage ────────────────────────────────────────────────────────
+FROM debian:bookworm-slim AS runtime
+WORKDIR /app
+
+# postgresql-client gives us pg_dump + pg_restore. Version 15 ships in
+# bookworm; centraldb is 18 but the 15 client speaks 18's wire protocol
+# fine. If we ever need 18-specific pg_dump flags this switches to the
+# PGDG apt repo — one more RUN block, not worth it today.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+        ca-certificates libssl3 curl postgresql-client \
+ && rm -rf /var/lib/apt/lists/* \
+ && groupadd --system --gid 1000 provisioner \
+ && useradd  --system --uid 1000 --gid 1000 --home /app --shell /sbin/nologin provisioner
+
+COPY --from=build /src/target/release/tenant-provisioner /usr/local/bin/tenant-provisioner
+RUN chmod +x /usr/local/bin/tenant-provisioner
+
+USER provisioner:provisioner
+
+ENV BIND_ADDR=0.0.0.0:8090 \
+    RUST_LOG=tenant_provisioner=info,sqlx=warn
+
+EXPOSE 8090
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=10s \
+    CMD curl -sf http://localhost:8090/health || exit 1
+
+ENTRYPOINT ["/usr/local/bin/tenant-provisioner"]

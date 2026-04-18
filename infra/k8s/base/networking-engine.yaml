@@ -1,0 +1,134 @@
+---
+# ═══════════════════════════════════════════════════════════════════════
+# Networking Engine (Rust)
+# ═══════════════════════════════════════════════════════════════════════
+# Allocation (ASN / VLAN / MLAG / IP / subnet), 4-NIC server fan-out,
+# naming-template resolver, Change Set governance, hash-chained audit,
+# validation rule engine. Phase 6.5+ port of libs/persistence/Net.
+#
+# Unlike tenant-provisioner this is a horizontally-scalable stateless
+# service — no K8s API access needed, no singleton constraint. All
+# serialisation happens in Postgres via pg_advisory_xact_lock, so
+# multiple replicas behind a ClusterIP Service are safe.
+# ═══════════════════════════════════════════════════════════════════════
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: networking-engine
+  namespace: central
+  labels:
+    app: networking-engine
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
+  selector:
+    matchLabels:
+      app: networking-engine
+  template:
+    metadata:
+      labels:
+        app: networking-engine
+    spec:
+      # Zero-downtime rollout: replicas on different nodes where possible.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: networking-engine
+      containers:
+        - name: engine
+          image: 192.168.56.10:30500/central/networking-engine:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8091
+              name: http
+          env:
+            # Central tenant DB — shared with the API service. The engine
+            # works in whatever net.* schema the DSN points at, so a
+            # dedicated-tenant sidecar deployment can set this to the
+            # per-tenant DB and Just Work.
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: networking-engine-secrets
+                  key: DATABASE_URL
+            - name: BIND_ADDR
+              value: "0.0.0.0:8091"
+            - name: RUST_LOG
+              value: "networking_engine=info,sqlx=warn"
+          livenessProbe:
+            httpGet: { path: /health, port: 8091 }
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: { path: /health, port: 8091 }
+            initialDelaySeconds: 3
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            # Sized for Immunocore-scale tenants — ~100 devices, ~3k
+            # links, sub-second validation runs. Adjust upward for the
+            # first tenant that needs it.
+            requests: { cpu: 100m, memory: 128Mi }
+            limits:   { cpu: 1000m, memory: 512Mi }
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: networking-engine
+  namespace: central
+  labels:
+    app: networking-engine
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8091
+      targetPort: 8091
+      name: http
+  selector:
+    app: networking-engine
+
+---
+# Placeholder — real values come from a SealedSecret in production.
+# For local VM K8s, the default central/central creds are fine.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: networking-engine-secrets
+  namespace: central
+type: Opaque
+stringData:
+  DATABASE_URL: "postgres://central:central@postgres:5432/central"
+
+---
+# Minimum-disruption budget — one replica must always be up during
+# voluntary disruptions (node drain, eviction). With replicas: 2 +
+# maxUnavailable: 1 below, a single-replica state is the expected
+# mid-rollout condition.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: networking-engine
+  namespace: central
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: networking-engine

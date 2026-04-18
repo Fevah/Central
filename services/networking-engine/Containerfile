@@ -1,0 +1,60 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Central Networking Engine — Rust service (Phase 6.5+ port of libs/persistence/Net).
+# Two-stage build: rust:1.83-slim for compile, debian:bookworm-slim for runtime.
+# Build context is the repo root (podman build . -f services/networking-engine/Containerfile).
+# ═══════════════════════════════════════════════════════════════════════════
+
+FROM rust:1.83-slim-bookworm AS build
+WORKDIR /src
+
+# Build-time system deps. openssl + ca-certificates are needed because sqlx
+# pulls openssl-sys through native-tls; pkg-config wires the headers.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+        pkg-config libssl-dev ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+# Dependency layer — copy only Cargo.toml + Cargo.lock first so that
+# `cargo fetch` is cached across source-only rebuilds. Without this,
+# every src/ edit forces a full dependency recompile (~5 min cold).
+COPY services/networking-engine/Cargo.toml services/networking-engine/Cargo.lock ./
+RUN mkdir -p src \
+ && echo 'fn main() { println!("prefetch"); }' > src/main.rs \
+ && cargo build --release \
+ && rm -rf src target/release/networking-engine target/release/deps/networking_engine*
+
+# Now bring in the real source + rebuild.
+COPY services/networking-engine/src ./src
+RUN cargo build --release
+
+# ─── Runtime stage ────────────────────────────────────────────────────────
+FROM debian:bookworm-slim AS runtime
+WORKDIR /app
+
+# Runtime deps: openssl for TLS (sqlx -> native-tls), ca-certificates for
+# trust root, curl for the HEALTHCHECK.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+        ca-certificates libssl3 curl \
+ && rm -rf /var/lib/apt/lists/* \
+ && groupadd --system --gid 1000 engine \
+ && useradd  --system --uid 1000 --gid 1000 --home /app --shell /sbin/nologin engine
+
+COPY --from=build /src/target/release/networking-engine /usr/local/bin/networking-engine
+RUN chmod +x /usr/local/bin/networking-engine
+
+USER engine:engine
+
+# Environment variables recognised by main.rs:
+#   DATABASE_URL   — required. Central tenant DB connection.
+#   BIND_ADDR      — optional, default 0.0.0.0:8091.
+#   RUST_LOG       — optional, default info (see tracing_subscriber).
+ENV BIND_ADDR=0.0.0.0:8091 \
+    RUST_LOG=networking_engine=info,sqlx=warn
+
+EXPOSE 8091
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=10s \
+    CMD curl -sf http://localhost:8091/health || exit 1
+
+ENTRYPOINT ["/usr/local/bin/networking-engine"]
