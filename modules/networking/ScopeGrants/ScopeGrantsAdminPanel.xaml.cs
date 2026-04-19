@@ -172,7 +172,8 @@ public partial class ScopeGrantsAdminPanel : UserControl
 
     // ─── New grant ─────────────────────────────────────────────────────
 
-    private async Task NewGrantAsync(string? prefillEntityType, Guid? prefillScopeEntityId)
+    private async Task NewGrantAsync(string? prefillEntityType, Guid? prefillScopeEntityId,
+        ScopeGrantDto? cloneFrom = null)
     {
         if (!RequireContext()) return;
 
@@ -180,7 +181,12 @@ public partial class ScopeGrantsAdminPanel : UserControl
         {
             Owner = Window.GetWindow(this),
         };
-        if (prefillEntityType is not null && prefillScopeEntityId is Guid id)
+        if (cloneFrom is not null)
+        {
+            dlg.PrefillFromExistingGrant(cloneFrom.Action, cloneFrom.EntityType,
+                cloneFrom.ScopeType, cloneFrom.ScopeEntityId, cloneFrom.Notes);
+        }
+        else if (prefillEntityType is not null && prefillScopeEntityId is Guid id)
         {
             dlg.PrefillForEntity(prefillEntityType, id);
         }
@@ -310,6 +316,23 @@ public partial class ScopeGrantsAdminPanel : UserControl
         {
             StatusLabel.Text = $"Copy failed: {ex.Message}";
         }
+    }
+
+    /// <summary>Clone the selected grant for another user. Opens the
+    /// New Grant dialog pre-filled with everything except user_id so
+    /// the operator's only typing step is the destination user.
+    /// Creates a fresh grant via the same CreateScopeGrant endpoint;
+    /// the clone has no relationship to the source other than the
+    /// copied tuple values (no "cloned_from" pointer on the grant
+    /// table — each row stands alone).</summary>
+    private void OnContextCloneGrant(object sender, RoutedEventArgs e)
+    {
+        if (GrantsGrid.CurrentItem is not ScopeGrantDto row)
+        {
+            StatusLabel.Text = "Select a grant row first.";
+            return;
+        }
+        _ = NewGrantAsync(null, null, cloneFrom: row);
     }
 
     // ─── Helpers ───────────────────────────────────────────────────────

@@ -79,6 +79,9 @@
                     <MenuItem Header="Show audit history"
                               Click="OnContextShowAudit"
                               ToolTip="Open the Audit panel filtered to this grant's id — shows create / delete / any future edits"/>
+                    <MenuItem Header="Clone grant for another user…"
+                              Click="OnContextCloneGrant"
+                              ToolTip="Open New Grant pre-filled with this row's action / entity type / scope / notes — only user_id changes"/>
                     <Separator/>
                     <MenuItem Header="Copy grant id" Click="OnContextCopyId"/>
                 </ContextMenu>

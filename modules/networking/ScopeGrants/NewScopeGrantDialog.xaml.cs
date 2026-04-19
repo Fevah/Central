@@ -38,6 +38,22 @@ public partial class NewScopeGrantDialog : Window
         UserIdBox.Focus();
     }
 
+    /// <summary>Pre-fill every field from an existing grant except
+    /// user_id — used by the "Clone grant for another user…" row
+    /// context menu when operators need to issue the same scope to
+    /// multiple users. user_id stays empty + focused because that's
+    /// the one field the clone changes.</summary>
+    public void PrefillFromExistingGrant(string action, string entityType,
+        string scopeType, Guid? scopeEntityId, string? notes)
+    {
+        if (!string.IsNullOrWhiteSpace(action))      ActionCombo.EditValue     = action;
+        if (!string.IsNullOrWhiteSpace(entityType))  EntityTypeCombo.EditValue = entityType;
+        if (!string.IsNullOrWhiteSpace(scopeType))   ScopeTypeCombo.EditValue  = scopeType;
+        if (scopeEntityId is Guid g)                 ScopeEntityIdBox.Text     = g.ToString();
+        if (!string.IsNullOrWhiteSpace(notes))       NotesBox.Text             = notes;
+        UserIdBox.Focus();
+    }
+
     /// <summary>Parsed user_id. Populated only after the dialog OKs.</summary>
     public int GrantUserId { get; private set; }
     public string GrantAction     { get; private set; } = "";
