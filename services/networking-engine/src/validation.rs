@@ -730,6 +730,44 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "ip_address.assigned_to_id_when_typed",
+        name: "Typed IP assignment must carry an assigned_to_id",
+        description: "An IP address row with a non-null assigned_to_type \
+                      (Device / Server / ServerNic / Vrrp) should also \
+                      have assigned_to_id filled in — the type without \
+                      the id is an orphan and breaks the 'who owns this \
+                      IP?' drill in audit. Gateway / Broadcast / \
+                      Reserved are exempt (they're policy roles, not \
+                      pointers to an entity row).",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "rack.position_positive",
+        name: "Rack position should be a positive integer",
+        description: "net.rack.position is nullable (not every tenant \
+                      tracks layout), but a stored 0 or negative value \
+                      is almost always a stale default. Advisory — a \
+                      few deployments use 0 legitimately as a reserved \
+                      slot marker.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "building_profile.role_counts_non_empty",
+        name: "Building profile should define at least one role count",
+        description: "A net.building_profile with zero matching \
+                      building_profile_role_count rows renders an \
+                      empty template when the operator tries to \
+                      expand it into actual devices. Catches profiles \
+                      that were created but never populated.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -977,6 +1015,9 @@ async fn dispatch(
         "vlan.scope_entity_resolves"              => run_vlan_scope_entity_resolves(pool, org_id, severity, out).await,
         "dhcp_relay_target.vlan_active"           => run_dhcp_relay_vlan_active(pool, org_id, severity, out).await,
         "subnet.vlan_link_is_active"              => run_subnet_vlan_link_active(pool, org_id, severity, out).await,
+        "ip_address.assigned_to_id_when_typed"    => run_ip_assigned_to_id_when_typed(pool, org_id, severity, out).await,
+        "rack.position_positive"                  => run_rack_position_positive(pool, org_id, severity, out).await,
+        "building_profile.role_counts_non_empty"  => run_building_profile_role_counts(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -2482,6 +2523,84 @@ async fn run_dhcp_relay_vlan_active(
     Ok(())
 }
 
+/// `ip_address.assigned_to_id_when_typed` — non-exempt typed
+/// assignments must carry an assigned_to_id. Gateway / Broadcast /
+/// Reserved are policy markers, not pointers, so they're skipped
+/// in the filter. (NULL type = unassigned, also skipped.)
+async fn run_ip_assigned_to_id_when_typed(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT id, address::text, COALESCE(assigned_to_type, '')
+           FROM net.ip_address
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND assigned_to_type IS NOT NULL
+            AND assigned_to_type NOT IN ('Gateway','Broadcast','Reserved')
+            AND assigned_to_id IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, addr, typ) in rows {
+        out.push(Violation {
+            rule_code: "ip_address.assigned_to_id_when_typed".into(),
+            severity, entity_type: "IpAddress".into(), entity_id: Some(id),
+            message: format!(
+                "IP {addr} has assigned_to_type='{typ}' but no assigned_to_id — orphaned assignment."),
+        });
+    }
+    Ok(())
+}
+
+/// `rack.position_positive` — net.rack.position stored as 0 or
+/// negative is almost always a stale default. NULL is allowed (not
+/// every tenant tracks layout).
+async fn run_rack_position_positive(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i32)> = sqlx::query_as(
+        "SELECT id, rack_code, position
+           FROM net.rack
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND position IS NOT NULL
+            AND position <= 0")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, pos) in rows {
+        out.push(Violation {
+            rule_code: "rack.position_positive".into(),
+            severity, entity_type: "Rack".into(), entity_id: Some(id),
+            message: format!(
+                "Rack '{code}' has position={pos} — expected a positive integer or NULL."),
+        });
+    }
+    Ok(())
+}
+
+/// `building_profile.role_counts_non_empty` — a profile with zero
+/// role-count rows expands to an empty template. Finds every
+/// profile whose COUNT(*) in building_profile_role_count is 0.
+async fn run_building_profile_role_counts(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT bp.id, bp.profile_code
+           FROM net.building_profile bp
+          WHERE bp.organization_id = $1
+            AND bp.deleted_at IS NULL
+            AND NOT EXISTS (
+                  SELECT 1 FROM net.building_profile_role_count rc
+                   WHERE rc.building_profile_id = bp.id)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "building_profile.role_counts_non_empty".into(),
+            severity, entity_type: "BuildingProfile".into(), entity_id: Some(id),
+            message: format!(
+                "Building profile '{code}' has no role-count rows — template expands to nothing."),
+        });
+    }
+    Ok(())
+}
+
 /// `subnet.vlan_link_is_active` — subnets with non-null vlan_id
 /// pointing at a deleted / Decommissioned VLAN. Warning not error —
 /// IP ranges often outlive VLAN tags, but an operator should still
@@ -2645,6 +2764,9 @@ mod tests {
             "vlan.scope_entity_resolves",
             "dhcp_relay_target.vlan_active",
             "subnet.vlan_link_is_active",
+            "ip_address.assigned_to_id_when_typed",
+            "rack.position_positive",
+            "building_profile.role_counts_non_empty",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
