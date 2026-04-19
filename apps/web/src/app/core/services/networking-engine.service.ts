@@ -1414,6 +1414,19 @@ export class NetworkingEngineService {
       { params });
   }
 
+  /// Soft-delete an item from a Draft change-set. Parent-status
+  /// guard in the engine rejects non-Draft deletes; the UI should
+  /// surface the 400 message rather than guessing locally.
+  deleteChangeSetItem(
+    id: string,
+    itemId: string,
+    organizationId: string,
+  ): Observable<void> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.delete<void>(
+      `${this.base}/api/net/change-sets/${id}/items/${itemId}`, { params });
+  }
+
   /// Fetch one change-set with its full item list.
   getChangeSet(id: string, organizationId: string): Observable<ChangeSetWithItems> {
     const params = new HttpParams().set('organizationId', organizationId);

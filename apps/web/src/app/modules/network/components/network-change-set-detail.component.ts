@@ -140,6 +140,17 @@ import { environment } from '../../../../environments/environment';
                   format="yyyy-MM-dd HH:mm:ss" />
       <dxi-column dataField="applyError"     caption="Apply error"     cellTemplate="errorTemplate" />
       <dxi-column dataField="notes"          caption="Notes" />
+      <dxi-column caption="" [allowSorting]="false" [allowFiltering]="false"
+                  [allowHeaderFiltering]="false" [allowGrouping]="false"
+                  [allowSearch]="false" width="90"
+                  cellTemplate="removeTemplate" />
+
+      <div *dxTemplate="let d of 'removeTemplate'">
+        <dx-button *ngIf="set?.status === 'Draft'"
+                   text="Remove" icon="trash" stylingMode="text" type="danger"
+                   [disabled]="busy"
+                   (onClick)="removeItem(d.data)" />
+      </div>
 
       <div *dxTemplate="let d of 'errorTemplate'">
         <span *ngIf="d.value" class="apply-error">{{ d.value }}</span>
@@ -521,6 +532,42 @@ export class NetworkChangeSetDetailComponent implements OnInit {
         } else {
           this.itemError = err?.error?.detail ?? err?.message ?? 'Add failed.';
         }
+      },
+    });
+  }
+
+  /// Soft-delete a pending item from a Draft Set. Optimistic UI —
+  /// strips from the local items list + decrements itemCount before
+  /// the engine confirms; a failure reloads the full detail so
+  /// state stays truthful. Disabled by the template when the Set
+  /// isn't Draft (engine rejects non-Draft deletes too, so this is
+  /// just belt-and-braces).
+  removeItem(item: ChangeSetItem): void {
+    if (!this.set || this.set.status !== 'Draft') return;
+    if (!confirm(`Remove item #${item.itemOrder} (${item.action} ${item.entityType})?`)) return;
+
+    this.busy = true;
+    this.status = 'Removing…';
+    const setId = this.set.id;
+    this.engine.deleteChangeSetItem(setId, item.id, environment.defaultTenantId).subscribe({
+      next: () => {
+        this.busy = false;
+        this.items = this.items.filter(i => i.id !== item.id);
+        if (this.set) this.set = { ...this.set, itemCount: Math.max(0, this.set.itemCount - 1) };
+        this.status = 'Item removed.';
+      },
+      error: (err) => {
+        this.busy = false;
+        const status = err?.status as number | undefined;
+        if (status === 403) {
+          this.status = 'Forbidden — your user lacks write:ChangeSet.';
+        } else if (status === 400 || status === 409) {
+          this.status = `Illegal: ${err?.error?.detail ?? 'item not in Draft Set'}.`;
+        } else {
+          this.status = `Remove failed: ${err?.error?.detail ?? err?.message ?? err}`;
+        }
+        // Reload to resync in case the delete partially landed.
+        this.ngOnInit();
       },
     });
   }

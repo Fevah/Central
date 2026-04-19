@@ -509,6 +509,76 @@ impl ChangeSetRepo {
         row.into_dto()
     }
 
+    /// Soft-delete an item from a Draft Set. Same parent-status
+    /// guard as add_item — items can only be mutated while the Set
+    /// is Draft. Item_order rows are left as-is (sparse); the
+    /// list query filters on deleted_at so the UI sees a dense
+    /// post-delete view.
+    pub async fn delete_item(
+        &self,
+        set_id: Uuid,
+        item_id: Uuid,
+        org_id: Uuid,
+        user_id: Option<i32>,
+    ) -> Result<(), EngineError> {
+        let mut tx = self.pool.begin().await?;
+
+        // Lock parent Set + verify Draft, same precondition as add.
+        let parent: Option<(String, Uuid)> = sqlx::query_as(
+            "SELECT status::text, correlation_id
+               FROM net.change_set
+              WHERE id = $1 AND organization_id = $2 AND deleted_at IS NULL
+              FOR UPDATE")
+            .bind(set_id)
+            .bind(org_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+        let (status_str, correlation_id) = parent
+            .ok_or_else(|| EngineError::container_not_found("change_set", set_id))?;
+        let status = ChangeSetStatus::from_db(&status_str)?;
+        if status != ChangeSetStatus::Draft {
+            return Err(EngineError::bad_request(format!(
+                "Cannot delete items from a Change Set in status '{}'. \
+                 Items are editable only in Draft.", status.as_str())));
+        }
+
+        // Soft-delete the item. Matched-row count tells us whether it
+        // existed + belonged to this Set.
+        let rows: (Option<i32>, Option<String>) = sqlx::query_as(
+            "UPDATE net.change_set_item
+                SET deleted_at = now()
+              WHERE id = $1 AND change_set_id = $2 AND organization_id = $3
+                AND deleted_at IS NULL
+              RETURNING item_order, entity_type")
+            .bind(item_id)
+            .bind(set_id)
+            .bind(org_id)
+            .fetch_optional(&mut *tx)
+            .await?
+            .ok_or_else(|| EngineError::container_not_found("change_set_item", item_id))?;
+        let (item_order, entity_type) = rows;
+
+        audit::append_tx(&mut tx, &AuditEvent {
+            organization_id: org_id,
+            source_service: "networking-engine",
+            entity_type: "ChangeSetItem",
+            entity_id: Some(item_id),
+            action: "ItemRemoved",
+            actor_user_id: user_id,
+            actor_display: None,
+            client_ip: None,
+            correlation_id: Some(correlation_id),
+            details: serde_json::json!({
+                "change_set_id": set_id,
+                "item_order": item_order,
+                "target_entity_type": entity_type,
+            }),
+        }).await?;
+
+        tx.commit().await?;
+        Ok(())
+    }
+
     /// Apply an Approved Set — execute every item in item_order, stamping
     /// per-item `applied_at` + audit entries (correlation_id = Set's
     /// correlation_id). On all-success, Set transitions Approved → Applied.

@@ -99,6 +99,8 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/change-sets/:id", get(get_change_set))
         .route("/api/net/change-sets/by-correlation/:correlation_id", get(get_change_set_by_correlation))
         .route("/api/net/change-sets/:id/items", post(add_change_set_item))
+        .route("/api/net/change-sets/:id/items/:item_id",
+               axum::routing::delete(delete_change_set_item))
         .route("/api/net/change-sets/:id/submit", post(submit_change_set))
         .route("/api/net/change-sets/:id/decisions", post(record_decision).get(list_decisions))
         .route("/api/net/change-sets/:id/cancel", post(cancel_change_set))
@@ -1706,6 +1708,20 @@ async fn add_change_set_item(
     let user_id = header_user_id(&headers);
     let out = repo.add_item(id, q.organization_id, &body, user_id).await?;
     Ok((StatusCode::CREATED, Json(out)))
+}
+
+async fn delete_change_set_item(
+    State(s): State<AppState>,
+    Path((id, item_id)): Path<(Uuid, Uuid)>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, EngineError> {
+    // Soft-delete a pending item from a Draft Set. Parent-status
+    // guard lives in the repo — Draft-only is enforced there.
+    let repo = ChangeSetRepo::new(s.pool);
+    let user_id = header_user_id(&headers);
+    repo.delete_item(id, item_id, q.organization_id, user_id).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 async fn submit_change_set(
