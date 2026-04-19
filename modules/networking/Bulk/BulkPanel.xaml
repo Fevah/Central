@@ -36,6 +36,7 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
             <TextBlock Grid.Column="0" Text="Entity:" VerticalAlignment="Center"
@@ -53,19 +54,24 @@
                       IsChecked="True" Foreground="#D0D0D0"
                       ToolTip="When ticked, the engine validates without writing. Apply runs with this OFF."/>
 
-            <Button Grid.Column="6" x:Name="ExportButton" Content="Export…"
-                    Width="90" Margin="8,0,4,0" Click="OnExport"
-                    ToolTip="Download the current entity's rows as a CSV file"/>
-            <Button Grid.Column="7" x:Name="OpenButton" Content="Open file…"
+            <dxe:ComboBoxEdit Grid.Column="6" x:Name="FormatCombo"
+                              IsTextEditable="False" ShowSizeGrip="False"
+                              Width="90" Margin="8,0,4,0"
+                              ToolTip="CSV uses the in-panel editor; XLSX rounds-trips through the file dialog directly (editor is bypassed for XLSX apply)"/>
+
+            <Button Grid.Column="7" x:Name="ExportButton" Content="Export…"
+                    Width="90" Margin="0,0,4,0" Click="OnExport"
+                    ToolTip="Download the current entity's rows — CSV opens in the editor + saves to file; XLSX saves bytes directly to file"/>
+            <Button Grid.Column="8" x:Name="OpenButton" Content="Open file…"
                     Width="90" Margin="0,0,4,0" Click="OnOpenFile"
-                    ToolTip="Load a CSV from disk into the editor below"/>
-            <Button Grid.Column="8" x:Name="ValidateButton" Content="Validate"
+                    ToolTip="CSV: load into editor. XLSX: pick a file to import directly (bypasses the editor since it's binary)"/>
+            <Button Grid.Column="9" x:Name="ValidateButton" Content="Validate"
                     Width="90" Margin="0,0,4,0" Click="OnValidate"
-                    ToolTip="Run the importer in dry-run regardless of the checkbox"/>
-            <Button Grid.Column="9" x:Name="ApplyButton" Content="Apply"
+                    ToolTip="Run the importer in dry-run regardless of the checkbox (CSV only; XLSX import runs immediately from file)"/>
+            <Button Grid.Column="10" x:Name="ApplyButton" Content="Apply"
                     Width="90" Margin="0,0,4,0" Click="OnApply"
                     ToolTip="Run the importer for real (DB writes); confirms first when dry-run is OFF"/>
-            <Button Grid.Column="10" x:Name="ClearButton" Content="Clear"
+            <Button Grid.Column="11" x:Name="ClearButton" Content="Clear"
                     Width="80" Click="OnClear"/>
         </Grid>
 

@@ -50,6 +50,12 @@ public partial class BulkPanel : UserControl
     /// but kept lowercase here for clarity.</summary>
     private static readonly string[] ModeOptions = new[] { "create", "upsert" };
 
+    /// <summary>Transport format options. CSV keeps the in-panel
+    /// editor as the source of truth (paste / edit / type); XLSX
+    /// rounds-trips through the file picker because bytes aren't
+    /// operator-editable in a text box.</summary>
+    private static readonly string[] FormatOptions = new[] { "CSV", "XLSX" };
+
     public BulkPanel()
     {
         InitializeComponent();
@@ -57,11 +63,15 @@ public partial class BulkPanel : UserControl
         EntityCombo.SelectedIndex = 0;
         ModeCombo.ItemsSource = ModeOptions;
         ModeCombo.SelectedIndex = 0;
+        FormatCombo.ItemsSource = FormatOptions;
+        FormatCombo.SelectedIndex = 0;
         StatusLabel.Text = "Pick an entity and click Export to download, or paste/load a CSV and Validate.";
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         PanelMessageBus.Subscribe<NavigateToPanelMessage>(OnNavigate);
     }
+
+    private bool IsXlsxMode => (FormatCombo.SelectedItem as string) == "XLSX";
 
     public void SetContext(string baseUrl, Guid tenantId, int? actorUserId = null)
     {
@@ -95,22 +105,52 @@ public partial class BulkPanel : UserControl
 
     private void OnOpenFile(object sender, RoutedEventArgs e)
     {
+        // Filter adapts to the selected format. CSV loads into the
+        // editor (operator can edit before Validate/Apply). XLSX is
+        // binary — load bytes into a pending buffer and hint the
+        // operator to Validate/Apply (which will bypass the editor
+        // for XLSX and send the bytes directly).
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
-            Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*",
-            Title = "Load CSV body",
+            Filter = IsXlsxMode
+                ? "XLSX files (*.xlsx)|*.xlsx"
+                : "CSV files (*.csv)|*.csv|All files (*.*)|*.*",
+            Title = IsXlsxMode ? "Load XLSX file" : "Load CSV body",
         };
         if (dlg.ShowDialog() != true) return;
         try
         {
-            CsvBox.Text = File.ReadAllText(dlg.FileName);
-            StatusLabel.Text = $"Loaded {Path.GetFileName(dlg.FileName)} · {CsvBox.Text.Length:N0} chars";
+            if (IsXlsxMode)
+            {
+                _pendingXlsxBytes = File.ReadAllBytes(dlg.FileName);
+                _pendingXlsxFileName = Path.GetFileName(dlg.FileName);
+                // Editor shows an advisory note so operators know the
+                // next Validate/Apply targets bytes, not typed text.
+                CsvBox.Text =
+                    $"[XLSX buffered — {_pendingXlsxFileName} · " +
+                    $"{_pendingXlsxBytes.Length:N0} bytes]\r\n" +
+                    "Click Validate or Apply to send the workbook to the engine.";
+                StatusLabel.Text = $"Loaded {_pendingXlsxFileName} · {_pendingXlsxBytes.Length:N0} bytes buffered for import";
+            }
+            else
+            {
+                CsvBox.Text = File.ReadAllText(dlg.FileName);
+                _pendingXlsxBytes = null;
+                _pendingXlsxFileName = null;
+                StatusLabel.Text = $"Loaded {Path.GetFileName(dlg.FileName)} · {CsvBox.Text.Length:N0} chars";
+            }
         }
         catch (Exception ex)
         {
             StatusLabel.Text = $"Open failed: {ex.Message}";
         }
     }
+
+    /// <summary>Buffered XLSX bytes from the file picker, waiting
+    /// for the next Validate / Apply. null when we're in CSV mode
+    /// or no file has been picked yet.</summary>
+    private byte[]? _pendingXlsxBytes;
+    private string? _pendingXlsxFileName;
 
     private void OnValidate(object sender, RoutedEventArgs e) => _ = RunImportAsync(forceDryRun: true);
 
@@ -140,6 +180,8 @@ public partial class BulkPanel : UserControl
     private void OnClear(object sender, RoutedEventArgs e)
     {
         CsvBox.Clear();
+        _pendingXlsxBytes = null;
+        _pendingXlsxFileName = null;
         OutcomesGrid.ItemsSource = null;
         SummaryBar.Visibility = Visibility.Collapsed;
         StatusLabel.Text = "Cleared.";
@@ -163,26 +205,53 @@ public partial class BulkPanel : UserControl
             if (_actorUserId is int uid) client.SetActorUserId(uid);
 
             var entityKey = (string)EntityCombo.SelectedItem;
-            var csv = await FetchCsvAsync(client, entityKey, _tenantId, ct);
 
-            // Drop the result into the editor so the operator can edit
-            // in-panel. Also offer a Save dialog so they can take it to
-            // Excel without a copy-paste round trip.
+            // CSV path: editor is the source of truth — always populate
+            // it so the operator can edit in-panel. Offer a save dialog
+            // too. XLSX path: fetch the CSV *as well* so the editor
+            // still shows a readable preview (the engine's XLSX
+            // endpoint returns binary bytes that a TextBox can't
+            // render) but the save-to-file target is the XLSX bytes
+            // from the dedicated endpoint.
+            var csv = await FetchCsvAsync(client, entityKey, _tenantId, ct);
             CsvBox.Text = csv;
-            var dlg = new Microsoft.Win32.SaveFileDialog
+
+            if (IsXlsxMode)
             {
-                Filter = "CSV files (*.csv)|*.csv",
-                FileName = SuggestedFileName(entityKey, "csv"),
-                Title = "Save export",
-            };
-            if (dlg.ShowDialog() == true)
-            {
-                File.WriteAllText(dlg.FileName, csv);
-                StatusLabel.Text = $"Exported · saved to {Path.GetFileName(dlg.FileName)} · {csv.Length:N0} chars";
+                var xlsx = await FetchXlsxAsync(client, entityKey, _tenantId, ct);
+                var dlg = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = "XLSX files (*.xlsx)|*.xlsx",
+                    FileName = SuggestedFileName(entityKey, "xlsx"),
+                    Title = "Save export",
+                };
+                if (dlg.ShowDialog() == true)
+                {
+                    File.WriteAllBytes(dlg.FileName, xlsx);
+                    StatusLabel.Text = $"Exported · saved to {Path.GetFileName(dlg.FileName)} · {xlsx.Length:N0} bytes · editor shows CSV preview";
+                }
+                else
+                {
+                    StatusLabel.Text = $"Exported into editor (CSV preview · {csv.Length:N0} chars) — XLSX not saved";
+                }
             }
             else
             {
-                StatusLabel.Text = $"Exported into editor · {csv.Length:N0} chars (not saved to disk)";
+                var dlg = new Microsoft.Win32.SaveFileDialog
+                {
+                    Filter = "CSV files (*.csv)|*.csv",
+                    FileName = SuggestedFileName(entityKey, "csv"),
+                    Title = "Save export",
+                };
+                if (dlg.ShowDialog() == true)
+                {
+                    File.WriteAllText(dlg.FileName, csv);
+                    StatusLabel.Text = $"Exported · saved to {Path.GetFileName(dlg.FileName)} · {csv.Length:N0} chars";
+                }
+                else
+                {
+                    StatusLabel.Text = $"Exported into editor · {csv.Length:N0} chars (not saved to disk)";
+                }
             }
         }
         catch (OperationCanceledException) { /* ignore */ }
@@ -205,16 +274,46 @@ public partial class BulkPanel : UserControl
             _ => throw new InvalidOperationException($"Unknown entity '{entityKey}'"),
         };
 
+    /// <summary>XLSX-export transport — same switch shape as
+    /// FetchCsvAsync but hits the <c>export.xlsx</c> endpoint variants
+    /// which return the workbook bytes verbatim.</summary>
+    private static Task<byte[]> FetchXlsxAsync(NetworkingEngineClient client, string entityKey,
+        Guid tenantId, CancellationToken ct)
+        => entityKey switch
+        {
+            "Devices"            => client.ExportDevicesXlsxAsync(tenantId, ct),
+            "VLANs"              => client.ExportVlansXlsxAsync(tenantId, ct),
+            "Subnets"            => client.ExportSubnetsXlsxAsync(tenantId, ct),
+            "Servers"            => client.ExportServersXlsxAsync(tenantId, ct),
+            "Links"              => client.ExportLinksXlsxAsync(tenantId, ct),
+            "DHCP relay targets" => client.ExportDhcpRelayTargetsXlsxAsync(tenantId, ct),
+            _ => throw new InvalidOperationException($"Unknown entity '{entityKey}'"),
+        };
+
     // ─── Import (dry-run or apply) ──────────────────────────────────────
 
     private async Task RunImportAsync(bool forceDryRun)
     {
         if (!RequireContext()) return;
-        var body = CsvBox.Text;
-        if (string.IsNullOrWhiteSpace(body))
+
+        // Precondition check adapts to the format:
+        //   CSV  → editor text must be non-blank
+        //   XLSX → bytes must be buffered from Open file
+        if (IsXlsxMode)
         {
-            StatusLabel.Text = "Editor is empty — paste, type, or load a CSV first.";
-            return;
+            if (_pendingXlsxBytes is null or { Length: 0 })
+            {
+                StatusLabel.Text = "XLSX mode needs a file — click Open file… and pick an .xlsx first.";
+                return;
+            }
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(CsvBox.Text))
+            {
+                StatusLabel.Text = "Editor is empty — paste, type, or load a CSV first.";
+                return;
+            }
         }
 
         _cts?.Cancel();
@@ -232,7 +331,17 @@ public partial class BulkPanel : UserControl
             if (_actorUserId is int uid) client.SetActorUserId(uid);
 
             var entityKey = (string)EntityCombo.SelectedItem;
-            var result = await ImportCsvAsync(client, entityKey, _tenantId, body, dryRun, mode, ct);
+            ImportValidationResultDto result;
+            if (IsXlsxMode)
+            {
+                result = await ImportXlsxBytesAsync(
+                    client, entityKey, _tenantId, _pendingXlsxBytes!, dryRun, mode, ct);
+            }
+            else
+            {
+                result = await ImportCsvAsync(
+                    client, entityKey, _tenantId, CsvBox.Text, dryRun, mode, ct);
+            }
             ApplyResult(result);
         }
         catch (OperationCanceledException) { /* ignore */ }
@@ -257,6 +366,25 @@ public partial class BulkPanel : UserControl
             "Servers"            => client.ImportServersCsvAsync(tenantId, body, dryRun, mode, ct),
             "Links"              => client.ImportLinksCsvAsync(tenantId, body, dryRun, mode, ct),
             "DHCP relay targets" => client.ImportDhcpRelayTargetsCsvAsync(tenantId, body, dryRun, mode, ct),
+            _ => throw new InvalidOperationException($"Unknown entity '{entityKey}'"),
+        };
+
+    /// <summary>XLSX-import transport — sends the raw bytes to the
+    /// <c>import.xlsx</c> endpoint. Engine wraps calamine for parse
+    /// → CSV conversion and runs the import through the same
+    /// validate-then-apply pipeline as the CSV endpoint, so outcomes
+    /// come back in the same ImportValidationResultDto shape.</summary>
+    private static Task<ImportValidationResultDto> ImportXlsxBytesAsync(
+        NetworkingEngineClient client, string entityKey, Guid tenantId, byte[] bytes,
+        bool dryRun, string mode, CancellationToken ct)
+        => entityKey switch
+        {
+            "Devices"            => client.ImportDevicesXlsxAsync(tenantId, bytes, dryRun, mode, ct),
+            "VLANs"              => client.ImportVlansXlsxAsync(tenantId, bytes, dryRun, mode, ct),
+            "Subnets"            => client.ImportSubnetsXlsxAsync(tenantId, bytes, dryRun, mode, ct),
+            "Servers"            => client.ImportServersXlsxAsync(tenantId, bytes, dryRun, mode, ct),
+            "Links"              => client.ImportLinksXlsxAsync(tenantId, bytes, dryRun, mode, ct),
+            "DHCP relay targets" => client.ImportDhcpRelayTargetsXlsxAsync(tenantId, bytes, dryRun, mode, ct),
             _ => throw new InvalidOperationException($"Unknown entity '{entityKey}'"),
         };
 
