@@ -292,6 +292,25 @@ export interface PermissionDecision {
   matchedGrantId: string | null;
 }
 
+/// CLI flavor metadata + resolved tenant override. Matches
+/// `ResolvedFlavor` in the engine (which `#[serde(flatten)]`s the
+/// inner `FlavorMeta` alongside the resolver fields). Status is
+/// one of "Ga" / "Beta" / "Stub"; `effectiveEnabled` accounts for
+/// the tenant override falling back to `defaultEnabled`.
+export interface ResolvedCliFlavor {
+  code: string;
+  displayName: string;
+  vendor: string;
+  description: string;
+  status: string;
+  defaultEnabled: boolean;
+  effectiveEnabled: boolean;
+  isDefault: boolean;
+  hasTenantRow: boolean;
+  updatedAt: string | null;
+  notes: string | null;
+}
+
 /// Pool utilization row — matches `PoolUtilizationRow` in the
 /// engine. `poolKind` is one of "ASN" / "VLAN" / "IP:Subnets" /
 /// "IP:Addresses". `percentFull` caps at 999 for data-quality
@@ -631,6 +650,28 @@ export class NetworkingEngineService {
     if (status)                   params = params.set('status', status);
     if (limit !== undefined)      params = params.set('limit',  limit.toString());
     return this.http.get<ChangeSet[]>(`${this.base}/api/net/change-sets`, { params });
+  }
+
+  /// List CLI flavors with tenant-override resolution. Always
+  /// returns one row per catalog entry so the UI can show every
+  /// flavor even when no tenant override exists.
+  listCliFlavors(organizationId: string): Observable<ResolvedCliFlavor[]> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.get<ResolvedCliFlavor[]>(
+      `${this.base}/api/net/cli-flavors`, { params });
+  }
+
+  /// Upsert a tenant's config for one flavor. Pass `enabled`,
+  /// `isDefault` (server enforces one-default-per-tenant by
+  /// clearing the flag on any other row), or `notes` in the body.
+  setCliFlavorConfig(
+    code: string,
+    organizationId: string,
+    body: { enabled?: boolean; isDefault?: boolean; notes?: string | null },
+  ): Observable<void> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.put<void>(
+      `${this.base}/api/net/cli-flavors/${code}`, body, { params });
   }
 
   /// Pool utilization rollup across ASN / VLAN / IP pools. One
