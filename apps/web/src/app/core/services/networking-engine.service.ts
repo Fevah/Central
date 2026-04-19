@@ -292,6 +292,21 @@ export interface PermissionDecision {
   matchedGrantId: string | null;
 }
 
+/// One locked row — matches `LockedRow` in the engine. Projection
+/// is uniform across the 5 numbering tables that lock enforcement
+/// covers (asn_allocation / vlan / mlag_domain / subnet / ip_address);
+/// `tableName` disambiguates.
+export interface LockedRow {
+  id: string;
+  tableName: string;
+  displayLabel: string;
+  lockState: string;
+  lockReason: string | null;
+  lockedBy: number | null;
+  lockedAt: string | null;
+  version: number;
+}
+
 /// Change-set lifecycle row — matches `ChangeSet` in the engine. Status
 /// values are PascalCase on the wire (`#[serde(rename_all = "PascalCase")]`):
 /// Draft / Submitted / Approved / Rejected / Applied / RolledBack /
@@ -514,6 +529,20 @@ export class NetworkingEngineService {
     if (status)                   params = params.set('status', status);
     if (limit !== undefined)      params = params.set('limit',  limit.toString());
     return this.http.get<ChangeSet[]>(`${this.base}/api/net/change-sets`, { params });
+  }
+
+  /// List locked rows across the 5 numbering tables (asn_allocation,
+  /// vlan, mlag_domain, subnet, ip_address). Defaults to every
+  /// non-Open state; optional table + lockState narrowers.
+  listLockedRows(
+    organizationId: string,
+    table?: string,
+    lockState?: string,
+  ): Observable<LockedRow[]> {
+    let params = new HttpParams().set('organizationId', organizationId);
+    if (table)     params = params.set('table', table);
+    if (lockState) params = params.set('lockState', lockState);
+    return this.http.get<LockedRow[]>(`${this.base}/api/net/locks`, { params });
   }
 
   /// Fetch one change-set with its full item list.

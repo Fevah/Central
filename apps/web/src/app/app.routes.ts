@@ -55,6 +55,7 @@ export const routes: Routes = [
           { path: 'dhcp-relay',      loadComponent: () => import('./modules/network/components/network-dhcp-relay.component').then(m => m.NetworkDhcpRelayComponent) },
           { path: 'change-sets',     loadComponent: () => import('./modules/network/components/network-change-sets.component').then(m => m.NetworkChangeSetsComponent) },
           { path: 'change-sets/:id', loadComponent: () => import('./modules/network/components/network-change-set-detail.component').then(m => m.NetworkChangeSetDetailComponent) },
+          { path: 'locks',           loadComponent: () => import('./modules/network/components/network-locks.component').then(m => m.NetworkLocksComponent) },
           { path: 'audit-stats',     loadComponent: () => import('./modules/network/components/network-audit-stats.component').then(m => m.NetworkAuditStatsComponent) },
           { path: 'audit-search',    loadComponent: () => import('./modules/network/components/network-audit-search.component').then(m => m.NetworkAuditSearchComponent) },
           { path: 'audit/:entityType/:entityId',
