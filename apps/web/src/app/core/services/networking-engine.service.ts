@@ -1142,6 +1142,27 @@ export class NetworkingEngineService {
       null, { params });
   }
 
+  /// Record an Approve / Reject decision on a Submitted change-set.
+  /// decision is PascalCase on the wire ('Approve' | 'Reject' —
+  /// matches the engine's ChangeSetDecision enum serde config).
+  recordChangeSetDecision(
+    id: string, organizationId: string, body: {
+      decision: 'Approve' | 'Reject';
+      approverDisplay?: string | null;
+      notes?: string | null;
+    },
+  ): Observable<unknown> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.post(
+      `${this.base}/api/net/change-sets/${id}/decisions`,
+      {
+        decision:        body.decision,
+        approverDisplay: body.approverDisplay ?? null,
+        notes:           body.notes ?? null,
+      },
+      { params });
+  }
+
   /// Add an item to a Draft change-set. `action` is one of
   /// Create / Update / Delete / Rename. beforeJson is NULL on
   /// Create; afterJson is NULL on Delete. Returns the created item.

@@ -50,6 +50,16 @@ import { environment } from '../../../../environments/environment';
                  [disabled]="busy || set.status !== 'Draft'"
                  hint="Submit this Draft Set for approval (sets required approvals to 1)."
                  (onClick)="onSubmit()" />
+      <dx-button text="Approve" icon="check" type="success"
+                 stylingMode="contained"
+                 [disabled]="busy || set.status !== 'Submitted'"
+                 hint="Record an Approve decision. May move the Set to Approved if approvals are satisfied."
+                 (onClick)="onApprove()" />
+      <dx-button text="Reject" icon="close" type="danger"
+                 stylingMode="contained"
+                 [disabled]="busy || set.status !== 'Submitted'"
+                 hint="Record a Reject decision. Moves the Set to Rejected — terminal."
+                 (onClick)="onReject()" />
       <dx-button text="Apply now" icon="save" type="default"
                  [disabled]="busy || set.status !== 'Approved'"
                  hint="Run every item in order. Transactional — partial apply rolls back on error."
@@ -354,6 +364,55 @@ export class NetworkChangeSetDetailComponent implements OnInit {
     this.runAction(
       this.engine.applyChangeSet(this.set.id, environment.defaultTenantId),
       'Applied.');
+  }
+
+  /// Record an Approve decision. Prompt for optional notes + an
+  /// approver display name. The engine may transition the Set to
+  /// Approved if required-approvals is reached; reload the Set
+  /// after the call to pick up the new status.
+  onApprove(): void {
+    this.recordDecision('Approve');
+  }
+
+  /// Record a Reject decision. Moves the Set to Rejected (terminal).
+  onReject(): void {
+    this.recordDecision('Reject');
+  }
+
+  private recordDecision(decision: 'Approve' | 'Reject'): void {
+    if (!this.set || this.busy) return;
+    const notes = typeof window !== 'undefined'
+      ? window.prompt(`Optional note for the ${decision} decision:`, '') ?? undefined
+      : undefined;
+    if (typeof window !== 'undefined' &&
+        !window.confirm(`${decision} change set '${this.set.title}'?`)) return;
+
+    this.busy = true;
+    this.status = 'Working…';
+    this.engine.recordChangeSetDecision(this.set.id, environment.defaultTenantId, {
+      decision,
+      notes: notes || undefined,
+    }).subscribe({
+      next: () => {
+        this.busy = false;
+        this.status = `${decision} recorded — reloading.`;
+        // Decision endpoint returns an approval + change-set + items
+        // envelope, not just the Set row; easier to just refetch the
+        // canonical Set for a clean state update.
+        this.ngOnInit();
+      },
+      error: (err) => {
+        this.busy = false;
+        const status = err?.status as number | undefined;
+        if (status === 403) {
+          this.status = 'Forbidden — your user lacks approve/reject:ChangeSet.';
+        } else if (status === 409) {
+          this.status = `Illegal state transition: ${err?.error?.detail ?? 'only Submitted sets accept decisions'}.`;
+        } else {
+          this.status = `Failed: ${err?.error?.detail ?? err?.message ?? err}`;
+        }
+      },
+    });
   }
 
   /// Cancel set. Prompt for optional note so audit carries the
