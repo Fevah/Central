@@ -292,6 +292,48 @@ export interface PermissionDecision {
   matchedGrantId: string | null;
 }
 
+/// Render history row — matches `RenderedConfigSummary` in the
+/// engine (no body; the list endpoint omits the body to keep
+/// payload sizes down on tenants with many renders).
+export interface RenderedConfigSummary {
+  id: string;
+  deviceId: string;
+  flavorCode: string;
+  bodySha256: string;
+  lineCount: number;
+  renderDurationMs: number | null;
+  previousRenderId: string | null;
+  renderedAt: string;
+  renderedBy: number | null;
+}
+
+/// Full render record with body — matches `RenderedConfigRecord`.
+/// Used by the detail + diff flows.
+export interface RenderedConfigRecord {
+  id: string;
+  deviceId: string;
+  flavorCode: string;
+  body: string;
+  bodySha256: string;
+  lineCount: number;
+  renderDurationMs: number | null;
+  previousRenderId: string | null;
+  renderedAt: string;
+  renderedBy: number | null;
+}
+
+/// Line-set diff between a render + its previous_render_id chain.
+/// Matches `RenderDiff` in the engine. Added / removed in source-
+/// body order; unchangedCount is just the cardinality for a "how
+/// stable is this config" scan without shipping the whole body.
+export interface RenderDiff {
+  renderId: string;
+  previousRenderId: string | null;
+  added: string[];
+  removed: string[];
+  unchangedCount: number;
+}
+
 /// Naming context shapes — match `LinkNamingContext` /
 /// `DeviceNamingContext` / `ServerNamingContext` in the engine.
 /// `instance` / `vlan_id` are nullable numbers; every string token
@@ -573,6 +615,36 @@ export class NetworkingEngineService {
     if (status)                   params = params.set('status', status);
     if (limit !== undefined)      params = params.set('limit',  limit.toString());
     return this.http.get<ChangeSet[]>(`${this.base}/api/net/change-sets`, { params });
+  }
+
+  /// List render history for one device. Capped server-side at
+  /// 500 rows (engine `clamp_render_list_limit`); default 50.
+  /// Ordered rendered_at DESC so the freshest is first.
+  listDeviceRenders(
+    deviceId: string,
+    organizationId: string,
+    limit?: number,
+  ): Observable<RenderedConfigSummary[]> {
+    let params = new HttpParams().set('organizationId', organizationId);
+    if (limit !== undefined) params = params.set('limit', limit.toString());
+    return this.http.get<RenderedConfigSummary[]>(
+      `${this.base}/api/net/devices/${deviceId}/renders`, { params });
+  }
+
+  /// Fetch one render with its full body.
+  getRender(renderId: string, organizationId: string): Observable<RenderedConfigRecord> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.get<RenderedConfigRecord>(
+      `${this.base}/api/net/renders/${renderId}`, { params });
+  }
+
+  /// Fetch the line-set diff between a render + its chained
+  /// previousRenderId. Returns an empty diff + null previousRenderId
+  /// when the render has no predecessor (the very first render).
+  getRenderDiff(renderId: string, organizationId: string): Observable<RenderDiff> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.get<RenderDiff>(
+      `${this.base}/api/net/renders/${renderId}/diff`, { params });
   }
 
   /// Naming preview — one endpoint per context shape. Each POSTs
