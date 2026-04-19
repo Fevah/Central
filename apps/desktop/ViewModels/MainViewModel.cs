@@ -676,6 +676,15 @@ public class MainViewModel : INotifyPropertyChanged
     public string CurrentUserDisplay => AuthContext.Instance.CurrentUser?.DisplayName ?? "Unknown";
     public string CurrentUserRole    => AuthContext.Instance.CurrentUser?.RoleName ?? "";
 
+    /// <summary>Current tenant's display name for the status bar —
+    /// resolved once during bootstrap. Falls back to "(no tenant)"
+    /// when the row isn't readable (offline mode, missing row) so
+    /// the status bar still has a legible string instead of a
+    /// half-rendered "Tenant: " prefix.</summary>
+    public string CurrentTenantDisplay => string.IsNullOrWhiteSpace(App.CurrentTenantName)
+        ? "(no tenant)"
+        : App.CurrentTenantName;
+
     /// <summary>Connection/auth mode text for status bar.</summary>
     public string ConnectionModeText => AuthContext.Instance.AuthState switch
     {

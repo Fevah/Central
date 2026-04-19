@@ -1950,6 +1950,15 @@
                     </dxb:BarStaticItem.ContentTemplate>
                 </dxb:BarStaticItem>
                 <dxb:BarStaticItem Content="  ·  " />
+                <!-- Tenant context — critical for operators managing
+                     several tenants to always know their scope.
+                     StringFormat with the Managing: prefix only renders
+                     when CurrentTenantDisplay is non-empty; otherwise
+                     the item is blank (no stray "Managing: " label). -->
+                <dxb:BarStaticItem x:Name="StatusBarTenantLabel"
+                                   Content="{Binding CurrentTenantDisplay, StringFormat='Tenant: {0}'}"
+                                   ToolTip="Current tenant scope — every query, mutation and audit call targets this tenant. Reboot to switch."/>
+                <dxb:BarStaticItem Content="  ·  " />
                 <dxb:BarStaticItem Content="{Binding CurrentUserDisplay}" />
                 <dxb:BarStaticItem Content="{Binding CurrentUserRole, StringFormat=' ({0})'}" />
             </dxr:RibbonStatusBarControl.RightItems>

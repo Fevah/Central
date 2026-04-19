@@ -27,6 +27,12 @@ public partial class App : System.Windows.Application
     /// single-tenant installs with no app_users.tenant_id mapping.
     /// </summary>
     internal static Guid CurrentTenantId { get; private set; } = Guid.Empty;
+    /// <summary>Human-readable tenant name resolved alongside
+    /// <see cref="CurrentTenantId"/> during bootstrap. Displayed in
+    /// the status bar so operators managing multiple tenants always
+    /// know their scope. Falls back to the slug (or empty string
+    /// when the tenant row can't be read).</summary>
+    internal static string CurrentTenantName { get; private set; } = "";
     internal static List<IModule> Modules { get; set; } = new();
     internal static RibbonBuilder RibbonBuilder { get; } = new();
     internal static PanelBuilder PanelBuilder { get; } = new();
@@ -273,6 +279,15 @@ public partial class App : System.Windows.Application
                     var userId2 = AuthContext.Instance.CurrentUser?.Id ?? 0;
                     var tenantId = userId2 > 0 ? await LookupUserTenantIdAsync(Dsn, userId2) : Guid.Empty;
                     CurrentTenantId = tenantId;
+                    // Fetch the human-readable name too so the status
+                    // bar has something friendlier than a UUID. Fails
+                    // gracefully to empty on missing tenant row —
+                    // better than blocking startup for a display field.
+                    if (tenantId != Guid.Empty)
+                    {
+                        try { CurrentTenantName = await LookupTenantNameAsync(Dsn, tenantId); }
+                        catch { CurrentTenantName = ""; }
+                    }
                     // Hoist into AuthContext so dashboard contributions +
                     // other engine-side consumers can read it without
                     // depending on the app assembly.
@@ -540,5 +555,21 @@ public partial class App : System.Windows.Application
         cmd.Parameters.AddWithValue("uid", userId);
         var result = await cmd.ExecuteScalarAsync();
         return result is Guid g ? g : Guid.Empty;
+    }
+
+    /// <summary>Resolve the tenant's display name for the status bar.
+    /// Prefers <c>display_name</c> (operator-friendly); falls back to
+    /// <c>slug</c> when display_name is blank. Returns an empty string
+    /// if the row doesn't exist — caller treats that as "don't show".</summary>
+    private static async Task<string> LookupTenantNameAsync(string dsn, Guid tenantId)
+    {
+        await using var conn = new Npgsql.NpgsqlConnection(dsn);
+        await conn.OpenAsync();
+        await using var cmd = new Npgsql.NpgsqlCommand(
+            "SELECT COALESCE(NULLIF(display_name,''), slug, '') " +
+            "FROM central_platform.tenants WHERE id = @tid", conn);
+        cmd.Parameters.AddWithValue("tid", tenantId);
+        var result = await cmd.ExecuteScalarAsync();
+        return result as string ?? "";
     }
 }
