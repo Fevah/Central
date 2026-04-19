@@ -807,6 +807,43 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "naming_template_override.scope_entity_resolves",
+        name: "Naming override non-Global scope must resolve",
+        description: "A net.naming_template_override with scope_level \
+                      != 'Global' must carry a scope_entity_id that \
+                      points at a live row in the matching hierarchy \
+                      table (region / site / building). Dangling \
+                      scope_entity_id makes the naming resolver \
+                      silently fall through to parent scope — hard \
+                      to diagnose from the output alone.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "asn_allocation.unique_allocated_to",
+        name: "Entity shouldn't have more than one active ASN allocation",
+        description: "Two active net.asn_allocation rows with the \
+                      same (allocated_to_type, allocated_to_id) mean \
+                      one entity has two ASNs — the config-gen picks \
+                      one non-deterministically. Expected pattern is \
+                      one ASN per device / building.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "port.interface_name_not_empty",
+        name: "Port interface_name must be non-empty",
+        description: "A net.port row with empty interface_name is \
+                      un-renderable — config-gen emits malformed \
+                      `set interface '' ...` lines. NOT NULL in the \
+                      schema but doesn't catch the blank-string case.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1060,6 +1097,9 @@ async fn dispatch(
         "rendered_config.chain_integrity"         => run_rendered_config_chain(pool, org_id, severity, out).await,
         "scope_grant.no_duplicate_tuple"          => run_scope_grant_no_duplicates(pool, org_id, severity, out).await,
         "change_set.applied_has_no_pending_items" => run_change_set_applied_complete(pool, org_id, severity, out).await,
+        "naming_template_override.scope_entity_resolves" => run_naming_override_scope_resolves(pool, org_id, severity, out).await,
+        "asn_allocation.unique_allocated_to"      => run_asn_unique_allocated_to(pool, org_id, severity, out).await,
+        "port.interface_name_not_empty"           => run_port_name_not_empty(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -2679,6 +2719,95 @@ async fn run_scope_grant_no_duplicates(
     Ok(())
 }
 
+/// `naming_template_override.scope_entity_resolves` — non-Global
+/// overrides must point at a live row in region / site / building.
+/// Same shape as the VLAN scope-resolution rule.
+async fn run_naming_override_scope_resolves(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT n.id, n.scope_level, n.entity_type
+           FROM net.naming_template_override n
+          WHERE n.organization_id = $1
+            AND n.deleted_at IS NULL
+            AND n.scope_level != 'Global'
+            AND (
+                  n.scope_entity_id IS NULL
+               OR (n.scope_level = 'Region'   AND NOT EXISTS
+                     (SELECT 1 FROM net.region   x WHERE x.id = n.scope_entity_id AND x.deleted_at IS NULL))
+               OR (n.scope_level = 'Site'     AND NOT EXISTS
+                     (SELECT 1 FROM net.site     x WHERE x.id = n.scope_entity_id AND x.deleted_at IS NULL))
+               OR (n.scope_level = 'Building' AND NOT EXISTS
+                     (SELECT 1 FROM net.building x WHERE x.id = n.scope_entity_id AND x.deleted_at IS NULL))
+            )")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, scope_level, entity_type) in rows {
+        out.push(Violation {
+            rule_code: "naming_template_override.scope_entity_resolves".into(),
+            severity, entity_type: "NamingTemplateOverride".into(), entity_id: Some(id),
+            message: format!(
+                "Naming override for {entity_type} at scope '{scope_level}' has no resolvable scope_entity_id."),
+        });
+    }
+    Ok(())
+}
+
+/// `asn_allocation.unique_allocated_to` — GROUP BY
+/// (allocated_to_type, allocated_to_id) HAVING count>1 across active
+/// rows. Multi-ASN per entity = config-gen picks one arbitrarily.
+async fn run_asn_unique_allocated_to(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(String, Uuid, i64, Vec<Uuid>)> = sqlx::query_as(
+        "SELECT allocated_to_type,
+                allocated_to_id,
+                COUNT(*) AS n,
+                array_agg(id) AS ids
+           FROM net.asn_allocation
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND status = 'Active'::net.entity_status
+          GROUP BY allocated_to_type, allocated_to_id
+         HAVING COUNT(*) > 1")
+        .bind(org_id).fetch_all(pool).await?;
+    for (target_type, target_id, n, ids) in rows {
+        let primary = ids.first().copied();
+        let id_list = ids.iter().map(|id| id.to_string())
+            .collect::<Vec<_>>().join(", ");
+        out.push(Violation {
+            rule_code: "asn_allocation.unique_allocated_to".into(),
+            severity, entity_type: "AsnAllocation".into(), entity_id: primary,
+            message: format!(
+                "{n} active ASN allocations target the same {target_type} {target_id}: {id_list}."),
+        });
+    }
+    Ok(())
+}
+
+/// `port.interface_name_not_empty` — net.port.interface_name is
+/// NOT NULL but the CHECK doesn't cover the blank-string case.
+/// Empty name breaks config-gen's `set interface ... ...` stanza.
+async fn run_port_name_not_empty(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, Uuid)> = sqlx::query_as(
+        "SELECT id, device_id
+           FROM net.port
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND btrim(interface_name) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, device_id) in rows {
+        out.push(Violation {
+            rule_code: "port.interface_name_not_empty".into(),
+            severity, entity_type: "Port".into(), entity_id: Some(id),
+            message: format!(
+                "Port {id} on device {device_id} has an empty interface_name — config-gen will emit malformed lines."),
+        });
+    }
+    Ok(())
+}
+
 /// `change_set.applied_has_no_pending_items` — sets marked Applied
 /// shouldn't have items with applied_at IS NULL. Surfaces the partial-
 /// apply state that normally can't happen (guarded by the transition
@@ -2902,6 +3031,9 @@ mod tests {
             "rendered_config.chain_integrity",
             "scope_grant.no_duplicate_tuple",
             "change_set.applied_has_no_pending_items",
+            "naming_template_override.scope_entity_resolves",
+            "asn_allocation.unique_allocated_to",
+            "port.interface_name_not_empty",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
