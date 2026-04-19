@@ -3088,6 +3088,55 @@ drill, and ships two more validation batches (84 rules total).
 - [ ] `reservation_shelf.cooldown_respected` (Warning)
 - [ ] `vlan_block.range_within_pool` (Error)
 
+### 7.X.25 Phase 10b — eighth wave (commits 2026-04-19+)
+
+Supporting-entity thin lists + grids (MLAG / modules / MSTP /
+shelf), IP address detail page, data-quality dashboard, naming
+resolve page, change-set approve/reject, and five more validation
+batches (84 → 99).
+
+**Floor detail page** (commit `8e63e12ae`)
+- [ ] `/network/floor/:id` Summary tab; hierarchy tree Floor-node
+      double-click now drills here (previously fell through to audit).
+
+**Supporting-entity thin lists + web grids**
+- [ ] `/api/net/mlag-domains` + `/network/mlag-domains` grid (commit `dcb3ff09b`)
+- [ ] `/api/net/modules` + `/network/modules` grid with grouping by device + module type (commit `78c0054e5`)
+- [ ] `/api/net/mstp-rules` + `/network/mstp-rules` grid with amber tint on zero-step rules (commit `f08d71b26`)
+- [ ] `/api/net/reservation-shelf` + `/network/reservation-shelf` grid with amber tint when availableAfter is past (commit `56a7e025d`)
+- [ ] `/network/aggregate-ethernet` grid (commit `2ec803869`) with amber tint when memberCount < minLinks
+
+**Tenant-wide IP address grid** (commit `2bfcd5774`)
+- [ ] `/network/ip-addresses` consumes `/api/net/ip-addresses` without narrower
+
+**IP address detail page** (commit `1bd2a1aad`)
+- [ ] `/network/ip-address/:id` Summary (with clickable subnet link) + Audit tabs.
+- [ ] Tenant-wide IP grid double-clicks to here; subnet-detail Addresses tab still drills to its own tab (not to each IP's detail).
+
+**Data-quality dashboard** (commit `7cc590764`)
+- [ ] `/network/data-quality` runs POST /api/net/validation/run on page load.
+- [ ] Three summary cards (rules run / rules with findings / total violations, blue/amber/red).
+- [ ] Grid grouped by entityType + severity, severityRank decoration for stable Error/Warning/Info ordering.
+- [ ] Colour-coded severity badges; double-click violation row drills to entity detail via detailRouteByType map, falling back to audit.
+
+**Naming-resolve page** (commit `2c7f7cba5`)
+- [ ] `/network/naming-resolve` wraps POST /api/net/naming/resolve.
+- [ ] Form: entity type + subtype + region/site/building pickers + default fallback.
+- [ ] Result block: template (green) + winning-tier badge coloured by specificity (Default grey → Global blue → Region purple → Site amber → Building green; deeper for Specific vs AnySubtype).
+
+**Change-set approve / reject** (commit `4587e69a6`)
+- [ ] Approve (green) + Reject (red) buttons on change-set detail action bar.
+- [ ] Both gated on Submitted status, prompt for optional note + require window.confirm.
+- [ ] ngOnInit() refetches the Set after the decision (envelope response doesn't map cleanly).
+- [ ] Three failure classes: 403 permission, 409 illegal transition, generic RFC 7807.
+
+**Validation rule expansion — batches 16-20** (commits `db42c73c3` + `46c3cba39` + `d273ce9ed` + `91a76623b` + `dd3f10051`)
+- [ ] Batch 16 (84→87): floor.floor_code_unique_per_building, room.room_code_unique_per_floor, rack.rack_code_unique_per_room — hierarchy-uniqueness GROUP BY trio.
+- [ ] Batch 17 (87→90): ip_address.vrrp_has_peer_on_other_device, site_profile.display_name_not_empty, floor_profile.display_name_not_empty.
+- [ ] Batch 18 (90→93): region.display_name_not_empty, site.display_name_not_empty, building.display_name_not_empty — parallel trio.
+- [ ] Batch 19 (93→96): module.slot_unique_per_device, mstp_priority_rule.has_steps, reservation_shelf.resource_key_not_empty.
+- [ ] Batch 20 (96→99): mlag_domain.scope_entity_present_when_non_global, change_set_item.entity_id_required_for_mutations, port.speed_mbps_positive_when_set.
+
 ---
 
 ## 8. Enterprise SaaS
