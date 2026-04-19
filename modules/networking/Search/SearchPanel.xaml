@@ -84,6 +84,7 @@
                 <ColumnDefinition Width="60"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
             <TextBlock Grid.Column="0" Text="Search:" VerticalAlignment="Center"
@@ -108,7 +109,10 @@
 
             <Button Grid.Column="6" x:Name="SearchButton" Content="Search"
                     Width="90" Margin="8,0,4,0" Click="OnSearch"/>
-            <Button Grid.Column="7" x:Name="ClearButton" Content="Clear"
+            <Button Grid.Column="7" x:Name="ExportResultsButton" Content="Export…"
+                    Width="80" Margin="0,0,4,0" Click="OnExportResults"
+                    ToolTip="Save the current results grid as CSV — useful for reporting or pasting into a ticket. No-op when no search has run yet."/>
+            <Button Grid.Column="8" x:Name="ClearButton" Content="Clear"
                     Width="70" Click="OnClear"/>
         </Grid>
 

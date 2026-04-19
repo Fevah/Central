@@ -123,6 +123,64 @@ public partial class SearchPanel : UserControl
         StatusLabel.Text = "Cleared.";
     }
 
+    /// <summary>Save the current results grid as CSV. Parallel to
+    /// BulkPanel's outcomes export (c29605094) — same RFC 4180
+    /// escape rules, same file-name convention. Empty grid is a
+    /// no-op with a status-bar nudge rather than producing a
+    /// header-only file.</summary>
+    private void OnExportResults(object sender, RoutedEventArgs e)
+    {
+        if (ResultsGrid.ItemsSource is not IEnumerable<SearchResultRow> rows || !rows.Any())
+        {
+            StatusLabel.Text = "No results to export — run a search first.";
+            return;
+        }
+
+        var q = (QueryBox.Text ?? "").Trim();
+        var slug = string.IsNullOrWhiteSpace(q) ? "results" : q.Replace(' ', '-');
+        if (slug.Length > 40) slug = slug.Substring(0, 40);
+        var dlg = new Microsoft.Win32.SaveFileDialog
+        {
+            Filter = "CSV files (*.csv)|*.csv",
+            FileName = $"search-{slug}-{DateTime.Now:yyyyMMdd-HHmmss}.csv",
+            Title = "Save search results",
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        try
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append("entity_type,id,label,snippet,rank\r\n");
+            foreach (var r in rows)
+            {
+                sb.Append(CsvEscape(r.EntityType)).Append(',');
+                sb.Append(r.Id).Append(',');
+                sb.Append(CsvEscape(r.Label)).Append(',');
+                sb.Append(CsvEscape(r.Snippet)).Append(',');
+                // Rank formatted to 4 decimals — ts_rank returns floats
+                // that are precise enough for ordering but noisy past 4.
+                sb.Append(r.Rank.ToString("F4", System.Globalization.CultureInfo.InvariantCulture));
+                sb.Append("\r\n");
+            }
+            System.IO.File.WriteAllText(dlg.FileName, sb.ToString());
+            StatusLabel.Text = $"Saved {rows.Count()} results to {System.IO.Path.GetFileName(dlg.FileName)}";
+        }
+        catch (Exception ex)
+        {
+            StatusLabel.Text = $"Export failed: {ex.Message}";
+        }
+    }
+
+    /// <summary>RFC 4180 field escape — matches BulkPanel.CsvEscape
+    /// so the same downstream tools (Excel, pandas.read_csv) open
+    /// both outputs cleanly.</summary>
+    private static string CsvEscape(string? v)
+    {
+        v ??= "";
+        if (v.IndexOfAny(new[] { ',', '"', '\r', '\n' }) < 0) return v;
+        return "\"" + v.Replace("\"", "\"\"") + "\"";
+    }
+
     // ─── Row handling ───────────────────────────────────────────────────
 
     private void OnResultDoubleClick(object sender,
