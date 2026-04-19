@@ -44,6 +44,19 @@ export interface AuditRow {
   details: unknown;
 }
 
+/// Thin device-list row — matches `DeviceListRow` in the engine's
+/// list_devices handler. Used by callers that need hostname → uuid
+/// resolution (e.g. device-detail auditing where the WPF/legacy
+/// model carries switch_guide's numeric id, not net.device.id).
+export interface DeviceListRow {
+  id: string;
+  hostname: string;
+  roleCode: string | null;
+  buildingCode: string | null;
+  status: string;
+  version: number;
+}
+
 /// Thin Phase-10 surface for the Angular web client. Parallel to
 /// the WPF `NetworkingEngineClient`; covers the operator-facing
 /// endpoints (search, saved views, audit timeline) that web
@@ -80,6 +93,14 @@ export class NetworkingEngineService {
   listSavedViews(organizationId: string): Observable<SavedView[]> {
     const params = new HttpParams().set('organizationId', organizationId);
     return this.http.get<SavedView[]>(`${this.base}/api/net/saved-views`, { params });
+  }
+
+  /// Thin device list — capped at 5000 rows per tenant. Used by
+  /// callers needing hostname → net.device uuid resolution (the
+  /// WPF grid's selectId handler does the same thing).
+  listDevices(organizationId: string): Observable<DeviceListRow[]> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.get<DeviceListRow[]>(`${this.base}/api/net/devices`, { params });
   }
 
   /// Fetch the entity's full audit timeline — no 500-row cap that

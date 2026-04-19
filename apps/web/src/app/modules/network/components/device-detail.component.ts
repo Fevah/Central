@@ -5,6 +5,8 @@ import { FormsModule } from '@angular/forms';
 import { DxToolbarModule, DxButtonModule, DxFormModule, DxLoadIndicatorModule } from 'devextreme-angular';
 import notify from 'devextreme/ui/notify';
 import { NetworkService } from '../../../core/services/network.service';
+import { NetworkingEngineService } from '../../../core/services/networking-engine.service';
+import { environment } from '../../../../environments/environment';
 
 /**
  * IPAM device detail page — mirrors the WPF Asset Details panel for a row
@@ -32,6 +34,8 @@ import { NetworkService } from '../../../core/services/network.service';
       </dxi-item>
       <dxi-item location="after" widget="dxButton"
                 [options]="{ text: 'Save', type: 'success', icon: 'save', onClick: save, disabled: !dirty }"></dxi-item>
+      <dxi-item location="after" widget="dxButton"
+                [options]="{ text: 'Audit timeline', icon: 'history', onClick: openAuditTimeline, hint: 'Resolve this device to its net.device uuid + open the audit timeline' }"></dxi-item>
       <dxi-item location="after" widget="dxButton"
                 [options]="{ text: 'Delete', type: 'danger', icon: 'trash', onClick: remove }"></dxi-item>
     </dx-toolbar>
@@ -76,7 +80,35 @@ export class DeviceDetailComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private network: NetworkService,
+    private engine: NetworkingEngineService,
   ) {}
+
+  /// Resolve hostname → net.device uuid via the engine thin list,
+  /// then navigate to the audit timeline route. Mirrors the WPF
+  /// `DeviceGridPanel.OnContextShowAudit` flow (commit f1fdcee46):
+  /// web `device` row holds switch_guide's numeric id but the
+  /// audit panel needs the net.device uuid, so a lookup is the
+  /// cheapest glue.
+  openAuditTimeline = (): void => {
+    const hostname = (this.device?.switch_name ?? '').trim();
+    if (!hostname) {
+      notify('Device has no hostname — cannot resolve net.device uuid', 'warning', 3000);
+      return;
+    }
+    this.engine.listDevices(environment.defaultTenantId).subscribe({
+      next: (rows) => {
+        const match = rows.find(r => r.hostname.toLowerCase() === hostname.toLowerCase());
+        if (!match) {
+          notify(`No net.device row matches hostname '${hostname}'`, 'warning', 4000);
+          return;
+        }
+        this.router.navigate(['/network/audit', 'Device', match.id]);
+      },
+      error: (err) => {
+        notify(`Failed to resolve uuid: ${err?.message ?? err}`, 'error', 4000);
+      },
+    });
+  };
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
