@@ -56,6 +56,9 @@ type ExportFormat = 'csv' | 'ndjson';
       <dx-number-box class="sm" [(value)]="actorUserId" [showClearButton]="true"
                      placeholder="(any)" [showSpinButtons]="false" />
 
+      <label>Correlation</label>
+      <dx-text-box class="lg" [(value)]="correlationId" placeholder="(any)" />
+
       <label>Limit</label>
       <dx-number-box class="sm" [(value)]="limit" [min]="1" [max]="500"
                      [showSpinButtons]="true" />
@@ -136,6 +139,7 @@ export class NetworkAuditSearchComponent implements OnInit {
   entityId = '';
   action: string | null = null;
   actorUserId: number | null = null;
+  correlationId = '';
   fromAt: Date | null = null;
   toAt: Date | null = null;
   limit = 100;
@@ -160,6 +164,7 @@ export class NetworkAuditSearchComponent implements OnInit {
       const n = Number(actorRaw);
       this.actorUserId = Number.isFinite(n) && n > 0 ? n : null;
     }
+    this.correlationId = qp.get('correlationId') || '';
 
     this.reload();
   }
@@ -167,13 +172,14 @@ export class NetworkAuditSearchComponent implements OnInit {
   reload(): void {
     this.status = 'Loading…';
     this.engine.listAudit(environment.defaultTenantId, {
-      entityType:  this.entityType ?? undefined,
-      entityId:    this.entityId.trim() || undefined,
-      action:      this.action ?? undefined,
-      actorUserId: this.actorUserId ?? undefined,
-      fromAt:      this.fromAt ? this.fromAt.toISOString() : undefined,
-      toAt:        this.toAt   ? this.toAt.toISOString()   : undefined,
-      limit:       this.limit,
+      entityType:    this.entityType ?? undefined,
+      entityId:      this.entityId.trim() || undefined,
+      action:        this.action ?? undefined,
+      actorUserId:   this.actorUserId ?? undefined,
+      correlationId: this.correlationId.trim() || undefined,
+      fromAt:        this.fromAt ? this.fromAt.toISOString() : undefined,
+      toAt:          this.toAt   ? this.toAt.toISOString()   : undefined,
+      limit:         this.limit,
     }).subscribe({
       next: (rows) => {
         this.rows = rows;
@@ -203,6 +209,7 @@ export class NetworkAuditSearchComponent implements OnInit {
     this.entityId = '';
     this.action = null;
     this.actorUserId = null;
+    this.correlationId = '';
     this.fromAt = null;
     this.toAt = null;
     this.limit = 100;
@@ -235,6 +242,7 @@ export class NetworkAuditSearchComponent implements OnInit {
     if (this.entityId.trim())            params.set('entityId',     this.entityId.trim());
     if (this.action)                     params.set('action',       this.action);
     if (this.actorUserId !== null)       params.set('actorUserId',  String(this.actorUserId));
+    if (this.correlationId.trim())       params.set('correlationId', this.correlationId.trim());
     if (this.fromAt)                     params.set('fromAt',       this.fromAt.toISOString());
     if (this.toAt)                       params.set('toAt',         this.toAt.toISOString());
 

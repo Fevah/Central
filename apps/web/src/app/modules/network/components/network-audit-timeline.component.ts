@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { DxDataGridModule, DxButtonModule } from 'devextreme-angular';
 import { NetworkingEngineService, AuditRow } from '../../../core/services/networking-engine.service';
 import { environment } from '../../../../environments/environment';
@@ -34,9 +34,17 @@ import { environment } from '../../../../environments/environment';
                   format="yyyy-MM-dd HH:mm:ss" [sortIndex]="0" sortOrder="desc" />
       <dxi-column dataField="action"        caption="Action"       width="120" />
       <dxi-column dataField="actorDisplay"  caption="Actor"        width="140" />
-      <dxi-column dataField="correlationId" caption="Correlation"  width="240" />
+      <dxi-column dataField="correlationId" caption="Correlation" width="240"
+                  cellTemplate="correlationTemplate" />
       <dxi-column dataField="details"       caption="Details"      cellTemplate="detailsTemplate" />
 
+      <div *dxTemplate="let d of 'correlationTemplate'">
+        <a *ngIf="d.value" href="javascript:void(0)"
+           class="correlation-link"
+           title="Show all audit rows sharing this correlation id"
+           (click)="drillCorrelation(d.value)">{{ d.value }}</a>
+        <span *ngIf="!d.value" class="details-blob">—</span>
+      </div>
       <div *dxTemplate="let d of 'detailsTemplate'">
         <code class="details-blob">{{ summariseDetails(d.value) }}</code>
       </div>
@@ -51,6 +59,8 @@ import { environment } from '../../../../environments/environment';
     .subtitle code { background: #1e293b; padding: 1px 6px; border-radius: 3px; font-size: 11px; }
     .status-line { margin: 6px 0 10px; color: #666; font-size: 12px; }
     .details-blob { font-size: 11px; color: #aaa; }
+    .correlation-link { color: #60a5fa; font-family: ui-monospace, monospace; font-size: 11px; text-decoration: none; }
+    .correlation-link:hover { text-decoration: underline; }
   `]
 })
 export class NetworkAuditTimelineComponent implements OnInit {
@@ -61,8 +71,19 @@ export class NetworkAuditTimelineComponent implements OnInit {
 
   constructor(
     private route: ActivatedRoute,
+    private router: Router,
     private engine: NetworkingEngineService,
   ) {}
+
+  /// Drill into the audit-search page filtered by this correlation id.
+  /// Audit-search would need a new query param for this, but we can
+  /// populate the filter bar via correlationId — same pattern the
+  /// actorUserId drill uses.
+  drillCorrelation(correlationId: string): void {
+    this.router.navigate(['/network/audit-search'], {
+      queryParams: { correlationId },
+    });
+  }
 
   ngOnInit(): void {
     this.entityType = this.route.snapshot.paramMap.get('entityType') ?? '';

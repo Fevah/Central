@@ -51,6 +51,9 @@ import { environment } from '../../../../environments/environment';
                 <div class="sv-name">{{ v.name }}</div>
                 <div class="sv-sub">{{ summariseView(v) }}</div>
               </div>
+              <dx-button icon="edit" stylingMode="text"
+                         hint="Rename this saved view"
+                         (onClick)="renameView($event, v)" />
               <dx-button icon="trash" stylingMode="text"
                          hint="Delete this saved view"
                          (onClick)="deleteView($event, v)" />
@@ -200,6 +203,41 @@ export class NetworkSearchComponent implements OnInit {
           this.savedViewsError = `A view named '${name.trim()}' already exists — pick another name.`;
         } else {
           this.savedViewsError = err?.error?.detail ?? err?.message ?? 'Save failed.';
+        }
+      },
+    });
+  }
+
+  /// Rename a saved view. Reuses the same window.prompt pattern as
+  /// saveCurrentView; keeps the query + entityTypes + version so the
+  /// engine's optimistic-concurrency check still fires if a second
+  /// client edits the view between load and rename.
+  renameView(evt: { event?: Event } | Event | undefined, view: SavedView): void {
+    const native = (evt as { event?: Event })?.event ?? (evt as Event | undefined);
+    native?.stopPropagation?.();
+    const newName = typeof window !== 'undefined'
+      ? window.prompt(`Rename saved view:`, view.name)
+      : null;
+    const trimmed = newName?.trim();
+    if (!trimmed || trimmed === view.name) return;
+
+    this.engine.updateSavedView(view.id, {
+      organizationId: environment.defaultTenantId,
+      name:           trimmed,
+      q:              view.q ?? '',
+      entityTypes:    view.entityTypes,
+      notes:          view.notes,
+      version:        view.version,
+    }).subscribe({
+      next: () => { this.reloadSavedViews(); },
+      error: (err) => {
+        const status = err?.status as number | undefined;
+        if (status === 409) {
+          this.savedViewsError = `A view named '${trimmed}' already exists — pick another name.`;
+        } else if (status === 412) {
+          this.savedViewsError = `Saved view changed since load — refresh + retry.`;
+        } else {
+          this.savedViewsError = err?.error?.detail ?? err?.message ?? 'Rename failed.';
         }
       },
     });

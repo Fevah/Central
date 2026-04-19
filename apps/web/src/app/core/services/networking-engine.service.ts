@@ -391,6 +391,29 @@ export class NetworkingEngineService {
     return this.http.delete<void>(`${this.base}/api/net/saved-views/${id}`, { params });
   }
 
+  /// Update a saved view. Name collision 409, ownership 404 — same
+  /// semantics as create + delete. version drives optimistic
+  /// concurrency; pass the current row's version to detect stale
+  /// client state.
+  updateSavedView(id: string, body: {
+    organizationId: string;
+    name: string;
+    q: string;
+    entityTypes?: string | null;
+    notes?: string | null;
+    version: number;
+  }): Observable<SavedView> {
+    const params = new HttpParams().set('organizationId', body.organizationId);
+    return this.http.put<SavedView>(`${this.base}/api/net/saved-views/${id}`, {
+      name:        body.name,
+      q:           body.q,
+      entityTypes: body.entityTypes ?? null,
+      notes:       body.notes ?? null,
+      filters:     {},
+      version:     body.version,
+    }, { params });
+  }
+
   /// Thin device list — capped at 5000 rows per tenant. Used by
   /// callers needing hostname → net.device uuid resolution (the
   /// WPF grid's selectId handler does the same thing).
