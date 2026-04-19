@@ -409,8 +409,7 @@ export class NetworkingEngineService {
   }
 
   /// List scope grants, optionally narrowed by userId / action /
-  /// entityType. Read-only slice for the web client; create /
-  /// delete lands alongside a form component in a follow-up.
+  /// entityType.
   listScopeGrants(
     organizationId: string,
     userId?: number,
@@ -422,6 +421,28 @@ export class NetworkingEngineService {
     if (action)                 params = params.set('action', action);
     if (entityType)             params = params.set('entityType', entityType);
     return this.http.get<ScopeGrant[]>(`${this.base}/api/net/scope-grants`, { params });
+  }
+
+  /// Create a scope grant. Server-side requires the caller to hold
+  /// write:ScopeGrant — a 403 means the current user can't grant
+  /// permissions (break-glass path is direct DB insert by root admin).
+  createScopeGrant(body: {
+    organizationId: string;
+    userId: number;
+    action: string;
+    entityType: string;
+    scopeType: string;
+    scopeEntityId?: string;
+    notes?: string;
+  }): Observable<ScopeGrant> {
+    return this.http.post<ScopeGrant>(`${this.base}/api/net/scope-grants`, body);
+  }
+
+  /// Soft-delete a scope grant. Server-side requires delete:ScopeGrant
+  /// on that grant (or Global).
+  deleteScopeGrant(id: string, organizationId: string): Observable<void> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.delete<void>(`${this.base}/api/net/scope-grants/${id}`, { params });
   }
 
   /// Run the validation rule engine. Empty `ruleCode` runs every
