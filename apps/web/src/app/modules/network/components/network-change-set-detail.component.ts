@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import {
   DxDataGridModule, DxButtonModule,
+  DxPopupModule, DxSelectBoxModule, DxTextBoxModule, DxTextAreaModule,
+  DxNumberBoxModule, DxFormModule,
 } from 'devextreme-angular';
 import {
   NetworkingEngineService, ChangeSet, ChangeSetItem,
@@ -27,7 +29,9 @@ import { environment } from '../../../../environments/environment';
 @Component({
   selector: 'app-network-change-set-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, DxDataGridModule, DxButtonModule],
+  imports: [CommonModule, RouterModule, DxDataGridModule, DxButtonModule,
+            DxPopupModule, DxSelectBoxModule, DxTextBoxModule,
+            DxTextAreaModule, DxNumberBoxModule],
   template: `
     <div class="page-header">
       <a routerLink="/network/change-sets" class="back-link">← Change sets</a>
@@ -102,7 +106,12 @@ import { environment } from '../../../../environments/environment';
       </div>
     </div>
 
-    <h3 class="section-title">Items</h3>
+    <div class="items-header">
+      <h3 class="section-title">Items</h3>
+      <dx-button *ngIf="set && set.status === 'Draft'"
+                 text="Add item" icon="add" stylingMode="outlined"
+                 (onClick)="openItemDialog()" [disabled]="busy" />
+    </div>
     <dx-data-grid [dataSource]="items" [showBorders]="true" [hoverStateEnabled]="true"
                    [columnAutoWidth]="true"
                    [filterRow]="{ visible: true }"
@@ -135,6 +144,59 @@ import { environment } from '../../../../environments/environment';
         </div>
       </div>
     </dx-data-grid>
+
+    <!-- Add-item dialog — only reachable when the Set is Draft.
+         Captures one item + appends to the Set; operator runs it
+         again for each item. beforeJson + afterJson are free-form
+         JSON text areas because the engine stores them as jsonb
+         without schema validation. -->
+    <dx-popup [(visible)]="itemDialogOpen"
+              [width]="640" [height]="640"
+              title="Add change-set item"
+              [showCloseButton]="true" [dragEnabled]="true">
+      <div *dxTemplate="let d of 'content'" class="form">
+        <div class="form-row">
+          <label>Entity type *</label>
+          <dx-select-box [items]="itemEntityTypes" [(value)]="itemDraft.entityType"
+                         acceptCustomValue="true" placeholder="Device / Vlan / Subnet / ..." />
+        </div>
+        <div class="form-row">
+          <label>Action *</label>
+          <dx-select-box [items]="itemActions" [(value)]="itemDraft.action" />
+        </div>
+        <div class="form-row" *ngIf="itemDraft.action !== 'Create'">
+          <label>Entity id *</label>
+          <dx-text-box [(value)]="itemDraft.entityId"
+                       placeholder="uuid of the existing row" />
+          <small class="hint">Required for Update / Delete / Rename. Blank allowed only for Create.</small>
+        </div>
+        <div class="form-row" *ngIf="itemDraft.action === 'Update' || itemDraft.action === 'Rename'">
+          <label>Expected version</label>
+          <dx-number-box [(value)]="itemDraft.expectedVersion" [showSpinButtons]="false"
+                         placeholder="optional — enables stale-version guard" />
+        </div>
+        <div class="form-row" *ngIf="itemDraft.action !== 'Create'">
+          <label>Before JSON</label>
+          <dx-text-area [(value)]="itemDraft.beforeJsonText" [height]="100"
+                        placeholder='{ "hostname": "mep-91-sw01-old" }' />
+        </div>
+        <div class="form-row" *ngIf="itemDraft.action !== 'Delete'">
+          <label>After JSON</label>
+          <dx-text-area [(value)]="itemDraft.afterJsonText" [height]="100"
+                        placeholder='{ "hostname": "mep-91-sw01" }' />
+        </div>
+        <div class="form-row">
+          <label>Notes</label>
+          <dx-text-area [(value)]="itemDraft.notes" [height]="60" />
+        </div>
+        <div *ngIf="itemError" class="form-error">{{ itemError }}</div>
+        <div class="form-actions">
+          <dx-button text="Cancel" (onClick)="closeItemDialog()" />
+          <dx-button text="Add" type="default" (onClick)="submitItem()"
+                     [disabled]="busy" />
+        </div>
+      </div>
+    </dx-popup>
   `,
   styles: [`
     .page-header { margin-bottom: 12px; }
@@ -160,6 +222,14 @@ import { environment } from '../../../../environments/environment';
     .correlation-link { color: #60a5fa; font-family: ui-monospace, monospace; font-size: 11px; text-decoration: none; word-break: break-all; }
     .correlation-link:hover { text-decoration: underline; }
     .action-bar { display: flex; gap: 8px; margin: 10px 0; }
+    .items-header { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+    .items-header .section-title { margin: 0; }
+    .form { display: flex; flex-direction: column; gap: 14px; padding: 4px 2px; }
+    .form-row { display: flex; flex-direction: column; gap: 4px; }
+    .form-row label { color: #9ca3af; font-size: 12px; }
+    .form-row .hint { color: #6b7280; font-size: 11px; }
+    .form-error { color: #ef4444; font-size: 12px; padding: 6px 8px; background: rgba(239,68,68,0.08); border-radius: 4px; }
+    .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
     .apply-error { color: #ef4444; font-family: ui-monospace, monospace; font-size: 11px; }
     .json-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 8px; }
     .json-panel { background: #0f172a; border-radius: 4px; padding: 8px; }
@@ -176,6 +246,25 @@ export class NetworkChangeSetDetailComponent implements OnInit {
   items: ChangeSetItem[] = [];
   status = '';
   busy = false;
+
+  /// Common entity types the engine's action dispatcher knows about.
+  /// acceptCustomValue on the combo lets operators type a less-common
+  /// one (e.g. DhcpRelayTarget) without the UI blocking them.
+  itemEntityTypes = ['Device', 'Vlan', 'Subnet', 'Server', 'Link',
+                     'Port', 'DhcpRelayTarget', 'ScopeGrant'];
+  itemActions = ['Create', 'Update', 'Delete', 'Rename'];
+
+  itemDialogOpen = false;
+  itemError = '';
+  itemDraft: {
+    entityType: string | null;
+    action: string;
+    entityId: string;
+    expectedVersion: number | null;
+    beforeJsonText: string;
+    afterJsonText: string;
+    notes: string;
+  } = this.emptyItemDraft();
 
   constructor(
     private route: ActivatedRoute,
@@ -279,6 +368,87 @@ export class NetworkChangeSetDetailComponent implements OnInit {
     this.runAction(
       this.engine.cancelChangeSet(this.set.id, environment.defaultTenantId, notes || undefined),
       'Cancelled.');
+  }
+
+  // ─── Add-item dialog ───────────────────────────────────────────
+
+  private emptyItemDraft() {
+    return {
+      entityType:      null,
+      action:          'Create',
+      entityId:        '',
+      expectedVersion: null,
+      beforeJsonText:  '',
+      afterJsonText:   '',
+      notes:           '',
+    };
+  }
+
+  openItemDialog(): void {
+    this.itemDraft = this.emptyItemDraft();
+    this.itemError = '';
+    this.itemDialogOpen = true;
+  }
+
+  closeItemDialog(): void {
+    this.itemDialogOpen = false;
+    this.itemError = '';
+  }
+
+  submitItem(): void {
+    if (!this.set) return;
+    const d = this.itemDraft;
+    this.itemError = '';
+
+    if (!d.entityType)           { this.itemError = 'Entity type is required.'; return; }
+    if (!d.action)               { this.itemError = 'Action is required.'; return; }
+    if (d.action !== 'Create' && !d.entityId.trim()) {
+      this.itemError = 'Entity id is required for Update / Delete / Rename.';
+      return;
+    }
+
+    // Parse JSON text areas — empty string → undefined, bad JSON →
+    // form error.
+    let beforeJson: unknown;
+    let afterJson: unknown;
+    try {
+      beforeJson = d.beforeJsonText.trim() ? JSON.parse(d.beforeJsonText) : undefined;
+    } catch { this.itemError = 'Before JSON is not valid JSON.'; return; }
+    try {
+      afterJson  = d.afterJsonText.trim()  ? JSON.parse(d.afterJsonText)  : undefined;
+    } catch { this.itemError = 'After JSON is not valid JSON.'; return; }
+
+    this.busy = true;
+    this.engine.addChangeSetItem(this.set.id, environment.defaultTenantId, {
+      entityType:      d.entityType,
+      entityId:        d.entityId.trim() || null,
+      action:          d.action,
+      beforeJson,
+      afterJson,
+      expectedVersion: d.expectedVersion,
+      notes:           d.notes.trim() || null,
+    }).subscribe({
+      next: (item) => {
+        this.busy = false;
+        this.itemDialogOpen = false;
+        this.items = [...this.items, item];
+        // Bump the item count on the cached Set so the meta grid
+        // shows the new total without a full reload.
+        if (this.set) this.set = { ...this.set, itemCount: this.set.itemCount + 1 };
+        this.status = 'Item added.';
+      },
+      error: (err) => {
+        this.busy = false;
+        const status = err?.status as number | undefined;
+        if (status === 403) {
+          this.itemError = 'Forbidden — your user lacks write:ChangeSet.';
+        } else if (status === 409) {
+          this.itemError = 'Can only add items to a Draft set.';
+        } else {
+          this.itemError = err?.error?.detail ?? err?.message ?? 'Add failed.';
+        }
+      },
+    });
   }
 
   /// Shared success/failure handler. 403 surfaces specifically so

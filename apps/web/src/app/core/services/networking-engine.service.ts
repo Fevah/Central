@@ -1015,6 +1015,33 @@ export class NetworkingEngineService {
       null, { params });
   }
 
+  /// Add an item to a Draft change-set. `action` is one of
+  /// Create / Update / Delete / Rename. beforeJson is NULL on
+  /// Create; afterJson is NULL on Delete. Returns the created item.
+  addChangeSetItem(id: string, organizationId: string, body: {
+    entityType: string;
+    entityId?: string | null;
+    action: string;
+    beforeJson?: unknown;
+    afterJson?: unknown;
+    expectedVersion?: number | null;
+    notes?: string | null;
+  }): Observable<ChangeSetItem> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.post<ChangeSetItem>(
+      `${this.base}/api/net/change-sets/${id}/items`,
+      {
+        entityType:       body.entityType,
+        entityId:         body.entityId ?? null,
+        action:           body.action,
+        beforeJson:       body.beforeJson ?? null,
+        afterJson:        body.afterJson ?? null,
+        expectedVersion:  body.expectedVersion ?? null,
+        notes:            body.notes ?? null,
+      },
+      { params });
+  }
+
   /// Fetch one change-set with its full item list.
   getChangeSet(id: string, organizationId: string): Observable<ChangeSetWithItems> {
     const params = new HttpParams().set('organizationId', organizationId);
