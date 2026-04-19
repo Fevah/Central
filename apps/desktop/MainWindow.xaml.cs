@@ -4753,6 +4753,10 @@ public partial class MainWindow
                     case "scopeGrants": VM.IsScopeGrantsPanelOpen = true; break;
                     case "changesets":  VM.IsChangeSetsPanelOpen = true; break;
                     case "validation":  VM.IsValidationPanelOpen = true; break;
+                    // Entity grids — used by search → drill-down
+                    case "devices":     VM.IsDevicesPanelOpen = true; break;
+                    case "vlans":       VM.IsVlansPanelOpen = true; break;
+                    case "servers":     VM.IsNetServersPanelOpen = true; break;  // net.server grid
                 }
             });
         });

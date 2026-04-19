@@ -132,10 +132,16 @@ public partial class SearchPanel : UserControl
         => OpenEntityPanelForCurrentRow();
 
     /// <summary>Shared by double-click + "Open in entity panel"
-    /// context menu. Publishes a NavigateToPanelMessage mapping
-    /// EntityType → panel id + selectId payload. Panels that don't
-    /// yet honour selectId just focus themselves — the richer drill
-    /// lands when they grow a handler.</summary>
+    /// context menu. Publishes two messages:
+    ///   1. OpenPanelMessage so MainWindow restores the target dock
+    ///      panel (matching the audit-drill pattern)
+    ///   2. NavigateToPanelMessage with a `selectId:{guid}:{label}`
+    ///      payload — subscribing grids parse and use whichever
+    ///      identifier they can resolve. The three-segment payload
+    ///      covers the mismatch between net.* uuid-keyed entities
+    ///      and the legacy switch_guide-backed WPF grids (which
+    ///      still carry numeric ids); both sides keep hostname/
+    ///      display-name as the disambiguating label.</summary>
     private void OpenEntityPanelForCurrentRow()
     {
         if (ResultsGrid.CurrentItem is not SearchResultRow row) return;
@@ -155,7 +161,9 @@ public partial class SearchPanel : UserControl
             StatusLabel.Text = $"Unknown entity type '{row.EntityType}' — no drill target.";
             return;
         }
-        PanelMessageBus.Publish(new NavigateToPanelMessage(target, $"selectId:{row.Id}"));
+        PanelMessageBus.Publish(new OpenPanelMessage(target));
+        PanelMessageBus.Publish(new NavigateToPanelMessage(
+            target, $"selectId:{row.Id}:{row.Label}"));
         StatusLabel.Text = $"Navigated to {target} with selectId:{row.Id}";
     }
 

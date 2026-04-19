@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Collections;
 using System.Threading.Tasks;
+using System.Windows;
 using DevExpress.Xpf.Grid;
 using Central.Engine.Models;
+using Central.Engine.Shell;
 
 namespace Central.Module.Networking.Devices;
 
@@ -19,6 +22,14 @@ public partial class DeviceGridPanel : System.Windows.Controls.UserControl
         DevicesView.ValidateRow += DevicesView_ValidateRow;
         DevicesView.InvalidRowException += (_, e) => e.ExceptionMode = ExceptionMode.NoAction;
         DevicesGrid.MasterRowExpanded += DevicesGrid_MasterRowExpanded;
+
+        // Cross-panel drill-down: SearchPanel (and any other source)
+        // can publish `selectId:{guid}:{label}` to focus a row here.
+        // The engine's net.device uuid rarely matches this grid's
+        // numeric switch_guide id, so we match by hostname (label)
+        // instead — hostnames are kept in sync by the net.device ↔
+        // public.switches dual-write trigger.
+        PanelMessageBus.Subscribe<NavigateToPanelMessage>(OnNavigate);
     }
 
     public GridControl Grid => DevicesGrid;
@@ -72,5 +83,54 @@ public partial class DeviceGridPanel : System.Windows.Controls.UserControl
             if (LoadDetailLinks != null)
                 await LoadDetailLinks(dev);
         }
+    }
+
+    // ─── Cross-panel drill-down (selectId handler) ──────────────────────
+
+    private void OnNavigate(NavigateToPanelMessage msg)
+    {
+        if (msg.TargetPanel != "devices") return;
+        if (msg.SelectItem is not string payload) return;
+        if (!payload.StartsWith("selectId:", StringComparison.Ordinal)) return;
+
+        // Payload format: `selectId:{guid}:{label}`. The guid comes
+        // from net.device; label is the hostname. We match by label
+        // because the grid's Id column holds switch_guide's numeric
+        // id, not the net.device uuid.
+        var parts = payload.Split(':', 3);
+        if (parts.Length < 3) return;
+        var label = parts[2];
+        if (string.IsNullOrWhiteSpace(label)) return;
+
+        Dispatcher.BeginInvoke(() => FocusByHostname(label));
+    }
+
+    /// <summary>Walk the grid's ItemsSource for a DeviceRecord whose
+    /// SwitchName matches the incoming hostname (case-insensitive —
+    /// PicOS is case-agnostic and operators paste between tools).
+    /// Sets CurrentItem + scrolls into view via FocusedRowHandle.
+    /// No-op when the grid hasn't been populated yet or the row
+    /// isn't present (e.g. caller searched for a device outside the
+    /// user's site scope).</summary>
+    internal bool FocusByHostname(string hostname)
+    {
+        if (DevicesGrid.ItemsSource is not IEnumerable source) return false;
+        var idx = 0;
+        foreach (var item in source)
+        {
+            if (item is DeviceRecord d &&
+                string.Equals(d.SwitchName, hostname, StringComparison.OrdinalIgnoreCase))
+            {
+                DevicesGrid.CurrentItem = d;
+                // FocusedRowHandle drives the scroll-into-view +
+                // keyboard-focus-row behaviour. Computing the handle
+                // from the visible index matches the DX recipe for
+                // "programmatically focus this row".
+                DevicesView.FocusedRowHandle = DevicesGrid.GetRowHandleByListIndex(idx);
+                return true;
+            }
+            idx++;
+        }
+        return false;
     }
 }

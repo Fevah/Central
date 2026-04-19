@@ -1,10 +1,12 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using Central.Engine.Net.Pools;
 using Central.Engine.Net.Servers;
+using Central.Engine.Shell;
 using Central.Persistence.Net;
 using UserControl = System.Windows.Controls.UserControl;
 
@@ -31,6 +33,51 @@ public partial class ServerGridPanel : UserControl
         InitializeComponent();
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
+        // Cross-panel drill-down: SearchPanel publishes
+        // `selectId:{guid}:{label}` for this grid's target id
+        // ("servers"). ServerRow.Id is the net.server uuid — the
+        // native key matches directly, no hostname fallback needed.
+        PanelMessageBus.Subscribe<NavigateToPanelMessage>(OnNavigate);
+    }
+
+    private void OnNavigate(NavigateToPanelMessage msg)
+    {
+        if (msg.TargetPanel != "servers") return;
+        if (msg.SelectItem is not string payload) return;
+        if (!payload.StartsWith("selectId:", StringComparison.Ordinal)) return;
+
+        // Payload: `selectId:{guid}:{label}`. For net.server, the
+        // guid is the row's primary key — match by Id first, fall
+        // back to hostname if the row hasn't loaded yet / the id
+        // doesn't resolve.
+        var parts = payload.Split(':', 3);
+        if (parts.Length < 2) return;
+        Guid.TryParse(parts[1], out var id);
+        var label = parts.Length >= 3 ? parts[2] : "";
+        Dispatcher.BeginInvoke(() => FocusBy(id, label));
+    }
+
+    internal bool FocusBy(Guid id, string label)
+    {
+        if (Grid.ItemsSource is not IEnumerable source) return false;
+        var idx = 0;
+        foreach (var item in source)
+        {
+            if (item is ServerRow r &&
+                (r.Id == id ||
+                 (!string.IsNullOrEmpty(label) &&
+                  string.Equals(r.Hostname, label, StringComparison.OrdinalIgnoreCase))))
+            {
+                Grid.CurrentItem = r;
+                // Grid.View is the TableView — focus the handle to
+                // bring the row into view and set keyboard focus.
+                if (Grid.View is DevExpress.Xpf.Grid.TableView tv)
+                    tv.FocusedRowHandle = Grid.GetRowHandleByListIndex(idx);
+                return true;
+            }
+            idx++;
+        }
+        return false;
     }
 
     public void SetContext(string dsn, Guid tenantId)
