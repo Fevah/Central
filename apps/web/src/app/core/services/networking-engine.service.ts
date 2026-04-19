@@ -57,6 +57,57 @@ export interface DeviceListRow {
   version: number;
 }
 
+/// Thin VLAN-list row — matches `VlanListRow` in the engine. Used by
+/// pickers + the web VLAN grid. `blockCode` is the parent VLAN block's
+/// code (null when the VLAN isn't allocated from a block yet).
+export interface VlanListRow {
+  id: string;
+  vlanId: number;
+  displayName: string;
+  blockCode: string | null;
+  scopeLevel: string;
+  status: string;
+  version: number;
+}
+
+/// Thin link-list row — matches `LinkListRow` in the engine. deviceA
+/// / deviceB are the hostnames of endpoint_order=0 / 1 resolved via
+/// LEFT JOIN so the grid doesn't need a second round-trip per row.
+export interface LinkListRow {
+  id: string;
+  linkCode: string;
+  linkType: string | null;
+  deviceA: string | null;
+  deviceB: string | null;
+  status: string;
+  version: number;
+}
+
+/// Thin server-list row — matches `ServerListRow` in the engine.
+export interface ServerListRow {
+  id: string;
+  hostname: string;
+  profileCode: string | null;
+  buildingCode: string | null;
+  status: string;
+  version: number;
+}
+
+/// Thin subnet-list row — matches `SubnetListRow` in the engine.
+/// network is pre-rendered as a CIDR string; vlanTag is the numeric
+/// VLAN id when a net.vlan row is linked, null otherwise.
+export interface SubnetListRow {
+  id: string;
+  subnetCode: string;
+  displayName: string;
+  network: string;
+  scopeLevel: string;
+  poolCode: string | null;
+  vlanTag: number | null;
+  status: string;
+  version: number;
+}
+
 /// One violation from the validation rule engine. Matches `Violation`
 /// in services/networking-engine/src/validation.rs.
 export interface Violation {
@@ -247,6 +298,31 @@ export class NetworkingEngineService {
   listDevices(organizationId: string): Observable<DeviceListRow[]> {
     const params = new HttpParams().set('organizationId', organizationId);
     return this.http.get<DeviceListRow[]>(`${this.base}/api/net/devices`, { params });
+  }
+
+  /// Thin VLAN list — 5000 row cap, ordered by VLAN tag.
+  listVlans(organizationId: string): Observable<VlanListRow[]> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.get<VlanListRow[]>(`${this.base}/api/net/vlans`, { params });
+  }
+
+  /// Thin link list — 5000 row cap, endpoint hostnames pre-resolved.
+  listLinks(organizationId: string): Observable<LinkListRow[]> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.get<LinkListRow[]>(`${this.base}/api/net/links`, { params });
+  }
+
+  /// Thin server list — 5000 row cap, profile + building code joined.
+  listServers(organizationId: string): Observable<ServerListRow[]> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.get<ServerListRow[]>(`${this.base}/api/net/servers`, { params });
+  }
+
+  /// Thin subnet list — 5000 row cap, pool code + linked VLAN tag
+  /// resolved, network rendered as a CIDR string.
+  listSubnets(organizationId: string): Observable<SubnetListRow[]> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.get<SubnetListRow[]>(`${this.base}/api/net/subnets`, { params });
   }
 
   /// Bulk validate — POSTs the CSV body to the engine's dry_run

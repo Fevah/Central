@@ -107,6 +107,8 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/devices", get(list_devices))
         .route("/api/net/vlans",   get(list_vlans))
         .route("/api/net/links",   get(list_links))
+        .route("/api/net/servers", get(list_servers))
+        .route("/api/net/subnets", get(list_subnets))
         // Thin pool/block reads (WPF convenience-form pickers)
         .route("/api/net/vlan-blocks", get(list_vlan_blocks))
         .route("/api/net/asn-blocks",  get(list_asn_blocks))
@@ -828,6 +830,94 @@ async fn list_links(
            LEFT JOIN net.device        db ON db.id = eb.device_id
           WHERE l.organization_id = $1 AND l.deleted_at IS NULL
           ORDER BY l.link_code
+          LIMIT 5000")
+        .bind(q.organization_id)
+        .fetch_all(&s.pool)
+        .await?;
+    Ok(Json(rows))
+}
+
+// ─── Server thin list ───────────────────────────────────────────────────
+
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct ServerListRow {
+    id: Uuid,
+    hostname: String,
+    profile_code: Option<String>,    // resolved from net.server_profile
+    building_code: Option<String>,   // resolved from net.building
+    status: String,
+    version: i32,
+}
+
+/// Thin list of servers — same shape + cap as list_devices. Resolves
+/// the profile + building code via LEFT JOINs so context-menu lookups
+/// (e.g. web `selectId:{guid}:{label}` drill) don't need a second
+/// round-trip per row.
+async fn list_servers(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let rows: Vec<ServerListRow> = sqlx::query_as(
+        "SELECT sv.id,
+                sv.hostname,
+                sp.profile_code,
+                b.building_code,
+                sv.status::text AS status,
+                sv.version
+           FROM net.server sv
+           LEFT JOIN net.server_profile sp ON sp.id = sv.server_profile_id
+           LEFT JOIN net.building       b  ON b.id  = sv.building_id
+          WHERE sv.organization_id = $1 AND sv.deleted_at IS NULL
+          ORDER BY sv.hostname
+          LIMIT 5000")
+        .bind(q.organization_id)
+        .fetch_all(&s.pool)
+        .await?;
+    Ok(Json(rows))
+}
+
+// ─── Subnet thin list ───────────────────────────────────────────────────
+
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct SubnetListRow {
+    id: Uuid,
+    subnet_code: String,
+    display_name: String,
+    network: String,             // rendered via ::text for stable wire repr
+    scope_level: String,
+    pool_code: Option<String>,
+    vlan_tag: Option<i32>,       // resolved from net.vlan.vlan_id if linked
+    status: String,
+    version: i32,
+}
+
+/// Thin list of subnets — mirrors list_vlans (5000 row cap, ORDER BY
+/// subnet_code). Resolves the parent pool code + optional VLAN tag so
+/// pickers + grid rows render without extra joins client-side. network
+/// is cast to text so the wire shape is a stable CIDR string rather
+/// than the sqlx Ipv4Network/Ipv6Network enum which needs extra feature
+/// flags to deserialise in consumers.
+async fn list_subnets(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let rows: Vec<SubnetListRow> = sqlx::query_as(
+        "SELECT sn.id,
+                sn.subnet_code,
+                sn.display_name,
+                sn.network::text AS network,
+                sn.scope_level,
+                p.pool_code      AS pool_code,
+                v.vlan_id        AS vlan_tag,
+                sn.status::text  AS status,
+                sn.version
+           FROM net.subnet sn
+           LEFT JOIN net.ip_pool p ON p.id = sn.pool_id
+           LEFT JOIN net.vlan    v ON v.id = sn.vlan_id
+          WHERE sn.organization_id = $1 AND sn.deleted_at IS NULL
+          ORDER BY sn.subnet_code
           LIMIT 5000")
         .bind(q.organization_id)
         .fetch_all(&s.pool)
