@@ -1075,6 +1075,38 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Error,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "region.display_name_not_empty",
+        name: "Region display_name must be non-empty",
+        description: "Empty region display_name renders as a blank \
+                      row in the hierarchy picker + tree — can't be \
+                      selected without knowing its uuid. Parallel to \
+                      the *_profile rules (batch 17).",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "site.display_name_not_empty",
+        name: "Site display_name must be non-empty",
+        description: "Parallel to region. Blank site display_name \
+                      breaks the site picker on the device + server \
+                      create forms.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "building.display_name_not_empty",
+        name: "Building display_name must be non-empty",
+        description: "Parallel to region + site. The building is \
+                      the most frequently-drilled-into hierarchy \
+                      level, so an empty display_name is the most \
+                      painful variant.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1349,6 +1381,9 @@ async fn dispatch(
         "ip_address.vrrp_has_peer_on_other_device" => run_vrrp_has_peer(pool, org_id, severity, out).await,
         "site_profile.display_name_not_empty"     => run_site_profile_display_name(pool, org_id, severity, out).await,
         "floor_profile.display_name_not_empty"    => run_floor_profile_display_name(pool, org_id, severity, out).await,
+        "region.display_name_not_empty"           => run_region_display_name(pool, org_id, severity, out).await,
+        "site.display_name_not_empty"             => run_site_display_name(pool, org_id, severity, out).await,
+        "building.display_name_not_empty"         => run_building_display_name(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -3570,6 +3605,68 @@ async fn run_site_profile_display_name(
     Ok(())
 }
 
+/// `region.display_name_not_empty` — schema NOT NULL doesn't
+/// reject blank strings. Hierarchy picker rows rendered blank
+/// when this drifts.
+async fn run_region_display_name(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, region_code FROM net.region
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND btrim(display_name) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "region.display_name_not_empty".into(),
+            severity, entity_type: "Region".into(), entity_id: Some(id),
+            message: format!("Region '{code}' has an empty display_name."),
+        });
+    }
+    Ok(())
+}
+
+/// `site.display_name_not_empty` — parallel to region.
+async fn run_site_display_name(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, site_code FROM net.site
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND btrim(display_name) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "site.display_name_not_empty".into(),
+            severity, entity_type: "Site".into(), entity_id: Some(id),
+            message: format!("Site '{code}' has an empty display_name."),
+        });
+    }
+    Ok(())
+}
+
+/// `building.display_name_not_empty` — parallel to region + site.
+async fn run_building_display_name(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, building_code FROM net.building
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND btrim(display_name) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "building.display_name_not_empty".into(),
+            severity, entity_type: "Building".into(), entity_id: Some(id),
+            message: format!("Building '{code}' has an empty display_name."),
+        });
+    }
+    Ok(())
+}
+
 /// `floor_profile.display_name_not_empty` — parallel to site_profile.
 async fn run_floor_profile_display_name(
     pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
@@ -3777,6 +3874,9 @@ mod tests {
             "ip_address.vrrp_has_peer_on_other_device",
             "site_profile.display_name_not_empty",
             "floor_profile.display_name_not_empty",
+            "region.display_name_not_empty",
+            "site.display_name_not_empty",
+            "building.display_name_not_empty",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
