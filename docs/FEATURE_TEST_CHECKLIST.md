@@ -2931,6 +2931,69 @@ legacy-ribbon cleanup that removed pre-merge Devices + Switches tabs.
 - [ ] `asn_allocation.unique_allocated_to` (Warning)
 - [ ] `port.interface_name_not_empty` (Error)
 
+### 7.X.22 Phase 10b — fifth wave (commits 2026-04-19+)
+
+Closes several WPF-parity write-path gaps (locks PATCH, change-set
+creation, naming override CRUD) and adds three more entity detail
+pages (server / VLAN / link) so the detail-page set now covers the
+four primary network entities.
+
+**Naming-override admin page** (commit `98ffe4336`)
+- [ ] `/network/naming-overrides` wires GET/POST/PUT/DELETE
+      /api/net/naming/overrides. Complements the preview page.
+- [ ] DxDataGrid grouped by entityType + scopeLevel; filter bar
+      with both filter combos + "New override" right-aligned.
+- [ ] Create dialog: entityType / subtypeCode / scopeLevel /
+      conditional scopeEntityId (when scope != Global) / template /
+      notes. Inline link to the preview page for dry-run.
+- [ ] Edit dialog keeps entityType + scope + subtype as readonly
+      (uniqueness key); only template + notes editable.
+- [ ] Failure classes: 403 permission / 409 uniqueness / 412 stale.
+
+**Locks PATCH write path** (commit `4e1b870cd`)
+- [ ] Per-row edit icon on /network/locks opens DxPopup SetLock dialog.
+- [ ] Target table + displayLabel + current state readonly; new-state
+      combo + reason text area; reason pre-populated from current row.
+- [ ] Purple hint appears when Immutable is selected ("terminal —
+      can't be loosened once set").
+- [ ] Failure classes: 400 illegal transition (Immutable terminal
+      case), 403 permission, generic RFC 7807.
+
+**Server detail page** (commit `574e55341`)
+- [ ] `/network/net-server/:id` with Summary + Audit tabs.
+- [ ] Summary meta grid: hostname / profileCode / buildingCode /
+      status / version / uuid.
+- [ ] Audit tab loads last 100 entries lazily on first view.
+- [ ] Servers grid double-click drills here.
+
+**Change-set creation** (commit `e269ebcf2`)
+- [ ] "New change set" button on the list page opens a DxPopup
+      with title (required) / description / requestedByDisplay.
+- [ ] On success, navigates straight to the new Set's detail page.
+- [ ] Inline hint explains requestedByDisplay is independent of
+      the authenticated user id (pulled from X-User-Id).
+- [ ] Failure classes: 403 "lacks write:ChangeSet".
+
+**VLAN detail page** (commit `bf83279b9`)
+- [ ] `/network/net-vlan/:id` with Summary / Audit / DHCP relays tabs.
+- [ ] Summary meta grid: tag / displayName / block / scope level /
+      status / version / uuid.
+- [ ] DHCP relays tab lists every target pointing at this VLAN;
+      empty-state note when none configured; "Manage →" link back
+      to the CRUD page.
+- [ ] VLANs grid double-click drills here.
+
+**Link detail page** (commit `406583f85`)
+- [ ] `/network/net-link/:id` with Summary + Audit tabs.
+- [ ] Summary hero section: A-side ↔ B-side endpoint cards with
+      clickable hostnames. Click drills to the matching net.device
+      detail via lazy hostname→uuid map (built on first click,
+      cached thereafter).
+- [ ] Meta grid: link code / type / status / version / uuid.
+- [ ] Responsive: below 900px the arrow rotates 90° + endpoints
+      stack vertically.
+- [ ] Links grid double-click drills here.
+
 ---
 
 ## 8. Enterprise SaaS
