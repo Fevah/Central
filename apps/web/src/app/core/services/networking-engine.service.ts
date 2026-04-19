@@ -880,6 +880,46 @@ export class NetworkingEngineService {
     return this.http.get<DhcpRelayTargetRow[]>(`${this.base}/api/net/dhcp-relay-targets`, { params });
   }
 
+  /// Create a DHCP relay target. serverIp is the bare host string
+  /// (`"10.11.120.10"`); priority defaults to 10 server-side.
+  createDhcpRelayTarget(body: {
+    organizationId: string;
+    vlanId: string;
+    serverIp: string;
+    priority?: number;
+    notes?: string | null;
+  }): Observable<DhcpRelayTargetRow> {
+    return this.http.post<DhcpRelayTargetRow>(
+      `${this.base}/api/net/dhcp-relay-targets`, body);
+  }
+
+  /// Update a relay target — priority + notes + optional ipAddressId.
+  /// Optimistic concurrency via version (pass the row's current value).
+  updateDhcpRelayTarget(id: string, body: {
+    organizationId: string;
+    priority: number;
+    notes?: string | null;
+    ipAddressId?: string | null;
+    version: number;
+  }): Observable<DhcpRelayTargetRow> {
+    const params = new HttpParams().set('organizationId', body.organizationId);
+    return this.http.put<DhcpRelayTargetRow>(
+      `${this.base}/api/net/dhcp-relay-targets/${id}`,
+      {
+        priority:    body.priority,
+        notes:       body.notes ?? null,
+        ipAddressId: body.ipAddressId ?? null,
+        version:     body.version,
+      }, { params });
+  }
+
+  /// Soft-delete a DHCP relay target.
+  deleteDhcpRelayTarget(id: string, organizationId: string): Observable<void> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.delete<void>(
+      `${this.base}/api/net/dhcp-relay-targets/${id}`, { params });
+  }
+
   /// Bulk validate — POSTs the CSV body to the engine's dry_run
   /// path and returns per-row outcomes. The web client sticks to
   /// validate-only; apply/upsert goes through the WPF BulkPanel
