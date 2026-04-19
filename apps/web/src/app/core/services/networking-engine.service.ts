@@ -102,6 +102,26 @@ export interface ServerListRow {
   version: number;
 }
 
+/// Thin port-list row — matches `PortListRow` in the engine.
+/// Device hostname resolved via LEFT JOIN. Natural sort handling
+/// (xe-1/1/2 before xe-1/1/10) is a client-side concern; the
+/// engine just returns alphabetical ORDER BY so `xe-1/1/10` sorts
+/// before `xe-1/1/2` on the wire.
+export interface PortListRow {
+  id: string;
+  deviceId: string;
+  deviceHostname: string | null;
+  interfaceName: string;
+  interfacePrefix: string;
+  speedMbps: number | null;
+  adminUp: boolean;
+  description: string | null;
+  portMode: string;
+  nativeVlanId: number | null;
+  status: string;
+  version: number;
+}
+
 /// Thin link-endpoint list row — matches `LinkEndpointListRow` in
 /// the engine. LEFT JOINs resolve device hostname, port
 /// interface_name (from net.port), the free-text interface_name
@@ -811,6 +831,18 @@ export class NetworkingEngineService {
     if (linkId) params = params.set('linkId', linkId);
     return this.http.get<LinkEndpointListRow[]>(
       `${this.base}/api/net/link-endpoints`, { params });
+  }
+
+  /// Thin port list — 5000 row cap. Optional `deviceId` narrows to
+  /// one device (the device-detail Ports tab drill).
+  listPorts(
+    organizationId: string,
+    deviceId?: string,
+  ): Observable<PortListRow[]> {
+    let params = new HttpParams().set('organizationId', organizationId);
+    if (deviceId) params = params.set('deviceId', deviceId);
+    return this.http.get<PortListRow[]>(
+      `${this.base}/api/net/ports`, { params });
   }
 
   /// List change-sets, optionally narrowed to a status. Capped at

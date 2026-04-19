@@ -7,13 +7,15 @@ import {
 import {
   NetworkingEngineService, DeviceListRow, AuditRow,
   RenderedConfigSummary, RenderedConfigRecord, RenderDiff,
+  PortListRow,
 } from '../../../core/services/networking-engine.service';
 import { environment } from '../../../../environments/environment';
 
 /// net.device-backed detail page — companion to the thin /network/devices
-/// grid. Three tabs: Summary (device row + basic metadata), Audit (last
-/// 100 audit entries for this device), Renders (last 20 render summaries
-/// + body viewer).
+/// grid. Four tabs: Summary (device row + basic metadata), Audit (last
+/// 100 audit entries), Renders (last 20 render summaries + body +
+/// diff viewer + "Render now"), Ports (every net.port on this device
+/// with interface_name, speed, port_mode, native VLAN, description).
 ///
 /// Distinct from /network/devices/:id which is the legacy switch_guide
 /// editor page — this one is the net.* authoritative surface, routed
@@ -108,6 +110,35 @@ import { environment } from '../../../../environments/environment';
         <div *ngIf="!selectedDiff.previousRenderId"><em>First render — no predecessor.</em></div>
       </div>
     </div>
+
+    <!-- Ports tab — every net.port on this device with the common
+         operator fields pre-resolved. Grouped by interfacePrefix
+         by default so xe- / ge- / et- cohorts cluster together.
+         Alphabetical ORDER BY from the server means xe-1/1/10
+         sorts before xe-1/1/2 on the wire; the grid's default
+         sort accepts that (a natural-sort comparator lands if it
+         becomes a complaint — not worth the complexity yet). -->
+    <div *ngIf="activeTab === 3">
+      <dx-data-grid [dataSource]="ports" [showBorders]="true" [hoverStateEnabled]="true"
+                     [columnAutoWidth]="true"
+                     [searchPanel]="{ visible: true }"
+                     [filterRow]="{ visible: true }"
+                     [headerFilter]="{ visible: true }"
+                     [groupPanel]="{ visible: true }">
+        <dxi-column dataField="interfaceName"   caption="Interface"  [fixed]="true" width="160"
+                    sortOrder="asc" [sortIndex]="0" />
+        <dxi-column dataField="interfacePrefix" caption="Prefix"     width="80"  [groupIndex]="0" />
+        <dxi-column dataField="speedMbps"       caption="Speed (Mb)" width="100" dataType="number" />
+        <dxi-column dataField="adminUp"         caption="Admin up"   width="90"  dataType="boolean" />
+        <dxi-column dataField="portMode"        caption="Mode"       width="100" />
+        <dxi-column dataField="nativeVlanId"    caption="Native VLAN" width="110" dataType="number" />
+        <dxi-column dataField="status"          caption="Status"     width="90" />
+        <dxi-column dataField="description"     caption="Description" />
+      </dx-data-grid>
+      <div *ngIf="ports.length === 0 && !loadingPorts" class="empty-note">
+        No ports recorded for this device.
+      </div>
+    </div>
   `,
   styles: [`
     .page-header { margin-bottom: 12px; }
@@ -136,11 +167,12 @@ import { environment } from '../../../../environments/environment';
     .diff-body { font-family: ui-monospace, monospace; font-size: 12px; margin: 0; white-space: pre; overflow: auto; max-height: 250px; }
     .diff-body.added { color: #22c55e; }
     .diff-body.removed { color: #ef4444; }
+    .empty-note { margin-top: 12px; padding: 10px; color: #64748b; font-size: 12px; background: #0f172a; border-radius: 4px; text-align: center; }
     @media (max-width: 1100px) { .meta-grid { grid-template-columns: 1fr 1fr; } .diff-panels { grid-template-columns: 1fr; } }
   `]
 })
 export class NetworkDeviceDetailComponent implements OnInit {
-  tabs = [{ text: 'Summary' }, { text: 'Audit' }, { text: 'Renders' }];
+  tabs = [{ text: 'Summary' }, { text: 'Audit' }, { text: 'Renders' }, { text: 'Ports' }];
   activeTab = 0;
 
   deviceId = '';
@@ -149,6 +181,8 @@ export class NetworkDeviceDetailComponent implements OnInit {
   renders: RenderedConfigSummary[] = [];
   selectedRecord: RenderedConfigRecord | null = null;
   selectedDiff: RenderDiff | null = null;
+  ports: PortListRow[] = [];
+  loadingPorts = false;
 
   rendering = false;
   status = '';
@@ -191,6 +225,13 @@ export class NetworkDeviceDetailComponent implements OnInit {
     if (this.activeTab === 2 && this.renders.length === 0) {
       this.engine.listDeviceRenders(this.deviceId, environment.defaultTenantId, 20)
         .subscribe({ next: (rows) => { this.renders = rows; }, error: () => {} });
+    }
+    if (this.activeTab === 3 && this.ports.length === 0 && !this.loadingPorts) {
+      this.loadingPorts = true;
+      this.engine.listPorts(environment.defaultTenantId, this.deviceId).subscribe({
+        next: (rows) => { this.ports = rows; this.loadingPorts = false; },
+        error: () => { this.loadingPorts = false; },
+      });
     }
   }
 

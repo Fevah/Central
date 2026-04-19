@@ -115,6 +115,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/ip-addresses", get(list_ip_addresses))
         .route("/api/net/server-nics",  get(list_server_nics))
         .route("/api/net/link-endpoints", get(list_link_endpoints))
+        .route("/api/net/ports",          get(list_ports))
         // Thin pool/block reads (WPF convenience-form pickers)
         .route("/api/net/vlan-blocks", get(list_vlan_blocks))
         .route("/api/net/asn-blocks",  get(list_asn_blocks))
@@ -1151,6 +1152,69 @@ async fn list_link_endpoints(
           LIMIT 5000")
         .bind(q.organization_id)
         .bind(q.link_id)
+        .fetch_all(&s.pool)
+        .await?;
+    Ok(Json(rows))
+}
+
+// ─── Port thin list ─────────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PortListQuery {
+    organization_id: Uuid,
+    /// Optional — narrow to one device (the device-detail Ports tab
+    /// drill). Without it, 5000-row cap across the tenant.
+    device_id: Option<Uuid>,
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct PortListRow {
+    id: Uuid,
+    device_id: Uuid,
+    device_hostname: Option<String>,
+    interface_name: String,
+    interface_prefix: String,
+    speed_mbps: Option<i64>,
+    admin_up: bool,
+    description: Option<String>,
+    port_mode: String,
+    native_vlan_id: Option<i32>,
+    status: String,
+    version: i32,
+}
+
+/// Thin list of net.port rows. 5000-row cap. Optional deviceId
+/// narrower (drill target from the device detail Ports tab).
+/// Device hostname resolved via LEFT JOIN so the grid renders
+/// without per-row round-trips when viewing the tenant-wide list.
+async fn list_ports(
+    State(s): State<AppState>,
+    Query(q): Query<PortListQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let rows: Vec<PortListRow> = sqlx::query_as(
+        "SELECT p.id,
+                p.device_id,
+                d.hostname          AS device_hostname,
+                p.interface_name,
+                p.interface_prefix,
+                p.speed_mbps,
+                p.admin_up,
+                p.description,
+                p.port_mode,
+                p.native_vlan_id,
+                p.status::text      AS status,
+                p.version
+           FROM net.port p
+           LEFT JOIN net.device d ON d.id = p.device_id
+          WHERE p.organization_id = $1
+            AND p.deleted_at IS NULL
+            AND ($2::uuid IS NULL OR p.device_id = $2)
+          ORDER BY d.hostname, p.interface_name
+          LIMIT 5000")
+        .bind(q.organization_id)
+        .bind(q.device_id)
         .fetch_all(&s.pool)
         .await?;
     Ok(Json(rows))
