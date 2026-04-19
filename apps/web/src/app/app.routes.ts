@@ -35,6 +35,7 @@ export const routes: Routes = [
         canActivate: [moduleGuard('switches')],
         children: [
           { path: '',                loadComponent: () => import('./modules/network/components/network-dashboard.component').then(m => m.NetworkDashboardComponent) },
+          { path: 'overview',        loadComponent: () => import('./modules/network/components/network-overview.component').then(m => m.NetworkOverviewComponent) },
           { path: 'devices/:id',     loadComponent: () => import('./modules/network/components/device-detail.component').then(m => m.DeviceDetailComponent) },
           { path: 'switches/:host',  loadComponent: () => import('./modules/network/components/switch-detail.component').then(m => m.SwitchDetailComponent) },
           { path: 'links',           canActivate: [moduleGuard('links')],

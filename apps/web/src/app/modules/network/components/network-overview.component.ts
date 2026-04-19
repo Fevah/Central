@@ -1,0 +1,361 @@
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Router, RouterModule } from '@angular/router';
+import { forkJoin } from 'rxjs';
+import { DxButtonModule } from 'devextreme-angular';
+import { NetworkingEngineService } from '../../../core/services/networking-engine.service';
+import { environment } from '../../../../environments/environment';
+
+interface CountTile {
+  label: string;
+  count: number;
+  route: string;
+  kind: 'primary' | 'secondary' | 'numbering' | 'hierarchy' | 'governance';
+  loading: boolean;
+}
+
+interface StatusBreakdown {
+  label: string;
+  active: number;
+  decommissioned: number;
+  planned: number;
+  locked: number;
+  other: number;
+}
+
+/// Single-glance tenant overview. Groups every entity count into five
+/// tile rows (primary / secondary / numbering / hierarchy / governance),
+/// pulls the latest validation run summary, and surfaces the top five
+/// rules by violation count. Each tile double-clicks through to its
+/// grid page; validation badge drills to /network/validation.
+@Component({
+  selector: 'app-network-overview',
+  standalone: true,
+  imports: [CommonModule, RouterModule, DxButtonModule],
+  template: `
+    <div class="page-header">
+      <h2>Network overview</h2>
+      <small class="subtitle">
+        Tenant-wide entity counts + latest validation summary. Click a
+        tile to drill into the grid; click the validation badge to
+        re-run the full catalog.
+      </small>
+    </div>
+
+    <div class="toolbar">
+      <dx-button text="Refresh" icon="refresh" stylingMode="text"
+                 (onClick)="reload()" [disabled]="loading" />
+      <dx-button text="Run validation" type="default"
+                 (onClick)="runValidation()" [disabled]="validationLoading" />
+      <span *ngIf="status" class="status-line">{{ status }}</span>
+    </div>
+
+    <ng-container *ngFor="let section of sections">
+      <h3 class="section-header">{{ section.label }}</h3>
+      <div class="tile-row">
+        <a class="tile" [class.loading]="t.loading"
+           [ngClass]="'tile-' + t.kind"
+           [routerLink]="t.route"
+           *ngFor="let t of section.tiles">
+          <div class="tile-label">{{ t.label }}</div>
+          <div class="tile-count">{{ t.loading ? '…' : t.count }}</div>
+        </a>
+      </div>
+    </ng-container>
+
+    <h3 class="section-header">Validation</h3>
+    <div class="validation-row">
+      <a class="validation-card" routerLink="/network/validation">
+        <div class="vc-label">Rules run</div>
+        <div class="vc-count">{{ validationLoading ? '…' : rulesRun }}</div>
+      </a>
+      <a class="validation-card" routerLink="/network/validation">
+        <div class="vc-label">Rules with findings</div>
+        <div class="vc-count" [class.warn]="rulesWithFindings > 0">
+          {{ validationLoading ? '…' : rulesWithFindings }}
+        </div>
+      </a>
+      <a class="validation-card" routerLink="/network/validation">
+        <div class="vc-label">Total violations</div>
+        <div class="vc-count" [class.warn]="totalViolations > 0">
+          {{ validationLoading ? '…' : totalViolations }}
+        </div>
+      </a>
+      <a class="validation-card" routerLink="/network/validation">
+        <div class="vc-label">Errors</div>
+        <div class="vc-count" [class.error]="errorCount > 0">
+          {{ validationLoading ? '…' : errorCount }}
+        </div>
+      </a>
+      <a class="validation-card" routerLink="/network/validation">
+        <div class="vc-label">Warnings</div>
+        <div class="vc-count" [class.warn]="warningCount > 0">
+          {{ validationLoading ? '…' : warningCount }}
+        </div>
+      </a>
+    </div>
+
+    <h3 class="section-header" *ngIf="topRules.length">Top violating rules</h3>
+    <table class="top-rules" *ngIf="topRules.length">
+      <thead>
+        <tr>
+          <th>Rule</th><th>Severity</th><th class="num">Violations</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let r of topRules">
+          <td>{{ r.ruleCode }}</td>
+          <td [ngClass]="'sev-' + r.severity.toLowerCase()">{{ r.severity }}</td>
+          <td class="num">{{ r.count }}</td>
+        </tr>
+      </tbody>
+    </table>
+  `,
+  styles: [`
+    :host { display: block; padding: 12px 16px; }
+    .page-header { margin-bottom: 12px; }
+    .page-header h2 { margin: 0 0 4px 0; }
+    .subtitle { color: #888; }
+    .toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
+    .status-line { color: #666; font-size: 12px; }
+
+    .section-header {
+      margin: 20px 0 8px 0; font-size: 13px; text-transform: uppercase;
+      letter-spacing: 0.6px; color: #6b6b6b;
+    }
+
+    .tile-row {
+      display: grid; gap: 10px;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      margin-bottom: 4px;
+    }
+    .tile {
+      display: block; padding: 14px 16px; border-radius: 6px;
+      background: #ffffff; border: 1px solid #e1e4e8;
+      text-decoration: none; color: inherit; transition: transform 0.1s, box-shadow 0.1s;
+    }
+    .tile:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .tile.loading { opacity: 0.6; }
+    .tile-label { font-size: 12px; color: #57606a; margin-bottom: 6px; }
+    .tile-count { font-size: 24px; font-weight: 600; color: #24292f; }
+    .tile-primary    { border-left: 3px solid #0969da; }
+    .tile-secondary  { border-left: 3px solid #8250df; }
+    .tile-numbering  { border-left: 3px solid #1a7f37; }
+    .tile-hierarchy  { border-left: 3px solid #bf8700; }
+    .tile-governance { border-left: 3px solid #cf222e; }
+
+    .validation-row {
+      display: grid; gap: 10px; grid-template-columns: repeat(5, 1fr);
+    }
+    .validation-card {
+      display: block; padding: 16px; background: #f6f8fa; border-radius: 6px;
+      border: 1px solid #d0d7de; text-decoration: none; color: inherit;
+    }
+    .validation-card:hover { background: #eaeef2; }
+    .vc-label { font-size: 12px; color: #57606a; margin-bottom: 6px; }
+    .vc-count { font-size: 22px; font-weight: 600; color: #24292f; }
+    .vc-count.warn  { color: #bf8700; }
+    .vc-count.error { color: #cf222e; }
+
+    .top-rules {
+      width: 100%; border-collapse: collapse; margin-top: 8px;
+      background: #ffffff; border: 1px solid #e1e4e8; border-radius: 6px;
+    }
+    .top-rules th, .top-rules td {
+      text-align: left; padding: 8px 12px; border-bottom: 1px solid #e1e4e8;
+    }
+    .top-rules th.num, .top-rules td.num { text-align: right; }
+    .top-rules tr:last-child td { border-bottom: none; }
+    .sev-error   { color: #cf222e; font-weight: 600; }
+    .sev-warning { color: #bf8700; }
+    .sev-info    { color: #6b6b6b; }
+  `],
+})
+export class NetworkOverviewComponent implements OnInit {
+  sections: { label: string; tiles: CountTile[] }[] = [];
+  loading = false;
+  status = '';
+
+  validationLoading = false;
+  rulesRun = 0;
+  rulesWithFindings = 0;
+  totalViolations = 0;
+  errorCount = 0;
+  warningCount = 0;
+  topRules: { ruleCode: string; severity: string; count: number }[] = [];
+
+  private tenantId = environment.defaultTenantId;
+
+  constructor(
+    private engine: NetworkingEngineService,
+    private router: Router,
+  ) {
+    this.buildSections();
+  }
+
+  ngOnInit(): void {
+    this.reload();
+    this.runValidation();
+  }
+
+  private buildSections(): void {
+    const mk = (label: string, route: string,
+                kind: CountTile['kind']): CountTile =>
+      ({ label, count: 0, route, kind, loading: true });
+
+    this.sections = [
+      {
+        label: 'Primary entities',
+        tiles: [
+          mk('Devices',      '/network/devices',      'primary'),
+          mk('Servers',      '/network/servers',      'primary'),
+          mk('VLANs',        '/network/vlans',        'primary'),
+          mk('Links',        '/network/links-grid',   'primary'),
+          mk('Subnets',      '/network/subnets',      'primary'),
+          mk('IP addresses', '/network/ip-addresses', 'primary'),
+        ],
+      },
+      {
+        label: 'Secondary',
+        tiles: [
+          mk('Ports',               '/network/ports',               'secondary'),
+          mk('Aggregate-ethernet',  '/network/aggregate-ethernet',  'secondary'),
+          mk('Modules',             '/network/modules',             'secondary'),
+          mk('DHCP relay targets',  '/network/dhcp-relay',          'secondary'),
+        ],
+      },
+      {
+        label: 'Numbering',
+        tiles: [
+          mk('ASN allocations',      '/network/asn-allocations',    'numbering'),
+          mk('VLAN blocks',          '/network/vlan-blocks',        'numbering'),
+          mk('ASN blocks',           '/network/asn-blocks',         'numbering'),
+          mk('MLAG domains',         '/network/mlag-domains',       'numbering'),
+          mk('MSTP rules',           '/network/mstp-rules',         'numbering'),
+          mk('Reservation shelf',    '/network/reservation-shelf',  'numbering'),
+        ],
+      },
+      {
+        label: 'Hierarchy',
+        tiles: [
+          mk('Rooms',         '/network/rooms',         'hierarchy'),
+          mk('Racks',         '/network/racks',         'hierarchy'),
+        ],
+      },
+      {
+        label: 'Governance',
+        tiles: [
+          mk('Change sets',   '/network/change-sets',   'governance'),
+          mk('Scope grants',  '/network/scope-grants',  'governance'),
+          mk('Locks',         '/network/locks',         'governance'),
+        ],
+      },
+    ];
+  }
+
+  reload(): void {
+    this.loading = true;
+    this.status = 'Loading counts…';
+
+    const t = this.tenantId;
+    const all = forkJoin({
+      devices:      this.engine.listDevices(t),
+      servers:      this.engine.listServers(t),
+      vlans:        this.engine.listVlans(t),
+      links:        this.engine.listLinks(t),
+      subnets:      this.engine.listSubnets(t),
+      ipAddresses:  this.engine.listIpAddresses(t),
+      ports:        this.engine.listPorts(t),
+      aggEth:       this.engine.listAggregateEthernet(t),
+      modules:      this.engine.listModules(t),
+      dhcpRelays:   this.engine.listDhcpRelayTargets(t),
+      asnAllocs:    this.engine.listAsnAllocations(t),
+      vlanBlocks:   this.engine.listVlanBlockAvailability(t),
+      asnBlocks:    this.engine.listAsnBlockAvailability(t),
+      mlagDomains:  this.engine.listMlagDomains(t),
+      mstpRules:    this.engine.listMstpRules(t),
+      shelf:        this.engine.listReservationShelf(t),
+      rooms:        this.engine.listRooms(t),
+      racks:        this.engine.listRacks(t),
+      changeSets:   this.engine.listChangeSets(t),
+      scopeGrants:  this.engine.listScopeGrants(t),
+      locks:        this.engine.listLockedRows(t),
+    });
+
+    all.subscribe({
+      next: (r) => {
+        const setCount = (label: string, count: number) => {
+          for (const s of this.sections) {
+            const tile = s.tiles.find(x => x.label === label);
+            if (tile) { tile.count = count; tile.loading = false; return; }
+          }
+        };
+
+        setCount('Devices',             r.devices.length);
+        setCount('Servers',             r.servers.length);
+        setCount('VLANs',               r.vlans.length);
+        setCount('Links',               r.links.length);
+        setCount('Subnets',             r.subnets.length);
+        setCount('IP addresses',        r.ipAddresses.length);
+        setCount('Ports',               r.ports.length);
+        setCount('Aggregate-ethernet',  r.aggEth.length);
+        setCount('Modules',             r.modules.length);
+        setCount('DHCP relay targets',  r.dhcpRelays.length);
+        setCount('ASN allocations',     r.asnAllocs.length);
+        setCount('VLAN blocks',         r.vlanBlocks.length);
+        setCount('ASN blocks',          r.asnBlocks.length);
+        setCount('MLAG domains',        r.mlagDomains.length);
+        setCount('MSTP rules',          r.mstpRules.length);
+        setCount('Reservation shelf',   r.shelf.length);
+        setCount('Rooms',               r.rooms.length);
+        setCount('Racks',               r.racks.length);
+        setCount('Change sets',         r.changeSets.length);
+        setCount('Scope grants',        r.scopeGrants.length);
+        setCount('Locks',               r.locks.length);
+
+        this.loading = false;
+        this.status = 'Counts loaded.';
+      },
+      error: (err) => {
+        this.loading = false;
+        this.status = `Load failed: ${err?.message ?? err}`;
+        for (const s of this.sections) {
+          for (const t of s.tiles) { t.loading = false; }
+        }
+      },
+    });
+  }
+
+  runValidation(): void {
+    this.validationLoading = true;
+    this.engine.runValidation(this.tenantId).subscribe({
+      next: (res) => {
+        this.rulesRun          = res.rulesRun;
+        this.rulesWithFindings = res.rulesWithFindings;
+        this.totalViolations   = res.totalViolations;
+        this.errorCount   = res.violations.filter(v => v.severity === 'Error').length;
+        this.warningCount = res.violations.filter(v => v.severity === 'Warning').length;
+
+        const byRule = new Map<string, { ruleCode: string; severity: string; count: number }>();
+        for (const v of res.violations) {
+          const existing = byRule.get(v.ruleCode);
+          if (existing) { existing.count += 1; }
+          else { byRule.set(v.ruleCode,
+            { ruleCode: v.ruleCode, severity: v.severity, count: 1 }); }
+        }
+        this.topRules = [...byRule.values()]
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 5);
+
+        this.validationLoading = false;
+      },
+      error: (err) => {
+        this.validationLoading = false;
+        this.status = `Validation failed: ${err?.message ?? err}`;
+      },
+    });
+  }
+}
