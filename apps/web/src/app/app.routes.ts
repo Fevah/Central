@@ -63,6 +63,7 @@ export const routes: Routes = [
           { path: 'links-grid',      loadComponent: () => import('./modules/network/components/network-links.component').then(m => m.NetworkLinksGridComponent) },
           { path: 'subnets',         loadComponent: () => import('./modules/network/components/network-subnets.component').then(m => m.NetworkSubnetsComponent) },
           { path: 'ports',           loadComponent: () => import('./modules/network/components/network-ports.component').then(m => m.NetworkPortsComponent) },
+          { path: 'aggregate-ethernet', loadComponent: () => import('./modules/network/components/network-aggregate-ethernet.component').then(m => m.NetworkAggregateEthernetComponent) },
           { path: 'dhcp-relay',      loadComponent: () => import('./modules/network/components/network-dhcp-relay.component').then(m => m.NetworkDhcpRelayComponent) },
           { path: 'change-sets',     loadComponent: () => import('./modules/network/components/network-change-sets.component').then(m => m.NetworkChangeSetsComponent) },
           { path: 'change-sets/:id', loadComponent: () => import('./modules/network/components/network-change-set-detail.component').then(m => m.NetworkChangeSetDetailComponent) },

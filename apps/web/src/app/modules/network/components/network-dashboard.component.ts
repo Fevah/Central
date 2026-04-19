@@ -53,6 +53,7 @@ import notify from 'devextreme/ui/notify';
       <a routerLink="/network/links-grid" routerLinkActive="active">Links (net.*)</a>
       <a routerLink="/network/subnets" routerLinkActive="active">Subnets</a>
       <a routerLink="/network/ports" routerLinkActive="active">Ports</a>
+      <a routerLink="/network/aggregate-ethernet" routerLinkActive="active">AE bundles</a>
       <a routerLink="/network/dhcp-relay" routerLinkActive="active">DHCP relay</a>
       <a routerLink="/network/change-sets" routerLinkActive="active">Change sets</a>
       <a routerLink="/network/locks" routerLinkActive="active">Locks</a>

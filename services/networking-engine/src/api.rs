@@ -116,6 +116,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/server-nics",  get(list_server_nics))
         .route("/api/net/link-endpoints", get(list_link_endpoints))
         .route("/api/net/ports",          get(list_ports))
+        .route("/api/net/aggregate-ethernet", get(list_aggregate_ethernet))
         // Thin pool/block reads (WPF convenience-form pickers)
         .route("/api/net/vlan-blocks", get(list_vlan_blocks))
         .route("/api/net/asn-blocks",  get(list_asn_blocks))
@@ -1212,6 +1213,68 @@ async fn list_ports(
             AND p.deleted_at IS NULL
             AND ($2::uuid IS NULL OR p.device_id = $2)
           ORDER BY d.hostname, p.interface_name
+          LIMIT 5000")
+        .bind(q.organization_id)
+        .bind(q.device_id)
+        .fetch_all(&s.pool)
+        .await?;
+    Ok(Json(rows))
+}
+
+// ─── Aggregate ethernet thin list ───────────────────────────────────────
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AggregateEthernetListQuery {
+    organization_id: Uuid,
+    /// Optional — narrow to one device. The device-detail page can
+    /// use this once an AE tab lands.
+    device_id: Option<Uuid>,
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct AggregateEthernetListRow {
+    id: Uuid,
+    device_id: Uuid,
+    device_hostname: Option<String>,
+    ae_name: String,
+    lacp_mode: String,
+    min_links: i32,
+    member_count: i64,     // COUNT(net.port WHERE aggregate_ethernet_id = ae.id)
+    description: Option<String>,
+    status: String,
+    version: i32,
+}
+
+/// Thin list of aggregate_ethernet rows. 5000-row cap. Optional
+/// deviceId narrower. Member count resolved via a correlated
+/// subquery so operators can spot under-populated bundles at a
+/// glance.
+async fn list_aggregate_ethernet(
+    State(s): State<AppState>,
+    Query(q): Query<AggregateEthernetListQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let rows: Vec<AggregateEthernetListRow> = sqlx::query_as(
+        "SELECT ae.id,
+                ae.device_id,
+                d.hostname              AS device_hostname,
+                ae.ae_name,
+                ae.lacp_mode,
+                ae.min_links,
+                (SELECT COUNT(*)::bigint
+                   FROM net.port p
+                  WHERE p.aggregate_ethernet_id = ae.id
+                    AND p.deleted_at IS NULL) AS member_count,
+                ae.description,
+                ae.status::text         AS status,
+                ae.version
+           FROM net.aggregate_ethernet ae
+           LEFT JOIN net.device d ON d.id = ae.device_id
+          WHERE ae.organization_id = $1
+            AND ae.deleted_at IS NULL
+            AND ($2::uuid IS NULL OR ae.device_id = $2)
+          ORDER BY d.hostname, ae.ae_name
           LIMIT 5000")
         .bind(q.organization_id)
         .bind(q.device_id)

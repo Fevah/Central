@@ -102,6 +102,23 @@ export interface ServerListRow {
   version: number;
 }
 
+/// Thin aggregate-ethernet list row — matches
+/// `AggregateEthernetListRow` in the engine. memberCount is a
+/// correlated subquery on net.port so under-populated bundles
+/// (member < min_links) surface in the grid without a second query.
+export interface AggregateEthernetListRow {
+  id: string;
+  deviceId: string;
+  deviceHostname: string | null;
+  aeName: string;
+  lacpMode: string;
+  minLinks: number;
+  memberCount: number;
+  description: string | null;
+  status: string;
+  version: number;
+}
+
 /// Thin port-list row — matches `PortListRow` in the engine.
 /// Device hostname resolved via LEFT JOIN. Natural sort handling
 /// (xe-1/1/2 before xe-1/1/10) is a client-side concern; the
@@ -843,6 +860,19 @@ export class NetworkingEngineService {
     if (deviceId) params = params.set('deviceId', deviceId);
     return this.http.get<PortListRow[]>(
       `${this.base}/api/net/ports`, { params });
+  }
+
+  /// Thin aggregate-ethernet list — 5000 row cap. Optional deviceId
+  /// narrower. memberCount (from correlated subquery) makes
+  /// "bundle is below min_links" scans trivial.
+  listAggregateEthernet(
+    organizationId: string,
+    deviceId?: string,
+  ): Observable<AggregateEthernetListRow[]> {
+    let params = new HttpParams().set('organizationId', organizationId);
+    if (deviceId) params = params.set('deviceId', deviceId);
+    return this.http.get<AggregateEthernetListRow[]>(
+      `${this.base}/api/net/aggregate-ethernet`, { params });
   }
 
   /// List change-sets, optionally narrowed to a status. Capped at
