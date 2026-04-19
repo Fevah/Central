@@ -357,6 +357,22 @@ export interface RenderedConfigRecord {
   renderedBy: number | null;
 }
 
+/// Freshly-rendered config returned from POST
+/// /api/net/devices/:id/render-config. Same wire shape as
+/// `RenderedConfig` in the engine — id + previousRenderId are
+/// serialized only when non-null, so declare them as optional.
+export interface RenderedConfigResponse {
+  deviceId: string;
+  flavorCode: string;
+  body: string;
+  bodySha256: string;
+  lineCount: number;
+  renderedAt: string;
+  id?: string;
+  previousRenderId?: string;
+  renderDurationMs?: number;
+}
+
 /// Line-set diff between a render + its previous_render_id chain.
 /// Matches `RenderDiff` in the engine. Added / removed in source-
 /// body order; unchangedCount is just the cardinality for a "how
@@ -681,6 +697,18 @@ export class NetworkingEngineService {
     const params = new HttpParams().set('organizationId', organizationId);
     return this.http.get<PoolUtilizationRow[]>(
       `${this.base}/api/net/pools/utilization`, { params });
+  }
+
+  /// Trigger a fresh render for one device. Persists to
+  /// net.rendered_config + chains via previousRenderId. Requires
+  /// write:Device on the target device.
+  renderDeviceConfig(
+    deviceId: string,
+    organizationId: string,
+  ): Observable<RenderedConfigResponse> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.post<RenderedConfigResponse>(
+      `${this.base}/api/net/devices/${deviceId}/render-config`, null, { params });
   }
 
   /// List render history for one device. Capped server-side at

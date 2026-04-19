@@ -40,6 +40,9 @@ import { environment } from '../../../../environments/environment';
                      (onValueChanged)="onDeviceChanged()" />
       <dx-button text="Refresh" icon="refresh" stylingMode="text"
                  (onClick)="reload()" [disabled]="loading || !deviceId" />
+      <dx-button text="Render now" icon="save" type="default" stylingMode="contained"
+                 hint="Render + persist a fresh config for this device. Requires write:Device."
+                 (onClick)="renderNow()" [disabled]="rendering || !deviceId" />
       <span *ngIf="status" class="status-line">{{ status }}</span>
     </div>
 
@@ -133,6 +136,7 @@ export class NetworkRenderHistoryComponent implements OnInit {
   selectedDiff: RenderDiff | null = null;
 
   loading = false;
+  rendering = false;
   status = '';
 
   constructor(
@@ -195,6 +199,55 @@ export class NetworkRenderHistoryComponent implements OnInit {
           ? 'Forbidden — your user lacks read:Device on this device.'
           : `Load failed: ${err?.message ?? err}`;
         this.rows = [];
+      },
+    });
+  }
+
+  /// POST /api/net/devices/:id/render-config to persist a fresh
+  /// render, then reload the grid so the new row appears at the top
+  /// (ordered by renderedAt DESC). The response body is used to
+  /// populate the body/diff viewer so the operator sees exactly
+  /// what just rendered without an extra click.
+  renderNow(): void {
+    if (!this.deviceId) return;
+    this.rendering = true;
+    this.status = 'Rendering…';
+    this.engine.renderDeviceConfig(this.deviceId, environment.defaultTenantId).subscribe({
+      next: (resp) => {
+        this.rendering = false;
+        this.status = `Rendered · ${resp.lineCount} lines · SHA ${resp.bodySha256.slice(0, 16)}…`;
+        this.reload();
+        // Populate the body viewer immediately from the response so
+        // the operator isn't left clicking through the new row.
+        if (resp.id) {
+          this.selectedRecord = {
+            id: resp.id,
+            deviceId: resp.deviceId,
+            flavorCode: resp.flavorCode,
+            body: resp.body,
+            bodySha256: resp.bodySha256,
+            lineCount: resp.lineCount,
+            renderDurationMs: resp.renderDurationMs ?? null,
+            previousRenderId: resp.previousRenderId ?? null,
+            renderedAt: resp.renderedAt,
+            renderedBy: null,
+          };
+          // Diff requires the render's id — fetch it since the
+          // POST response doesn't include the diff body.
+          this.engine.getRenderDiff(resp.id, environment.defaultTenantId).subscribe({
+            next: (diff) => { this.selectedDiff = diff; },
+            error: () => { this.selectedDiff = null; },
+          });
+        }
+      },
+      error: (err) => {
+        this.rendering = false;
+        const status = err?.status as number | undefined;
+        if (status === 403) {
+          this.status = 'Forbidden — your user lacks write:Device on this device.';
+        } else {
+          this.status = `Render failed: ${err?.error?.detail ?? err?.message ?? err}`;
+        }
       },
     });
   }
