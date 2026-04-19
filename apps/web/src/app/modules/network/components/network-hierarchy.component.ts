@@ -163,12 +163,13 @@ export class NetworkHierarchyComponent implements OnInit {
       node.nodeType === 'Region'   ? '/network/region'
     : node.nodeType === 'Site'     ? '/network/site'
     : node.nodeType === 'Building' ? '/network/building'
+    : node.nodeType === 'Floor'    ? '/network/floor'
     :                                 null;
     if (route) {
       this.router.navigate([route, node.entityId]);
       return;
     }
-    // Floor (+ future Room / Rack) → audit timeline fallback.
+    // Future Room / Rack fall through to audit timeline.
     this.router.navigate(['/network/audit', node.nodeType, node.entityId]);
   }
 }

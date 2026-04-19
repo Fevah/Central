@@ -57,6 +57,7 @@ export const routes: Routes = [
           { path: 'building/:id',    loadComponent: () => import('./modules/network/components/network-building-detail.component').then(m => m.NetworkBuildingDetailComponent) },
           { path: 'site/:id',        loadComponent: () => import('./modules/network/components/network-site-detail.component').then(m => m.NetworkSiteDetailComponent) },
           { path: 'region/:id',      loadComponent: () => import('./modules/network/components/network-region-detail.component').then(m => m.NetworkRegionDetailComponent) },
+          { path: 'floor/:id',       loadComponent: () => import('./modules/network/components/network-floor-detail.component').then(m => m.NetworkFloorDetailComponent) },
           { path: 'vlans',           loadComponent: () => import('./modules/network/components/network-vlans.component').then(m => m.NetworkVlansComponent) },
           { path: 'servers',         loadComponent: () => import('./modules/network/components/network-servers.component').then(m => m.NetworkServersComponent) },
           { path: 'links-grid',      loadComponent: () => import('./modules/network/components/network-links.component').then(m => m.NetworkLinksGridComponent) },
