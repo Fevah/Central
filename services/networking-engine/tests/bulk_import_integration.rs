@@ -760,7 +760,7 @@ async fn server_import_happy_path_commits() {
          SRV-B,{p},IT-B,,,10.88.0.2,4,Active\r\n",
         p = fx.profile_code);
     let result = bulk_import::import_servers(
-        &fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, None,
+        &fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, ImportMode::Create, None,
     ).await.expect("apply");
     assert_eq!(result.valid, 2);
     assert!(result.applied);
@@ -774,9 +774,9 @@ async fn server_import_rejects_duplicate_hostname() {
     let fx = FullFixture::new(pool).await.expect("fixture");
 
     let csv = format!("{SERVER_HEADER}SRV-X,{p},IT-B,,,,4,Active\r\n", p = fx.profile_code);
-    bulk_import::import_servers(&fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, None)
+    bulk_import::import_servers(&fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, ImportMode::Create, None)
         .await.expect("seed apply");
-    let result = bulk_import::import_servers(&fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, None)
+    let result = bulk_import::import_servers(&fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, ImportMode::Create, None)
         .await.expect("re-apply");
     assert_eq!(result.invalid, 1);
     assert!(!result.applied);
@@ -793,7 +793,7 @@ async fn server_import_forbidden_without_grant() {
 
     let csv = format!("{SERVER_HEADER}SRV-Z,{p},IT-B,,,,4,Active\r\n", p = fx.profile_code);
     let err = bulk_import::import_servers(
-        &fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, Some(42),
+        &fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, ImportMode::Create, Some(42),
     ).await.unwrap_err().to_string();
     assert!(err.contains("Forbidden"), "err: {err}");
     assert_eq!(fx.count_servers().await, 0);
@@ -811,7 +811,7 @@ async fn dhcp_relay_import_happy_path_commits() {
          {v},10.11.120.11,20,,,Active\r\n",
         v = fx.vlan_numeric);
     let result = bulk_import::import_dhcp_relay_targets(
-        &fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, None,
+        &fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, ImportMode::Create, None,
     ).await.expect("apply");
     assert_eq!(result.valid, 2);
     assert!(result.applied);
@@ -827,7 +827,7 @@ async fn dhcp_relay_import_rejects_unknown_vlan_id() {
     // VLAN 999 isn't in this tenant — rejected with a clear message.
     let csv = format!("{DHCP_HEADER}999,10.11.99.10,10,,,Active\r\n");
     let result = bulk_import::import_dhcp_relay_targets(
-        &fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, None,
+        &fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, ImportMode::Create, None,
     ).await.expect("apply");
     assert_eq!(result.invalid, 1);
     assert!(!result.applied);
@@ -844,7 +844,7 @@ async fn dhcp_relay_import_forbidden_without_grant() {
 
     let csv = format!("{DHCP_HEADER}{},10.11.120.99,10,,,Active\r\n", fx.vlan_numeric);
     let err = bulk_import::import_dhcp_relay_targets(
-        &fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, Some(42),
+        &fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, ImportMode::Create, Some(42),
     ).await.unwrap_err().to_string();
     assert!(err.contains("Forbidden"), "err: {err}");
     assert_eq!(fx.count_dhcp_relay_targets().await, 0);
@@ -932,7 +932,7 @@ async fn link_import_happy_path_writes_one_link_plus_two_endpoints() {
          LINK-1,P2P,,,{a},xe-1/1/1,10.0.0.1,{b},xe-1/1/1,10.0.0.2,Active\r\n",
         a = fx.device_a_hostname, b = fx.device_b_hostname);
     let result = bulk_import::import_links(
-        &fx.full.pools.tenant.pool, fx.full.pools.tenant.org_id, &csv, false, None,
+        &fx.full.pools.tenant.pool, fx.full.pools.tenant.org_id, &csv, false, ImportMode::Create, None,
     ).await.expect("apply");
     assert_eq!(result.valid, 1);
     assert!(result.applied);
@@ -953,7 +953,7 @@ async fn link_import_rejects_unknown_device_hostname() {
          LINK-2,P2P,,,{a},xe-1/1/1,,DEV-GHOST,xe-1/1/1,,Active\r\n",
         a = fx.device_a_hostname);
     let result = bulk_import::import_links(
-        &fx.full.pools.tenant.pool, fx.full.pools.tenant.org_id, &csv, false, None,
+        &fx.full.pools.tenant.pool, fx.full.pools.tenant.org_id, &csv, false, ImportMode::Create, None,
     ).await.expect("apply");
     assert_eq!(result.invalid, 1);
     assert!(!result.applied);
@@ -975,7 +975,7 @@ async fn link_import_rejects_unknown_link_type() {
          LINK-X,Bogus,,,{a},,,{b},,,Active\r\n",
         a = fx.device_a_hostname, b = fx.device_b_hostname);
     let result = bulk_import::import_links(
-        &fx.full.pools.tenant.pool, fx.full.pools.tenant.org_id, &csv, false, None,
+        &fx.full.pools.tenant.pool, fx.full.pools.tenant.org_id, &csv, false, ImportMode::Create, None,
     ).await.expect("apply");
     assert_eq!(result.invalid, 1);
     assert!(!result.applied);
@@ -993,12 +993,12 @@ async fn link_import_rejects_duplicate_link_code() {
         "{LINK_HEADER}\
          LINK-DUP,P2P,,,{a},,,{b},,,Active\r\n",
         a = fx.device_a_hostname, b = fx.device_b_hostname);
-    bulk_import::import_links(&fx.full.pools.tenant.pool, fx.full.pools.tenant.org_id, &csv, false, None)
+    bulk_import::import_links(&fx.full.pools.tenant.pool, fx.full.pools.tenant.org_id, &csv, false, ImportMode::Create, None)
         .await.expect("seed apply");
     assert_eq!(fx.count_links().await, 1);
 
     let result = bulk_import::import_links(
-        &fx.full.pools.tenant.pool, fx.full.pools.tenant.org_id, &csv, false, None,
+        &fx.full.pools.tenant.pool, fx.full.pools.tenant.org_id, &csv, false, ImportMode::Create, None,
     ).await.expect("re-apply");
     assert_eq!(result.invalid, 1);
     assert!(!result.applied);
@@ -1020,8 +1020,191 @@ async fn link_import_forbidden_without_write_link_grant() {
          LINK-Z,P2P,,,{a},,,{b},,,Active\r\n",
         a = fx.device_a_hostname, b = fx.device_b_hostname);
     let err = bulk_import::import_links(
-        &fx.full.pools.tenant.pool, fx.full.pools.tenant.org_id, &csv, false, Some(42),
+        &fx.full.pools.tenant.pool, fx.full.pools.tenant.org_id, &csv, false, ImportMode::Create, Some(42),
     ).await.unwrap_err().to_string();
     assert!(err.contains("Forbidden"), "err: {err}");
     assert_eq!(fx.count_links().await, 0);
+}
+
+// ─── Server / DHCP-relay / Link upsert tests ──────────────────────────────
+//
+// Same shape as the VLAN + subnet upsert tests above. None of these
+// CSVs carry a version column today, so upsert applies against current
+// DB version (no client-side concurrency snapshot to validate). Link
+// upsert additionally exercises the delete-then-insert endpoint
+// rewrite — a CSV row's port_a/port_b is the source of truth on
+// re-import.
+
+#[tokio::test]
+#[ignore]
+async fn server_upsert_mode_updates_existing_hostname_rather_than_rejecting() {
+    let Some(pool) = pool_or_skip("server_upsert_mode_updates_existing_hostname_rather_than_rejecting").await else { return; };
+    let fx = FullFixture::new(pool).await.expect("fixture");
+
+    // Seed via Create mode.
+    let csv_initial = format!(
+        "{SERVER_HEADER}SRV-UP,{p},IT-B,,,10.88.0.5,4,Planned\r\n",
+        p = fx.profile_code);
+    bulk_import::import_servers(
+        &fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv_initial, false, ImportMode::Create, None,
+    ).await.expect("seed");
+    assert_eq!(fx.count_servers().await, 1);
+
+    // Re-import same hostname with Active status + new mgmt IP.
+    let csv_upsert = format!(
+        "{SERVER_HEADER}SRV-UP,{p},IT-B,,,10.88.0.99,4,Active\r\n",
+        p = fx.profile_code);
+    let result = bulk_import::import_servers(
+        &fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv_upsert, false, ImportMode::Upsert, None,
+    ).await.expect("upsert");
+    assert!(result.applied, "upsert must succeed on existing hostname");
+    assert_eq!(fx.count_servers().await, 1, "no duplicate row");
+
+    let (mgmt_ip, status, version): (String, String, i32) = sqlx::query_as(
+        "SELECT host(management_ip), status::text, version
+           FROM net.server
+          WHERE organization_id = $1 AND hostname = 'SRV-UP'")
+        .bind(fx.pools.tenant.org_id)
+        .fetch_one(&fx.pools.tenant.pool).await.unwrap();
+    assert_eq!(mgmt_ip, "10.88.0.99");
+    assert_eq!(status, "Active");
+    assert_eq!(version, 2);
+}
+
+#[tokio::test]
+#[ignore]
+async fn server_upsert_mode_creates_new_hostname_like_create() {
+    let Some(pool) = pool_or_skip("server_upsert_mode_creates_new_hostname_like_create").await else { return; };
+    let fx = FullFixture::new(pool).await.expect("fixture");
+
+    let csv = format!(
+        "{SERVER_HEADER}SRV-FRESH,{p},IT-B,,,10.88.42.1,4,Active\r\n",
+        p = fx.profile_code);
+    let result = bulk_import::import_servers(
+        &fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, ImportMode::Upsert, None,
+    ).await.expect("upsert new");
+    assert!(result.applied);
+    assert_eq!(fx.count_servers().await, 1);
+}
+
+#[tokio::test]
+#[ignore]
+async fn dhcp_relay_upsert_mode_updates_existing_pair_rather_than_rejecting() {
+    let Some(pool) = pool_or_skip("dhcp_relay_upsert_mode_updates_existing_pair_rather_than_rejecting").await else { return; };
+    let fx = FullFixture::new(pool).await.expect("fixture");
+
+    let csv_initial = format!(
+        "{DHCP_HEADER}{v},10.11.120.10,10,,initial,Active\r\n",
+        v = fx.vlan_numeric);
+    bulk_import::import_dhcp_relay_targets(
+        &fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv_initial, false, ImportMode::Create, None,
+    ).await.expect("seed");
+    assert_eq!(fx.count_dhcp_relay_targets().await, 1);
+
+    // Re-import same (vlan_id, server_ip) pair with bumped priority + notes.
+    let csv_upsert = format!(
+        "{DHCP_HEADER}{v},10.11.120.10,99,,upgraded,Active\r\n",
+        v = fx.vlan_numeric);
+    let result = bulk_import::import_dhcp_relay_targets(
+        &fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv_upsert, false, ImportMode::Upsert, None,
+    ).await.expect("upsert");
+    assert!(result.applied, "upsert must succeed on existing (vlan_id, server_ip)");
+    assert_eq!(fx.count_dhcp_relay_targets().await, 1);
+
+    let (priority, notes, version): (i32, Option<String>, i32) = sqlx::query_as(
+        "SELECT priority, notes, version
+           FROM net.dhcp_relay_target
+          WHERE organization_id = $1 AND host(server_ip) = '10.11.120.10'")
+        .bind(fx.pools.tenant.org_id)
+        .fetch_one(&fx.pools.tenant.pool).await.unwrap();
+    assert_eq!(priority, 99);
+    assert_eq!(notes.as_deref(), Some("upgraded"));
+    assert_eq!(version, 2);
+}
+
+#[tokio::test]
+#[ignore]
+async fn dhcp_relay_upsert_mode_creates_new_pair_like_create() {
+    let Some(pool) = pool_or_skip("dhcp_relay_upsert_mode_creates_new_pair_like_create").await else { return; };
+    let fx = FullFixture::new(pool).await.expect("fixture");
+
+    let csv = format!(
+        "{DHCP_HEADER}{v},10.11.120.42,5,,,Active\r\n",
+        v = fx.vlan_numeric);
+    let result = bulk_import::import_dhcp_relay_targets(
+        &fx.pools.tenant.pool, fx.pools.tenant.org_id, &csv, false, ImportMode::Upsert, None,
+    ).await.expect("upsert new");
+    assert!(result.applied);
+    assert_eq!(fx.count_dhcp_relay_targets().await, 1);
+}
+
+#[tokio::test]
+#[ignore]
+async fn link_upsert_mode_updates_link_and_rewrites_endpoints() {
+    let Some(pool) = pool_or_skip("link_upsert_mode_updates_link_and_rewrites_endpoints").await else { return; };
+    let fx = LinkFixture::new(pool).await.expect("fixture");
+
+    // Seed: LINK-UP with port xe-1/1/1 on both sides.
+    let csv_initial = format!(
+        "{LINK_HEADER}LINK-UP,P2P,,,{a},xe-1/1/1,,{b},xe-1/1/1,,Planned\r\n",
+        a = fx.device_a_hostname, b = fx.device_b_hostname);
+    bulk_import::import_links(
+        &fx.full.pools.tenant.pool, fx.full.pools.tenant.org_id, &csv_initial, false, ImportMode::Create, None,
+    ).await.expect("seed");
+    assert_eq!(fx.count_links().await, 1);
+    assert_eq!(fx.count_endpoints().await, 2);
+
+    // Re-import LINK-UP with new ports + Active status. Endpoints
+    // should be rewritten (delete+insert in same tx) — the count
+    // stays at 2 but interface_name on each side flips.
+    let csv_upsert = format!(
+        "{LINK_HEADER}LINK-UP,P2P,,,{a},xe-1/1/9,,{b},xe-1/1/9,,Active\r\n",
+        a = fx.device_a_hostname, b = fx.device_b_hostname);
+    let result = bulk_import::import_links(
+        &fx.full.pools.tenant.pool, fx.full.pools.tenant.org_id, &csv_upsert, false, ImportMode::Upsert, None,
+    ).await.expect("upsert");
+    assert!(result.applied, "upsert must succeed on existing link_code");
+    assert_eq!(fx.count_links().await, 1, "no duplicate link");
+    assert_eq!(fx.count_endpoints().await, 2,
+        "endpoints rewritten — count stays at 2, not doubled");
+
+    // Verify link row updated.
+    let (status, version): (String, i32) = sqlx::query_as(
+        "SELECT status::text, version FROM net.link
+          WHERE organization_id = $1 AND link_code = 'LINK-UP'")
+        .bind(fx.full.pools.tenant.org_id)
+        .fetch_one(&fx.full.pools.tenant.pool).await.unwrap();
+    assert_eq!(status, "Active");
+    assert_eq!(version, 2);
+
+    // Verify endpoints carry the new port names.
+    let port_rows: Vec<(i32, Option<String>)> = sqlx::query_as(
+        "SELECT endpoint_order, interface_name FROM net.link_endpoint
+           JOIN net.link l ON l.id = link_endpoint.link_id
+          WHERE link_endpoint.organization_id = $1 AND l.link_code = 'LINK-UP'
+          ORDER BY endpoint_order")
+        .bind(fx.full.pools.tenant.org_id)
+        .fetch_all(&fx.full.pools.tenant.pool).await.unwrap();
+    assert_eq!(port_rows.len(), 2);
+    assert_eq!(port_rows[0].1.as_deref(), Some("xe-1/1/9"),
+        "endpoint A interface_name must reflect upsert CSV value");
+    assert_eq!(port_rows[1].1.as_deref(), Some("xe-1/1/9"),
+        "endpoint B interface_name must reflect upsert CSV value");
+}
+
+#[tokio::test]
+#[ignore]
+async fn link_upsert_mode_creates_new_link_code_like_create() {
+    let Some(pool) = pool_or_skip("link_upsert_mode_creates_new_link_code_like_create").await else { return; };
+    let fx = LinkFixture::new(pool).await.expect("fixture");
+
+    let csv = format!(
+        "{LINK_HEADER}LINK-NEW,P2P,,,{a},,,{b},,,Active\r\n",
+        a = fx.device_a_hostname, b = fx.device_b_hostname);
+    let result = bulk_import::import_links(
+        &fx.full.pools.tenant.pool, fx.full.pools.tenant.org_id, &csv, false, ImportMode::Upsert, None,
+    ).await.expect("upsert new");
+    assert!(result.applied);
+    assert_eq!(fx.count_links().await, 1);
+    assert_eq!(fx.count_endpoints().await, 2);
 }

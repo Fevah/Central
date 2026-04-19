@@ -1196,6 +1196,7 @@ pub async fn import_servers(
     org_id: Uuid,
     body: &str,
     dry_run: bool,
+    mode: ImportMode,
     user_id: Option<i32>,
 ) -> Result<ImportValidationResult, EngineError> {
     scope_grants::require_permission(
@@ -1236,21 +1237,32 @@ pub async fn import_servers(
     let building_code_to_id: std::collections::HashMap<String, Uuid> =
         building_rows.into_iter().map(|(id, c)| (c, id)).collect();
 
-    let existing_rows: Vec<(String,)> = sqlx::query_as(
-        "SELECT hostname FROM net.server
+    // Existing hostname → (id, version) so apply can branch INSERT vs
+    // version-checked UPDATE. Server CSV has no version column (8 cols
+    // — same shape as before upsert) so update applies against current
+    // DB version, mirroring the VLAN/subnet semantic.
+    let existing_rows: Vec<(String, Uuid, i32)> = sqlx::query_as(
+        "SELECT hostname, id, version FROM net.server
           WHERE organization_id = $1 AND deleted_at IS NULL")
         .bind(org_id).fetch_all(pool).await?;
+    let existing_by_hostname: std::collections::HashMap<String, (Uuid, i32)> =
+        existing_rows.into_iter().map(|(h, id, v)| (h, (id, v))).collect();
     let existing_hostnames: std::collections::HashSet<String> =
-        existing_rows.into_iter().map(|(h,)| h).collect();
+        existing_by_hostname.keys().cloned().collect();
+    let empty_set = std::collections::HashSet::new();
+    let dup_check_set = match mode {
+        ImportMode::Create => &existing_hostnames,
+        ImportMode::Upsert => &empty_set,
+    };
 
     let mut outcomes: Vec<ImportRowOutcome> = Vec::with_capacity(rows.len().saturating_sub(1));
     for (i, row) in rows.iter().enumerate().skip(1) {
         let row_number = i + 1;
         let mut outcome = validate_server_row(row, row_number, &profile_codes, &building_codes);
-        if outcome.ok && existing_hostnames.contains(&outcome.identifier) {
+        if outcome.ok && dup_check_set.contains(&outcome.identifier) {
             outcome.ok = false;
             outcome.errors.push(
-                "server with this hostname already exists — update mode not yet supported"
+                "server with this hostname already exists — pass mode=upsert to update existing rows"
                 .to_string());
         }
         outcomes.push(outcome);
@@ -1279,33 +1291,84 @@ pub async fn import_servers(
         let status_val  = if status.is_empty() { "Planned" } else { status };
         let mgmt_ip_opt: Option<&str> = if management_ip.is_empty() { None } else { Some(management_ip) };
 
-        let insert_result: Result<(Uuid,), sqlx::Error> = sqlx::query_as(
-            "INSERT INTO net.server
-                (organization_id, server_profile_id, building_id,
-                 hostname, management_ip, status, created_by, updated_by)
-             VALUES ($1, $2, $3, $4, $5::inet, $6::net.entity_status, $7, $7)
-             RETURNING id")
-            .bind(org_id)
-            .bind(profile_id)
-            .bind(building_id)
-            .bind(hostname)
-            .bind(mgmt_ip_opt)
-            .bind(status_val)
-            .bind(user_id)
-            .fetch_one(&mut *tx).await;
+        let existing = existing_by_hostname.get(hostname).copied();
+        let (server_id, action) = match (existing, mode) {
+            (Some((id, db_version)), ImportMode::Upsert) => {
+                let update_result: Result<Option<(Uuid,)>, sqlx::Error> = sqlx::query_as(
+                    "UPDATE net.server
+                        SET server_profile_id = $3,
+                            building_id       = $4,
+                            management_ip     = $5::inet,
+                            status            = $6::net.entity_status,
+                            updated_at        = now(),
+                            updated_by        = $7,
+                            version           = version + 1
+                      WHERE id = $1 AND organization_id = $2
+                        AND version = $8 AND deleted_at IS NULL
+                      RETURNING id")
+                    .bind(id).bind(org_id)
+                    .bind(profile_id).bind(building_id)
+                    .bind(mgmt_ip_opt).bind(status_val)
+                    .bind(user_id).bind(db_version)
+                    .fetch_optional(&mut *tx).await;
 
-        let server_id = match insert_result {
-            Ok((id,)) => id,
-            Err(e) => {
-                let o = &mut outcomes[outcome_idx];
-                o.ok = false;
-                o.errors.push(format!("database INSERT failed: {e}"));
-                return Ok(ImportValidationResult {
-                    total_rows: outcomes.len(),
-                    valid: outcomes.iter().filter(|o| o.ok).count(),
-                    invalid: outcomes.iter().filter(|o| !o.ok).count(),
-                    dry_run: false, applied: false, outcomes,
-                });
+                match update_result {
+                    Ok(Some((updated_id,))) => (updated_id, "Updated"),
+                    Ok(None) => {
+                        let o = &mut outcomes[outcome_idx];
+                        o.ok = false;
+                        o.errors.push(format!(
+                            "version mismatch — DB advanced past version {db_version} between read and write"));
+                        return Ok(ImportValidationResult {
+                            total_rows: outcomes.len(),
+                            valid: outcomes.iter().filter(|o| o.ok).count(),
+                            invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                            dry_run: false, applied: false, outcomes,
+                        });
+                    }
+                    Err(e) => {
+                        let o = &mut outcomes[outcome_idx];
+                        o.ok = false;
+                        o.errors.push(format!("database UPDATE failed: {e}"));
+                        return Ok(ImportValidationResult {
+                            total_rows: outcomes.len(),
+                            valid: outcomes.iter().filter(|o| o.ok).count(),
+                            invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                            dry_run: false, applied: false, outcomes,
+                        });
+                    }
+                }
+            }
+            _ => {
+                let insert_result: Result<(Uuid,), sqlx::Error> = sqlx::query_as(
+                    "INSERT INTO net.server
+                        (organization_id, server_profile_id, building_id,
+                         hostname, management_ip, status, created_by, updated_by)
+                     VALUES ($1, $2, $3, $4, $5::inet, $6::net.entity_status, $7, $7)
+                     RETURNING id")
+                    .bind(org_id)
+                    .bind(profile_id)
+                    .bind(building_id)
+                    .bind(hostname)
+                    .bind(mgmt_ip_opt)
+                    .bind(status_val)
+                    .bind(user_id)
+                    .fetch_one(&mut *tx).await;
+
+                match insert_result {
+                    Ok((id,)) => (id, "Created"),
+                    Err(e) => {
+                        let o = &mut outcomes[outcome_idx];
+                        o.ok = false;
+                        o.errors.push(format!("database INSERT failed: {e}"));
+                        return Ok(ImportValidationResult {
+                            total_rows: outcomes.len(),
+                            valid: outcomes.iter().filter(|o| o.ok).count(),
+                            invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                            dry_run: false, applied: false, outcomes,
+                        });
+                    }
+                }
             }
         };
 
@@ -1314,11 +1377,15 @@ pub async fn import_servers(
             source_service: "networking-engine",
             entity_type: "Server",
             entity_id: Some(server_id),
-            action: "Created",
+            action,
             actor_user_id: user_id,
             actor_display: None, client_ip: None, correlation_id: None,
             details: serde_json::json!({
                 "source": "bulk_import",
+                "mode": match mode {
+                    ImportMode::Create => "create",
+                    ImportMode::Upsert => "upsert",
+                },
                 "hostname": hostname,
                 "profile_code": profile_code,
                 "building_code": building_code,
@@ -1403,6 +1470,7 @@ pub async fn import_dhcp_relay_targets(
     org_id: Uuid,
     body: &str,
     dry_run: bool,
+    mode: ImportMode,
     user_id: Option<i32>,
 ) -> Result<ImportValidationResult, EngineError> {
     scope_grants::require_permission(
@@ -1442,17 +1510,29 @@ pub async fn import_dhcp_relay_targets(
         vlan_numeric_to_id.entry(n).or_insert(id);
     }
 
-    let existing_pairs: Vec<(Uuid, String)> = sqlx::query_as(
-        "SELECT vlan_id, host(server_ip) FROM net.dhcp_relay_target
+    // Existing (vlan_uuid, server_ip) → (id, version). Key the map
+    // by "vlan_uuid|host_ip" so the apply loop can branch INSERT vs
+    // version-checked UPDATE.
+    let existing_target_rows: Vec<(Uuid, String, Uuid, i32)> = sqlx::query_as(
+        "SELECT vlan_id, host(server_ip), id, version FROM net.dhcp_relay_target
           WHERE organization_id = $1 AND deleted_at IS NULL")
         .bind(org_id).fetch_all(pool).await?;
-    let existing_pairs: std::collections::HashSet<String> =
-        existing_pairs.into_iter().map(|(vid, ip)| format!("{vid}|{ip}")).collect();
+    let existing_by_pair: std::collections::HashMap<String, (Uuid, i32)> =
+        existing_target_rows.into_iter()
+            .map(|(vid, ip, id, v)| (format!("{vid}|{ip}"), (id, v)))
+            .collect();
+    let existing_pairs_set: std::collections::HashSet<String> =
+        existing_by_pair.keys().cloned().collect();
+    let empty_set = std::collections::HashSet::new();
+    let dup_check_set = match mode {
+        ImportMode::Create => &existing_pairs_set,
+        ImportMode::Upsert => &empty_set,
+    };
 
     let mut outcomes: Vec<ImportRowOutcome> = Vec::with_capacity(rows.len().saturating_sub(1));
     for (i, row) in rows.iter().enumerate().skip(1) {
         let row_number = i + 1;
-        outcomes.push(validate_dhcp_relay_row(row, row_number, &vlan_numeric_to_id, &existing_pairs));
+        outcomes.push(validate_dhcp_relay_row(row, row_number, &vlan_numeric_to_id, dup_check_set));
     }
 
     let valid   = outcomes.iter().filter(|o| o.ok).count();
@@ -1478,33 +1558,82 @@ pub async fn import_dhcp_relay_targets(
             .expect("validator enforced VLAN exists");
         let notes_opt: Option<&str> = if notes.is_empty() { None } else { Some(notes) };
 
-        let insert_result: Result<(Uuid,), sqlx::Error> = sqlx::query_as(
-            "INSERT INTO net.dhcp_relay_target
-                (organization_id, vlan_id, server_ip, priority, notes,
-                 status, lock_state, created_by, updated_by)
-             VALUES ($1, $2, $3::inet, $4, $5,
-                     'Active'::net.entity_status, 'Open'::net.lock_state, $6, $6)
-             RETURNING id")
-            .bind(org_id)
-            .bind(vlan_uuid)
-            .bind(server_ip)
-            .bind(priority)
-            .bind(notes_opt)
-            .bind(user_id)
-            .fetch_one(&mut *tx).await;
+        let pair_key = format!("{vlan_uuid}|{server_ip}");
+        let existing = existing_by_pair.get(&pair_key).copied();
+        let (target_id, action) = match (existing, mode) {
+            (Some((id, db_version)), ImportMode::Upsert) => {
+                let update_result: Result<Option<(Uuid,)>, sqlx::Error> = sqlx::query_as(
+                    "UPDATE net.dhcp_relay_target
+                        SET priority   = $3,
+                            notes      = $4,
+                            updated_at = now(),
+                            updated_by = $5,
+                            version    = version + 1
+                      WHERE id = $1 AND organization_id = $2
+                        AND version = $6 AND deleted_at IS NULL
+                      RETURNING id")
+                    .bind(id).bind(org_id)
+                    .bind(priority).bind(notes_opt)
+                    .bind(user_id).bind(db_version)
+                    .fetch_optional(&mut *tx).await;
 
-        let target_id = match insert_result {
-            Ok((id,)) => id,
-            Err(e) => {
-                let o = &mut outcomes[outcome_idx];
-                o.ok = false;
-                o.errors.push(format!("database INSERT failed: {e}"));
-                return Ok(ImportValidationResult {
-                    total_rows: outcomes.len(),
-                    valid: outcomes.iter().filter(|o| o.ok).count(),
-                    invalid: outcomes.iter().filter(|o| !o.ok).count(),
-                    dry_run: false, applied: false, outcomes,
-                });
+                match update_result {
+                    Ok(Some((updated_id,))) => (updated_id, "Updated"),
+                    Ok(None) => {
+                        let o = &mut outcomes[outcome_idx];
+                        o.ok = false;
+                        o.errors.push(format!(
+                            "version mismatch — DB advanced past version {db_version} between read and write"));
+                        return Ok(ImportValidationResult {
+                            total_rows: outcomes.len(),
+                            valid: outcomes.iter().filter(|o| o.ok).count(),
+                            invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                            dry_run: false, applied: false, outcomes,
+                        });
+                    }
+                    Err(e) => {
+                        let o = &mut outcomes[outcome_idx];
+                        o.ok = false;
+                        o.errors.push(format!("database UPDATE failed: {e}"));
+                        return Ok(ImportValidationResult {
+                            total_rows: outcomes.len(),
+                            valid: outcomes.iter().filter(|o| o.ok).count(),
+                            invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                            dry_run: false, applied: false, outcomes,
+                        });
+                    }
+                }
+            }
+            _ => {
+                let insert_result: Result<(Uuid,), sqlx::Error> = sqlx::query_as(
+                    "INSERT INTO net.dhcp_relay_target
+                        (organization_id, vlan_id, server_ip, priority, notes,
+                         status, lock_state, created_by, updated_by)
+                     VALUES ($1, $2, $3::inet, $4, $5,
+                             'Active'::net.entity_status, 'Open'::net.lock_state, $6, $6)
+                     RETURNING id")
+                    .bind(org_id)
+                    .bind(vlan_uuid)
+                    .bind(server_ip)
+                    .bind(priority)
+                    .bind(notes_opt)
+                    .bind(user_id)
+                    .fetch_one(&mut *tx).await;
+
+                match insert_result {
+                    Ok((id,)) => (id, "Created"),
+                    Err(e) => {
+                        let o = &mut outcomes[outcome_idx];
+                        o.ok = false;
+                        o.errors.push(format!("database INSERT failed: {e}"));
+                        return Ok(ImportValidationResult {
+                            total_rows: outcomes.len(),
+                            valid: outcomes.iter().filter(|o| o.ok).count(),
+                            invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                            dry_run: false, applied: false, outcomes,
+                        });
+                    }
+                }
             }
         };
 
@@ -1513,11 +1642,15 @@ pub async fn import_dhcp_relay_targets(
             source_service: "networking-engine",
             entity_type: "DhcpRelayTarget",
             entity_id: Some(target_id),
-            action: "Created",
+            action,
             actor_user_id: user_id,
             actor_display: None, client_ip: None, correlation_id: None,
             details: serde_json::json!({
                 "source": "bulk_import",
+                "mode": match mode {
+                    ImportMode::Create => "create",
+                    ImportMode::Upsert => "upsert",
+                },
                 "vlan_id": vlan_numeric,
                 "server_ip": server_ip,
             }),
@@ -1620,6 +1753,7 @@ pub async fn import_links(
     org_id: Uuid,
     body: &str,
     dry_run: bool,
+    mode: ImportMode,
     user_id: Option<i32>,
 ) -> Result<ImportValidationResult, EngineError> {
     scope_grants::require_permission(
@@ -1680,13 +1814,22 @@ pub async fn import_links(
     let device_hostname_to_id: std::collections::HashMap<String, Uuid> =
         device_rows.into_iter().map(|(id, h)| (h, id)).collect();
 
-    // Existing link_codes — dup detection.
-    let existing_codes: Vec<(String,)> = sqlx::query_as(
-        "SELECT link_code FROM net.link
+    // Existing link_code → (id, version). dup_check_set is suppressed
+    // in upsert mode (existing rows are valid update targets) so the
+    // validator doesn't fire "already exists" on rows we want to UPDATE.
+    let existing_link_rows: Vec<(String, Uuid, i32)> = sqlx::query_as(
+        "SELECT link_code, id, version FROM net.link
           WHERE organization_id = $1 AND deleted_at IS NULL")
         .bind(org_id).fetch_all(pool).await?;
-    let existing_codes: std::collections::HashSet<String> =
-        existing_codes.into_iter().map(|(c,)| c).collect();
+    let existing_by_code: std::collections::HashMap<String, (Uuid, i32)> =
+        existing_link_rows.into_iter().map(|(c, id, v)| (c, (id, v))).collect();
+    let existing_codes_set: std::collections::HashSet<String> =
+        existing_by_code.keys().cloned().collect();
+    let empty_set = std::collections::HashSet::new();
+    let dup_check_set = match mode {
+        ImportMode::Create => &existing_codes_set,
+        ImportMode::Upsert => &empty_set,
+    };
 
     let mut outcomes: Vec<ImportRowOutcome> = Vec::with_capacity(rows.len().saturating_sub(1));
     for (i, row) in rows.iter().enumerate().skip(1) {
@@ -1694,7 +1837,7 @@ pub async fn import_links(
         outcomes.push(validate_link_row(
             row, row_number,
             &link_type_codes, &vlan_numeric_to_id, &subnet_codes,
-            &device_hostnames, &existing_codes,
+            &device_hostnames, dup_check_set,
         ));
     }
 
@@ -1737,39 +1880,118 @@ pub async fn import_links(
         let port_a_opt: Option<&str> = if port_a.is_empty() { None } else { Some(port_a) };
         let port_b_opt: Option<&str> = if port_b.is_empty() { None } else { Some(port_b) };
 
-        // 1/3: link row
-        let link_insert: Result<(Uuid,), sqlx::Error> = sqlx::query_as(
-            "INSERT INTO net.link
-                (organization_id, link_type_id, link_code,
-                 vlan_id, subnet_id, status, created_by, updated_by)
-             VALUES ($1, $2, $3, $4, $5,
-                     $6::net.entity_status, $7, $7)
-             RETURNING id")
-            .bind(org_id)
-            .bind(type_id)
-            .bind(link_code)
-            .bind(vlan_uuid)
-            .bind(subnet_id_val)
-            .bind(status_val)
-            .bind(user_id)
-            .fetch_one(&mut *tx).await;
+        // For upsert: UPDATE the link row's mutable fields + DELETE
+        // the existing endpoints + INSERT both sides fresh. Doing it
+        // as delete+insert (rather than UPDATE-the-endpoints) means
+        // we don't have to track endpoint identity stability across
+        // imports — the CSV is the source of truth for the A/B pair
+        // and a single transaction guarantees atomicity.
+        let existing = existing_by_code.get(link_code).copied();
+        let (link_id, action) = match (existing, mode) {
+            (Some((id, db_version)), ImportMode::Upsert) => {
+                let update_result: Result<Option<(Uuid,)>, sqlx::Error> = sqlx::query_as(
+                    "UPDATE net.link
+                        SET link_type_id = $3,
+                            vlan_id      = $4,
+                            subnet_id    = $5,
+                            status       = $6::net.entity_status,
+                            updated_at   = now(),
+                            updated_by   = $7,
+                            version      = version + 1
+                      WHERE id = $1 AND organization_id = $2
+                        AND version = $8 AND deleted_at IS NULL
+                      RETURNING id")
+                    .bind(id).bind(org_id)
+                    .bind(type_id).bind(vlan_uuid).bind(subnet_id_val)
+                    .bind(status_val)
+                    .bind(user_id).bind(db_version)
+                    .fetch_optional(&mut *tx).await;
 
-        let link_id = match link_insert {
-            Ok((id,)) => id,
-            Err(e) => {
-                let o = &mut outcomes[outcome_idx];
-                o.ok = false;
-                o.errors.push(format!("database INSERT (link) failed: {e}"));
-                return Ok(ImportValidationResult {
-                    total_rows: outcomes.len(),
-                    valid: outcomes.iter().filter(|o| o.ok).count(),
-                    invalid: outcomes.iter().filter(|o| !o.ok).count(),
-                    dry_run: false, applied: false, outcomes,
-                });
+                let updated_id = match update_result {
+                    Ok(Some((uid,))) => uid,
+                    Ok(None) => {
+                        let o = &mut outcomes[outcome_idx];
+                        o.ok = false;
+                        o.errors.push(format!(
+                            "version mismatch — DB advanced past version {db_version} between read and write"));
+                        return Ok(ImportValidationResult {
+                            total_rows: outcomes.len(),
+                            valid: outcomes.iter().filter(|o| o.ok).count(),
+                            invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                            dry_run: false, applied: false, outcomes,
+                        });
+                    }
+                    Err(e) => {
+                        let o = &mut outcomes[outcome_idx];
+                        o.ok = false;
+                        o.errors.push(format!("database UPDATE (link) failed: {e}"));
+                        return Ok(ImportValidationResult {
+                            total_rows: outcomes.len(),
+                            valid: outcomes.iter().filter(|o| o.ok).count(),
+                            invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                            dry_run: false, applied: false, outcomes,
+                        });
+                    }
+                };
+
+                // Wipe the existing endpoint pair so we can re-insert
+                // from the CSV row. Hard delete (not soft) — endpoints
+                // are owned by the link and have no independent
+                // identity to preserve.
+                let del_result = sqlx::query(
+                    "DELETE FROM net.link_endpoint
+                      WHERE organization_id = $1 AND link_id = $2")
+                    .bind(org_id).bind(updated_id)
+                    .execute(&mut *tx).await;
+                if let Err(e) = del_result {
+                    let o = &mut outcomes[outcome_idx];
+                    o.ok = false;
+                    o.errors.push(format!("database DELETE (endpoints) failed: {e}"));
+                    return Ok(ImportValidationResult {
+                        total_rows: outcomes.len(),
+                        valid: outcomes.iter().filter(|o| o.ok).count(),
+                        invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                        dry_run: false, applied: false, outcomes,
+                    });
+                }
+                (updated_id, "Updated")
+            }
+            _ => {
+                let link_insert: Result<(Uuid,), sqlx::Error> = sqlx::query_as(
+                    "INSERT INTO net.link
+                        (organization_id, link_type_id, link_code,
+                         vlan_id, subnet_id, status, created_by, updated_by)
+                     VALUES ($1, $2, $3, $4, $5,
+                             $6::net.entity_status, $7, $7)
+                     RETURNING id")
+                    .bind(org_id)
+                    .bind(type_id)
+                    .bind(link_code)
+                    .bind(vlan_uuid)
+                    .bind(subnet_id_val)
+                    .bind(status_val)
+                    .bind(user_id)
+                    .fetch_one(&mut *tx).await;
+
+                match link_insert {
+                    Ok((id,)) => (id, "Created"),
+                    Err(e) => {
+                        let o = &mut outcomes[outcome_idx];
+                        o.ok = false;
+                        o.errors.push(format!("database INSERT (link) failed: {e}"));
+                        return Ok(ImportValidationResult {
+                            total_rows: outcomes.len(),
+                            valid: outcomes.iter().filter(|o| o.ok).count(),
+                            invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                            dry_run: false, applied: false, outcomes,
+                        });
+                    }
+                }
             }
         };
 
-        // 2/3: A endpoint
+        // A endpoint — same INSERT regardless of upsert/create
+        // (delete-then-insert handles the upsert side).
         let ep_a_insert: Result<(), sqlx::Error> = sqlx::query(
             "INSERT INTO net.link_endpoint
                 (organization_id, link_id, endpoint_order, device_id,
@@ -1789,7 +2011,7 @@ pub async fn import_links(
             });
         }
 
-        // 3/3: B endpoint
+        // B endpoint
         let ep_b_insert: Result<(), sqlx::Error> = sqlx::query(
             "INSERT INTO net.link_endpoint
                 (organization_id, link_id, endpoint_order, device_id,
@@ -1814,11 +2036,15 @@ pub async fn import_links(
             source_service: "networking-engine",
             entity_type: "Link",
             entity_id: Some(link_id),
-            action: "Created",
+            action,
             actor_user_id: user_id,
             actor_display: None, client_ip: None, correlation_id: None,
             details: serde_json::json!({
                 "source": "bulk_import",
+                "mode": match mode {
+                    ImportMode::Create => "create",
+                    ImportMode::Upsert => "upsert",
+                },
                 "link_code": link_code,
                 "link_type": link_type,
                 "device_a": device_a,

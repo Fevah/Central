@@ -567,10 +567,13 @@ public class NetworkingEngineClient : IDisposable
     /// profile_code, building_code, management_ip, status. ASN +
     /// loopback + NIC count are accepted-for-reference-but-ignored-
     /// on-apply (same semantic as ASN on the device importer —
-    /// operators wire them up via the allocation service or CRUD).</summary>
+    /// operators wire them up via the allocation service or CRUD).
+    ///
+    /// <paramref name="mode"/>="upsert" updates the existing hostname
+    /// via version-checked UPDATE; new hostnames INSERT either way.</summary>
     public Task<ImportValidationResultDto> ImportServersCsvAsync(Guid organizationId,
-        string csvBody, bool dryRun = true, CancellationToken ct = default)
-        => PostCsvAsync("/api/net/servers/import", organizationId, csvBody, dryRun, ct: ct);
+        string csvBody, bool dryRun = true, string? mode = null, CancellationToken ct = default)
+        => PostCsvAsync("/api/net/servers/import", organizationId, csvBody, dryRun, mode, ct);
 
     /// <summary>Bulk import links. One CSV row → 1 net.link +
     /// 2 net.link_endpoint rows in a single transaction. Required:
@@ -580,20 +583,30 @@ public class NetworkingEngineClient : IDisposable
     /// ignored on apply — resolving them to net.ip_address rows
     /// needs subnet context the import flow doesn't carry; operators
     /// wire IPs via the IP-allocation CRUD after the link import
-    /// lands.</summary>
+    /// lands.
+    ///
+    /// <paramref name="mode"/>="upsert" updates the existing link_code
+    /// (link_type, vlan, subnet, status) AND rewrites both endpoints
+    /// from the CSV row in the same transaction — port_a / port_b on
+    /// the upsert row are the source of truth, not the previous
+    /// values. New link_codes INSERT either way.</summary>
     public Task<ImportValidationResultDto> ImportLinksCsvAsync(Guid organizationId,
-        string csvBody, bool dryRun = true, CancellationToken ct = default)
-        => PostCsvAsync("/api/net/links/import", organizationId, csvBody, dryRun, ct: ct);
+        string csvBody, bool dryRun = true, string? mode = null, CancellationToken ct = default)
+        => PostCsvAsync("/api/net/links/import", organizationId, csvBody, dryRun, mode, ct);
 
     /// <summary>Bulk import DHCP relay targets. Required: vlan_id
     /// (must exist in the tenant's VLAN catalog), server_ip. First-
     /// wins when multiple blocks have the same numeric vlan_id —
     /// operators in multi-block tenants should use the CRUD panel
     /// for fine-grained control until a block-qualifier column
-    /// lands.</summary>
+    /// lands.
+    ///
+    /// <paramref name="mode"/>="upsert" updates the existing
+    /// (vlan_id, server_ip) pair (priority + notes) via version-
+    /// checked UPDATE; new pairs INSERT either way.</summary>
     public Task<ImportValidationResultDto> ImportDhcpRelayTargetsCsvAsync(Guid organizationId,
-        string csvBody, bool dryRun = true, CancellationToken ct = default)
-        => PostCsvAsync("/api/net/dhcp-relay-targets/import", organizationId, csvBody, dryRun, ct: ct);
+        string csvBody, bool dryRun = true, string? mode = null, CancellationToken ct = default)
+        => PostCsvAsync("/api/net/dhcp-relay-targets/import", organizationId, csvBody, dryRun, mode, ct);
 
     /// <summary>Shared transport for every `*/import` POST — keeps
     /// the entity-specific helpers to one line each. `mode` is
@@ -823,16 +836,16 @@ public class NetworkingEngineClient : IDisposable
         => PostXlsxAsync("/api/net/subnets/import.xlsx", organizationId, xlsxBytes, dryRun, mode, ct);
 
     public Task<ImportValidationResultDto> ImportServersXlsxAsync(Guid organizationId,
-        byte[] xlsxBytes, bool dryRun = true, CancellationToken ct = default)
-        => PostXlsxAsync("/api/net/servers/import.xlsx", organizationId, xlsxBytes, dryRun, ct: ct);
+        byte[] xlsxBytes, bool dryRun = true, string? mode = null, CancellationToken ct = default)
+        => PostXlsxAsync("/api/net/servers/import.xlsx", organizationId, xlsxBytes, dryRun, mode, ct);
 
     public Task<ImportValidationResultDto> ImportLinksXlsxAsync(Guid organizationId,
-        byte[] xlsxBytes, bool dryRun = true, CancellationToken ct = default)
-        => PostXlsxAsync("/api/net/links/import.xlsx", organizationId, xlsxBytes, dryRun, ct: ct);
+        byte[] xlsxBytes, bool dryRun = true, string? mode = null, CancellationToken ct = default)
+        => PostXlsxAsync("/api/net/links/import.xlsx", organizationId, xlsxBytes, dryRun, mode, ct);
 
     public Task<ImportValidationResultDto> ImportDhcpRelayTargetsXlsxAsync(Guid organizationId,
-        byte[] xlsxBytes, bool dryRun = true, CancellationToken ct = default)
-        => PostXlsxAsync("/api/net/dhcp-relay-targets/import.xlsx", organizationId, xlsxBytes, dryRun, ct: ct);
+        byte[] xlsxBytes, bool dryRun = true, string? mode = null, CancellationToken ct = default)
+        => PostXlsxAsync("/api/net/dhcp-relay-targets/import.xlsx", organizationId, xlsxBytes, dryRun, mode, ct);
 
     private async Task<ImportValidationResultDto> PostXlsxAsync(string path,
         Guid organizationId, byte[] xlsxBytes, bool dryRun,
