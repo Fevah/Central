@@ -692,6 +692,44 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Error,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "vlan.scope_entity_resolves",
+        name: "VLAN scope_entity_id must resolve when scope is non-Free",
+        description: "A VLAN with scope_level != 'Free' must carry a \
+                      scope_entity_id that points at a live row in \
+                      the matching hierarchy table (region / site / \
+                      building / device). Orphaned scope_entity_id \
+                      breaks the scope resolver + makes the 'show \
+                      VLANs for building X' drill return the wrong set.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "dhcp_relay_target.vlan_active",
+        name: "DHCP relay target must point at an active VLAN",
+        description: "A net.dhcp_relay_target row whose vlan_id \
+                      resolves to a soft-deleted or Decommissioned \
+                      VLAN generates DHCP helper config for a VLAN \
+                      that no longer exists — config-gen emits it \
+                      silently. Keeps the target in sync with the \
+                      VLAN's lifecycle.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "subnet.vlan_link_is_active",
+        name: "Subnet's linked VLAN should be active",
+        description: "A net.subnet with a non-null vlan_id pointing \
+                      at a soft-deleted or Decommissioned VLAN is a \
+                      sign the VLAN was retired without cleaning up \
+                      its allocated subnet. Warning rather than \
+                      error — IP ranges often outlive the VLAN tag.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -936,6 +974,9 @@ async fn dispatch(
         "subnet.within_parent_pool_cidr"         => run_subnet_within_pool_cidr(pool, org_id, severity, out).await,
         "link.unique_link_code_active"           => run_link_unique_code_active(pool, org_id, severity, out).await,
         "device_role.unique_role_code_per_tenant" => run_device_role_unique_code(pool, org_id, severity, out).await,
+        "vlan.scope_entity_resolves"              => run_vlan_scope_entity_resolves(pool, org_id, severity, out).await,
+        "dhcp_relay_target.vlan_active"           => run_dhcp_relay_vlan_active(pool, org_id, severity, out).await,
+        "subnet.vlan_link_is_active"              => run_subnet_vlan_link_active(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -2376,6 +2417,100 @@ async fn run_device_role_unique_code(
     Ok(())
 }
 
+/// `vlan.scope_entity_resolves` — VLAN with scope_level != 'Free'
+/// must point at a live row in the matching hierarchy table. One
+/// UNION-ALL per scope level so each branch can use the right
+/// join target (region/site/building/device).
+async fn run_vlan_scope_entity_resolves(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32, String, String)> = sqlx::query_as(
+        "SELECT v.id, v.vlan_id, v.scope_level, v.display_name
+           FROM net.vlan v
+          WHERE v.organization_id = $1
+            AND v.deleted_at IS NULL
+            AND v.scope_level != 'Free'
+            AND (
+                  v.scope_entity_id IS NULL
+               OR (v.scope_level = 'Region'   AND NOT EXISTS
+                     (SELECT 1 FROM net.region   x WHERE x.id = v.scope_entity_id AND x.deleted_at IS NULL))
+               OR (v.scope_level = 'Site'     AND NOT EXISTS
+                     (SELECT 1 FROM net.site     x WHERE x.id = v.scope_entity_id AND x.deleted_at IS NULL))
+               OR (v.scope_level = 'Building' AND NOT EXISTS
+                     (SELECT 1 FROM net.building x WHERE x.id = v.scope_entity_id AND x.deleted_at IS NULL))
+               OR (v.scope_level = 'Device'   AND NOT EXISTS
+                     (SELECT 1 FROM net.device   x WHERE x.id = v.scope_entity_id AND x.deleted_at IS NULL))
+            )")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, vid, scope, name) in rows {
+        out.push(Violation {
+            rule_code: "vlan.scope_entity_resolves".into(),
+            severity, entity_type: "Vlan".into(), entity_id: Some(id),
+            message: format!(
+                "VLAN {vid} '{name}' with scope_level='{scope}' has no resolvable scope_entity_id."),
+        });
+    }
+    Ok(())
+}
+
+/// `dhcp_relay_target.vlan_active` — DHCP relay rows whose vlan_id
+/// resolves to a deleted or non-Active VLAN. Left-joins so the
+/// failure case is either (a) VLAN row missing entirely (shouldn't
+/// happen with FK, but cheap to check) or (b) VLAN present but
+/// deleted / Decommissioned.
+async fn run_dhcp_relay_vlan_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT drt.id, host(drt.server_ip), COALESCE(v.status::text, '(missing)')
+           FROM net.dhcp_relay_target drt
+           LEFT JOIN net.vlan v ON v.id = drt.vlan_id
+          WHERE drt.organization_id = $1
+            AND drt.deleted_at IS NULL
+            AND (v.id IS NULL
+                 OR v.deleted_at IS NOT NULL
+                 OR v.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, server_ip, status) in rows {
+        out.push(Violation {
+            rule_code: "dhcp_relay_target.vlan_active".into(),
+            severity, entity_type: "DhcpRelayTarget".into(), entity_id: Some(id),
+            message: format!(
+                "DHCP relay target → {server_ip} points at a VLAN with status '{status}' — config-gen will emit a stale helper."),
+        });
+    }
+    Ok(())
+}
+
+/// `subnet.vlan_link_is_active` — subnets with non-null vlan_id
+/// pointing at a deleted / Decommissioned VLAN. Warning not error —
+/// IP ranges often outlive VLAN tags, but an operator should still
+/// know the link is stale before running config-gen.
+async fn run_subnet_vlan_link_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT sn.id, sn.subnet_code, COALESCE(v.status::text, '(missing)')
+           FROM net.subnet sn
+           LEFT JOIN net.vlan v ON v.id = sn.vlan_id
+          WHERE sn.organization_id = $1
+            AND sn.deleted_at IS NULL
+            AND sn.vlan_id IS NOT NULL
+            AND (v.id IS NULL
+                 OR v.deleted_at IS NOT NULL
+                 OR v.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, status) in rows {
+        out.push(Violation {
+            rule_code: "subnet.vlan_link_is_active".into(),
+            severity, entity_type: "Subnet".into(), entity_id: Some(id),
+            message: format!(
+                "Subnet '{code}' links to a VLAN with status '{status}' — consider clearing vlan_id or reactivating the VLAN."),
+        });
+    }
+    Ok(())
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -2507,6 +2642,9 @@ mod tests {
             "subnet.within_parent_pool_cidr",
             "link.unique_link_code_active",
             "device_role.unique_role_code_per_tenant",
+            "vlan.scope_entity_resolves",
+            "dhcp_relay_target.vlan_active",
+            "subnet.vlan_link_is_active",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
