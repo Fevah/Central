@@ -238,6 +238,22 @@ public class NetworkingEngineClient : IDisposable
         => GetAsync<List<LinkListRowDto>>(
             $"/api/net/links?organizationId={organizationId}", ct);
 
+    /// <summary>Thin server list — hostname + profileCode +
+    /// buildingCode resolved via LEFT JOIN on the engine side.
+    /// Same 5000-row cap as the other thin lists.</summary>
+    public Task<List<ServerListRowDto>> ListServersAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<ServerListRowDto>>(
+            $"/api/net/servers?organizationId={organizationId}", ct);
+
+    /// <summary>Thin subnet list — subnet_code + CIDR + pool_code +
+    /// linked vlan tag. network rendered as a CIDR string on the
+    /// server so the wire shape is stable across sqlx feature flags.</summary>
+    public Task<List<SubnetListRowDto>> ListSubnetsAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<SubnetListRowDto>>(
+            $"/api/net/subnets?organizationId={organizationId}", ct);
+
     /// <summary>List VLAN blocks + per-block availability. Powers the
     /// WPF Create VLAN picker so admins see "VLAN 100-199 · 12 free"
     /// instead of a UUID they'd have to copy from another tool.</summary>
@@ -334,6 +350,72 @@ public class NetworkingEngineClient : IDisposable
         await EnsureSuccessAsync(resp, ct);
         return await resp.Content.ReadAsStringAsync(ct);
     }
+
+    /// <summary>Per-entity-type audit activity summary — COUNT +
+    /// COUNT(DISTINCT actor) + MAX(created_at) grouped by entity type.
+    /// Optional fromAt/toAt window.</summary>
+    public Task<List<EntityTypeStatsDto>> AuditStatsAsync(Guid organizationId,
+        DateTime? fromAt = null, DateTime? toAt = null, CancellationToken ct = default)
+    {
+        var qs = BuildQuery(("organizationId", organizationId.ToString()),
+                            ("fromAt", fromAt?.ToString("o")),
+                            ("toAt", toAt?.ToString("o")));
+        return GetAsync<List<EntityTypeStatsDto>>($"/api/net/audit/stats{qs}", ct);
+    }
+
+    /// <summary>Time-bucketed audit count series. `bucketBy` accepts
+    /// hour / day / week (default day). Optional entityType narrower.</summary>
+    public Task<List<AuditTrendPointDto>> AuditTrendAsync(Guid organizationId,
+        DateTime? fromAt = null, DateTime? toAt = null, string? bucketBy = null,
+        string? entityType = null, CancellationToken ct = default)
+    {
+        var qs = BuildQuery(("organizationId", organizationId.ToString()),
+                            ("fromAt", fromAt?.ToString("o")),
+                            ("toAt", toAt?.ToString("o")),
+                            ("bucketBy", bucketBy),
+                            ("entityType", entityType));
+        return GetAsync<List<AuditTrendPointDto>>($"/api/net/audit/trend{qs}", ct);
+    }
+
+    /// <summary>Top N audit actors by count in the window. Clamped
+    /// 1..=100 server-side, default 20. Service-origin rows (null
+    /// actor_user_id) bucket together rather than being dropped.</summary>
+    public Task<List<TopActorDto>> AuditTopActorsAsync(Guid organizationId,
+        DateTime? fromAt = null, DateTime? toAt = null, string? entityType = null,
+        int? limit = null, CancellationToken ct = default)
+    {
+        var qs = BuildQuery(("organizationId", organizationId.ToString()),
+                            ("fromAt", fromAt?.ToString("o")),
+                            ("toAt", toAt?.ToString("o")),
+                            ("entityType", entityType),
+                            ("limit", limit?.ToString()));
+        return GetAsync<List<TopActorDto>>($"/api/net/audit/top-actors{qs}", ct);
+    }
+
+    // ─── Search facets (Phase 10b) ───────────────────────────────────────
+
+    /// <summary>Per-entity-type hit counts for a search query. UNION-
+    /// ALL across the six searchable tables in one round trip so the
+    /// UI can render a "Device(12) · Vlan(4)" narrowing bar without
+    /// running the full ranked search first.</summary>
+    public Task<List<SearchFacetDto>> SearchFacetsAsync(Guid organizationId,
+        string q, string? entityTypes = null, CancellationToken ct = default)
+    {
+        var qs = BuildQuery(("organizationId", organizationId.ToString()),
+                            ("q", q),
+                            ("entityTypes", entityTypes));
+        return GetAsync<List<SearchFacetDto>>($"/api/net/search/facets{qs}", ct);
+    }
+
+    // ─── Pool utilization (Phase 10b) ────────────────────────────────────
+
+    /// <summary>Per-pool used vs capacity across ASN / VLAN / IP pool
+    /// families. IP pools emit two rows ("IP:Subnets" + "IP:Addresses")
+    /// so both dimensions surface without a second call.</summary>
+    public Task<List<PoolUtilizationRowDto>> PoolUtilizationAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<PoolUtilizationRowDto>>(
+            $"/api/net/pools/utilization?organizationId={organizationId}", ct);
 
     // ─── Validation (Phase 9a) ───────────────────────────────────────────
 
@@ -1330,3 +1412,51 @@ public record SavedViewDto(Guid Id, Guid OrganizationId, int UserId, string Name
 public record CreateSavedViewRequest(Guid OrganizationId, string Name,
     string Q = "", string? EntityTypes = null, object? Filters = null,
     string? Notes = null);
+
+// ─── Thin lists added in Phase 10b (servers + subnets) ────────────────
+
+/// <summary>Thin server list row — matches `ServerListRow` in the
+/// engine. Capped at 5000 server-side; LEFT JOINs
+/// net.server_profile + net.building for display.</summary>
+public record ServerListRowDto(Guid Id, string Hostname, string? ProfileCode,
+    string? BuildingCode, string Status, int Version);
+
+/// <summary>Thin subnet list row — matches `SubnetListRow`. Network
+/// is pre-rendered as a CIDR string on the server so the wire shape
+/// is stable. VlanTag is null when the subnet has no linked VLAN.</summary>
+public record SubnetListRowDto(Guid Id, string SubnetCode, string DisplayName,
+    string Network, string ScopeLevel, string? PoolCode, int? VlanTag,
+    string Status, int Version);
+
+// ─── Audit rollups (Phase 10b) ────────────────────────────────────────
+
+/// <summary>Per-entity-type audit rollup — matches `EntityTypeStats`.</summary>
+public record EntityTypeStatsDto(string EntityType, long TotalCount,
+    long DistinctActors, DateTime? LastSeenAt);
+
+/// <summary>Time-bucketed audit count point — matches `AuditTrendPoint`.
+/// BucketAt is the bucket start (date_trunc(bucket, created_at)).</summary>
+public record AuditTrendPointDto(DateTime BucketAt, long Count);
+
+/// <summary>Top-actor audit rollup — matches `TopActor`. ActorUserId
+/// + ActorDisplay are both nullable for service-origin rows.</summary>
+public record TopActorDto(int? ActorUserId, string? ActorDisplay,
+    long TotalCount, long DistinctEntityTypes, DateTime? LastSeenAt);
+
+// ─── Search facets (Phase 10b) ────────────────────────────────────────
+
+/// <summary>Per-entity-type search-hit count — matches `SearchFacet`.
+/// Drives the "narrow by type" chip bar in the search UI.</summary>
+public record SearchFacetDto(string EntityType, long Count);
+
+// ─── Pool utilization (Phase 10b) ─────────────────────────────────────
+
+/// <summary>One pool dimension's utilization — matches
+/// `PoolUtilizationRow`. <c>PoolKind</c> disambiguates IP pool's
+/// two-row contribution ("IP:Subnets" + "IP:Addresses"). Capacity=0
+/// on the IP:Subnets row (we don't carry a subnet-count capacity);
+/// PercentFull caps at 999 to avoid UI overflow on data-quality
+/// outliers.</summary>
+public record PoolUtilizationRowDto(string PoolKind, Guid PoolId,
+    string PoolCode, string DisplayName, long Used, long Capacity,
+    int PercentFull, string Status);
