@@ -68,6 +68,7 @@ export const routes: Routes = [
           { path: 'modules',         loadComponent: () => import('./modules/network/components/network-modules.component').then(m => m.NetworkModulesComponent) },
           { path: 'mstp-rules',      loadComponent: () => import('./modules/network/components/network-mstp-rules.component').then(m => m.NetworkMstpRulesComponent) },
           { path: 'reservation-shelf', loadComponent: () => import('./modules/network/components/network-reservation-shelf.component').then(m => m.NetworkReservationShelfComponent) },
+          { path: 'data-quality',    loadComponent: () => import('./modules/network/components/network-data-quality.component').then(m => m.NetworkDataQualityComponent) },
           { path: 'ip-addresses',    loadComponent: () => import('./modules/network/components/network-ip-addresses.component').then(m => m.NetworkIpAddressesComponent) },
           { path: 'ip-address/:id',  loadComponent: () => import('./modules/network/components/network-ip-address-detail.component').then(m => m.NetworkIpAddressDetailComponent) },
           { path: 'dhcp-relay',      loadComponent: () => import('./modules/network/components/network-dhcp-relay.component').then(m => m.NetworkDhcpRelayComponent) },
