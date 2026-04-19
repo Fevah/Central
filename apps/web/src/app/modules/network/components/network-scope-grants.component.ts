@@ -7,7 +7,7 @@ import {
   DxPopupModule, DxNumberBoxModule, DxTextAreaModule,
 } from 'devextreme-angular';
 import {
-  NetworkingEngineService, ScopeGrant,
+  NetworkingEngineService, ScopeGrant, PermissionDecision,
 } from '../../../core/services/networking-engine.service';
 import { environment } from '../../../../environments/environment';
 
@@ -47,6 +47,10 @@ import { environment } from '../../../../environments/environment';
       <dx-button text="Clear" (onClick)="clear()" />
 
       <span class="spacer"></span>
+
+      <dx-button text="Check permission" icon="find" stylingMode="outlined"
+                 hint="Dry-run the permission resolver — 'would this user be allowed to do X?'"
+                 (onClick)="openCheckDialog()" />
 
       <dx-button text="New grant" icon="add" type="default"
                  stylingMode="contained" (onClick)="openCreateDialog()" />
@@ -107,6 +111,59 @@ import { environment } from '../../../../environments/environment';
       </div>
     </dx-popup>
 
+    <!-- Check permission dialog — dry-runs the permission resolver
+         without enforcing. Answers "would user X be allowed to do
+         action Y on entity Z?" and shows the matching grant id
+         when allowed. -->
+    <dx-popup [(visible)]="checkDialogOpen"
+              [width]="480" [height]="460"
+              title="Check permission"
+              [showCloseButton]="true"
+              [dragEnabled]="true">
+      <div *dxTemplate="let d of 'content'" class="create-form">
+        <div class="form-row">
+          <label>User id *</label>
+          <dx-number-box [(value)]="checkDraft.userId" [min]="1"
+                         placeholder="numeric app_users.id" [showSpinButtons]="false" />
+        </div>
+        <div class="form-row">
+          <label>Action *</label>
+          <dx-select-box [items]="createActions" [(value)]="checkDraft.action"
+                         placeholder="Pick action" acceptCustomValue="true" />
+        </div>
+        <div class="form-row">
+          <label>Entity type *</label>
+          <dx-select-box [items]="knownEntityTypes" [(value)]="checkDraft.entityType"
+                         placeholder="Pick entity type" acceptCustomValue="true" />
+        </div>
+        <div class="form-row">
+          <label>Entity id (optional)</label>
+          <dx-text-box [(value)]="checkDraft.entityId"
+                       placeholder="Leave blank for type-level check" />
+          <small class="hint">Filled in → "can user do X on this specific entity?". Blank → "can user do X on ANY entity of this type?".</small>
+        </div>
+
+        <div *ngIf="checkDecision" class="check-result"
+             [class.allowed]="checkDecision.allowed"
+             [class.denied]="!checkDecision.allowed">
+          <strong>{{ checkDecision.allowed ? 'ALLOWED' : 'DENIED' }}</strong>
+          <div *ngIf="checkDecision.allowed && checkDecision.matchedGrantId" class="match-line">
+            via grant <code>{{ checkDecision.matchedGrantId }}</code>
+          </div>
+          <div *ngIf="!checkDecision.allowed" class="match-line">
+            No matching grant at Global / Region / Site / Building / EntityId scopes.
+          </div>
+        </div>
+        <div *ngIf="checkError" class="create-error">{{ checkError }}</div>
+
+        <div class="form-actions">
+          <dx-button text="Close" (onClick)="closeCheckDialog()" />
+          <dx-button text="Check" type="default" (onClick)="submitCheck()"
+                     [disabled]="checking" />
+        </div>
+      </div>
+    </dx-popup>
+
     <div *ngIf="status" class="status-line">{{ status }}</div>
 
     <dx-data-grid [dataSource]="grants" [showBorders]="true" [hoverStateEnabled]="true"
@@ -152,6 +209,12 @@ import { environment } from '../../../../environments/environment';
     .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
     .create-error { color: #ef4444; font-size: 12px; padding: 6px 8px; background: rgba(239,68,68,0.08); border-radius: 4px; }
     .row-actions { display: flex; gap: 4px; }
+    .check-result { padding: 10px 12px; border-radius: 4px; font-size: 13px; }
+    .check-result.allowed { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); color: #22c55e; }
+    .check-result.denied  { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #ef4444; }
+    .check-result strong { font-size: 15px; letter-spacing: 0.5px; }
+    .check-result .match-line { color: #9ca3af; font-size: 11px; margin-top: 4px; word-break: break-all; }
+    .check-result .match-line code { background: rgba(148,163,184,0.1); padding: 1px 4px; border-radius: 2px; font-size: 11px; }
   `]
 })
 export class NetworkScopeGrantsComponent implements OnInit {
@@ -187,6 +250,17 @@ export class NetworkScopeGrantsComponent implements OnInit {
     scopeEntityId: string;
     notes: string;
   } = this.emptyDraft();
+
+  checkDialogOpen = false;
+  checking = false;
+  checkError = '';
+  checkDecision: PermissionDecision | null = null;
+  checkDraft: {
+    userId: number | null;
+    action: string | null;
+    entityType: string | null;
+    entityId: string;
+  } = this.emptyCheckDraft();
 
   constructor(
     private engine: NetworkingEngineService,
@@ -268,6 +342,15 @@ export class NetworkScopeGrantsComponent implements OnInit {
     };
   }
 
+  private emptyCheckDraft() {
+    return {
+      userId:     null,
+      action:     null,
+      entityType: null,
+      entityId:   '',
+    };
+  }
+
   openCreateDialog(): void {
     this.draft = this.emptyDraft();
     this.createError = '';
@@ -345,6 +428,49 @@ export class NetworkScopeGrantsComponent implements OnInit {
     } else {
       this.status = `Grant id: ${g.id}`;
     }
+  }
+
+  // ─── Check permission dialog ──────────────────────────────────────
+
+  openCheckDialog(): void {
+    this.checkDraft = this.emptyCheckDraft();
+    this.checkDecision = null;
+    this.checkError = '';
+    this.checkDialogOpen = true;
+  }
+
+  closeCheckDialog(): void {
+    this.checkDialogOpen = false;
+    this.checkDecision = null;
+    this.checkError = '';
+  }
+
+  submitCheck(): void {
+    const d = this.checkDraft;
+    this.checkError = '';
+    this.checkDecision = null;
+
+    if (!d.userId || d.userId <= 0)   { this.checkError = 'User id must be a positive integer.'; return; }
+    if (!d.action)                     { this.checkError = 'Action is required.'; return; }
+    if (!d.entityType)                 { this.checkError = 'Entity type is required.'; return; }
+
+    this.checking = true;
+    this.engine.checkPermission({
+      organizationId: environment.defaultTenantId,
+      userId:         d.userId,
+      action:         d.action,
+      entityType:     d.entityType,
+      entityId:       d.entityId.trim() || undefined,
+    }).subscribe({
+      next: (decision) => {
+        this.checking = false;
+        this.checkDecision = decision;
+      },
+      error: (err) => {
+        this.checking = false;
+        this.checkError = err?.error?.detail ?? err?.message ?? 'Check failed.';
+      },
+    });
   }
 
   /// Delete a grant. Confirm with a browser prompt + surface the same

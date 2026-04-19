@@ -283,6 +283,15 @@ export interface FloorRow {
   Status: string;
 }
 
+/// Permission-check decision returned by /api/net/scope-grants/check.
+/// Matches `PermissionDecision` in the engine. `matchedGrantId` is
+/// the uuid of the specific grant that authorised the action — nice
+/// for "why was this allowed?" feedback. None when `allowed = false`.
+export interface PermissionDecision {
+  allowed: boolean;
+  matchedGrantId: string | null;
+}
+
 /// One scope_grant tuple. Matches `ScopeGrantDto` from the engine.
 export interface ScopeGrant {
   id: string;
@@ -518,6 +527,26 @@ export class NetworkingEngineService {
   deleteScopeGrant(id: string, organizationId: string): Observable<void> {
     const params = new HttpParams().set('organizationId', organizationId);
     return this.http.delete<void>(`${this.base}/api/net/scope-grants/${id}`, { params });
+  }
+
+  /// Dry-run the permission resolver without enforcing. Useful for
+  /// "would user X be allowed to do action Y on entityType Z?"
+  /// lookups — e.g. pre-save form feedback or post-grant verification.
+  checkPermission(opts: {
+    organizationId: string;
+    userId: number;
+    action: string;
+    entityType: string;
+    entityId?: string;
+  }): Observable<PermissionDecision> {
+    let params = new HttpParams()
+      .set('organizationId', opts.organizationId)
+      .set('userId',         opts.userId.toString())
+      .set('action',         opts.action)
+      .set('entityType',     opts.entityType);
+    if (opts.entityId) params = params.set('entityId', opts.entityId);
+    return this.http.get<PermissionDecision>(
+      `${this.base}/api/net/scope-grants/check`, { params });
   }
 
   /// Run the validation rule engine. Empty `ruleCode` runs every
