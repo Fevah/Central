@@ -83,9 +83,11 @@ export class NetworkModulesComponent implements OnInit {
     });
   }
 
+  /// Double-click → module detail. Device drill reachable from
+  /// the module detail page's device link.
   onRowDoubleClick(e: { data: ModuleListRow }): void {
     const row = e?.data;
-    if (!row?.deviceId) return;
-    this.router.navigate(['/network/net-device', row.deviceId]);
+    if (!row?.id) return;
+    this.router.navigate(['/network/module', row.id]);
   }
 }

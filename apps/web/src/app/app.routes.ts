@@ -67,6 +67,7 @@ export const routes: Routes = [
           { path: 'aggregate-ethernet/:id', loadComponent: () => import('./modules/network/components/network-aggregate-ethernet-detail.component').then(m => m.NetworkAggregateEthernetDetailComponent) },
           { path: 'mlag-domains',    loadComponent: () => import('./modules/network/components/network-mlag-domains.component').then(m => m.NetworkMlagDomainsComponent) },
           { path: 'modules',         loadComponent: () => import('./modules/network/components/network-modules.component').then(m => m.NetworkModulesComponent) },
+          { path: 'module/:id',      loadComponent: () => import('./modules/network/components/network-module-detail.component').then(m => m.NetworkModuleDetailComponent) },
           { path: 'mstp-rules',      loadComponent: () => import('./modules/network/components/network-mstp-rules.component').then(m => m.NetworkMstpRulesComponent) },
           { path: 'vlan-blocks',     loadComponent: () => import('./modules/network/components/network-vlan-blocks.component').then(m => m.NetworkVlanBlocksComponent) },
           { path: 'asn-blocks',      loadComponent: () => import('./modules/network/components/network-asn-blocks.component').then(m => m.NetworkAsnBlocksComponent) },
