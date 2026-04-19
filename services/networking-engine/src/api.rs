@@ -114,6 +114,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/subnets", get(list_subnets))
         .route("/api/net/ip-addresses", get(list_ip_addresses))
         .route("/api/net/server-nics",  get(list_server_nics))
+        .route("/api/net/link-endpoints", get(list_link_endpoints))
         // Thin pool/block reads (WPF convenience-form pickers)
         .route("/api/net/vlan-blocks", get(list_vlan_blocks))
         .route("/api/net/asn-blocks",  get(list_asn_blocks))
@@ -1085,6 +1086,71 @@ async fn list_server_nics(
           LIMIT 5000")
         .bind(q.organization_id)
         .bind(q.server_id)
+        .fetch_all(&s.pool)
+        .await?;
+    Ok(Json(rows))
+}
+
+// ─── Link endpoint thin list ────────────────────────────────────────────
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct LinkEndpointListQuery {
+    organization_id: Uuid,
+    /// Optional — narrow to one link. The link-detail page's
+    /// Endpoints tab uses this so the grid only carries the pair
+    /// (or hub + N spokes) of the selected link.
+    link_id: Option<Uuid>,
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct LinkEndpointListRow {
+    id: Uuid,
+    link_id: Uuid,
+    link_code: Option<String>,
+    endpoint_order: i32,
+    device_hostname: Option<String>,
+    port_interface: Option<String>,     // resolved from port_id
+    interface_name: Option<String>,     // free-text fallback column
+    ip_address: Option<String>,         // host() — bare string
+    vlan_tag: Option<i32>,
+    description: Option<String>,
+    status: String,
+}
+
+/// Thin list of net.link_endpoint rows. 5000-row cap. Optional
+/// linkId narrower (drill target from the link detail page).
+/// LEFT JOINs resolve display fields in one query so the grid
+/// renders without per-row round-trips.
+async fn list_link_endpoints(
+    State(s): State<AppState>,
+    Query(q): Query<LinkEndpointListQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let rows: Vec<LinkEndpointListRow> = sqlx::query_as(
+        "SELECT e.id,
+                e.link_id,
+                l.link_code,
+                e.endpoint_order,
+                d.hostname           AS device_hostname,
+                p.interface_name     AS port_interface,
+                e.interface_name     AS interface_name,
+                host(ip.address)     AS ip_address,
+                v.vlan_id            AS vlan_tag,
+                e.description,
+                e.status::text       AS status
+           FROM net.link_endpoint e
+           LEFT JOIN net.link       l  ON l.id  = e.link_id
+           LEFT JOIN net.device     d  ON d.id  = e.device_id
+           LEFT JOIN net.port       p  ON p.id  = e.port_id
+           LEFT JOIN net.ip_address ip ON ip.id = e.ip_address_id
+           LEFT JOIN net.vlan       v  ON v.id  = e.vlan_id
+          WHERE e.organization_id = $1
+            AND ($2::uuid IS NULL OR e.link_id = $2)
+          ORDER BY l.link_code, e.endpoint_order
+          LIMIT 5000")
+        .bind(q.organization_id)
+        .bind(q.link_id)
         .fetch_all(&s.pool)
         .await?;
     Ok(Json(rows))

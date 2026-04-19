@@ -5,16 +5,14 @@ import {
   DxDataGridModule, DxButtonModule, DxTabsModule,
 } from 'devextreme-angular';
 import {
-  NetworkingEngineService, LinkListRow, AuditRow,
+  NetworkingEngineService, LinkListRow, AuditRow, LinkEndpointListRow,
 } from '../../../core/services/networking-engine.service';
 import { environment } from '../../../../environments/environment';
 
 /// net.link detail page — companion to the thin /network/links-grid.
-/// Two tabs: Summary (link row with both endpoints) + Audit (last
-/// 100 entries). A third "Endpoints" tab with port + interface
-/// breakdown lands when the engine gains a thin
-/// /api/net/link-endpoints endpoint; the thin link list already
-/// carries deviceA + deviceB hostnames which cover the common case.
+/// Three tabs: Summary (link row with both endpoints) / Audit (last
+/// 100 entries) / Endpoints (full net.link_endpoint breakdown with
+/// port interface + IP + VLAN tag).
 ///
 /// Routed at /network/net-link/:id.
 @Component({
@@ -86,6 +84,28 @@ import { environment } from '../../../../environments/environment';
         <dxi-column dataField="correlationId" caption="Correlation" width="240" />
       </dx-data-grid>
     </div>
+
+    <!-- Endpoints tab — full net.link_endpoint breakdown.
+         endpoint_order 0/1 by convention = A/B; some link types
+         (MLAG-Peer, hub/spoke) may use higher values. Sorted on
+         endpoint_order ASC so the pair reads naturally. -->
+    <div *ngIf="activeTab === 2">
+      <dx-data-grid [dataSource]="endpoints" [showBorders]="true" [hoverStateEnabled]="true"
+                     [columnAutoWidth]="true">
+        <dxi-column dataField="endpointOrder"  caption="#"          width="60"  dataType="number"
+                    sortOrder="asc" [sortIndex]="0" />
+        <dxi-column dataField="deviceHostname" caption="Device"     width="180" />
+        <dxi-column dataField="portInterface"  caption="Port"       width="140" />
+        <dxi-column dataField="interfaceName"  caption="Intf (free text)" width="160" />
+        <dxi-column dataField="ipAddress"      caption="IP"         width="140" />
+        <dxi-column dataField="vlanTag"        caption="VLAN"       width="80"  dataType="number" />
+        <dxi-column dataField="status"         caption="Status"     width="90" />
+        <dxi-column dataField="description"    caption="Description" />
+      </dx-data-grid>
+      <div *ngIf="endpoints.length === 0 && !loadingEndpoints" class="empty-note">
+        No endpoints recorded for this link.
+      </div>
+    </div>
   `,
   styles: [`
     .page-header { margin-bottom: 12px; }
@@ -108,6 +128,7 @@ import { environment } from '../../../../environments/environment';
     .meta-row.full { grid-column: 1 / -1; }
     .meta-row label { color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
     .meta-row code { color: #94a3b8; font-family: ui-monospace, monospace; font-size: 12px; }
+    .empty-note { margin-top: 12px; padding: 10px; color: #64748b; font-size: 12px; background: #0f172a; border-radius: 4px; text-align: center; }
     @media (max-width: 900px) {
       .endpoints-grid { grid-template-columns: 1fr; }
       .endpoint-arrow { transform: rotate(90deg); }
@@ -116,12 +137,14 @@ import { environment } from '../../../../environments/environment';
   `]
 })
 export class NetworkLinkDetailComponent implements OnInit {
-  tabs = [{ text: 'Summary' }, { text: 'Audit' }];
+  tabs = [{ text: 'Summary' }, { text: 'Audit' }, { text: 'Endpoints' }];
   activeTab = 0;
 
   linkId = '';
   link: LinkListRow | null = null;
   audit: AuditRow[] = [];
+  endpoints: LinkEndpointListRow[] = [];
+  loadingEndpoints = false;
   status = '';
 
   /// Hostname → net.device uuid map, filled lazily when the user
@@ -156,6 +179,13 @@ export class NetworkLinkDetailComponent implements OnInit {
     if (this.activeTab === 1 && this.audit.length === 0) {
       this.engine.getEntityTimeline(environment.defaultTenantId, 'Link', this.linkId, 100)
         .subscribe({ next: (rows) => { this.audit = rows; }, error: () => {} });
+    }
+    if (this.activeTab === 2 && this.endpoints.length === 0 && !this.loadingEndpoints) {
+      this.loadingEndpoints = true;
+      this.engine.listLinkEndpoints(environment.defaultTenantId, this.linkId).subscribe({
+        next: (rows) => { this.endpoints = rows; this.loadingEndpoints = false; },
+        error: () => { this.loadingEndpoints = false; },
+      });
     }
   }
 

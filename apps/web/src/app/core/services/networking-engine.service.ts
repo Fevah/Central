@@ -102,6 +102,26 @@ export interface ServerListRow {
   version: number;
 }
 
+/// Thin link-endpoint list row — matches `LinkEndpointListRow` in
+/// the engine. LEFT JOINs resolve device hostname, port
+/// interface_name (from net.port), the free-text interface_name
+/// column (fallback), IP host string, and VLAN tag. Endpoint order
+/// 0 = A-side, 1 = B-side by convention (hub/spoke link types
+/// may use higher values).
+export interface LinkEndpointListRow {
+  id: string;
+  linkId: string;
+  linkCode: string | null;
+  endpointOrder: number;
+  deviceHostname: string | null;
+  portInterface: string | null;
+  interfaceName: string | null;
+  ipAddress: string | null;
+  vlanTag: number | null;
+  description: string | null;
+  status: string;
+}
+
 /// Thin server-NIC list row — matches `ServerNicListRow` in the
 /// engine. LEFT JOINs resolve display fields (server hostname,
 /// target device hostname, port interface, IP host string, MAC)
@@ -778,6 +798,19 @@ export class NetworkingEngineService {
     if (serverId) params = params.set('serverId', serverId);
     return this.http.get<ServerNicListRow[]>(
       `${this.base}/api/net/server-nics`, { params });
+  }
+
+  /// Thin link-endpoint list — 5000 row cap. Optional `linkId`
+  /// narrows to one link (the link-detail Endpoints tab drill).
+  /// Device hostname + port interface + IP + VLAN tag resolved.
+  listLinkEndpoints(
+    organizationId: string,
+    linkId?: string,
+  ): Observable<LinkEndpointListRow[]> {
+    let params = new HttpParams().set('organizationId', organizationId);
+    if (linkId) params = params.set('linkId', linkId);
+    return this.http.get<LinkEndpointListRow[]>(
+      `${this.base}/api/net/link-endpoints`, { params });
   }
 
   /// List change-sets, optionally narrowed to a status. Capped at
