@@ -11,6 +11,11 @@ import {
 } from '../../../core/services/networking-engine.service';
 import { environment } from '../../../../environments/environment';
 
+/// Supported export formats for GET /api/net/audit/export — match
+/// `ExportFormat` in services/networking-engine/src/audit.rs which
+/// uses `#[serde(rename_all = "lowercase")]`.
+type ExportFormat = 'csv' | 'ndjson';
+
 /// Free-form audit log search — companion to the per-entity timeline.
 /// Where `/network/audit/:entityType/:entityId` answers "what happened
 /// to this one thing", this page answers "what happened across the
@@ -71,6 +76,15 @@ import { environment } from '../../../../environments/environment';
 
       <dx-button text="Search" type="default" (onClick)="reload()" />
       <dx-button text="Clear" (onClick)="clear()" />
+
+      <span class="spacer"></span>
+
+      <dx-button text="Export CSV" icon="exportxlsx" stylingMode="outlined"
+                 hint="Download every audit row matching the current filter (up to 50k)"
+                 (onClick)="exportRows('csv')" />
+      <dx-button text="Export NDJSON" stylingMode="outlined"
+                 hint="Download rows as newline-delimited JSON for streaming pipelines"
+                 (onClick)="exportRows('ndjson')" />
     </div>
 
     <div *ngIf="status" class="status-line">{{ status }}</div>
@@ -103,6 +117,7 @@ import { environment } from '../../../../environments/environment';
     .filter-bar .sm { width: 100px; }
     .filter-bar .md { width: 180px; }
     .filter-bar .lg { width: 260px; }
+    .filter-bar .spacer { flex: 1; min-width: 12px; }
     .status-line { margin: 6px 0 10px; color: #666; font-size: 12px; }
   `]
 })
@@ -196,5 +211,31 @@ export class NetworkAuditSearchComponent implements OnInit {
     const r = e?.data;
     if (!r?.entityType || !r?.entityId) return;
     this.router.navigate(['/network/audit', r.entityType, r.entityId]);
+  }
+
+  /// Trigger a download by opening the engine's `/api/net/audit/export`
+  /// URL with the current filter as query params. The engine sets
+  /// Content-Disposition: attachment so the browser downloads rather
+  /// than navigating away. Server caps at 50k rows by default
+  /// (`default_export_limit`) — bigger pulls should chunk by window.
+  ///
+  /// Opens in a new window via `window.open(..., '_blank')` so the
+  /// operator's audit-search page state is preserved if the download
+  /// fails and the engine responds with HTML error page.
+  exportRows(format: ExportFormat): void {
+    const params = new URLSearchParams();
+    params.set('organizationId', environment.defaultTenantId);
+    params.set('format', format);
+    if (this.entityType)                 params.set('entityType',   this.entityType);
+    if (this.entityId.trim())            params.set('entityId',     this.entityId.trim());
+    if (this.action)                     params.set('action',       this.action);
+    if (this.actorUserId !== null)       params.set('actorUserId',  String(this.actorUserId));
+    if (this.fromAt)                     params.set('fromAt',       this.fromAt.toISOString());
+    if (this.toAt)                       params.set('toAt',         this.toAt.toISOString());
+
+    const url = `${environment.networkingEngineUrl}/api/net/audit/export?${params.toString()}`;
+    if (typeof window !== 'undefined') {
+      window.open(url, '_blank');
+    }
   }
 }
