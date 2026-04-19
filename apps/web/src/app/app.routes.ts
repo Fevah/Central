@@ -58,6 +58,7 @@ export const routes: Routes = [
           { path: 'locks',           loadComponent: () => import('./modules/network/components/network-locks.component').then(m => m.NetworkLocksComponent) },
           { path: 'naming-preview',  loadComponent: () => import('./modules/network/components/network-naming-preview.component').then(m => m.NetworkNamingPreviewComponent) },
           { path: 'render-history',  loadComponent: () => import('./modules/network/components/network-render-history.component').then(m => m.NetworkRenderHistoryComponent) },
+          { path: 'pool-utilization',loadComponent: () => import('./modules/network/components/network-pool-utilization.component').then(m => m.NetworkPoolUtilizationComponent) },
           { path: 'audit-stats',     loadComponent: () => import('./modules/network/components/network-audit-stats.component').then(m => m.NetworkAuditStatsComponent) },
           { path: 'audit-search',    loadComponent: () => import('./modules/network/components/network-audit-search.component').then(m => m.NetworkAuditSearchComponent) },
           { path: 'audit/:entityType/:entityId',

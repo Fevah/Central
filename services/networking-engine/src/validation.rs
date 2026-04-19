@@ -657,7 +657,7 @@ pub const RULES: &[RuleMeta] = &[
         code: "subnet.within_parent_pool_cidr",
         name: "Subnet CIDR must be contained by its parent pool",
         description: "Active net.subnet rows must sit inside their \
-                      referenced net.ip_pool's pool_cidr. A subnet \
+                      referenced net.ip_pool's network CIDR. A subnet \
                       routed outside the pool leaks allocations past \
                       the pool's carver invariants; the GIST overlap \
                       check only enforces no-overlap between subnets, \
@@ -2379,13 +2379,13 @@ async fn run_subnet_within_pool_cidr(
     pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
 ) -> Result<(), EngineError> {
     let rows: Vec<(Uuid, String, String, String)> = sqlx::query_as(
-        "SELECT sn.id, sn.subnet_code, sn.network::text, p.pool_cidr::text
+        "SELECT sn.id, sn.subnet_code, sn.network::text, p.network::text
            FROM net.subnet sn
            JOIN net.ip_pool p ON p.id = sn.pool_id
           WHERE sn.organization_id = $1
             AND sn.deleted_at IS NULL
             AND sn.status = 'Active'::net.entity_status
-            AND NOT (sn.network <<= p.pool_cidr)")
+            AND NOT (sn.network <<= p.network)")
         .bind(org_id).fetch_all(pool).await?;
     for (id, code, network, pool_cidr) in rows {
         out.push(Violation {

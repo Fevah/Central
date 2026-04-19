@@ -292,6 +292,22 @@ export interface PermissionDecision {
   matchedGrantId: string | null;
 }
 
+/// Pool utilization row — matches `PoolUtilizationRow` in the
+/// engine. `poolKind` is one of "ASN" / "VLAN" / "IP:Subnets" /
+/// "IP:Addresses". `percentFull` caps at 999 for data-quality
+/// outliers; `capacity` is 0 when the kind doesn't report a
+/// capacity dimension (IP:Subnets row only reports subnet count).
+export interface PoolUtilizationRow {
+  poolKind: string;
+  poolId: string;
+  poolCode: string;
+  displayName: string;
+  used: number;
+  capacity: number;
+  percentFull: number;
+  status: string;
+}
+
 /// Render history row — matches `RenderedConfigSummary` in the
 /// engine (no body; the list endpoint omits the body to keep
 /// payload sizes down on tenants with many renders).
@@ -615,6 +631,15 @@ export class NetworkingEngineService {
     if (status)                   params = params.set('status', status);
     if (limit !== undefined)      params = params.set('limit',  limit.toString());
     return this.http.get<ChangeSet[]>(`${this.base}/api/net/change-sets`, { params });
+  }
+
+  /// Pool utilization rollup across ASN / VLAN / IP pools. One
+  /// call returns every pool family (IP pools emit two rows: one
+  /// for subnets, one for addresses).
+  poolUtilization(organizationId: string): Observable<PoolUtilizationRow[]> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.get<PoolUtilizationRow[]>(
+      `${this.base}/api/net/pools/utilization`, { params });
   }
 
   /// List render history for one device. Capped server-side at

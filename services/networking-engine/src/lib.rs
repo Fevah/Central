@@ -27,6 +27,7 @@ pub mod models;
 pub mod naming;
 pub mod naming_overrides;
 pub mod naming_resolver;
+pub mod pool_utilization;
 pub mod regenerate;
 pub mod saved_views;
 pub mod scope_grants;

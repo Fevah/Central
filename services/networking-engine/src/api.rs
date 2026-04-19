@@ -41,6 +41,7 @@ use crate::change_sets::{
 };
 use crate::error::EngineError;
 use crate::ip_allocation::IpAllocationService;
+use crate::pool_utilization;
 use crate::locks::{self, ListLockedQuery, SetLockBody};
 use crate::models::{PoolScopeLevel, ShelfResourceType};
 use crate::naming::{self, DeviceNamingContext, LinkNamingContext, ServerNamingContext};
@@ -116,6 +117,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/asn-blocks",  get(list_asn_blocks))
         .route("/api/net/mlag-pools",  get(list_mlag_pools))
         .route("/api/net/ip-pools",    get(list_ip_pools))
+        .route("/api/net/pools/utilization", get(pool_utilization_handler))
         // Validation rules (Phase 9a)
         .route("/api/net/validation/rules", get(list_validation_rules))
         .route("/api/net/validation/rules/:code", axum::routing::put(set_validation_rule_config))
@@ -746,6 +748,16 @@ async fn list_ip_pools(
         .fetch_all(&s.pool)
         .await?;
     Ok(Json(rows))
+}
+
+/// Pool utilization dashboard — rollup of ASN / VLAN / IP pool
+/// usage vs capacity. One call returns every pool family so the
+/// UI renders a single grid without fan-out.
+async fn pool_utilization_handler(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    Ok(Json(pool_utilization::list_utilization(&s.pool, q.organization_id).await?))
 }
 
 async fn list_devices(
