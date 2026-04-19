@@ -4,5 +4,7 @@ export const environment = {
   authServiceUrl: '/api/v1/auth',
   taskServiceUrl: '/api/v1/tasks',
   centralApiUrl: '/api',
+  /// Gateway proxies `/api/net/*` → networking-engine service.
+  networkingEngineUrl: '/api',
   defaultTenantId: '',
 };

@@ -41,6 +41,7 @@ export const routes: Routes = [
             loadComponent: () => import('./modules/network/components/link-grid.component').then(m => m.LinkGridComponent) },
           { path: 'bgp',             canActivate: [moduleGuard('routing')],
             loadComponent: () => import('./modules/network/components/bgp-peers.component').then(m => m.BgpPeersComponent) },
+          { path: 'search',          loadComponent: () => import('./modules/network/components/network-search.component').then(m => m.NetworkSearchComponent) },
         ]
       },
 
