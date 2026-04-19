@@ -354,6 +354,59 @@ public partial class AuditViewerPanel : UserControl
         _ = RunQueryAsync();
     }
 
+    // ─── Full entity timeline (engine's /audit/entity endpoint) ────────
+    //
+    // The main ListAudit query caps at 500 rows; for a busy entity
+    // that's a sliding window of its recent life. `/api/net/audit/
+    // entity/{type}/{id}` returns the full history ordered by
+    // timestamp. Requires both EntityType and EntityId to be set —
+    // the engine route is `{entity_type}/{entity_id}` and both are
+    // path params, not optional filters.
+
+    private async void OnFullTimeline(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_baseUrl) || _tenantId == Guid.Empty)
+        {
+            StatusLabel.Text = "No tenant context.";
+            return;
+        }
+
+        var entityType = Empty2Null(EntityTypeCombo.Text);
+        if (entityType is null)
+        {
+            StatusLabel.Text = "Full timeline needs an Entity type — pick one from the combo.";
+            return;
+        }
+        if (!Guid.TryParse(EntityIdBox.Text?.Trim(), out var entityId))
+        {
+            StatusLabel.Text = "Full timeline needs an Entity ID (uuid) — drill from Search / a grid, or paste one.";
+            return;
+        }
+
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+        var ct = _cts.Token;
+
+        FullTimelineButton.IsEnabled = false;
+        StatusLabel.Text = $"Fetching full timeline for {entityType} {entityId}…";
+        try
+        {
+            using var client = new NetworkingEngineClient(_baseUrl);
+            if (_actorUserId is int uid) client.SetActorUserId(uid);
+
+            var rows = await client.GetEntityTimelineAsync(_tenantId, entityType, entityId, null, ct);
+            _lastResult = rows;
+            AuditGrid.ItemsSource = rows.Select(ToDisplay).ToList();
+            StatusLabel.Text = $"Full timeline · {rows.Count} row{(rows.Count == 1 ? "" : "s")} " +
+                               $"for {entityType} {entityId} · loaded {DateTime.Now:HH:mm:ss}";
+        }
+        catch (OperationCanceledException) { /* ignore */ }
+        catch (NetworkingEngineException ex) { StatusLabel.Text = $"Engine error ({ex.StatusCode}): {ex.Message}"; }
+        catch (HttpRequestException ex)     { StatusLabel.Text = $"Network error: {ex.Message}"; }
+        catch (Exception ex)                { StatusLabel.Text = $"Fetch failed: {ex.Message}"; }
+        finally { FullTimelineButton.IsEnabled = true; }
+    }
+
     private static string? Empty2Null(string? s)
         => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 

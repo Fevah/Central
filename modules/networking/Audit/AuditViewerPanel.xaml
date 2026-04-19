@@ -37,6 +37,7 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <TextBlock Grid.Column="0" Text="Entity:" VerticalAlignment="Center" Margin="0,0,4,0" Foreground="#B0B0B0"/>
@@ -59,7 +60,10 @@
                         Width="100" Margin="8,0,4,0" Click="OnClearFilters"
                         ToolTip="Empty every filter field including a drill-down entity id from another panel"/>
                 <Button Grid.Column="12" x:Name="RunButton" Content="Run Query" Width="100"
-                        Click="OnRun" Margin="0,0,0,0"/>
+                        Click="OnRun" Margin="0,0,4,0"/>
+                <Button Grid.Column="13" x:Name="FullTimelineButton" Content="Full timeline"
+                        Width="110" Click="OnFullTimeline"
+                        ToolTip="Fetch every audit row for the Entity ID + Entity Type filter via /api/net/audit/entity (no 500-row cap). Needs both filled in."/>
             </Grid>
 
             <Grid Margin="0,6,0,0">
