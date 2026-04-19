@@ -85,11 +85,10 @@ export class NetworkIpAddressesComponent implements OnInit {
     });
   }
 
-  /// Double-click → owning subnet detail page. Addresses tab on
-  /// that page shows only this subnet's IPs.
+  /// Double-click → IP address detail page.
   onRowDoubleClick(e: { data: IpAddressListRow }): void {
     const row = e?.data;
-    if (!row?.subnetId) return;
-    this.router.navigate(['/network/net-subnet', row.subnetId]);
+    if (!row?.id) return;
+    this.router.navigate(['/network/ip-address', row.id]);
   }
 }
