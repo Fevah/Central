@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using Central.Engine.Net.Pools;
+using Central.Engine.Shell;
 using Central.Persistence.Net;
 using DevExpress.Xpf.Bars;
 using DevExpress.Xpf.Grid;
@@ -360,7 +361,39 @@ public partial class PoolsTreePanel : UserControl
                 e.Customizations.Add(MakeButton($"Delete {selected.NodeType.ToLower()}",
                     () => _ = DeleteAsync(selected)));
             }
+
+            // Audit drill — available on any pool / block node. Maps
+            // the tree's NodeType to the engine's audit entity_type
+            // (NodeType "MlagPool" → entity_type "MlagDomainPool");
+            // unmapped types drill with the NodeType as-is so the
+            // filter still applies, even if the resulting row set is
+            // empty for entity types the allocation service doesn't
+            // yet emit.
+            var auditEntityType = MapNodeTypeToAuditEntityType(selected.NodeType);
+            e.Customizations.Add(new BarItemLinkSeparator());
+            e.Customizations.Add(MakeButton("Show audit history",
+                () => ShowAuditForNode(auditEntityType, selected.EntityId)));
         }
+    }
+
+    /// <summary>NodeType in the tree differs from entity_type in the
+    /// audit log for MLAG ("MlagPool" vs "MlagDomainPool"). Everything
+    /// else lines up; the switch keeps the mapping explicit so
+    /// operators aren't surprised when the audit panel shows zero
+    /// rows for a known-to-be-audited action.</summary>
+    private static string MapNodeTypeToAuditEntityType(string nodeType) => nodeType switch
+    {
+        "MlagPool" => "MlagDomainPool",
+        _          => nodeType,
+    };
+
+    private void ShowAuditForNode(string entityType, Guid entityId)
+    {
+        if (entityId == Guid.Empty) return;
+        PanelMessageBus.Publish(new OpenPanelMessage("audit"));
+        PanelMessageBus.Publish(new NavigateToPanelMessage(
+            "audit", $"selectEntity:{entityType}:{entityId}"));
+        StatusLabel.Text = $"Drilled into audit for {entityType} {entityId}";
     }
 
     private static BarButtonItem MakeButton(string text, Action onClick)

@@ -355,6 +355,16 @@ public partial class HierarchyTreePanel : UserControl
                     () => ShowServersInBuilding(selected.Code)));
             }
 
+            // Audit drill — available on every node type. Publishes
+            // the same OpenPanel + selectEntity pair the entity grids
+            // use, so "what changed on this Region / Site / Building
+            // / Floor / Room / Rack?" is one click away. Rows created
+            // by migrations (Immunocore seed, etc.) will show; .NET-
+            // side CRUD doesn't emit audit today so manually-created
+            // hierarchy rows may come back empty until that lands.
+            e.Customizations.Add(MakeButton($"Show audit history",
+                () => ShowAuditForNode(selected.NodeType, selected.EntityId)));
+
             e.Customizations.Add(new BarItemLinkSeparator());
 
             // All six levels are now editable + soft-deletable (Phase 2e).
@@ -376,6 +386,19 @@ public partial class HierarchyTreePanel : UserControl
         PanelMessageBus.Publish(new NavigateToPanelMessage(
             "devices", $"filterBy:Building:{buildingCode}"));
         StatusLabel.Text = $"Filtered devices to building '{buildingCode}'";
+    }
+
+    /// <summary>Publish the audit drill-down pair for a hierarchy
+    /// node. Node.EntityId holds the net.* uuid directly — no
+    /// hostname/code resolver round-trip needed, unlike the
+    /// Device/Vlan/Link grid context menus.</summary>
+    private void ShowAuditForNode(string nodeType, Guid entityId)
+    {
+        if (entityId == Guid.Empty) return;
+        PanelMessageBus.Publish(new OpenPanelMessage("audit"));
+        PanelMessageBus.Publish(new NavigateToPanelMessage(
+            "audit", $"selectEntity:{nodeType}:{entityId}"));
+        StatusLabel.Text = $"Drilled into audit for {nodeType} {entityId}";
     }
 
     /// <summary>Same drill pattern for servers — ServerRow.BuildingCode
