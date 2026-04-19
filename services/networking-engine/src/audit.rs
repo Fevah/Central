@@ -569,6 +569,60 @@ pub async fn entity_timeline(
     Ok(rows)
 }
 
+// ─── Stats — lightweight audit counts ────────────────────────────────────
+
+/// One row of audit activity counts. Populated by `stats_by_entity_type`
+/// and surfaced via `GET /api/net/audit/stats` for dashboard-style
+/// widgets ("what changed this week?" at a glance).
+#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct EntityTypeStats {
+    pub entity_type: String,
+    pub total_count: i64,
+    pub distinct_actors: i64,
+    pub last_seen_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// Request shape for `stats_by_entity_type` — optional time window
+/// for the common "activity in the last N hours/days" operator
+/// question. Both bounds default to unbounded so an empty request
+/// counts everything.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AuditStatsQuery {
+    pub organization_id: Uuid,
+    pub from_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub to_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+/// Grouped audit counts per entity_type, optionally narrowed by a
+/// time window. Single SQL pass with COUNT + COUNT(DISTINCT) +
+/// MAX(created_at) per entity_type; the web dashboard renders the
+/// result as a summary card + list. Ordered by total_count DESC so
+/// the most-changed entity types land first.
+pub async fn stats_by_entity_type(
+    pool: &PgPool,
+    q: &AuditStatsQuery,
+) -> Result<Vec<EntityTypeStats>, EngineError> {
+    let rows: Vec<EntityTypeStats> = sqlx::query_as(
+        "SELECT entity_type,
+                COUNT(*)                     AS total_count,
+                COUNT(DISTINCT actor_user_id) FILTER (WHERE actor_user_id IS NOT NULL) AS distinct_actors,
+                MAX(created_at)              AS last_seen_at
+           FROM net.audit_entry
+          WHERE organization_id = $1
+            AND ($2::timestamptz IS NULL OR created_at >= $2)
+            AND ($3::timestamptz IS NULL OR created_at <= $3)
+          GROUP BY entity_type
+          ORDER BY total_count DESC, entity_type ASC")
+        .bind(q.organization_id)
+        .bind(q.from_at)
+        .bind(q.to_at)
+        .fetch_all(pool)
+        .await?;
+    Ok(rows)
+}
+
 // ─── Unit tests ──────────────────────────────────────────────────────────
 
 #[cfg(test)]

@@ -75,6 +75,15 @@ export interface ValidationRunResult {
   totalViolations: number;
 }
 
+/// One entity-type's audit activity stats. Matches
+/// `EntityTypeStats` from services/networking-engine/src/audit.rs.
+export interface EntityTypeStats {
+  entityType: string;
+  totalCount: number;
+  distinctActors: number;
+  lastSeenAt: string | null;
+}
+
 /// Per-row outcome from a bulk CSV import. Matches
 /// `ImportRowOutcomeDto` from the Rust side. Ok=false means the row
 /// failed validation; the errors array carries the details the
@@ -319,6 +328,20 @@ export class NetworkingEngineService {
     const body: Record<string, unknown> = { organizationId };
     if (ruleCode) body['ruleCode'] = ruleCode;
     return this.http.post<ValidationRunResult>(`${this.base}/api/net/validation/run`, body);
+  }
+
+  /// Per-entity-type audit activity summary. Single SQL pass with
+  /// COUNT + distinct-actor count + last-seen-at, grouped by entity
+  /// type. Optional from/to bounds the window; omit both for all-time.
+  auditStatsByEntityType(
+    organizationId: string,
+    fromAt?: string,
+    toAt?: string,
+  ): Observable<EntityTypeStats[]> {
+    let params = new HttpParams().set('organizationId', organizationId);
+    if (fromAt) params = params.set('fromAt', fromAt);
+    if (toAt)   params = params.set('toAt', toAt);
+    return this.http.get<EntityTypeStats[]>(`${this.base}/api/net/audit/stats`, { params });
   }
 
   /// Fetch the entity's full audit timeline — no 500-row cap that

@@ -48,6 +48,7 @@ export const routes: Routes = [
           { path: 'pools',           loadComponent: () => import('./modules/network/components/network-pools.component').then(m => m.NetworkPoolsComponent) },
           { path: 'bulk',            loadComponent: () => import('./modules/network/components/network-bulk.component').then(m => m.NetworkBulkComponent) },
           { path: 'devices',         loadComponent: () => import('./modules/network/components/network-devices.component').then(m => m.NetworkDevicesComponent) },
+          { path: 'audit-stats',     loadComponent: () => import('./modules/network/components/network-audit-stats.component').then(m => m.NetworkAuditStatsComponent) },
           { path: 'audit/:entityType/:entityId',
             loadComponent: () => import('./modules/network/components/network-audit-timeline.component').then(m => m.NetworkAuditTimelineComponent) },
         ]

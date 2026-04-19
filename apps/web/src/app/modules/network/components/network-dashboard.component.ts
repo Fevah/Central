@@ -26,6 +26,7 @@ import notify from 'devextreme/ui/notify';
       <a routerLink="/network/pools" routerLinkActive="active">Pools</a>
       <a routerLink="/network/bulk" routerLinkActive="active">Bulk</a>
       <a routerLink="/network/devices" routerLinkActive="active">Devices (net.*)</a>
+      <a routerLink="/network/audit-stats" routerLinkActive="active">Audit stats</a>
     </div>
 
     <!-- Summary cards -->
