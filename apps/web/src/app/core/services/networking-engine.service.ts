@@ -102,6 +102,21 @@ export interface ServerListRow {
   version: number;
 }
 
+/// Thin IP-address list row — matches `IpAddressListRow` in the
+/// engine. `address` is pre-rendered as a bare host string via
+/// `host(ip.address)` on the server — no CIDR suffix.
+export interface IpAddressListRow {
+  id: string;
+  subnetId: string;
+  subnetCode: string | null;
+  address: string;
+  assignedToType: string | null;
+  assignedToId: string | null;
+  isReserved: boolean;
+  status: string;
+  version: number;
+}
+
 /// Thin subnet-list row — matches `SubnetListRow` in the engine.
 /// network is pre-rendered as a CIDR string; vlanTag is the numeric
 /// VLAN id when a net.vlan row is linked, null otherwise.
@@ -700,6 +715,19 @@ export class NetworkingEngineService {
   listSubnets(organizationId: string): Observable<SubnetListRow[]> {
     const params = new HttpParams().set('organizationId', organizationId);
     return this.http.get<SubnetListRow[]>(`${this.base}/api/net/subnets`, { params });
+  }
+
+  /// Thin IP-address list — 5000 row cap. Optional `subnetId`
+  /// narrows to one subnet (the subnet-detail page's drill).
+  /// Address pre-rendered as a bare host string by the engine.
+  listIpAddresses(
+    organizationId: string,
+    subnetId?: string,
+  ): Observable<IpAddressListRow[]> {
+    let params = new HttpParams().set('organizationId', organizationId);
+    if (subnetId) params = params.set('subnetId', subnetId);
+    return this.http.get<IpAddressListRow[]>(
+      `${this.base}/api/net/ip-addresses`, { params });
   }
 
   /// List change-sets, optionally narrowed to a status. Capped at

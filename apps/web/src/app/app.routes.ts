@@ -52,6 +52,7 @@ export const routes: Routes = [
           { path: 'net-server/:id',  loadComponent: () => import('./modules/network/components/network-server-detail.component').then(m => m.NetworkServerDetailComponent) },
           { path: 'net-vlan/:id',    loadComponent: () => import('./modules/network/components/network-vlan-detail.component').then(m => m.NetworkVlanDetailComponent) },
           { path: 'net-link/:id',    loadComponent: () => import('./modules/network/components/network-link-detail.component').then(m => m.NetworkLinkDetailComponent) },
+          { path: 'net-subnet/:id',  loadComponent: () => import('./modules/network/components/network-subnet-detail.component').then(m => m.NetworkSubnetDetailComponent) },
           { path: 'vlans',           loadComponent: () => import('./modules/network/components/network-vlans.component').then(m => m.NetworkVlansComponent) },
           { path: 'servers',         loadComponent: () => import('./modules/network/components/network-servers.component').then(m => m.NetworkServersComponent) },
           { path: 'links-grid',      loadComponent: () => import('./modules/network/components/network-links.component').then(m => m.NetworkLinksGridComponent) },

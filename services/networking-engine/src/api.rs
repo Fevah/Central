@@ -112,6 +112,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/links",   get(list_links))
         .route("/api/net/servers", get(list_servers))
         .route("/api/net/subnets", get(list_subnets))
+        .route("/api/net/ip-addresses", get(list_ip_addresses))
         // Thin pool/block reads (WPF convenience-form pickers)
         .route("/api/net/vlan-blocks", get(list_vlan_blocks))
         .route("/api/net/asn-blocks",  get(list_asn_blocks))
@@ -957,6 +958,64 @@ async fn list_subnets(
           ORDER BY sn.subnet_code
           LIMIT 5000")
         .bind(q.organization_id)
+        .fetch_all(&s.pool)
+        .await?;
+    Ok(Json(rows))
+}
+
+// ─── IP address thin list ───────────────────────────────────────────────
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct IpAddressListQuery {
+    organization_id: Uuid,
+    /// Optional — narrow to one subnet. The subnet-detail web page
+    /// uses this to show only the addresses under the selected row.
+    subnet_id: Option<Uuid>,
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct IpAddressListRow {
+    id: Uuid,
+    subnet_id: Uuid,
+    subnet_code: Option<String>,
+    address: String,             // rendered as plain host string via host()
+    assigned_to_type: Option<String>,
+    assigned_to_id: Option<Uuid>,
+    is_reserved: bool,
+    status: String,
+    version: i32,
+}
+
+/// Thin list of IP addresses — same 5000-row cap as the other net.*
+/// thin lists. Optional `subnetId` narrows to one subnet (drill
+/// target from the subnet detail page). LEFT JOIN on net.subnet
+/// for subnet_code so the caller doesn't need a second round-trip
+/// to render "IP 10.11.120.10 in SUB-MGMT-120".
+async fn list_ip_addresses(
+    State(s): State<AppState>,
+    Query(q): Query<IpAddressListQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let rows: Vec<IpAddressListRow> = sqlx::query_as(
+        "SELECT ip.id,
+                ip.subnet_id,
+                sn.subnet_code,
+                host(ip.address)   AS address,
+                ip.assigned_to_type,
+                ip.assigned_to_id,
+                ip.is_reserved,
+                ip.status::text    AS status,
+                ip.version
+           FROM net.ip_address ip
+           LEFT JOIN net.subnet sn ON sn.id = ip.subnet_id
+          WHERE ip.organization_id = $1
+            AND ip.deleted_at IS NULL
+            AND ($2::uuid IS NULL OR ip.subnet_id = $2)
+          ORDER BY ip.address
+          LIMIT 5000")
+        .bind(q.organization_id)
+        .bind(q.subnet_id)
         .fetch_all(&s.pool)
         .await?;
     Ok(Json(rows))

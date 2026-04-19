@@ -80,9 +80,10 @@ export class NetworkSubnetsComponent implements OnInit {
     });
   }
 
+  /// Double-click → subnet detail (Summary / Audit / Addresses).
   onRowDoubleClick(e: { data: SubnetListRow }): void {
     const row = e?.data;
     if (!row?.id) return;
-    this.router.navigate(['/network/audit', 'Subnet', row.id]);
+    this.router.navigate(['/network/net-subnet', row.id]);
   }
 }
