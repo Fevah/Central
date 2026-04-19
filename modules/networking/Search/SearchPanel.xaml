@@ -5,14 +5,20 @@
              xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
              Background="Transparent">
     <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Status bar -->
-        <Border Grid.Row="0" BorderBrush="#333" BorderThickness="0,0,0,1" Padding="8,4">
+        <!-- Status bar (full width) -->
+        <Border Grid.Row="0" Grid.ColumnSpan="3"
+                BorderBrush="#333" BorderThickness="0,0,0,1" Padding="8,4">
             <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Global search" FontWeight="SemiBold" Foreground="#D0D0D0"/>
                 <TextBlock Text=" · " Foreground="#707070"/>
@@ -20,8 +26,49 @@
             </StackPanel>
         </Border>
 
-        <!-- Filter + query bar -->
-        <Grid Grid.Row="1" Margin="8,6,8,6">
+        <!-- Saved-views sidebar (spans both rows 1+2) -->
+        <Border Grid.Row="1" Grid.RowSpan="2" Grid.Column="0"
+                BorderBrush="#333" BorderThickness="0,0,1,0" Background="#1C1C1C">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="Saved views" FontWeight="SemiBold"
+                           Foreground="#B0B0B0" Padding="8,6,8,4"/>
+                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="6,0,6,4">
+                    <Button x:Name="SaveViewButton" Content="Save current"
+                            Width="90" Click="OnSaveView" Margin="0,0,4,0"
+                            ToolTip="Save the current query + entity-type filter as a named view"/>
+                    <Button x:Name="DeleteViewButton" Content="Delete"
+                            Width="60" Click="OnDeleteView"
+                            ToolTip="Delete the selected saved view"/>
+                </StackPanel>
+                <ListBox Grid.Row="2" x:Name="SavedViewsList"
+                         Background="Transparent" BorderThickness="0"
+                         Foreground="#D0D0D0"
+                         SelectionChanged="OnSavedViewSelected">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding SubtitleText}"
+                                           Foreground="#888" FontSize="11"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </Border>
+
+        <!-- Column splitter -->
+        <GridSplitter Grid.Row="1" Grid.RowSpan="2" Grid.Column="1"
+                      Width="3" Background="#2A2A2A"
+                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+
+        <!-- Filter + query bar (right pane, row 1) -->
+        <Grid Grid.Row="1" Grid.Column="2" Margin="8,6,8,6">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
@@ -59,8 +106,8 @@
                     Width="70" Click="OnClear"/>
         </Grid>
 
-        <!-- Result grid -->
-        <dxg:GridControl Grid.Row="2" x:Name="ResultsGrid"
+        <!-- Results grid (right pane, row 2) -->
+        <dxg:GridControl Grid.Row="2" Grid.Column="2" x:Name="ResultsGrid"
                          AutoGenerateColumns="None"
                          SelectionMode="Row"
                          ShowBorder="False">

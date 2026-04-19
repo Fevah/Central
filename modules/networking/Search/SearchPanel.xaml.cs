@@ -8,6 +8,10 @@ using System.Windows;
 using System.Windows.Input;
 using Central.ApiClient;
 using Central.Engine.Shell;
+using MessageBox = System.Windows.MessageBox;
+using MessageBoxButton = System.Windows.MessageBoxButton;
+using MessageBoxImage = System.Windows.MessageBoxImage;
+using MessageBoxResult = System.Windows.MessageBoxResult;
 using UserControl = System.Windows.Controls.UserControl;
 
 namespace Central.Module.Networking.Search;
@@ -57,9 +61,17 @@ public partial class SearchPanel : UserControl
         _baseUrl = baseUrl;
         _tenantId = tenantId;
         _actorUserId = actorUserId;
+        // Saved views are per-user; refresh the sidebar when the
+        // actor context lands so operators see their own views on
+        // first open without needing to trigger it manually.
+        if (IsLoaded) _ = ReloadSavedViewsAsync();
     }
 
-    private void OnLoaded(object sender, RoutedEventArgs e) { /* no auto-fetch */ }
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (!string.IsNullOrEmpty(_baseUrl) && _tenantId != Guid.Empty)
+            _ = ReloadSavedViewsAsync();
+    }
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
@@ -204,6 +216,136 @@ public partial class SearchPanel : UserControl
             .ToList();
         return list.Count == 0 ? null : list;
     }
+
+    // ─── Saved views sidebar ────────────────────────────────────────────
+
+    /// <summary>Reload the caller's saved-view list from the engine.
+    /// Silently skips when context isn't set — the panel is happy to
+    /// open before SetContext runs. Errors land in the status bar
+    /// rather than throwing because the sidebar is a nice-to-have
+    /// and shouldn't block search itself.</summary>
+    private async Task ReloadSavedViewsAsync()
+    {
+        if (string.IsNullOrEmpty(_baseUrl) || _tenantId == Guid.Empty) return;
+        try
+        {
+            using var client = new NetworkingEngineClient(_baseUrl);
+            if (_actorUserId is int uid) client.SetActorUserId(uid);
+            var views = await client.ListSavedViewsAsync(_tenantId);
+            SavedViewsList.ItemsSource = views
+                .Select(v => new SavedViewRow(v))
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            // Non-fatal — sidebar stays empty, search still works.
+            StatusLabel.Text = $"Saved views unavailable: {ex.Message}";
+        }
+    }
+
+    private void OnSavedViewSelected(object sender,
+        System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (SavedViewsList.SelectedItem is not SavedViewRow row) return;
+        // Populate the query box + entity-types from the view. Filters
+        // jsonb isn't rendered yet — that's a richer facet UI that
+        // lands when facet state needs more than the two fields here.
+        QueryBox.Text = row.Source.Q ?? "";
+        EntityTypesCombo.EditValue = row.Source.EntityTypes ?? "";
+        // Auto-run so clicking a saved view is one click, not two.
+        _ = RunSearchAsync();
+    }
+
+    private async void OnSaveView(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(_baseUrl) || _tenantId == Guid.Empty) return;
+
+        // Prompt for a name. Prefer the first 40 chars of the current
+        // query as the default — matches how operators reach for names
+        // ("mep core 02" becomes the view "mep core 02").
+        var q = (QueryBox.Text ?? "").Trim();
+        var defaultName = q.Length == 0
+            ? $"View {DateTime.Now:HH:mm:ss}"
+            : (q.Length <= 40 ? q : q.Substring(0, 40));
+        var name = TextInputPrompt.Show("Save view", "Name for this view:",
+                                        defaultName, Window.GetWindow(this));
+        if (string.IsNullOrWhiteSpace(name)) return;
+
+        try
+        {
+            using var client = new NetworkingEngineClient(_baseUrl);
+            if (_actorUserId is int uid) client.SetActorUserId(uid);
+
+            var entityTypesCsv = (EntityTypesCombo.EditValue as string)?.Trim();
+            var req = new CreateSavedViewRequest(
+                OrganizationId: _tenantId,
+                Name: name.Trim(),
+                Q: q,
+                EntityTypes: string.IsNullOrWhiteSpace(entityTypesCsv) ? null : entityTypesCsv,
+                Filters: null,
+                Notes: null);
+            await client.CreateSavedViewAsync(req);
+            await ReloadSavedViewsAsync();
+            StatusLabel.Text = $"Saved view '{name}' · {DateTime.Now:HH:mm:ss}";
+        }
+        catch (NetworkingEngineException ex) { StatusLabel.Text = $"Save failed ({ex.StatusCode}): {ex.Message}"; }
+        catch (Exception ex)                 { StatusLabel.Text = $"Save failed: {ex.Message}"; }
+    }
+
+    private async void OnDeleteView(object sender, RoutedEventArgs e)
+    {
+        if (SavedViewsList.SelectedItem is not SavedViewRow row)
+        {
+            StatusLabel.Text = "Pick a saved view from the sidebar first.";
+            return;
+        }
+        if (string.IsNullOrEmpty(_baseUrl) || _tenantId == Guid.Empty) return;
+
+        var confirm = MessageBox.Show(
+            $"Delete saved view '{row.Name}'?",
+            "Delete saved view",
+            MessageBoxButton.OKCancel, MessageBoxImage.Warning,
+            MessageBoxResult.Cancel);
+        if (confirm != MessageBoxResult.OK) return;
+
+        try
+        {
+            using var client = new NetworkingEngineClient(_baseUrl);
+            if (_actorUserId is int uid) client.SetActorUserId(uid);
+            await client.DeleteSavedViewAsync(row.Source.Id, _tenantId);
+            await ReloadSavedViewsAsync();
+            StatusLabel.Text = $"Deleted '{row.Name}' · {DateTime.Now:HH:mm:ss}";
+        }
+        catch (NetworkingEngineException ex) { StatusLabel.Text = $"Delete failed ({ex.StatusCode}): {ex.Message}"; }
+        catch (Exception ex)                 { StatusLabel.Text = $"Delete failed: {ex.Message}"; }
+    }
+}
+
+/// <summary>Sidebar row binding. Keeps the full DTO accessible
+/// (.Source) so selection can populate the full set of fields
+/// without a second engine round-trip.</summary>
+internal sealed class SavedViewRow
+{
+    public SavedViewRow(SavedViewDto source)
+    {
+        Source = source;
+    }
+    public SavedViewDto Source { get; }
+    public string Name => Source.Name;
+    /// <summary>Second line under the name — query + entity-type
+    /// summary so operators can pick the right view without clicking
+    /// each one.</summary>
+    public string SubtitleText
+    {
+        get
+        {
+            var q = string.IsNullOrWhiteSpace(Source.Q) ? "(empty)" : Source.Q;
+            if (q.Length > 40) q = q.Substring(0, 40) + "…";
+            var types = string.IsNullOrWhiteSpace(Source.EntityTypes)
+                ? "all types" : Source.EntityTypes;
+            return $"{q} · {types}";
+        }
+    }
 }
 
 /// <summary>Flat shape for the results grid. Rank is formatted as a
@@ -211,3 +353,61 @@ public partial class SearchPanel : UserControl
 /// display (the DTO ships ts_rank verbatim).</summary>
 internal sealed record SearchResultRow(string EntityType, Guid Id,
     string Label, string Snippet, float Rank);
+
+/// <summary>Minimal text-input dialog — DX-free, WPF-only. A shared
+/// helper in apps/desktop exists but the networking module doesn't
+/// reference desktop; duplicating this ~30-line helper beats a new
+/// project reference for one call site.</summary>
+internal static class TextInputPrompt
+{
+    public static string? Show(string title, string prompt, string defaultValue,
+        Window? owner)
+    {
+        var input = new System.Windows.Controls.TextBox
+        {
+            Text = defaultValue,
+            Margin = new Thickness(10, 4, 10, 10),
+            MinWidth = 320,
+        };
+        var ok = new System.Windows.Controls.Button
+        {
+            Content = "OK", Width = 80, Margin = new Thickness(4),
+            IsDefault = true,
+        };
+        var cancel = new System.Windows.Controls.Button
+        {
+            Content = "Cancel", Width = 80, Margin = new Thickness(4),
+            IsCancel = true,
+        };
+        var buttons = new System.Windows.Controls.StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right,
+            Margin = new Thickness(0, 0, 4, 4),
+        };
+        buttons.Children.Add(ok);
+        buttons.Children.Add(cancel);
+
+        var stack = new System.Windows.Controls.StackPanel();
+        stack.Children.Add(new System.Windows.Controls.TextBlock
+        {
+            Text = prompt, Margin = new Thickness(10, 10, 10, 0),
+        });
+        stack.Children.Add(input);
+        stack.Children.Add(buttons);
+
+        var dlg = new Window
+        {
+            Title = title, Content = stack,
+            SizeToContent = SizeToContent.WidthAndHeight,
+            ResizeMode = ResizeMode.NoResize,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Owner = owner,
+        };
+        ok.Click += (_, _) => { dlg.DialogResult = true; dlg.Close(); };
+
+        input.SelectAll();
+        input.Focus();
+        return dlg.ShowDialog() == true ? input.Text : null;
+    }
+}
