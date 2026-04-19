@@ -122,6 +122,8 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/mstp-rules",        get(list_mstp_rules))
         .route("/api/net/reservation-shelf", get(list_reservation_shelf))
         .route("/api/net/asn-allocations",   get(list_asn_allocations))
+        .route("/api/net/rooms",             get(list_rooms))
+        .route("/api/net/racks",             get(list_racks))
         // Thin pool/block reads (WPF convenience-form pickers)
         .route("/api/net/vlan-blocks", get(list_vlan_blocks))
         .route("/api/net/asn-blocks",  get(list_asn_blocks))
@@ -1528,6 +1530,82 @@ async fn list_asn_allocations(
         .bind(q.organization_id)
         .fetch_all(&s.pool)
         .await?;
+    Ok(Json(rows))
+}
+
+// ─── Room + rack thin lists ─────────────────────────────────────────────
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RoomListQuery {
+    organization_id: Uuid,
+    floor_id: Option<Uuid>,
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct RoomListRow {
+    id: Uuid,
+    floor_id: Uuid,
+    room_code: String,
+    room_type: String,
+    max_racks: Option<i32>,
+    status: String,
+}
+
+async fn list_rooms(
+    State(s): State<AppState>,
+    Query(q): Query<RoomListQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let rows: Vec<RoomListRow> = sqlx::query_as(
+        "SELECT id, floor_id, room_code, room_type, max_racks, status::text AS status
+           FROM net.room
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND ($2::uuid IS NULL OR floor_id = $2)
+          ORDER BY room_code
+          LIMIT 5000")
+        .bind(q.organization_id)
+        .bind(q.floor_id)
+        .fetch_all(&s.pool).await?;
+    Ok(Json(rows))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RackListQuery {
+    organization_id: Uuid,
+    room_id: Option<Uuid>,
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct RackListRow {
+    id: Uuid,
+    room_id: Uuid,
+    rack_code: String,
+    u_height: i32,
+    row: Option<String>,
+    position: Option<i32>,
+    max_devices: Option<i32>,
+    status: String,
+}
+
+async fn list_racks(
+    State(s): State<AppState>,
+    Query(q): Query<RackListQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let rows: Vec<RackListRow> = sqlx::query_as(
+        "SELECT id, room_id, rack_code, u_height, row, position, max_devices, status::text AS status
+           FROM net.rack
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND ($2::uuid IS NULL OR room_id = $2)
+          ORDER BY rack_code
+          LIMIT 5000")
+        .bind(q.organization_id)
+        .bind(q.room_id)
+        .fetch_all(&s.pool).await?;
     Ok(Json(rows))
 }
 

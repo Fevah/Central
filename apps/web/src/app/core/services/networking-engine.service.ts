@@ -164,6 +164,28 @@ export interface MlagDomainListRow {
   version: number;
 }
 
+/// Room list row — matches `RoomListRow` in the engine.
+export interface RoomListRow {
+  id: string;
+  floorId: string;
+  roomCode: string;
+  roomType: string;
+  maxRacks: number | null;
+  status: string;
+}
+
+/// Rack list row — matches `RackListRow` in the engine.
+export interface RackListRow {
+  id: string;
+  roomId: string;
+  rackCode: string;
+  uHeight: number;
+  row: string | null;
+  position: number | null;
+  maxDevices: number | null;
+  status: string;
+}
+
 /// ASN allocation list row — matches `AsnAllocationListRow` in
 /// the engine. `targetDisplay` is resolved via LEFT JOIN on
 /// net.device / net.server when `allocatedToType` is Device /
@@ -1453,6 +1475,28 @@ export class NetworkingEngineService {
   listVlanPools():  Observable<VlanPoolRow[]>  { return this.http.get<VlanPoolRow[]>(`${this.base}/api/net/vlan-pools`); }
   listVlanBlocks(): Observable<VlanBlockRow[]> { return this.http.get<VlanBlockRow[]>(`${this.base}/api/net/vlan-blocks`); }
   listIpPools():   Observable<IpPoolRow[]>   { return this.http.get<IpPoolRow[]>(`${this.base}/api/net/ip-pools`); }
+
+  /// Thin room list — 5000-row cap, optional floorId narrower.
+  listRooms(
+    organizationId: string,
+    floorId?: string,
+  ): Observable<RoomListRow[]> {
+    let params = new HttpParams().set('organizationId', organizationId);
+    if (floorId) params = params.set('floorId', floorId);
+    return this.http.get<RoomListRow[]>(
+      `${this.base}/api/net/rooms`, { params });
+  }
+
+  /// Thin rack list — 5000-row cap, optional roomId narrower.
+  listRacks(
+    organizationId: string,
+    roomId?: string,
+  ): Observable<RackListRow[]> {
+    let params = new HttpParams().set('organizationId', organizationId);
+    if (roomId) params = params.set('roomId', roomId);
+    return this.http.get<RackListRow[]>(
+      `${this.base}/api/net/racks`, { params });
+  }
 
   /// Thin ASN allocation list — 5000-row cap, ORDER BY asn ASC
   /// so gaps in the allocated set are visible.
