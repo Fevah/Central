@@ -1346,6 +1346,38 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Error,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "module.device_resolves_active",
+        name: "Module device_id must resolve to an Active device",
+        description: "A module (linecard / transceiver / PSU) whose \
+                      device is soft-deleted or Decommissioned \
+                      leaks into inventory reports. Parallel to \
+                      port.device_resolves_active.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "loopback.device_resolves_active",
+        name: "Loopback device_id must resolve to an Active device",
+        description: "A loopback whose device is soft-deleted or \
+                      Decommissioned becomes a stranded /32 reservation. \
+                      Parallel to port/module lifecycle resolves.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "aggregate_ethernet.device_resolves_active",
+        name: "Aggregate-ethernet device_id must resolve to an Active device",
+        description: "An AE bundle whose device is soft-deleted or \
+                      Decommissioned can't hold member ports. Pair \
+                      to port.device_resolves_active — an orphan AE \
+                      leaks LAG config on the wire.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1644,6 +1676,9 @@ async fn dispatch(
         "room.floor_resolves_active"              => run_room_floor_active(pool, org_id, severity, out).await,
         "rack.room_resolves_active"               => run_rack_room_active(pool, org_id, severity, out).await,
         "port.device_resolves_active"             => run_port_device_active(pool, org_id, severity, out).await,
+        "module.device_resolves_active"           => run_module_device_active(pool, org_id, severity, out).await,
+        "loopback.device_resolves_active"         => run_loopback_device_active(pool, org_id, severity, out).await,
+        "aggregate_ethernet.device_resolves_active" => run_ae_device_active(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -4156,6 +4191,81 @@ async fn run_port_device_active(
     Ok(())
 }
 
+/// `module.device_resolves_active` — module's device must be live.
+async fn run_module_device_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT m.id, m.slot, COALESCE(d.status::text, '(missing)')
+           FROM net.module m
+           LEFT JOIN net.device d ON d.id = m.device_id
+          WHERE m.organization_id = $1
+            AND m.deleted_at IS NULL
+            AND (d.id IS NULL
+                 OR d.deleted_at IS NOT NULL
+                 OR d.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, slot, status) in rows {
+        out.push(Violation {
+            rule_code: "module.device_resolves_active".into(),
+            severity, entity_type: "Module".into(), entity_id: Some(id),
+            message: format!(
+                "Module in slot '{slot}' references a device with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `loopback.device_resolves_active` — loopback's device must be live.
+async fn run_loopback_device_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32, String)> = sqlx::query_as(
+        "SELECT l.id, l.loopback_number, COALESCE(d.status::text, '(missing)')
+           FROM net.loopback l
+           LEFT JOIN net.device d ON d.id = l.device_id
+          WHERE l.organization_id = $1
+            AND l.deleted_at IS NULL
+            AND (d.id IS NULL
+                 OR d.deleted_at IS NOT NULL
+                 OR d.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, num, status) in rows {
+        out.push(Violation {
+            rule_code: "loopback.device_resolves_active".into(),
+            severity, entity_type: "Loopback".into(), entity_id: Some(id),
+            message: format!(
+                "Loopback lo{num} references a device with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `aggregate_ethernet.device_resolves_active` — AE bundle's device must be live.
+async fn run_ae_device_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT a.id, a.ae_name, COALESCE(d.status::text, '(missing)')
+           FROM net.aggregate_ethernet a
+           LEFT JOIN net.device d ON d.id = a.device_id
+          WHERE a.organization_id = $1
+            AND a.deleted_at IS NULL
+            AND (d.id IS NULL
+                 OR d.deleted_at IS NOT NULL
+                 OR d.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, name, status) in rows {
+        out.push(Violation {
+            rule_code: "aggregate_ethernet.device_resolves_active".into(),
+            severity, entity_type: "AggregateEthernet".into(), entity_id: Some(id),
+            message: format!(
+                "Aggregate-ethernet '{name}' references a device with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -4691,6 +4801,9 @@ mod tests {
             "room.floor_resolves_active",
             "rack.room_resolves_active",
             "port.device_resolves_active",
+            "module.device_resolves_active",
+            "loopback.device_resolves_active",
+            "aggregate_ethernet.device_resolves_active",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
