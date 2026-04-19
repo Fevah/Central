@@ -120,6 +120,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/mlag-domains",      get(list_mlag_domains))
         .route("/api/net/modules",           get(list_modules))
         .route("/api/net/mstp-rules",        get(list_mstp_rules))
+        .route("/api/net/reservation-shelf", get(list_reservation_shelf))
         // Thin pool/block reads (WPF convenience-form pickers)
         .route("/api/net/vlan-blocks", get(list_vlan_blocks))
         .route("/api/net/asn-blocks",  get(list_asn_blocks))
@@ -1424,6 +1425,54 @@ async fn list_mstp_rules(
           WHERE r.organization_id = $1
             AND r.deleted_at IS NULL
           ORDER BY r.rule_code
+          LIMIT 5000")
+        .bind(q.organization_id)
+        .fetch_all(&s.pool)
+        .await?;
+    Ok(Json(rows))
+}
+
+// ─── Reservation shelf thin list ────────────────────────────────────────
+
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct ReservationShelfListRow {
+    id: Uuid,
+    resource_type: String,
+    resource_key: String,
+    pool_id: Option<Uuid>,
+    block_id: Option<Uuid>,
+    retired_at: chrono::DateTime<chrono::Utc>,
+    available_after: chrono::DateTime<chrono::Utc>,
+    retired_reason: Option<String>,
+    status: String,
+    version: i32,
+}
+
+/// Thin list of net.reservation_shelf rows — retired resources in
+/// cooldown before recycling. Ordered by retired_at DESC so the
+/// freshest sit at top. Operators use this to eye-ball "is the
+/// recycler running?" — rows where available_after is in the past
+/// should have been recycled by the scheduler.
+async fn list_reservation_shelf(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let rows: Vec<ReservationShelfListRow> = sqlx::query_as(
+        "SELECT id,
+                resource_type,
+                resource_key,
+                pool_id,
+                block_id,
+                retired_at,
+                available_after,
+                retired_reason,
+                status::text AS status,
+                version
+           FROM net.reservation_shelf
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+          ORDER BY retired_at DESC
           LIMIT 5000")
         .bind(q.organization_id)
         .fetch_all(&s.pool)

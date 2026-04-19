@@ -102,6 +102,24 @@ export interface ServerListRow {
   version: number;
 }
 
+/// Thin reservation-shelf list row — matches
+/// `ReservationShelfListRow` in the engine. `availableAfter` in
+/// the past means the cooldown has elapsed + the recycler should
+/// have already promoted the row; these are worth flagging in the
+/// UI as a "background job not running" hint.
+export interface ReservationShelfListRow {
+  id: string;
+  resourceType: string;
+  resourceKey: string;
+  poolId: string | null;
+  blockId: string | null;
+  retiredAt: string;
+  availableAfter: string;
+  retiredReason: string | null;
+  status: string;
+  version: number;
+}
+
 /// Thin MSTP priority rule list row — matches `MstpRuleListRow`
 /// in the engine. stepCount is a correlated subquery on
 /// net.mstp_priority_rule_step; empty-rule = step_count == 0.
@@ -930,6 +948,15 @@ export class NetworkingEngineService {
     const params = new HttpParams().set('organizationId', organizationId);
     return this.http.get<MstpRuleListRow[]>(
       `${this.base}/api/net/mstp-rules`, { params });
+  }
+
+  /// Thin reservation-shelf list. Ordered retired_at DESC — freshest
+  /// retirements at the top; check availableAfter < now() for rows
+  /// that should have been recycled by a background job.
+  listReservationShelf(organizationId: string): Observable<ReservationShelfListRow[]> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.get<ReservationShelfListRow[]>(
+      `${this.base}/api/net/reservation-shelf`, { params });
   }
 
   /// Thin module list — 5000 row cap. Optional deviceId narrower.
