@@ -420,8 +420,15 @@ pub async fn export_subnets_csv(
         Option<i32>,     // vlan_id
         Option<String>,  // pool_code
         String,          // scope_level
+        Option<String>,  // scope_entity_code (compound per scope_level)
         String,          // status
     );
+    // scope_entity_code is a compound expression keyed off scope_level
+    // — Building is one token (globally unique), Floor adds FLOOR_CODE,
+    // Room adds ROOM_CODE. Region/Site pass through as empty because
+    // the import side can't yet resolve them (CRUD-only for now). The
+    // COALESCE chain is gnarly but keeps the bulk export in lockstep
+    // with bulk import without a second query.
     let rows: Vec<Row> = sqlx::query_as(
         r#"SELECT s.subnet_code,
                   s.display_name,
@@ -429,10 +436,28 @@ pub async fn export_subnets_csv(
                   v.vlan_id                        AS vlan_id,
                   p.pool_code                      AS pool_code,
                   s.scope_level,
+                  CASE s.scope_level
+                      WHEN 'Building' THEN sb.building_code
+                      WHEN 'Floor'    THEN fb.building_code || '/' || f.floor_code
+                      WHEN 'Room'     THEN rb.building_code || '/' || rf.floor_code || '/' || r.room_code
+                      ELSE NULL
+                  END                              AS scope_entity_code,
                   s.status::text                   AS status
              FROM net.subnet s
-             LEFT JOIN net.vlan    v ON v.id = s.vlan_id AND v.deleted_at IS NULL
-             LEFT JOIN net.ip_pool p ON p.id = s.pool_id AND p.deleted_at IS NULL
+             LEFT JOIN net.vlan     v  ON v.id = s.vlan_id AND v.deleted_at IS NULL
+             LEFT JOIN net.ip_pool  p  ON p.id = s.pool_id AND p.deleted_at IS NULL
+             -- Building scope: single-hop to net.building.
+             LEFT JOIN net.building sb ON sb.id = s.scope_entity_id
+                                      AND s.scope_level = 'Building'
+             -- Floor scope: net.floor + its parent building.
+             LEFT JOIN net.floor    f  ON f.id  = s.scope_entity_id
+                                      AND s.scope_level = 'Floor'
+             LEFT JOIN net.building fb ON fb.id = f.building_id
+             -- Room scope: net.room + floor + building.
+             LEFT JOIN net.room     r  ON r.id  = s.scope_entity_id
+                                      AND s.scope_level = 'Room'
+             LEFT JOIN net.floor    rf ON rf.id = r.floor_id
+             LEFT JOIN net.building rb ON rb.id = rf.building_id
             WHERE s.organization_id = $1 AND s.deleted_at IS NULL
             ORDER BY s.subnet_code"#)
         .bind(org_id)
@@ -442,9 +467,10 @@ pub async fn export_subnets_csv(
     let mut out = String::with_capacity(128 + rows.len() * 96);
     out.push_str(&csv_row(&[
         "subnet_code".into(), "display_name".into(), "network".into(),
-        "vlan_id".into(), "pool_code".into(), "scope_level".into(), "status".into(),
+        "vlan_id".into(), "pool_code".into(),
+        "scope_level".into(), "scope_entity_code".into(), "status".into(),
     ]));
-    for (code, name, network, vlan, pool_code, scope, status) in rows {
+    for (code, name, network, vlan, pool_code, scope, scope_code, status) in rows {
         out.push_str(&csv_row(&[
             csv_escape(&code),
             csv_escape(&name),
@@ -452,6 +478,7 @@ pub async fn export_subnets_csv(
             vlan.map(|n| n.to_string()).unwrap_or_default(),
             csv_escape(&pool_code.unwrap_or_default()),
             csv_escape(&scope),
+            csv_escape(&scope_code.unwrap_or_default()),
             csv_escape(&status),
         ]));
     }

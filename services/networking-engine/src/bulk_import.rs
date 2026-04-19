@@ -902,9 +902,23 @@ fn validate_vlan_row(
 // ─── Subnet import ───────────────────────────────────────────────────────
 
 /// Column order mirrors `bulk_export::export_subnets_csv`.
+///
+/// `scope_entity_code` is the human-readable path to the row's
+/// scope entity. Shape depends on `scope_level`:
+///
+///   Free      → empty
+///   Building  → `BUILDING_CODE` (unique per tenant)
+///   Floor     → `BUILDING_CODE/FLOOR_CODE` (compound — floor_code
+///               isn't unique across buildings)
+///   Room      → `BUILDING_CODE/FLOOR_CODE/ROOM_CODE`
+///
+/// Region and Site scopes are permitted by the schema CHECK but
+/// not resolvable from the CSV in this slice — operators needing
+/// region/site-scoped subnets can still create them via the CRUD
+/// panel, which writes scope_entity_id directly.
 const SUBNET_COLUMNS: &[&str] = &[
     "subnet_code", "display_name", "network", "vlan_id",
-    "pool_code", "scope_level", "status",
+    "pool_code", "scope_level", "scope_entity_code", "status",
 ];
 
 /// Validate + optionally apply a CSV bulk import of subnets. Same
@@ -913,6 +927,10 @@ const SUBNET_COLUMNS: &[&str] = &[
 /// `pool_code` is required (subnets can't exist without a parent
 /// pool); `network` is required + must be a valid CIDR; `subnet_code`
 /// is required and must be unique per-tenant.
+///
+/// `scope_entity_code` is optional when `scope_level` is Free;
+/// required and resolved against the tenant's building / floor /
+/// room catalog for those scopes.
 ///
 /// **vlan_id is ignored on apply.** Multi-block tenants can have the
 /// same numeric vlan_id in multiple blocks, making the resolution
@@ -955,6 +973,43 @@ pub async fn import_subnets(
     let pool_code_to_id: std::collections::HashMap<String, Uuid> =
         pool_rows.into_iter().map(|(id, c)| (c, id)).collect();
 
+    // Hierarchy catalogs for scope_entity_code resolution.
+    //
+    // building_code is globally unique per tenant (UNIQUE (org,
+    // building_code)), so that's the map key. Floor + Room compound
+    // keys join up through the parent hierarchy so we can resolve
+    // "BUILDING_CODE/FLOOR_CODE" / "…/ROOM_CODE" without an extra
+    // per-row lookup.
+    let building_rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, building_code FROM net.building
+          WHERE organization_id = $1 AND deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let building_code_to_id: std::collections::HashMap<String, Uuid> =
+        building_rows.into_iter().map(|(id, c)| (c, id)).collect();
+
+    let floor_rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT f.id, b.building_code, f.floor_code
+           FROM net.floor f
+           JOIN net.building b ON b.id = f.building_id AND b.deleted_at IS NULL
+          WHERE f.organization_id = $1 AND f.deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let floor_code_to_id: std::collections::HashMap<String, Uuid> =
+        floor_rows.into_iter()
+            .map(|(id, bldg, fl)| (format!("{bldg}/{fl}"), id))
+            .collect();
+
+    let room_rows: Vec<(Uuid, String, String, String)> = sqlx::query_as(
+        "SELECT r.id, b.building_code, f.floor_code, r.room_code
+           FROM net.room r
+           JOIN net.floor    f ON f.id = r.floor_id      AND f.deleted_at IS NULL
+           JOIN net.building b ON b.id = f.building_id   AND b.deleted_at IS NULL
+          WHERE r.organization_id = $1 AND r.deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let room_code_to_id: std::collections::HashMap<String, Uuid> =
+        room_rows.into_iter()
+            .map(|(id, bldg, fl, rm)| (format!("{bldg}/{fl}/{rm}"), id))
+            .collect();
+
     // existing subnet_code → (id, version) so the apply loop can
     // version-check on upsert.
     let existing_rows: Vec<(String, Uuid, i32)> = sqlx::query_as(
@@ -978,7 +1033,10 @@ pub async fn import_subnets(
     let mut outcomes: Vec<ImportRowOutcome> = Vec::with_capacity(rows.len().saturating_sub(1));
     for (i, row) in rows.iter().enumerate().skip(1) {
         let row_number = i + 1;
-        outcomes.push(validate_subnet_row(row, row_number, &pool_codes, dup_check_set));
+        outcomes.push(validate_subnet_row(
+            row, row_number, &pool_codes, dup_check_set,
+            &building_code_to_id, &floor_code_to_id, &room_code_to_id,
+        ));
     }
 
     let valid   = outcomes.iter().filter(|o| o.ok).count();
@@ -994,41 +1052,60 @@ pub async fn import_subnets(
 
     let mut tx = pool.begin().await?;
     for (outcome_idx, row) in rows.iter().enumerate().skip(1).map(|(_, r)| r).enumerate() {
-        let subnet_code = row[0].trim();
-        let display_name= row[1].trim();
-        let network     = row[2].trim();
+        let subnet_code       = row[0].trim();
+        let display_name      = row[1].trim();
+        let network           = row[2].trim();
         // row[3] is vlan_id — carried by the CSV for reference,
         // ignored on apply (see module docs).
-        let pool_code   = row[4].trim();
-        let scope_level = row[5].trim();
-        let status      = row[6].trim();
+        let pool_code         = row[4].trim();
+        let scope_level       = row[5].trim();
+        let scope_entity_code = row[6].trim();
+        let status            = row[7].trim();
 
         let pool_id_val = pool_code_to_id.get(pool_code).copied()
             .expect("validator enforced pool_code exists");
         let scope_val   = if scope_level.is_empty() { "Free" }   else { scope_level };
         let status_val  = if status.is_empty()      { "Active" } else { status };
 
+        // Validator has already checked that scope_entity_code matches
+        // scope_level + resolves against the tenant's catalog. Rehit
+        // the maps here to get the uuid.
+        let scope_entity_id: Option<Uuid> = match scope_val {
+            "Free"                          => None,
+            "Building" if !scope_entity_code.is_empty() =>
+                building_code_to_id.get(scope_entity_code).copied(),
+            "Floor"    if !scope_entity_code.is_empty() =>
+                floor_code_to_id.get(scope_entity_code).copied(),
+            "Room"     if !scope_entity_code.is_empty() =>
+                room_code_to_id.get(scope_entity_code).copied(),
+            _ => None,
+        };
+
         let existing = existing_by_code.get(subnet_code).copied();
         let (subnet_id, action) = match (existing, mode) {
             (Some((id, db_version)), ImportMode::Upsert) => {
                 // Subnet upsert: update display_name, network,
-                // scope_level, status. subnet_code stays as the
-                // identifier; pool_id stays put (re-parenting a
-                // subnet between pools is a CRUD-only operation).
+                // scope_level, scope_entity_id, status. subnet_code
+                // stays as the identifier; pool_id stays put (re-
+                // parenting a subnet between pools is a CRUD-only
+                // operation).
                 let update_result: Result<Option<(Uuid,)>, sqlx::Error> = sqlx::query_as(
                     "UPDATE net.subnet
-                        SET display_name = $3,
-                            network      = $4::cidr,
-                            scope_level  = $5,
-                            status       = $6::net.entity_status,
-                            updated_at   = now(),
-                            updated_by   = $7,
-                            version      = version + 1
+                        SET display_name     = $3,
+                            network          = $4::cidr,
+                            scope_level      = $5,
+                            scope_entity_id  = $6,
+                            status           = $7::net.entity_status,
+                            updated_at       = now(),
+                            updated_by       = $8,
+                            version          = version + 1
                       WHERE id = $1 AND organization_id = $2
-                        AND version = $8 AND deleted_at IS NULL
+                        AND version = $9 AND deleted_at IS NULL
                       RETURNING id")
                     .bind(id).bind(org_id)
-                    .bind(display_name).bind(network).bind(scope_val).bind(status_val)
+                    .bind(display_name).bind(network)
+                    .bind(scope_val).bind(scope_entity_id)
+                    .bind(status_val)
                     .bind(user_id).bind(db_version)
                     .fetch_optional(&mut *tx).await;
 
@@ -1063,11 +1140,14 @@ pub async fn import_subnets(
                 let insert_result: Result<(Uuid,), sqlx::Error> = sqlx::query_as(
                     "INSERT INTO net.subnet
                         (organization_id, pool_id, subnet_code, display_name,
-                         network, scope_level, status, created_by, updated_by)
-                     VALUES ($1, $2, $3, $4, $5::cidr, $6, $7::net.entity_status, $8, $8)
+                         network, scope_level, scope_entity_id, status,
+                         created_by, updated_by)
+                     VALUES ($1, $2, $3, $4, $5::cidr, $6, $7,
+                             $8::net.entity_status, $9, $9)
                      RETURNING id")
                     .bind(org_id).bind(pool_id_val).bind(subnet_code).bind(display_name)
-                    .bind(network).bind(scope_val).bind(status_val).bind(user_id)
+                    .bind(network).bind(scope_val).bind(scope_entity_id)
+                    .bind(status_val).bind(user_id)
                     .fetch_one(&mut *tx).await;
 
                 match insert_result {
@@ -1121,6 +1201,9 @@ fn validate_subnet_row(
     row_number: usize,
     pool_codes: &std::collections::HashSet<String>,
     existing_codes: &std::collections::HashSet<String>,
+    building_code_to_id: &std::collections::HashMap<String, Uuid>,
+    floor_code_to_id: &std::collections::HashMap<String, Uuid>,
+    room_code_to_id: &std::collections::HashMap<String, Uuid>,
 ) -> ImportRowOutcome {
     let mut errors = Vec::new();
 
@@ -1132,18 +1215,19 @@ fn validate_subnet_row(
         };
     }
 
-    let subnet_code = row[0].trim();
-    let display_name= row[1].trim();
-    let network     = row[2].trim();
-    let pool_code   = row[4].trim();
-    let scope_level = row[5].trim();
-    let status      = row[6].trim();
+    let subnet_code       = row[0].trim();
+    let display_name      = row[1].trim();
+    let network           = row[2].trim();
+    let pool_code         = row[4].trim();
+    let scope_level       = row[5].trim();
+    let scope_entity_code = row[6].trim();
+    let status            = row[7].trim();
 
     if subnet_code.is_empty() {
         errors.push("subnet_code is required".into());
     } else if existing_codes.contains(subnet_code) {
         errors.push(format!(
-            "subnet_code '{subnet_code}' already exists — update mode not yet supported"));
+            "subnet_code '{subnet_code}' already exists — pass mode=upsert to update existing rows"));
     }
     if display_name.is_empty() {
         errors.push("display_name is required".into());
@@ -1163,6 +1247,60 @@ fn validate_subnet_row(
     {
         errors.push(format!("scope_level '{scope_level}' must be Free/Region/Site/Building/Floor/Room"));
     }
+
+    // scope_entity_code ↔ scope_level consistency. Empty scope_level
+    // defaults to Free, which can't carry a scope_entity_code.
+    let effective_scope = if scope_level.is_empty() { "Free" } else { scope_level };
+    match effective_scope {
+        "Free" => {
+            if !scope_entity_code.is_empty() {
+                errors.push(format!(
+                    "scope_entity_code '{scope_entity_code}' set but scope_level is Free — clear one or the other"));
+            }
+        }
+        "Region" | "Site" => {
+            // Region + Site aren't yet resolvable from the CSV. The
+            // schema accepts them but building this slice only
+            // handles Building / Floor / Room — an operator on
+            // Region/Site must drop into the CRUD panel.
+            if !scope_entity_code.is_empty() {
+                errors.push(format!(
+                    "scope_level '{effective_scope}' isn't resolvable from CSV yet — use the CRUD panel, or pick Building/Floor/Room"));
+            }
+        }
+        "Building" => {
+            if scope_entity_code.is_empty() {
+                errors.push("scope_level 'Building' requires scope_entity_code (building_code)".into());
+            } else if !building_code_to_id.contains_key(scope_entity_code) {
+                errors.push(format!(
+                    "scope_entity_code '{scope_entity_code}' not found in this tenant's building catalog"));
+            }
+        }
+        "Floor" => {
+            if scope_entity_code.is_empty() {
+                errors.push("scope_level 'Floor' requires scope_entity_code (BUILDING_CODE/FLOOR_CODE)".into());
+            } else if !scope_entity_code.contains('/') {
+                errors.push(format!(
+                    "scope_entity_code '{scope_entity_code}' must be BUILDING_CODE/FLOOR_CODE for Floor scope"));
+            } else if !floor_code_to_id.contains_key(scope_entity_code) {
+                errors.push(format!(
+                    "scope_entity_code '{scope_entity_code}' not found in this tenant's floor catalog"));
+            }
+        }
+        "Room" => {
+            if scope_entity_code.is_empty() {
+                errors.push("scope_level 'Room' requires scope_entity_code (BUILDING_CODE/FLOOR_CODE/ROOM_CODE)".into());
+            } else if scope_entity_code.matches('/').count() != 2 {
+                errors.push(format!(
+                    "scope_entity_code '{scope_entity_code}' must be BUILDING_CODE/FLOOR_CODE/ROOM_CODE for Room scope"));
+            } else if !room_code_to_id.contains_key(scope_entity_code) {
+                errors.push(format!(
+                    "scope_entity_code '{scope_entity_code}' not found in this tenant's room catalog"));
+            }
+        }
+        _ => { /* scope_level already flagged above */ }
+    }
+
     if !status.is_empty() &&
         !matches!(status, "Planned"|"Reserved"|"Active"|"Deprecated"|"Retired")
     {

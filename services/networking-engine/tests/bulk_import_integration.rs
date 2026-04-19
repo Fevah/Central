@@ -11,6 +11,7 @@
 //! message and returns `Ok(())` — keeps `cargo test --ignored` safe
 //! on machines without a live DB.
 
+use networking_engine::bulk_export;
 use networking_engine::bulk_import::{self, ImportMode};
 use networking_engine::scope_grants::{CreateScopeGrantBody, ScopeGrantRepo};
 use sqlx::{PgPool, postgres::PgPoolOptions};
@@ -229,7 +230,7 @@ impl PoolsFixture {
 }
 
 const VLAN_HEADER: &str = "vlan_id,display_name,description,scope_level,template_code,block_code,status\r\n";
-const SUBNET_HEADER: &str = "subnet_code,display_name,network,vlan_id,pool_code,scope_level,status\r\n";
+const SUBNET_HEADER: &str = "subnet_code,display_name,network,vlan_id,pool_code,scope_level,scope_entity_code,status\r\n";
 
 #[tokio::test]
 #[ignore]
@@ -294,8 +295,8 @@ async fn subnet_import_happy_path_commits() {
 
     let csv = format!(
         "{SUBNET_HEADER}\
-         BI-SUB-A,Subnet A,10.99.1.0/24,,{p},Free,Active\r\n\
-         BI-SUB-B,Subnet B,10.99.2.0/24,,{p},Free,Active\r\n",
+         BI-SUB-A,Subnet A,10.99.1.0/24,,{p},Free,,Active\r\n\
+         BI-SUB-B,Subnet B,10.99.2.0/24,,{p},Free,,Active\r\n",
         p = fx.pool_code);
     let result = bulk_import::import_subnets(
         &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
@@ -313,8 +314,8 @@ async fn subnet_import_rejects_invalid_cidr_without_writing() {
 
     let csv = format!(
         "{SUBNET_HEADER}\
-         BI-SUB-A,Subnet A,10.99.1.0/24,,{p},Free,Active\r\n\
-         BI-SUB-B,Subnet B,not-a-cidr,,{p},Free,Active\r\n",
+         BI-SUB-A,Subnet A,10.99.1.0/24,,{p},Free,,Active\r\n\
+         BI-SUB-B,Subnet B,not-a-cidr,,{p},Free,,Active\r\n",
         p = fx.pool_code);
     let result = bulk_import::import_subnets(
         &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
@@ -391,7 +392,7 @@ async fn subnet_upsert_mode_updates_existing_code_rather_than_rejecting() {
 
     // Seed via Create — subnet_code is the unique key per tenant.
     let csv_initial = format!(
-        "{SUBNET_HEADER}BI-SUB-A,Subnet A,10.99.1.0/24,,{p},Free,Planned\r\n",
+        "{SUBNET_HEADER}BI-SUB-A,Subnet A,10.99.1.0/24,,{p},Free,,Planned\r\n",
         p = fx.pool_code);
     bulk_import::import_subnets(
         &fx.tenant.pool, fx.tenant.org_id, &csv_initial, false, ImportMode::Create, None,
@@ -401,7 +402,7 @@ async fn subnet_upsert_mode_updates_existing_code_rather_than_rejecting() {
     // Re-import same subnet_code with new display_name + Active +
     // network re-resized. UPDATE path, not reject.
     let csv_upsert = format!(
-        "{SUBNET_HEADER}BI-SUB-A,Subnet A Renamed,10.99.1.0/26,,{p},Free,Active\r\n",
+        "{SUBNET_HEADER}BI-SUB-A,Subnet A Renamed,10.99.1.0/26,,{p},Free,,Active\r\n",
         p = fx.pool_code);
     let result = bulk_import::import_subnets(
         &fx.tenant.pool, fx.tenant.org_id, &csv_upsert, false, ImportMode::Upsert, None,
@@ -427,7 +428,7 @@ async fn subnet_upsert_mode_creates_new_code_like_create() {
     let fx = PoolsFixture::new(pool).await.expect("fixture");
 
     let csv = format!(
-        "{SUBNET_HEADER}BI-SUB-NEW,Brand New,10.99.42.0/24,,{p},Free,Active\r\n",
+        "{SUBNET_HEADER}BI-SUB-NEW,Brand New,10.99.42.0/24,,{p},Free,,Active\r\n",
         p = fx.pool_code);
     let result = bulk_import::import_subnets(
         &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Upsert, None,
@@ -435,6 +436,208 @@ async fn subnet_upsert_mode_creates_new_code_like_create() {
     assert!(result.applied);
     assert_eq!(fx.count_subnets().await, 1,
         "upsert on a new subnet_code must INSERT, matching create behaviour");
+}
+
+// ─── Subnet scope_entity_code resolution (Phase 10 Floor/Room) ───────────
+//
+// The scope_entity_code column on the CSV resolves to net.subnet.scope_entity_id
+// per scope_level: Building → BUILDING_CODE (globally unique), Floor →
+// BUILDING_CODE/FLOOR_CODE (compound because floor_code is only unique
+// within its building), Room → BUILDING_CODE/FLOOR_CODE/ROOM_CODE.
+
+/// Seeds a floor + room under the existing 'IT-B' building so
+/// scope-aware subnet imports resolve. Reuses PoolsFixture so the
+/// VLAN + IP pool scaffolding stays available.
+async fn seed_hierarchy_on_pools_fixture(fx: &PoolsFixture) -> sqlx::Result<(String, String, String)> {
+    let (building_id,): (Uuid,) = sqlx::query_as(
+        "SELECT id FROM net.building
+          WHERE organization_id = $1 AND building_code = 'IT-B' AND deleted_at IS NULL")
+        .bind(fx.tenant.org_id).fetch_one(&fx.tenant.pool).await?;
+    let (floor_id,): (Uuid,) = sqlx::query_as(
+        "INSERT INTO net.floor (organization_id, building_id, floor_code, display_name,
+                                floor_number, status)
+         VALUES ($1, $2, 'F1', 'First Floor', 1, 'Active')
+         RETURNING id")
+        .bind(fx.tenant.org_id).bind(building_id).fetch_one(&fx.tenant.pool).await?;
+    sqlx::query(
+        "INSERT INTO net.room (organization_id, floor_id, room_code, display_name, status)
+         VALUES ($1, $2, 'R1', 'Server Room 1', 'Active')")
+        .bind(fx.tenant.org_id).bind(floor_id).execute(&fx.tenant.pool).await?;
+    let _ = floor_id;  // consumed via the INSERT above
+    Ok(("IT-B".into(), "F1".into(), "R1".into()))
+}
+
+#[tokio::test]
+#[ignore]
+async fn subnet_building_scope_resolves_and_writes_entity_id() {
+    let Some(pool) = pool_or_skip("subnet_building_scope_resolves_and_writes_entity_id").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+    let _ = seed_hierarchy_on_pools_fixture(&fx).await.expect("seed hierarchy");
+
+    let csv = format!(
+        "{SUBNET_HEADER}BI-SUB-BLD,Building Subnet,10.99.20.0/24,,{p},Building,IT-B,Active\r\n",
+        p = fx.pool_code);
+    let result = bulk_import::import_subnets(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
+    ).await.expect("apply");
+    assert!(result.applied, "happy path applied");
+    assert_eq!(result.valid, 1);
+
+    let (scope_level, scope_entity_id): (String, Option<Uuid>) = sqlx::query_as(
+        "SELECT scope_level, scope_entity_id FROM net.subnet
+          WHERE organization_id = $1 AND subnet_code = 'BI-SUB-BLD'")
+        .bind(fx.tenant.org_id).fetch_one(&fx.tenant.pool).await.unwrap();
+    assert_eq!(scope_level, "Building");
+    assert!(scope_entity_id.is_some(), "scope_entity_id must be resolved to the building uuid");
+}
+
+#[tokio::test]
+#[ignore]
+async fn subnet_floor_scope_resolves_compound_code() {
+    let Some(pool) = pool_or_skip("subnet_floor_scope_resolves_compound_code").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+    let _ = seed_hierarchy_on_pools_fixture(&fx).await.expect("seed hierarchy");
+
+    let csv = format!(
+        "{SUBNET_HEADER}BI-SUB-FLR,Floor Subnet,10.99.30.0/24,,{p},Floor,IT-B/F1,Active\r\n",
+        p = fx.pool_code);
+    let result = bulk_import::import_subnets(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
+    ).await.expect("apply");
+    assert!(result.applied);
+
+    let (scope_level, scope_entity_id): (String, Option<Uuid>) = sqlx::query_as(
+        "SELECT scope_level, scope_entity_id FROM net.subnet
+          WHERE organization_id = $1 AND subnet_code = 'BI-SUB-FLR'")
+        .bind(fx.tenant.org_id).fetch_one(&fx.tenant.pool).await.unwrap();
+    assert_eq!(scope_level, "Floor");
+    // The resolved uuid should match net.floor.id for (IT-B, F1).
+    let (expected_floor_id,): (Uuid,) = sqlx::query_as(
+        "SELECT f.id FROM net.floor f
+           JOIN net.building b ON b.id = f.building_id
+          WHERE f.organization_id = $1 AND b.building_code = 'IT-B' AND f.floor_code = 'F1'")
+        .bind(fx.tenant.org_id).fetch_one(&fx.tenant.pool).await.unwrap();
+    assert_eq!(scope_entity_id, Some(expected_floor_id));
+}
+
+#[tokio::test]
+#[ignore]
+async fn subnet_room_scope_resolves_three_part_code() {
+    let Some(pool) = pool_or_skip("subnet_room_scope_resolves_three_part_code").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+    let _ = seed_hierarchy_on_pools_fixture(&fx).await.expect("seed hierarchy");
+
+    let csv = format!(
+        "{SUBNET_HEADER}BI-SUB-RM,Room Subnet,10.99.40.0/24,,{p},Room,IT-B/F1/R1,Active\r\n",
+        p = fx.pool_code);
+    let result = bulk_import::import_subnets(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
+    ).await.expect("apply");
+    assert!(result.applied);
+
+    let (scope_level, scope_entity_id): (String, Option<Uuid>) = sqlx::query_as(
+        "SELECT scope_level, scope_entity_id FROM net.subnet
+          WHERE organization_id = $1 AND subnet_code = 'BI-SUB-RM'")
+        .bind(fx.tenant.org_id).fetch_one(&fx.tenant.pool).await.unwrap();
+    assert_eq!(scope_level, "Room");
+    assert!(scope_entity_id.is_some());
+}
+
+#[tokio::test]
+#[ignore]
+async fn subnet_building_scope_rejects_unknown_building_code() {
+    let Some(pool) = pool_or_skip("subnet_building_scope_rejects_unknown_building_code").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    let csv = format!(
+        "{SUBNET_HEADER}BI-SUB-X,Subnet X,10.99.1.0/24,,{p},Building,NO-SUCH-BLDG,Active\r\n",
+        p = fx.pool_code);
+    let result = bulk_import::import_subnets(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
+    ).await.expect("apply");
+    assert!(!result.applied);
+    assert_eq!(result.invalid, 1);
+    assert!(result.outcomes[0].errors.iter().any(|e| e.contains("building catalog")),
+        "unknown building_code should surface: {:?}", result.outcomes[0].errors);
+    assert_eq!(fx.count_subnets().await, 0);
+}
+
+#[tokio::test]
+#[ignore]
+async fn subnet_floor_scope_rejects_missing_slash() {
+    let Some(pool) = pool_or_skip("subnet_floor_scope_rejects_missing_slash").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+    let _ = seed_hierarchy_on_pools_fixture(&fx).await.expect("seed hierarchy");
+
+    // Floor scope needs BUILDING/FLOOR; giving just a floor code
+    // should be rejected, not silently treated as a building code.
+    let csv = format!(
+        "{SUBNET_HEADER}BI-SUB-X,Subnet X,10.99.1.0/24,,{p},Floor,F1,Active\r\n",
+        p = fx.pool_code);
+    let result = bulk_import::import_subnets(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
+    ).await.expect("apply");
+    assert!(!result.applied);
+    assert!(result.outcomes[0].errors.iter().any(|e| e.contains("BUILDING_CODE/FLOOR_CODE")),
+        "compound-shape error expected: {:?}", result.outcomes[0].errors);
+}
+
+#[tokio::test]
+#[ignore]
+async fn subnet_free_scope_rejects_non_empty_scope_entity_code() {
+    let Some(pool) = pool_or_skip("subnet_free_scope_rejects_non_empty_scope_entity_code").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+    let _ = seed_hierarchy_on_pools_fixture(&fx).await.expect("seed hierarchy");
+
+    // scope_level Free + scope_entity_code set is an operator error
+    // — the importer flags the mismatch rather than silently
+    // ignoring the code.
+    let csv = format!(
+        "{SUBNET_HEADER}BI-SUB-X,Subnet X,10.99.1.0/24,,{p},Free,IT-B,Active\r\n",
+        p = fx.pool_code);
+    let result = bulk_import::import_subnets(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
+    ).await.expect("apply");
+    assert!(!result.applied);
+    assert!(result.outcomes[0].errors.iter().any(|e| e.contains("scope_entity_code 'IT-B' set but scope_level is Free")),
+        "Free-with-code error expected: {:?}", result.outcomes[0].errors);
+}
+
+#[tokio::test]
+#[ignore]
+async fn subnet_building_scope_round_trips_through_export() {
+    let Some(pool) = pool_or_skip("subnet_building_scope_round_trips_through_export").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+    let _ = seed_hierarchy_on_pools_fixture(&fx).await.expect("seed hierarchy");
+
+    // Seed via import.
+    let csv = format!(
+        "{SUBNET_HEADER}RT-BLD,Building Subnet,10.99.20.0/24,,{p},Building,IT-B,Active\r\n\
+         RT-FLR,Floor Subnet,10.99.30.0/24,,{p},Floor,IT-B/F1,Active\r\n\
+         RT-RM,Room Subnet,10.99.40.0/24,,{p},Room,IT-B/F1/R1,Active\r\n",
+        p = fx.pool_code);
+    bulk_import::import_subnets(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
+    ).await.expect("seed");
+
+    // Export and assert the compound scope_entity_code column landed
+    // in the emitted CSV. This is the round-trip guarantee —
+    // export/import agree on scope_entity_code shape per scope_level.
+    let exported = bulk_export::export_subnets_csv(&fx.tenant.pool, fx.tenant.org_id).await
+        .expect("export");
+    assert!(exported.contains("Building,IT-B,Active"),
+        "Building-scope row must emit BUILDING_CODE as scope_entity_code; got:\n{exported}");
+    assert!(exported.contains("Floor,IT-B/F1,Active"),
+        "Floor-scope row must emit BUILDING/FLOOR as scope_entity_code; got:\n{exported}");
+    assert!(exported.contains("Room,IT-B/F1/R1,Active"),
+        "Room-scope row must emit BUILDING/FLOOR/ROOM as scope_entity_code; got:\n{exported}");
+
+    // Re-import the export as Upsert: should be a no-op (matching
+    // rows already exist) + must not error on the compound codes.
+    let result = bulk_import::import_subnets(
+        &fx.tenant.pool, fx.tenant.org_id, &exported, false, ImportMode::Upsert, None,
+    ).await.expect("re-import");
+    assert!(result.applied, "upsert round-trip must apply cleanly");
 }
 
 #[tokio::test]
@@ -674,7 +877,7 @@ async fn subnet_import_forbidden_without_write_subnet_grant() {
     let fx = PoolsFixture::new(pool).await.expect("fixture");
 
     let csv = format!(
-        "{SUBNET_HEADER}BI-SUB,Subnet X,10.99.1.0/24,,{p},Free,Active\r\n",
+        "{SUBNET_HEADER}BI-SUB,Subnet X,10.99.1.0/24,,{p},Free,,Active\r\n",
         p = fx.pool_code);
     let err = bulk_import::import_subnets(
         &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, Some(42)

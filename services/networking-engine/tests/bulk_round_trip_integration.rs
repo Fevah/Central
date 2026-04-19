@@ -254,9 +254,9 @@ async fn subnets_export_edit_reimport_only_changes_edited_cell() {
     let fx = RoundTripFixture::new(pool).await.expect("fixture");
 
     let seed_csv = format!(
-        "subnet_code,display_name,network,vlan_id,pool_code,scope_level,status\r\n\
-         RT-SUB-A,Subnet A,10.99.1.0/24,,{p},Free,Planned\r\n\
-         RT-SUB-B,Subnet B,10.99.2.0/24,,{p},Free,Planned\r\n",
+        "subnet_code,display_name,network,vlan_id,pool_code,scope_level,scope_entity_code,status\r\n\
+         RT-SUB-A,Subnet A,10.99.1.0/24,,{p},Free,,Planned\r\n\
+         RT-SUB-B,Subnet B,10.99.2.0/24,,{p},Free,,Planned\r\n",
         p = fx.pool_code);
     bulk_import::import_subnets(
         &fx.pool, fx.org_id, &seed_csv, false, ImportMode::Create, None,
