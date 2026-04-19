@@ -25,7 +25,12 @@
                    Text="Dry-run the scope_grants resolver: would this (user, action, entity_type) tuple be allowed? Optional entity id narrows the question to a specific row; omit for an any-row yes/no."/>
 
         <TextBlock Grid.Row="1" Grid.Column="0" Text="User id:"     VerticalAlignment="Center" Margin="0,4"/>
-        <TextBox   Grid.Row="1" Grid.Column="1" x:Name="UserIdBox"  Margin="0,4"/>
+        <DockPanel Grid.Row="1" Grid.Column="1" LastChildFill="True" Margin="0,4">
+            <Button DockPanel.Dock="Right" Content="Me" Width="36" Margin="4,0,0,0"
+                    Click="OnFillMe"
+                    ToolTip="Fill with your own user id — check 'can I do this?' without looking it up first"/>
+            <TextBox x:Name="UserIdBox"/>
+        </DockPanel>
 
         <TextBlock Grid.Row="2" Grid.Column="0" Text="Action:"      VerticalAlignment="Center" Margin="0,4"/>
         <dxe:ComboBoxEdit Grid.Row="2" Grid.Column="1" x:Name="ActionCombo"

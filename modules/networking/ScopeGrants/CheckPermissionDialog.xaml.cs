@@ -15,6 +15,23 @@ public partial class CheckPermissionDialog : Window
         EntityTypeCombo.ItemsSource = ScopeGrantsAdminPanel.KnownEntityTypes;
     }
 
+    /// <summary>Current actor's user id — set by the caller (the
+    /// ScopeGrants panel) before ShowDialog so the "Me" button can
+    /// fill UserIdBox without a second lookup. Null disables the
+    /// button in-practice (it still renders but the handler
+    /// surfaces "no current user" through the status bar on the
+    /// parent panel — not via a dialog to avoid the double-pop).</summary>
+    public int? CurrentActorUserId { get; set; }
+
+    private void OnFillMe(object sender, RoutedEventArgs e)
+    {
+        if (CurrentActorUserId is int uid && uid > 0)
+        {
+            UserIdBox.Text = uid.ToString();
+            UserIdBox.Focus();
+        }
+    }
+
     public int   CheckUserId     { get; private set; }
     public string CheckAction    { get; private set; } = "";
     public string CheckEntityType { get; private set; } = "";

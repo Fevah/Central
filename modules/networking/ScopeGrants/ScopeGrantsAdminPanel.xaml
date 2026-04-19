@@ -39,8 +39,13 @@
 
             <TextBlock Grid.Column="0" Text="User id:" VerticalAlignment="Center"
                        Margin="0,0,4,0" Foreground="#B0B0B0"/>
-            <TextBox Grid.Column="1" x:Name="UserFilterBox"
-                     ToolTip="Filter by app_users.id — leave blank for all"/>
+            <DockPanel Grid.Column="1" LastChildFill="True">
+                <Button DockPanel.Dock="Right" x:Name="ForMeButton" Content="Me"
+                        Width="36" Margin="4,0,0,0" Click="OnForMe"
+                        ToolTip="Set the user-id filter to your own id and reload — fast 'what can I do?' lookup"/>
+                <TextBox x:Name="UserFilterBox"
+                         ToolTip="Filter by app_users.id — leave blank for all"/>
+            </DockPanel>
 
             <TextBlock Grid.Column="2" Text="Action:" VerticalAlignment="Center"
                        Margin="10,0,4,0" Foreground="#B0B0B0"/>

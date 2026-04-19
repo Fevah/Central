@@ -116,6 +116,22 @@ public partial class ScopeGrantsAdminPanel : UserControl
     // ─── Toolbar handlers ──────────────────────────────────────────────
 
     private void OnRunFilter(object sender, RoutedEventArgs e) => _ = ReloadAsync();
+
+    /// <summary>Populate the user-id filter with the current user's id
+    /// + reload. Answers "what scope grants apply to me?" without the
+    /// operator having to look up their own app_users.id first.
+    /// No-ops cleanly when there's no logged-in actor (service calls,
+    /// offline mode) — the status bar explains why.</summary>
+    private void OnForMe(object sender, RoutedEventArgs e)
+    {
+        if (_actorUserId is not int uid || uid <= 0)
+        {
+            StatusLabel.Text = "No current user id — log in to enable 'Me' filter.";
+            return;
+        }
+        UserFilterBox.Text = uid.ToString();
+        _ = ReloadAsync();
+    }
     private void OnNewGrant(object sender, RoutedEventArgs e)  => _ = NewGrantAsync(null, null);
     private void OnDeleteGrant(object sender, RoutedEventArgs e) => _ = DeleteSelectedAsync();
     private void OnCheckPermission(object sender, RoutedEventArgs e) => _ = CheckPermissionAsync();
@@ -254,6 +270,7 @@ public partial class ScopeGrantsAdminPanel : UserControl
         var dlg = new CheckPermissionDialog
         {
             Owner = Window.GetWindow(this),
+            CurrentActorUserId = _actorUserId,
         };
         if (dlg.ShowDialog() != true) return;
 
