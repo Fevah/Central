@@ -75,6 +75,22 @@ export interface ValidationRunResult {
   totalViolations: number;
 }
 
+/// One scope_grant tuple. Matches `ScopeGrantDto` from the engine.
+export interface ScopeGrant {
+  id: string;
+  organizationId: string;
+  userId: number;
+  action: string;
+  entityType: string;
+  scopeType: string;
+  scopeEntityId: string | null;
+  status: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  notes: string | null;
+}
+
 /// Thin Phase-10 surface for the Angular web client. Parallel to
 /// the WPF `NetworkingEngineClient`; covers the operator-facing
 /// endpoints (search, saved views, audit timeline) that web
@@ -119,6 +135,22 @@ export class NetworkingEngineService {
   listDevices(organizationId: string): Observable<DeviceListRow[]> {
     const params = new HttpParams().set('organizationId', organizationId);
     return this.http.get<DeviceListRow[]>(`${this.base}/api/net/devices`, { params });
+  }
+
+  /// List scope grants, optionally narrowed by userId / action /
+  /// entityType. Read-only slice for the web client; create /
+  /// delete lands alongside a form component in a follow-up.
+  listScopeGrants(
+    organizationId: string,
+    userId?: number,
+    action?: string,
+    entityType?: string,
+  ): Observable<ScopeGrant[]> {
+    let params = new HttpParams().set('organizationId', organizationId);
+    if (userId !== undefined)   params = params.set('userId', userId.toString());
+    if (action)                 params = params.set('action', action);
+    if (entityType)             params = params.set('entityType', entityType);
+    return this.http.get<ScopeGrant[]>(`${this.base}/api/net/scope-grants`, { params });
   }
 
   /// Run the validation rule engine. Empty `ruleCode` runs every

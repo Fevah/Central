@@ -21,6 +21,7 @@ import notify from 'devextreme/ui/notify';
       <a routerLink="/network/bgp"   routerLinkActive="active" *ngIf="modules.isEnabled('routing')">BGP</a>
       <a routerLink="/network/search" routerLinkActive="active">Search</a>
       <a routerLink="/network/validation" routerLinkActive="active">Validation</a>
+      <a routerLink="/network/scope-grants" routerLinkActive="active">Scope grants</a>
     </div>
 
     <!-- Summary cards -->
