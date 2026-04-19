@@ -75,6 +75,39 @@ export interface ValidationRunResult {
   totalViolations: number;
 }
 
+/// Hierarchy row shapes — mirror the Central.Api `/api/net/regions`
+/// / `/sites` / `/buildings` / `/floors` endpoints which return
+/// PascalCase from the .NET models. Kept as flat DTOs per level
+/// because the WPF client uses a flat node list + parent ids for
+/// its TreeListControl.
+export interface RegionRow {
+  Id: string;
+  RegionCode: string;
+  DisplayName: string;
+  Status: string;
+}
+export interface SiteRow {
+  Id: string;
+  RegionId: string;
+  SiteCode: string;
+  DisplayName: string;
+  Status: string;
+}
+export interface BuildingRow {
+  Id: string;
+  SiteId: string;
+  BuildingCode: string;
+  DisplayName: string;
+  Status: string;
+}
+export interface FloorRow {
+  Id: string;
+  BuildingId: string;
+  FloorCode: string;
+  DisplayName: string | null;
+  Status: string;
+}
+
 /// One scope_grant tuple. Matches `ScopeGrantDto` from the engine.
 export interface ScopeGrant {
   id: string;
@@ -135,6 +168,32 @@ export class NetworkingEngineService {
   listDevices(organizationId: string): Observable<DeviceListRow[]> {
     const params = new HttpParams().set('organizationId', organizationId);
     return this.http.get<DeviceListRow[]>(`${this.base}/api/net/devices`, { params });
+  }
+
+  /// Hierarchy listings — the endpoints are on Central.Api but the
+  /// URL path is the same /api/net/ namespace the engine uses, so
+  /// they share the `base`.
+
+  listRegions(): Observable<RegionRow[]> {
+    return this.http.get<RegionRow[]>(`${this.base}/api/net/regions`);
+  }
+
+  listSites(regionId?: string): Observable<SiteRow[]> {
+    let params = new HttpParams();
+    if (regionId) params = params.set('regionId', regionId);
+    return this.http.get<SiteRow[]>(`${this.base}/api/net/sites`, { params });
+  }
+
+  listBuildings(siteId?: string): Observable<BuildingRow[]> {
+    let params = new HttpParams();
+    if (siteId) params = params.set('siteId', siteId);
+    return this.http.get<BuildingRow[]>(`${this.base}/api/net/buildings`, { params });
+  }
+
+  listFloors(buildingId?: string): Observable<FloorRow[]> {
+    let params = new HttpParams();
+    if (buildingId) params = params.set('buildingId', buildingId);
+    return this.http.get<FloorRow[]>(`${this.base}/api/net/floors`, { params });
   }
 
   /// List scope grants, optionally narrowed by userId / action /

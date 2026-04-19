@@ -22,6 +22,7 @@ import notify from 'devextreme/ui/notify';
       <a routerLink="/network/search" routerLinkActive="active">Search</a>
       <a routerLink="/network/validation" routerLinkActive="active">Validation</a>
       <a routerLink="/network/scope-grants" routerLinkActive="active">Scope grants</a>
+      <a routerLink="/network/hierarchy" routerLinkActive="active">Hierarchy</a>
     </div>
 
     <!-- Summary cards -->
