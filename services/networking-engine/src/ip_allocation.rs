@@ -6,6 +6,7 @@
 //!
 //! Family dispatch happens on the `:` detection pattern (same as the C# source).
 
+use serde::Serialize;
 use sqlx::{PgPool, Postgres, Transaction};
 use std::collections::{BTreeSet, HashSet};
 use uuid::Uuid;
@@ -133,6 +134,60 @@ impl IpAllocationService {
             scope_entity_id,
         })
     }
+
+    // ─── Carver preview (read-only, no insert) ────────────────────────────
+
+    /// Show what `allocate_subnet` would carve next for the given
+    /// pool + prefix length, without mutating anything. No lock —
+    /// this is a read-only dry-run; the real allocate still takes
+    /// the pool lock when it runs, so two simultaneous previews
+    /// can't leak a "reserved" row (they just show the same answer).
+    /// Returns the candidate CIDR alongside pool metadata so the UI
+    /// can render "next /24 in 10.0.0.0/16 → 10.0.4.0/24".
+    pub async fn preview_carve(
+        &self,
+        pool_id: Uuid,
+        org_id: Uuid,
+        prefix_length: u32,
+    ) -> Result<CarvePreview, EngineError> {
+        let mut tx = self.pool.begin().await?;
+        let pool_cidr = fetch_pool_cidr(&mut tx, pool_id, org_id).await?;
+
+        let (candidate, pool_prefix, is_v6_pool) = if is_v6(&pool_cidr) {
+            let existing = fetch_subnet_ranges_in_pool_v6(&mut tx, pool_id).await?;
+            let shelved = fetch_shelved_subnet_ranges_v6(&mut tx, org_id).await?;
+            let cidr = carve_v6(&pool_cidr, prefix_length, pool_id, existing, shelved)?;
+            let (_, _, pool_prefix) = ip_math6::parse_v6(&pool_cidr)?;
+            (cidr, pool_prefix, true)
+        } else {
+            let existing = fetch_subnet_ranges_in_pool_v4(&mut tx, pool_id).await?;
+            let shelved = fetch_shelved_subnet_ranges_v4(&mut tx, org_id).await?;
+            let cidr = carve_v4(&pool_cidr, prefix_length, pool_id, existing, shelved)?;
+            let (_, _, pool_prefix) = ip_math::parse_v4(&pool_cidr)?;
+            (cidr, pool_prefix, false)
+        };
+
+        tx.commit().await?;
+        Ok(CarvePreview {
+            pool_id,
+            pool_cidr,
+            pool_prefix_length: pool_prefix,
+            requested_prefix_length: prefix_length,
+            candidate_cidr: candidate,
+            is_ipv6: is_v6_pool,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CarvePreview {
+    pub pool_id: Uuid,
+    pub pool_cidr: String,
+    pub pool_prefix_length: u32,
+    pub requested_prefix_length: u32,
+    pub candidate_cidr: String,
+    pub is_ipv6: bool,
 }
 
 // ─── Carvers (pure) ──────────────────────────────────────────────────────

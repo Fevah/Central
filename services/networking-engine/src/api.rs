@@ -68,6 +68,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/allocate/mlag", post(allocate_mlag))
         .route("/api/net/allocate/ip", post(allocate_ip))
         .route("/api/net/allocate/subnet", post(allocate_subnet))
+        .route("/api/net/allocate/subnet/preview", post(preview_carve_subnet))
         .route("/api/net/allocate/retire", post(retire))
         .route("/api/net/allocate/shelf/:resource_type/:resource_key", get(is_on_shelf))
         // Servers
@@ -349,6 +350,30 @@ async fn allocate_subnet(
         &req.subnet_code, &req.display_name, req.scope_level,
         req.scope_entity_id, req.parent_subnet_id, user_id).await?;
     Ok((StatusCode::CREATED, Json(result)))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CarvePreviewBody {
+    pool_id: Uuid,
+    organization_id: Uuid,
+    prefix_length: u32,
+}
+
+async fn preview_carve_subnet(
+    State(s): State<AppState>,
+    Json(req): Json<CarvePreviewBody>,
+) -> Result<impl IntoResponse, EngineError> {
+    // Read-only dry-run of the subnet carver — shows what the next
+    // `allocate_subnet` call would produce without mutating anything.
+    // No RBAC gate because it's a computed read over pool + existing
+    // subnets the caller already has a handle on via the pool id;
+    // if the caller can't see the pool, it'll come back as
+    // container_not_found from fetch_pool_cidr.
+    let svc = IpAllocationService::new(s.pool);
+    let result = svc.preview_carve(
+        req.pool_id, req.organization_id, req.prefix_length).await?;
+    Ok(Json(result))
 }
 
 #[derive(Deserialize)]
