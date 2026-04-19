@@ -76,9 +76,12 @@ export class NetworkServersComponent implements OnInit {
     });
   }
 
+  /// Double-click → server detail (tabbed Summary + Audit). Audit
+  /// drill is reachable via the detail page's Audit tab rather than
+  /// being the primary drill target — matches the device-grid UX.
   onRowDoubleClick(e: { data: ServerListRow }): void {
     const row = e?.data;
     if (!row?.id) return;
-    this.router.navigate(['/network/audit', 'Server', row.id]);
+    this.router.navigate(['/network/net-server', row.id]);
   }
 }
