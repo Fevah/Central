@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import {
   DxDataGridModule, DxButtonModule, DxSelectBoxModule,
+  DxPopupModule, DxTextBoxModule, DxTextAreaModule,
 } from 'devextreme-angular';
 import {
   NetworkingEngineService, ChangeSet,
@@ -23,7 +24,8 @@ import { environment } from '../../../../environments/environment';
   selector: 'app-network-change-sets',
   standalone: true,
   imports: [CommonModule, FormsModule, RouterModule,
-            DxDataGridModule, DxButtonModule, DxSelectBoxModule],
+            DxDataGridModule, DxButtonModule, DxSelectBoxModule,
+            DxPopupModule, DxTextBoxModule, DxTextAreaModule],
   template: `
     <div class="page-header">
       <h2>Change sets</h2>
@@ -39,7 +41,47 @@ import { environment } from '../../../../environments/environment';
       <dx-button text="Refresh" icon="refresh" stylingMode="text"
                  (onClick)="reload()" [disabled]="loading" />
       <span *ngIf="status" class="status-line">{{ status }}</span>
+
+      <span class="spacer"></span>
+
+      <dx-button text="New change set" icon="add" type="default"
+                 stylingMode="contained" (onClick)="openCreateDialog()" />
     </div>
+
+    <!-- Create dialog — builds a Draft set with no items. Items
+         are added separately (WPF only for now); this surface
+         gets the Set created so operators can see it in Draft
+         state + populate items via the engine's /items endpoint
+         later. -->
+    <dx-popup [(visible)]="createDialogOpen"
+              [width]="520" [height]="420"
+              title="New change set"
+              [showCloseButton]="true" [dragEnabled]="true">
+      <div *dxTemplate="let d of 'content'" class="form">
+        <div class="form-row">
+          <label>Title *</label>
+          <dx-text-box [(value)]="createDraft.title"
+                       placeholder="e.g. Immunocore Q2 building-17 core-swap" />
+        </div>
+        <div class="form-row">
+          <label>Description</label>
+          <dx-text-area [(value)]="createDraft.description" [height]="80"
+                        placeholder="Optional — goes into the Set's meta row + audit." />
+        </div>
+        <div class="form-row">
+          <label>Requested by (display)</label>
+          <dx-text-box [(value)]="createDraft.requestedByDisplay"
+                       placeholder="Optional — name to attribute the Set to" />
+          <small class="hint">Independent of the authenticated user id, which the engine pulls from the X-User-Id header.</small>
+        </div>
+        <div *ngIf="formError" class="form-error">{{ formError }}</div>
+        <div class="form-actions">
+          <dx-button text="Cancel" (onClick)="closeCreateDialog()" />
+          <dx-button text="Create" type="default" (onClick)="submitCreate()"
+                     [disabled]="busy" />
+        </div>
+      </div>
+    </dx-popup>
 
     <dx-data-grid [dataSource]="rows" [showBorders]="true" [hoverStateEnabled]="true"
                    [columnAutoWidth]="true"
@@ -101,6 +143,13 @@ import { environment } from '../../../../environments/environment';
     .correlation-link:hover { text-decoration: underline; }
     .title-link { color: #60a5fa; text-decoration: none; font-weight: 600; }
     .title-link:hover { text-decoration: underline; }
+    .filter-bar .spacer { flex: 1; min-width: 12px; }
+    .form { display: flex; flex-direction: column; gap: 14px; padding: 4px 2px; }
+    .form-row { display: flex; flex-direction: column; gap: 4px; }
+    .form-row label { color: #9ca3af; font-size: 12px; }
+    .form-row .hint { color: #6b7280; font-size: 11px; }
+    .form-error { color: #ef4444; font-size: 12px; padding: 6px 8px; background: rgba(239,68,68,0.08); border-radius: 4px; }
+    .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
   `]
 })
 export class NetworkChangeSetsComponent implements OnInit {
@@ -110,6 +159,15 @@ export class NetworkChangeSetsComponent implements OnInit {
               'Applied', 'RolledBack', 'Cancelled'];
 
   statusFilter: string | null = null;
+
+  createDialogOpen = false;
+  busy = false;
+  formError = '';
+  createDraft: {
+    title: string;
+    description: string;
+    requestedByDisplay: string;
+  } = { title: '', description: '', requestedByDisplay: '' };
   rows: ChangeSet[] = [];
   loading = false;
   status = '';
@@ -165,6 +223,50 @@ export class NetworkChangeSetsComponent implements OnInit {
     if (!c) return;
     this.router.navigate(['/network/audit-search'], {
       queryParams: { correlationId: c },
+    });
+  }
+
+  openCreateDialog(): void {
+    this.createDraft = { title: '', description: '', requestedByDisplay: '' };
+    this.formError = '';
+    this.createDialogOpen = true;
+  }
+
+  closeCreateDialog(): void {
+    this.createDialogOpen = false;
+    this.formError = '';
+  }
+
+  submitCreate(): void {
+    const d = this.createDraft;
+    this.formError = '';
+    if (!d.title.trim()) { this.formError = 'Title is required.'; return; }
+
+    this.busy = true;
+    this.engine.createChangeSet({
+      organizationId:     environment.defaultTenantId,
+      title:              d.title.trim(),
+      description:        d.description.trim() || null,
+      requestedByDisplay: d.requestedByDisplay.trim() || null,
+    }).subscribe({
+      next: (created) => {
+        this.busy = false;
+        this.createDialogOpen = false;
+        this.status = `Change set created — id ${created.id}.`;
+        // Drill straight to the new Set's detail page so the
+        // operator can continue adding items / submit. Reload
+        // first happens implicitly when they come back.
+        this.router.navigate(['/network/change-sets', created.id]);
+      },
+      error: (err) => {
+        this.busy = false;
+        const status = err?.status as number | undefined;
+        if (status === 403) {
+          this.formError = 'Forbidden — your user lacks write:ChangeSet.';
+        } else {
+          this.formError = err?.error?.detail ?? err?.message ?? 'Create failed.';
+        }
+      },
     });
   }
 }

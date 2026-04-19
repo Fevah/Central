@@ -918,6 +918,23 @@ export class NetworkingEngineService {
       { params });
   }
 
+  /// Create a new Draft change-set. Items are added separately via
+  /// POST /api/net/change-sets/:id/items (not yet exposed on the
+  /// web client — the WPF client adds items in a follow-up flow).
+  createChangeSet(body: {
+    organizationId: string;
+    title: string;
+    description?: string | null;
+    requestedByDisplay?: string | null;
+  }): Observable<ChangeSet> {
+    return this.http.post<ChangeSet>(`${this.base}/api/net/change-sets`, {
+      organizationId:     body.organizationId,
+      title:              body.title,
+      description:        body.description ?? null,
+      requestedByDisplay: body.requestedByDisplay ?? null,
+    });
+  }
+
   /// Submit a Draft change-set for approval. `requiredApprovals`
   /// caps at >=1 server-side to prevent accidental auto-approval.
   submitChangeSet(
