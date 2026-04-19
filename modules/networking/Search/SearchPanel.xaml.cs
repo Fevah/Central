@@ -126,15 +126,20 @@ public partial class SearchPanel : UserControl
     // ─── Row handling ───────────────────────────────────────────────────
 
     private void OnResultDoubleClick(object sender,
-        DevExpress.Xpf.Grid.RowDoubleClickEventArgs e)
+        DevExpress.Xpf.Grid.RowDoubleClickEventArgs e) => OpenEntityPanelForCurrentRow();
+
+    private void OnContextOpenEntity(object sender, RoutedEventArgs e)
+        => OpenEntityPanelForCurrentRow();
+
+    /// <summary>Shared by double-click + "Open in entity panel"
+    /// context menu. Publishes a NavigateToPanelMessage mapping
+    /// EntityType → panel id + selectId payload. Panels that don't
+    /// yet honour selectId just focus themselves — the richer drill
+    /// lands when they grow a handler.</summary>
+    private void OpenEntityPanelForCurrentRow()
     {
         if (ResultsGrid.CurrentItem is not SearchResultRow row) return;
 
-        // Route to the entity-specific panel by mapping the engine's
-        // entity_type to a NetworkingRibbonRegistrar.Panel* constant.
-        // Panels that haven't implemented selectId:{guid} yet simply
-        // bring themselves to focus without selecting the row; when
-        // they gain the handler, double-click gets richer for free.
         var target = row.EntityType switch
         {
             "Device"          => "devices",
@@ -152,6 +157,39 @@ public partial class SearchPanel : UserControl
         }
         PanelMessageBus.Publish(new NavigateToPanelMessage(target, $"selectId:{row.Id}"));
         StatusLabel.Text = $"Navigated to {target} with selectId:{row.Id}";
+    }
+
+    /// <summary>Cross-panel drill from search result → audit history.
+    /// Publishes OpenPanelMessage first so MainWindow flips the
+    /// IsAuditPanelOpen VM flag (which restores the Audit dock panel
+    /// + auto-reloads), then publishes the selectEntity payload the
+    /// Audit panel's OnNavigate consumes to set its entity-id filter.
+    /// Two-message pattern because one message can't both open a
+    /// panel and drive state inside it — the open happens in
+    /// MainWindow, the state-set happens inside the panel's own
+    /// handler.</summary>
+    private void OnContextShowAudit(object sender, RoutedEventArgs e)
+    {
+        if (ResultsGrid.CurrentItem is not SearchResultRow row) return;
+
+        PanelMessageBus.Publish(new OpenPanelMessage("audit"));
+        PanelMessageBus.Publish(new NavigateToPanelMessage(
+            "audit", $"selectEntity:{row.EntityType}:{row.Id}"));
+        StatusLabel.Text = $"Drilled into audit for {row.EntityType} {row.Id}";
+    }
+
+    private void OnContextCopyId(object sender, RoutedEventArgs e)
+    {
+        if (ResultsGrid.CurrentItem is not SearchResultRow row) return;
+        try
+        {
+            System.Windows.Clipboard.SetText(row.Id.ToString());
+            StatusLabel.Text = $"Copied id {row.Id} to clipboard";
+        }
+        catch (Exception ex)
+        {
+            StatusLabel.Text = $"Copy failed: {ex.Message}";
+        }
     }
 
     // ─── Run search ─────────────────────────────────────────────────────

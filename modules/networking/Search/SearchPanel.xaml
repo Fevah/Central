@@ -118,6 +118,18 @@
                                AllowEditing="False"
                                RowDoubleClick="OnResultDoubleClick"/>
             </dxg:GridControl.View>
+            <dxg:GridControl.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Open in entity panel"
+                              Click="OnContextOpenEntity"
+                              ToolTip="Same as double-click — switch to the matching entity panel with selectId"/>
+                    <MenuItem Header="Show audit history"
+                              Click="OnContextShowAudit"
+                              ToolTip="Open the Audit panel filtered to this entity's id"/>
+                    <Separator/>
+                    <MenuItem Header="Copy id"  Click="OnContextCopyId"/>
+                </ContextMenu>
+            </dxg:GridControl.ContextMenu>
             <dxg:GridControl.Columns>
                 <dxg:GridColumn FieldName="EntityType" Header="Entity" Width="120"/>
                 <dxg:GridColumn FieldName="Label"      Header="Label"  Width="280"/>

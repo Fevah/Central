@@ -4735,6 +4735,28 @@ public partial class MainWindow
             });
         });
 
+        // Cross-panel drill-down: flip the matching VM.Is*PanelOpen
+        // boolean so the DockController restores the panel when
+        // another panel publishes OpenPanelMessage (e.g. search →
+        // audit). Target ids match NetworkingRibbonRegistrar.Panel*
+        // constants.
+        Central.Engine.Shell.PanelMessageBus.Subscribe<Central.Engine.Shell.OpenPanelMessage>(msg =>
+        {
+            Dispatcher.InvokeAsync(() =>
+            {
+                switch (msg.TargetPanel)
+                {
+                    case "audit":       VM.IsAuditPanelOpen = true; break;
+                    case "search":      VM.IsSearchPanelOpen = true; break;
+                    case "bulk":        VM.IsBulkPanelOpen = true; break;
+                    case "locks":       VM.IsLocksPanelOpen = true; break;
+                    case "scopeGrants": VM.IsScopeGrantsPanelOpen = true; break;
+                    case "changesets":  VM.IsChangeSetsPanelOpen = true; break;
+                    case "validation":  VM.IsValidationPanelOpen = true; break;
+                }
+            });
+        });
+
         // Auto-refresh dependent panels when data is modified
         Central.Engine.Shell.PanelMessageBus.Subscribe<Central.Engine.Shell.DataModifiedMessage>(msg =>
         {

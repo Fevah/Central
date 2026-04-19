@@ -38,6 +38,12 @@ public partial class AuditViewerPanel : UserControl
     private CancellationTokenSource? _cts;
     private IReadOnlyList<AuditRowDto> _lastResult = Array.Empty<AuditRowDto>();
 
+    /// <summary>Pending entity-id filter set by cross-panel drill-down
+    /// (e.g. from SearchPanel context menu). BuildRequest reads this
+    /// instead of the filter-bar fields when it's non-null, and the
+    /// next user-driven filter change clears it.</summary>
+    private Guid? _pendingEntityId;
+
     // Static list of entity types seen in the wild — drives the combo's
     // autocomplete. Keeps in step with the engine's audit stamps
     // (Device / Link / Server / Vlan / AsnAllocation / MlagDomain /
@@ -87,13 +93,44 @@ public partial class AuditViewerPanel : UserControl
     private void OnNavigate(NavigateToPanelMessage msg)
     {
         if (msg.TargetPanel != "audit") return;
-        switch (msg.SelectItem as string)
+        switch (msg.SelectItem)
         {
             case "action:runQuery":    _ = RunQueryAsync(); break;
             case "action:verifyChain": _ = VerifyChainAsync(); break;
             case "action:exportCsv":   _ = ExportCsvAsync(); break;
+            // Cross-panel drill-down payload: "selectEntity:{type}:{guid}"
+            // — e.g. from the SearchPanel context menu. Set the filter
+            // fields + pending id, then auto-run. Operator can widen
+            // the search back out by editing the filter bar; the first
+            // such edit clears _pendingEntityId.
+            case string s when s.StartsWith("selectEntity:", StringComparison.Ordinal):
+                ApplyEntityDrillDown(s);
+                break;
             default:                   _ = ReloadAsync(); break;
         }
+    }
+
+    /// <summary>Parse "selectEntity:Device:{guid}" — set the filter
+    /// bar + pending entity id, run the query. Silently no-ops on a
+    /// malformed payload rather than popping a dialog; the worst
+    /// outcome is the existing filter state stays + nothing
+    /// auto-runs.</summary>
+    internal void ApplyEntityDrillDown(string payload)
+    {
+        // payload shape: "selectEntity:{type}:{guid}"
+        var parts = payload.Split(':', 3);
+        if (parts.Length != 3) return;
+        var entityType = parts[1];
+        if (!Guid.TryParse(parts[2], out var entityId)) return;
+
+        EntityTypeCombo.EditValue = entityType;
+        _pendingEntityId = entityId;
+        // Clear the other filter inputs so the drill-down is what
+        // the operator sees — not last session's stale action box.
+        ActionBox.Text = "";
+        ActorBox.Text = "";
+        CorrelationBox.Text = "";
+        _ = RunQueryAsync();
     }
 
     private void OnRefresh(RefreshPanelMessage msg)
@@ -244,6 +281,7 @@ public partial class AuditViewerPanel : UserControl
         {
             OrganizationId = _tenantId,
             EntityType = Empty2Null(EntityTypeCombo.Text),
+            EntityId = _pendingEntityId,   // set by ApplyEntityDrillDown; null for normal queries
             Action = Empty2Null(ActionBox.Text),
             ActorUserId = actorUserId,
             CorrelationId = correlationId,

@@ -84,3 +84,15 @@ public record RefreshPanelMessage(string TargetPanel) : IPanelMessage;
 /// Subscribing panels check if they have a matching field and apply the filter.
 /// </summary>
 public record LinkSelectionMessage(string SourcePanel, string Field, object? Value) : IPanelMessage;
+
+/// <summary>Request to open (dock-restore) a document panel without
+/// selecting any item inside it. NavigateToPanelMessage only covers
+/// the subscribe-inside-the-panel half of the flow; this is the
+/// outer-shell half — MainWindow subscribes and flips the matching
+/// VM.Is*PanelOpen boolean, which drives DockController.Restore.
+/// Use together when cross-panel drill-down needs both "open the
+/// panel" and "select/filter to this item" (e.g. search → audit).
+/// TargetPanel matches the panel-id constants in
+/// NetworkingRibbonRegistrar (e.g. "audit", "search", "bulk").
+/// </summary>
+public record OpenPanelMessage(string TargetPanel) : IPanelMessage;
