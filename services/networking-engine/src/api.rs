@@ -91,6 +91,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/audit/export", get(export_audit))
         .route("/api/net/audit/stats",  get(audit_stats_by_entity_type))
         .route("/api/net/audit/trend",  get(audit_trend_handler))
+        .route("/api/net/audit/top-actors", get(audit_top_actors_handler))
         // Change Sets (Phase 8a)
         .route("/api/net/change-sets", get(list_change_sets).post(create_change_set))
         .route("/api/net/change-sets/:id", get(get_change_set))
@@ -569,6 +570,17 @@ async fn audit_trend_handler(
     Query(q): Query<audit::AuditTrendQuery>,
 ) -> Result<impl IntoResponse, EngineError> {
     Ok(Json(audit::trend(&s.pool, &q).await?))
+}
+
+/// Audit top actors — per-user rollup ordered by count DESC.
+/// Query params: organizationId (required), fromAt + toAt
+/// (optional window), entityType (optional narrower), limit
+/// (default 20, clamped to 1..=100).
+async fn audit_top_actors_handler(
+    State(s): State<AppState>,
+    Query(q): Query<audit::TopActorsQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    Ok(Json(audit::top_actors(&s.pool, &q).await?))
 }
 
 async fn export_audit(

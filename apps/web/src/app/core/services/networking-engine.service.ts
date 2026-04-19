@@ -169,6 +169,17 @@ export interface AuditTrendPoint {
   count: number;
 }
 
+/// One actor's audit activity rollup. Matches `TopActor` in
+/// services/networking-engine/src/audit.rs. `actorUserId` +
+/// `actorDisplay` are both nullable for service-origin rows.
+export interface TopActor {
+  actorUserId: number | null;
+  actorDisplay: string | null;
+  totalCount: number;
+  distinctEntityTypes: number;
+  lastSeenAt: string | null;
+}
+
 /// Per-row outcome from a bulk CSV import. Matches
 /// `ImportRowOutcomeDto` from the Rust side. Ok=false means the row
 /// failed validation; the errors array carries the details the
@@ -516,6 +527,25 @@ export class NetworkingEngineService {
     const body: Record<string, unknown> = { organizationId };
     if (ruleCode) body['ruleCode'] = ruleCode;
     return this.http.post<ValidationRunResult>(`${this.base}/api/net/validation/run`, body);
+  }
+
+  /// Top N audit actors by count in the window. Clamped server-side
+  /// to `[1, 100]`; default 20 when omitted.
+  auditTopActors(
+    organizationId: string,
+    opts: {
+      fromAt?: string;
+      toAt?: string;
+      entityType?: string;
+      limit?: number;
+    } = {},
+  ): Observable<TopActor[]> {
+    let params = new HttpParams().set('organizationId', organizationId);
+    if (opts.fromAt)     params = params.set('fromAt',     opts.fromAt);
+    if (opts.toAt)       params = params.set('toAt',       opts.toAt);
+    if (opts.entityType) params = params.set('entityType', opts.entityType);
+    if (opts.limit !== undefined) params = params.set('limit', opts.limit.toString());
+    return this.http.get<TopActor[]>(`${this.base}/api/net/audit/top-actors`, { params });
   }
 
   /// Time-bucketed audit activity. `bucketBy` accepts hour / day /

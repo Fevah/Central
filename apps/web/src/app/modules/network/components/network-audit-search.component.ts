@@ -155,6 +155,11 @@ export class NetworkAuditSearchComponent implements OnInit {
     this.entityType = qp.get('entityType') || null;
     this.entityId   = qp.get('entityId')   || '';
     this.action     = qp.get('action')     || null;
+    const actorRaw  = qp.get('actorUserId');
+    if (actorRaw) {
+      const n = Number(actorRaw);
+      this.actorUserId = Number.isFinite(n) && n > 0 ? n : null;
+    }
 
     this.reload();
   }

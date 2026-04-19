@@ -6,7 +6,7 @@ import {
   DxDataGridModule, DxDateBoxModule, DxButtonModule, DxChartModule,
 } from 'devextreme-angular';
 import {
-  NetworkingEngineService, EntityTypeStats, AuditTrendPoint,
+  NetworkingEngineService, EntityTypeStats, AuditTrendPoint, TopActor,
 } from '../../../core/services/networking-engine.service';
 import { environment } from '../../../../environments/environment';
 
@@ -62,17 +62,37 @@ import { environment } from '../../../../environments/environment';
       <dxo-common-series-settings [point]="{ visible: false }"></dxo-common-series-settings>
     </dx-chart>
 
-    <dx-data-grid [dataSource]="rows" [showBorders]="true" [hoverStateEnabled]="true"
-                   [columnAutoWidth]="true"
-                   [searchPanel]="{ visible: true }"
-                   [filterRow]="{ visible: true }"
-                   [headerFilter]="{ visible: true }"
-                   (onRowDblClick)="onRowDoubleClick($event)">
-      <dxi-column dataField="entityType"     caption="Entity type"     width="180" />
-      <dxi-column dataField="totalCount"     caption="Events"          width="110" dataType="number" sortOrder="desc" />
-      <dxi-column dataField="distinctActors" caption="Distinct actors" width="140" dataType="number" />
-      <dxi-column dataField="lastSeenAt"     caption="Last seen"       dataType="datetime" />
-    </dx-data-grid>
+    <div class="two-col">
+      <div class="col">
+        <h3 class="section-title">By entity type</h3>
+        <dx-data-grid [dataSource]="rows" [showBorders]="true" [hoverStateEnabled]="true"
+                       [columnAutoWidth]="true"
+                       [searchPanel]="{ visible: true }"
+                       [filterRow]="{ visible: true }"
+                       [headerFilter]="{ visible: true }"
+                       (onRowDblClick)="onRowDoubleClick($event)">
+          <dxi-column dataField="entityType"     caption="Entity type"     width="180" />
+          <dxi-column dataField="totalCount"     caption="Events"          width="110" dataType="number" sortOrder="desc" />
+          <dxi-column dataField="distinctActors" caption="Distinct actors" width="140" dataType="number" />
+          <dxi-column dataField="lastSeenAt"     caption="Last seen"       dataType="datetime" />
+        </dx-data-grid>
+      </div>
+
+      <div class="col">
+        <h3 class="section-title">Top actors</h3>
+        <dx-data-grid [dataSource]="topActors" [showBorders]="true" [hoverStateEnabled]="true"
+                       [columnAutoWidth]="true"
+                       [searchPanel]="{ visible: true }"
+                       [filterRow]="{ visible: true }"
+                       (onRowDblClick)="onTopActorDoubleClick($event)">
+          <dxi-column dataField="actorDisplayOrService" caption="Actor"             width="180" />
+          <dxi-column dataField="actorUserId"           caption="User id"           width="80"  dataType="number" />
+          <dxi-column dataField="totalCount"            caption="Events"            width="100" dataType="number" sortOrder="desc" />
+          <dxi-column dataField="distinctEntityTypes"   caption="Entity types"      width="120" dataType="number" />
+          <dxi-column dataField="lastSeenAt"            caption="Last seen"         dataType="datetime" />
+        </dx-data-grid>
+      </div>
+    </div>
   `,
   styles: [`
     .page-header { margin-bottom: 12px; }
@@ -82,6 +102,9 @@ import { environment } from '../../../../environments/environment';
     .filter-bar label { color: #888; font-size: 12px; margin-right: -4px; }
     .status-line { margin: 6px 0 10px; color: #666; font-size: 12px; }
     .trend-chart { height: 240px; margin-bottom: 16px; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .section-title { color: #9ca3af; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 6px; font-weight: 600; }
+    @media (max-width: 1100px) { .two-col { grid-template-columns: 1fr; } }
   `]
 })
 export class NetworkAuditStatsComponent implements OnInit {
@@ -89,6 +112,10 @@ export class NetworkAuditStatsComponent implements OnInit {
   toAt: Date | null = null;
   rows: EntityTypeStats[] = [];
   trend: AuditTrendPoint[] = [];
+  /// Decorated with `actorDisplayOrService` so the grid shows
+  /// "(service)" for rows where actor_display is NULL instead of a
+  /// blank cell.
+  topActors: Array<TopActor & { actorDisplayOrService: string }> = [];
   status = '';
 
   constructor(
@@ -135,6 +162,29 @@ export class NetworkAuditStatsComponent implements OnInit {
         }));
       },
       error: () => { this.trend = []; },
+    });
+
+    // Top actors panel — same window, leaderboard-length limit.
+    this.engine.auditTopActors(environment.defaultTenantId, {
+      fromAt: from, toAt: to, limit: 20,
+    }).subscribe({
+      next: (actors) => {
+        this.topActors = actors.map(a => ({
+          ...a,
+          actorDisplayOrService: a.actorDisplay ?? '(service)',
+        }));
+      },
+      error: () => { this.topActors = []; },
+    });
+  }
+
+  /// Double-click a top-actor row → audit search pre-filtered to
+  /// this actor. Null actorUserId (service rows) has no drill target.
+  onTopActorDoubleClick(e: { data: TopActor }): void {
+    const a = e?.data;
+    if (a?.actorUserId === null || a?.actorUserId === undefined) return;
+    this.router.navigate(['/network/audit-search'], {
+      queryParams: { actorUserId: a.actorUserId },
     });
   }
 

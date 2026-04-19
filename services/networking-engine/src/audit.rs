@@ -684,6 +684,69 @@ pub async fn trend(
     Ok(rows)
 }
 
+// ─── Top actors (per-user audit rollup) ──────────────────────────────────
+
+/// One actor + their audit activity in the window. `actorDisplay` is
+/// denormalised from net.audit_entry.actor_display at write time; it
+/// can be NULL for service-origin rows (background jobs writing with
+/// the service credential), which this rollup preserves as a
+/// distinct "(service)" bucket rather than dropping.
+#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct TopActor {
+    pub actor_user_id: Option<i32>,
+    pub actor_display: Option<String>,
+    pub total_count: i64,
+    pub distinct_entity_types: i64,
+    pub last_seen_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TopActorsQuery {
+    pub organization_id: Uuid,
+    pub from_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub to_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// Optional entity-type narrower so the top-actors view can be
+    /// "who's editing Devices the most" rather than everything.
+    pub entity_type: Option<String>,
+    /// Clamped server-side to `[1, 100]`. Default 20 — enough for a
+    /// leaderboard without paging.
+    pub limit: Option<i64>,
+}
+
+/// Top N actors by audit-entry count in the window. Ordered count
+/// DESC, ties broken alphabetically on actor_display so the result is
+/// stable across reloads.
+pub async fn top_actors(
+    pool: &PgPool,
+    q: &TopActorsQuery,
+) -> Result<Vec<TopActor>, EngineError> {
+    let limit = q.limit.unwrap_or(20).clamp(1, 100);
+    let rows: Vec<TopActor> = sqlx::query_as(
+        "SELECT actor_user_id,
+                actor_display,
+                COUNT(*)                   AS total_count,
+                COUNT(DISTINCT entity_type) AS distinct_entity_types,
+                MAX(created_at)            AS last_seen_at
+           FROM net.audit_entry
+          WHERE organization_id = $1
+            AND ($2::timestamptz IS NULL OR created_at >= $2)
+            AND ($3::timestamptz IS NULL OR created_at <= $3)
+            AND ($4::text         IS NULL OR entity_type = $4)
+          GROUP BY actor_user_id, actor_display
+          ORDER BY total_count DESC, COALESCE(actor_display, '') ASC
+          LIMIT $5")
+        .bind(q.organization_id)
+        .bind(q.from_at)
+        .bind(q.to_at)
+        .bind(q.entity_type.as_deref())
+        .bind(limit)
+        .fetch_all(pool)
+        .await?;
+    Ok(rows)
+}
+
 pub async fn stats_by_entity_type(
     pool: &PgPool,
     q: &AuditStatsQuery,
