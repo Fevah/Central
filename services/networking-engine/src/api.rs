@@ -119,6 +119,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/aggregate-ethernet", get(list_aggregate_ethernet))
         .route("/api/net/mlag-domains",      get(list_mlag_domains))
         .route("/api/net/modules",           get(list_modules))
+        .route("/api/net/mstp-rules",        get(list_mstp_rules))
         // Thin pool/block reads (WPF convenience-form pickers)
         .route("/api/net/vlan-blocks", get(list_vlan_blocks))
         .route("/api/net/asn-blocks",  get(list_asn_blocks))
@@ -1379,6 +1380,52 @@ async fn list_modules(
           LIMIT 5000")
         .bind(q.organization_id)
         .bind(q.device_id)
+        .fetch_all(&s.pool)
+        .await?;
+    Ok(Json(rows))
+}
+
+// ─── MSTP priority rule thin list ───────────────────────────────────────
+
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct MstpRuleListRow {
+    id: Uuid,
+    rule_code: String,
+    display_name: String,
+    scope_level: String,
+    scope_entity_id: Option<Uuid>,
+    step_count: i64,    // COUNT(net.mstp_priority_rule_step WHERE rule_id = r.id)
+    status: String,
+    version: i32,
+}
+
+/// Thin list of net.mstp_priority_rule rows. 5000-row cap.
+/// stepCount comes from a correlated subquery so operators can
+/// tell at a glance which rules have steps defined (empty rules
+/// are a config-gen smell).
+async fn list_mstp_rules(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let rows: Vec<MstpRuleListRow> = sqlx::query_as(
+        "SELECT r.id,
+                r.rule_code,
+                r.display_name,
+                r.scope_level,
+                r.scope_entity_id,
+                (SELECT COUNT(*)::bigint
+                   FROM net.mstp_priority_rule_step s
+                  WHERE s.rule_id = r.id
+                    AND s.deleted_at IS NULL) AS step_count,
+                r.status::text AS status,
+                r.version
+           FROM net.mstp_priority_rule r
+          WHERE r.organization_id = $1
+            AND r.deleted_at IS NULL
+          ORDER BY r.rule_code
+          LIMIT 5000")
+        .bind(q.organization_id)
         .fetch_all(&s.pool)
         .await?;
     Ok(Json(rows))

@@ -102,6 +102,20 @@ export interface ServerListRow {
   version: number;
 }
 
+/// Thin MSTP priority rule list row — matches `MstpRuleListRow`
+/// in the engine. stepCount is a correlated subquery on
+/// net.mstp_priority_rule_step; empty-rule = step_count == 0.
+export interface MstpRuleListRow {
+  id: string;
+  ruleCode: string;
+  displayName: string;
+  scopeLevel: string;
+  scopeEntityId: string | null;
+  stepCount: number;
+  status: string;
+  version: number;
+}
+
 /// Thin module list row — matches `ModuleListRow` in the engine.
 /// Represents physical hardware modules (linecards / transceivers
 /// / PSUs / fans) inside a device.
@@ -908,6 +922,14 @@ export class NetworkingEngineService {
     const params = new HttpParams().set('organizationId', organizationId);
     return this.http.get<MlagDomainListRow[]>(
       `${this.base}/api/net/mlag-domains`, { params });
+  }
+
+  /// Thin MSTP priority rule list. 5000-row cap; stepCount from
+  /// correlated subquery flags empty rules.
+  listMstpRules(organizationId: string): Observable<MstpRuleListRow[]> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.get<MstpRuleListRow[]>(
+      `${this.base}/api/net/mstp-rules`, { params });
   }
 
   /// Thin module list — 5000 row cap. Optional deviceId narrower.
