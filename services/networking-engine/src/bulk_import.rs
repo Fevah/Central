@@ -975,11 +975,30 @@ pub async fn import_subnets(
 
     // Hierarchy catalogs for scope_entity_code resolution.
     //
-    // building_code is globally unique per tenant (UNIQUE (org,
-    // building_code)), so that's the map key. Floor + Room compound
-    // keys join up through the parent hierarchy so we can resolve
-    // "BUILDING_CODE/FLOOR_CODE" / "…/ROOM_CODE" without an extra
-    // per-row lookup.
+    // region_code is unique per tenant, so the map keys off region_code
+    // alone. site_code is unique per region, so the map needs a
+    // compound key (REGION_CODE/SITE_CODE). building_code is globally
+    // unique per tenant (UNIQUE (org, building_code)), so that's a
+    // single-token key. Floor + Room add further compound segments.
+    // Each map is one query up front — no per-row lookups.
+    let region_rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, region_code FROM net.region
+          WHERE organization_id = $1 AND deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let region_code_to_id: std::collections::HashMap<String, Uuid> =
+        region_rows.into_iter().map(|(id, c)| (c, id)).collect();
+
+    let site_rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT s.id, r.region_code, s.site_code
+           FROM net.site s
+           JOIN net.region r ON r.id = s.region_id AND r.deleted_at IS NULL
+          WHERE s.organization_id = $1 AND s.deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let site_code_to_id: std::collections::HashMap<String, Uuid> =
+        site_rows.into_iter()
+            .map(|(id, rg, st)| (format!("{rg}/{st}"), id))
+            .collect();
+
     let building_rows: Vec<(Uuid, String)> = sqlx::query_as(
         "SELECT id, building_code FROM net.building
           WHERE organization_id = $1 AND deleted_at IS NULL")
@@ -1035,6 +1054,7 @@ pub async fn import_subnets(
         let row_number = i + 1;
         outcomes.push(validate_subnet_row(
             row, row_number, &pool_codes, dup_check_set,
+            &region_code_to_id, &site_code_to_id,
             &building_code_to_id, &floor_code_to_id, &room_code_to_id,
         ));
     }
@@ -1072,6 +1092,10 @@ pub async fn import_subnets(
         // the maps here to get the uuid.
         let scope_entity_id: Option<Uuid> = match scope_val {
             "Free"                          => None,
+            "Region"   if !scope_entity_code.is_empty() =>
+                region_code_to_id.get(scope_entity_code).copied(),
+            "Site"     if !scope_entity_code.is_empty() =>
+                site_code_to_id.get(scope_entity_code).copied(),
             "Building" if !scope_entity_code.is_empty() =>
                 building_code_to_id.get(scope_entity_code).copied(),
             "Floor"    if !scope_entity_code.is_empty() =>
@@ -1196,11 +1220,14 @@ pub async fn import_subnets(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn validate_subnet_row(
     row: &[String],
     row_number: usize,
     pool_codes: &std::collections::HashSet<String>,
     existing_codes: &std::collections::HashSet<String>,
+    region_code_to_id: &std::collections::HashMap<String, Uuid>,
+    site_code_to_id: &std::collections::HashMap<String, Uuid>,
     building_code_to_id: &std::collections::HashMap<String, Uuid>,
     floor_code_to_id: &std::collections::HashMap<String, Uuid>,
     room_code_to_id: &std::collections::HashMap<String, Uuid>,
@@ -1258,14 +1285,26 @@ fn validate_subnet_row(
                     "scope_entity_code '{scope_entity_code}' set but scope_level is Free — clear one or the other"));
             }
         }
-        "Region" | "Site" => {
-            // Region + Site aren't yet resolvable from the CSV. The
-            // schema accepts them but building this slice only
-            // handles Building / Floor / Room — an operator on
-            // Region/Site must drop into the CRUD panel.
-            if !scope_entity_code.is_empty() {
+        "Region" => {
+            if scope_entity_code.is_empty() {
+                errors.push("scope_level 'Region' requires scope_entity_code (region_code)".into());
+            } else if scope_entity_code.contains('/') {
                 errors.push(format!(
-                    "scope_level '{effective_scope}' isn't resolvable from CSV yet — use the CRUD panel, or pick Building/Floor/Room"));
+                    "scope_entity_code '{scope_entity_code}' must be REGION_CODE (single token) for Region scope"));
+            } else if !region_code_to_id.contains_key(scope_entity_code) {
+                errors.push(format!(
+                    "scope_entity_code '{scope_entity_code}' not found in this tenant's region catalog"));
+            }
+        }
+        "Site" => {
+            if scope_entity_code.is_empty() {
+                errors.push("scope_level 'Site' requires scope_entity_code (REGION_CODE/SITE_CODE)".into());
+            } else if scope_entity_code.matches('/').count() != 1 {
+                errors.push(format!(
+                    "scope_entity_code '{scope_entity_code}' must be REGION_CODE/SITE_CODE for Site scope"));
+            } else if !site_code_to_id.contains_key(scope_entity_code) {
+                errors.push(format!(
+                    "scope_entity_code '{scope_entity_code}' not found in this tenant's site catalog"));
             }
         }
         "Building" => {

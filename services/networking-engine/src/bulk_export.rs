@@ -424,11 +424,12 @@ pub async fn export_subnets_csv(
         String,          // status
     );
     // scope_entity_code is a compound expression keyed off scope_level
-    // — Building is one token (globally unique), Floor adds FLOOR_CODE,
-    // Room adds ROOM_CODE. Region/Site pass through as empty because
-    // the import side can't yet resolve them (CRUD-only for now). The
-    // COALESCE chain is gnarly but keeps the bulk export in lockstep
-    // with bulk import without a second query.
+    // — Region emits REGION_CODE alone (globally unique per tenant),
+    // Site emits REGION_CODE/SITE_CODE (site_code only unique within
+    // region), Building emits BUILDING_CODE (globally unique per
+    // tenant), Floor/Room add FLOOR_CODE/ROOM_CODE segments. The join
+    // chain is verbose but keeps bulk export in lockstep with bulk
+    // import without a second query.
     let rows: Vec<Row> = sqlx::query_as(
         r#"SELECT s.subnet_code,
                   s.display_name,
@@ -437,6 +438,8 @@ pub async fn export_subnets_csv(
                   p.pool_code                      AS pool_code,
                   s.scope_level,
                   CASE s.scope_level
+                      WHEN 'Region'   THEN rg.region_code
+                      WHEN 'Site'     THEN sr.region_code || '/' || st.site_code
                       WHEN 'Building' THEN sb.building_code
                       WHEN 'Floor'    THEN fb.building_code || '/' || f.floor_code
                       WHEN 'Room'     THEN rb.building_code || '/' || rf.floor_code || '/' || r.room_code
@@ -446,6 +449,13 @@ pub async fn export_subnets_csv(
              FROM net.subnet s
              LEFT JOIN net.vlan     v  ON v.id = s.vlan_id AND v.deleted_at IS NULL
              LEFT JOIN net.ip_pool  p  ON p.id = s.pool_id AND p.deleted_at IS NULL
+             -- Region scope: single-hop to net.region.
+             LEFT JOIN net.region   rg ON rg.id = s.scope_entity_id
+                                      AND s.scope_level = 'Region'
+             -- Site scope: net.site + its parent region.
+             LEFT JOIN net.site     st ON st.id = s.scope_entity_id
+                                      AND s.scope_level = 'Site'
+             LEFT JOIN net.region   sr ON sr.id = st.region_id
              -- Building scope: single-hop to net.building.
              LEFT JOIN net.building sb ON sb.id = s.scope_entity_id
                                       AND s.scope_level = 'Building'

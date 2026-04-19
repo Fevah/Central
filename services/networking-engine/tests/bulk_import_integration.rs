@@ -469,6 +469,141 @@ async fn seed_hierarchy_on_pools_fixture(fx: &PoolsFixture) -> sqlx::Result<(Str
 
 #[tokio::test]
 #[ignore]
+async fn subnet_region_scope_resolves_single_token_code() {
+    let Some(pool) = pool_or_skip("subnet_region_scope_resolves_single_token_code").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    // The parent TenantFixture seeds region 'IT-R' for every tenant,
+    // so Region scope is resolvable without an extra fixture step.
+    let csv = format!(
+        "{SUBNET_HEADER}BI-SUB-RG,Region Subnet,10.99.10.0/24,,{p},Region,IT-R,Active\r\n",
+        p = fx.pool_code);
+    let result = bulk_import::import_subnets(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
+    ).await.expect("apply");
+    assert!(result.applied);
+
+    let (scope_level, scope_entity_id): (String, Option<Uuid>) = sqlx::query_as(
+        "SELECT scope_level, scope_entity_id FROM net.subnet
+          WHERE organization_id = $1 AND subnet_code = 'BI-SUB-RG'")
+        .bind(fx.tenant.org_id).fetch_one(&fx.tenant.pool).await.unwrap();
+    assert_eq!(scope_level, "Region");
+    let (expected_region_id,): (Uuid,) = sqlx::query_as(
+        "SELECT id FROM net.region
+          WHERE organization_id = $1 AND region_code = 'IT-R'")
+        .bind(fx.tenant.org_id).fetch_one(&fx.tenant.pool).await.unwrap();
+    assert_eq!(scope_entity_id, Some(expected_region_id));
+}
+
+#[tokio::test]
+#[ignore]
+async fn subnet_site_scope_resolves_compound_code() {
+    let Some(pool) = pool_or_skip("subnet_site_scope_resolves_compound_code").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    // Parent TenantFixture seeds region 'IT-R' + site 'IT-S'.
+    let csv = format!(
+        "{SUBNET_HEADER}BI-SUB-ST,Site Subnet,10.99.11.0/24,,{p},Site,IT-R/IT-S,Active\r\n",
+        p = fx.pool_code);
+    let result = bulk_import::import_subnets(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
+    ).await.expect("apply");
+    assert!(result.applied);
+
+    let (scope_entity_id,): (Option<Uuid>,) = sqlx::query_as(
+        "SELECT scope_entity_id FROM net.subnet
+          WHERE organization_id = $1 AND subnet_code = 'BI-SUB-ST'")
+        .bind(fx.tenant.org_id).fetch_one(&fx.tenant.pool).await.unwrap();
+    let (expected_site_id,): (Uuid,) = sqlx::query_as(
+        "SELECT s.id FROM net.site s
+           JOIN net.region r ON r.id = s.region_id
+          WHERE s.organization_id = $1 AND r.region_code = 'IT-R' AND s.site_code = 'IT-S'")
+        .bind(fx.tenant.org_id).fetch_one(&fx.tenant.pool).await.unwrap();
+    assert_eq!(scope_entity_id, Some(expected_site_id));
+}
+
+#[tokio::test]
+#[ignore]
+async fn subnet_site_scope_rejects_single_token() {
+    let Some(pool) = pool_or_skip("subnet_site_scope_rejects_single_token").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    // Site scope needs REGION_CODE/SITE_CODE — a bare site code is
+    // ambiguous (same site_code can exist in multiple regions) so
+    // the importer rejects rather than guessing.
+    let csv = format!(
+        "{SUBNET_HEADER}BI-SUB-X,Subnet X,10.99.1.0/24,,{p},Site,IT-S,Active\r\n",
+        p = fx.pool_code);
+    let result = bulk_import::import_subnets(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
+    ).await.expect("apply");
+    assert!(!result.applied);
+    assert!(result.outcomes[0].errors.iter().any(|e| e.contains("REGION_CODE/SITE_CODE")),
+        "compound-shape error expected for bare Site code: {:?}", result.outcomes[0].errors);
+}
+
+#[tokio::test]
+#[ignore]
+async fn subnet_region_scope_rejects_compound_code() {
+    let Some(pool) = pool_or_skip("subnet_region_scope_rejects_compound_code").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    // Region scope wants a single token. Passing "IT-R/IT-S" for
+    // Region is likely an operator-accidentally-picked-wrong-level
+    // error and should be flagged rather than silently truncated.
+    let csv = format!(
+        "{SUBNET_HEADER}BI-SUB-X,Subnet X,10.99.1.0/24,,{p},Region,IT-R/IT-S,Active\r\n",
+        p = fx.pool_code);
+    let result = bulk_import::import_subnets(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
+    ).await.expect("apply");
+    assert!(!result.applied);
+    assert!(result.outcomes[0].errors.iter().any(|e| e.contains("REGION_CODE (single token)")),
+        "single-token error expected for compound Region code: {:?}", result.outcomes[0].errors);
+}
+
+#[tokio::test]
+#[ignore]
+async fn subnet_all_five_scopes_round_trip_through_export() {
+    let Some(pool) = pool_or_skip("subnet_all_five_scopes_round_trip_through_export").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+    let _ = seed_hierarchy_on_pools_fixture(&fx).await.expect("seed hierarchy");
+
+    // Seed one subnet per non-Free scope — Region, Site, Building,
+    // Floor, Room — and verify the export emits each compound code
+    // in the expected shape.
+    let csv = format!(
+        "{SUBNET_HEADER}\
+         RT-RG,Region Subnet,10.98.1.0/24,,{p},Region,IT-R,Active\r\n\
+         RT-ST,Site Subnet,10.98.2.0/24,,{p},Site,IT-R/IT-S,Active\r\n\
+         RT-BLD,Building Subnet,10.98.3.0/24,,{p},Building,IT-B,Active\r\n\
+         RT-FLR,Floor Subnet,10.98.4.0/24,,{p},Floor,IT-B/F1,Active\r\n\
+         RT-RM,Room Subnet,10.98.5.0/24,,{p},Room,IT-B/F1/R1,Active\r\n",
+        p = fx.pool_code);
+    bulk_import::import_subnets(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
+    ).await.expect("seed");
+
+    let exported = bulk_export::export_subnets_csv(&fx.tenant.pool, fx.tenant.org_id).await
+        .expect("export");
+    assert!(exported.contains("Region,IT-R,Active"),
+        "Region-scope row must emit REGION_CODE as scope_entity_code; got:\n{exported}");
+    assert!(exported.contains("Site,IT-R/IT-S,Active"),
+        "Site-scope row must emit REGION/SITE; got:\n{exported}");
+    assert!(exported.contains("Building,IT-B,Active"));
+    assert!(exported.contains("Floor,IT-B/F1,Active"));
+    assert!(exported.contains("Room,IT-B/F1/R1,Active"));
+
+    // Re-import as Upsert — every scope_entity_code shape must
+    // round-trip without validation errors.
+    let result = bulk_import::import_subnets(
+        &fx.tenant.pool, fx.tenant.org_id, &exported, false, ImportMode::Upsert, None,
+    ).await.expect("re-import");
+    assert!(result.applied, "all five scopes must round-trip cleanly");
+}
+
+#[tokio::test]
+#[ignore]
 async fn subnet_building_scope_resolves_and_writes_entity_id() {
     let Some(pool) = pool_or_skip("subnet_building_scope_resolves_and_writes_entity_id").await else { return; };
     let fx = PoolsFixture::new(pool).await.expect("fixture");
