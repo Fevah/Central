@@ -273,6 +273,133 @@ pub async fn global_search(
     }).collect())
 }
 
+// ─── Facets (per-entity-type counts) ────────────────────────────────────
+
+/// One row in the facet-counts response — an entity type paired with
+/// the number of search hits that entity type contributes for the
+/// given query. UI uses this to narrow: operator types "mep", sees
+/// "Device(12) · Vlan(4) · Subnet(1) · Server(7)" and clicks the
+/// facet they care about.
+#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchFacet {
+    pub entity_type: String,
+    pub count: i64,
+}
+
+/// Return per-entity-type hit counts for the given query. Always
+/// returns rows for *every* supported entity type, even when the
+/// count is zero, so the UI can render a complete facet bar without
+/// remembering the universe of entity types. Entity-type filter is
+/// honoured: if the caller passes `entityTypes=Device,Vlan`, only
+/// those two facets are returned.
+///
+/// Same plainto_tsquery + partial GIN index strategy as `global_search`;
+/// a single UNION-ALL of six COUNT queries means one round trip and
+/// every count can use the matching `ix_<entity>_search_gin` index.
+pub async fn search_facets(
+    pool: &PgPool,
+    org_id: Uuid,
+    q: &str,
+    entity_types: Option<&std::collections::HashSet<String>>,
+) -> Result<Vec<SearchFacet>, EngineError> {
+    if q.trim().is_empty() {
+        return Ok(vec![]);
+    }
+
+    let wants = |name: &str| -> bool {
+        match entity_types {
+            Some(set) => set.contains(name),
+            None      => true,
+        }
+    };
+
+    let mut fragments: Vec<String> = Vec::with_capacity(6);
+    if wants("Device") {
+        fragments.push(String::from(
+            "SELECT 'Device' AS entity_type, COUNT(*)::bigint AS count
+               FROM net.device d
+              WHERE d.organization_id = $2 AND d.deleted_at IS NULL
+                AND to_tsvector('english'::regconfig,
+                        coalesce(d.hostname,'') || ' ' ||
+                        coalesce(d.device_code,'') || ' ' ||
+                        coalesce(d.notes,''))
+                    @@ plainto_tsquery('english', $1)"));
+    }
+    if wants("Vlan") {
+        fragments.push(String::from(
+            "SELECT 'Vlan' AS entity_type, COUNT(*)::bigint AS count
+               FROM net.vlan v
+              WHERE v.organization_id = $2 AND v.deleted_at IS NULL
+                AND to_tsvector('english'::regconfig,
+                        coalesce(v.display_name,'') || ' ' ||
+                        coalesce(v.description,'') || ' ' ||
+                        coalesce(v.notes,''))
+                    @@ plainto_tsquery('english', $1)"));
+    }
+    if wants("Subnet") {
+        fragments.push(String::from(
+            "SELECT 'Subnet' AS entity_type, COUNT(*)::bigint AS count
+               FROM net.subnet s
+              WHERE s.organization_id = $2 AND s.deleted_at IS NULL
+                AND to_tsvector('english'::regconfig,
+                        coalesce(s.subnet_code,'') || ' ' ||
+                        coalesce(s.display_name,'') || ' ' ||
+                        coalesce(s.notes,''))
+                    @@ plainto_tsquery('english', $1)"));
+    }
+    if wants("Server") {
+        fragments.push(String::from(
+            "SELECT 'Server' AS entity_type, COUNT(*)::bigint AS count
+               FROM net.server srv
+              WHERE srv.organization_id = $2 AND srv.deleted_at IS NULL
+                AND to_tsvector('english'::regconfig,
+                        coalesce(srv.hostname,'') || ' ' ||
+                        coalesce(srv.display_name,'') || ' ' ||
+                        coalesce(srv.notes,''))
+                    @@ plainto_tsquery('english', $1)"));
+    }
+    if wants("Link") {
+        fragments.push(String::from(
+            "SELECT 'Link' AS entity_type, COUNT(*)::bigint AS count
+               FROM net.link l
+              WHERE l.organization_id = $2 AND l.deleted_at IS NULL
+                AND to_tsvector('english'::regconfig,
+                        coalesce(l.link_code,'') || ' ' ||
+                        coalesce(l.display_name,'') || ' ' ||
+                        coalesce(l.description,'') || ' ' ||
+                        coalesce(l.notes,''))
+                    @@ plainto_tsquery('english', $1)"));
+    }
+    if wants("DhcpRelayTarget") {
+        fragments.push(String::from(
+            "SELECT 'DhcpRelayTarget' AS entity_type, COUNT(*)::bigint AS count
+               FROM net.dhcp_relay_target drt
+               JOIN net.vlan v ON v.id = drt.vlan_id AND v.deleted_at IS NULL
+              WHERE drt.organization_id = $2 AND drt.deleted_at IS NULL
+                AND to_tsvector('english'::regconfig,
+                        coalesce(host(drt.server_ip),'') || ' ' ||
+                        coalesce(drt.notes,''))
+                    @@ plainto_tsquery('english', $1)"));
+    }
+
+    if fragments.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let sql = format!(
+        "{}\nORDER BY count DESC, entity_type ASC",
+        fragments.join("\nUNION ALL\n"));
+
+    let rows: Vec<SearchFacet> = sqlx::query_as(&sql)
+        .bind(q)
+        .bind(org_id)
+        .fetch_all(pool)
+        .await?;
+
+    Ok(rows)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

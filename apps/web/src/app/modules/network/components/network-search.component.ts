@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { DxDataGridModule, DxTextBoxModule, DxButtonModule, DxTagBoxModule, DxListModule } from 'devextreme-angular';
-import { NetworkingEngineService, SearchResult, SavedView } from '../../../core/services/networking-engine.service';
+import { NetworkingEngineService, SearchResult, SavedView, SearchFacet } from '../../../core/services/networking-engine.service';
 import { environment } from '../../../../environments/environment';
 
 /// Angular counterpart to the WPF SearchPanel (Phase 10b). Hits
@@ -62,6 +62,20 @@ import { environment } from '../../../../environments/environment';
 
         <div *ngIf="status" class="status-line">{{ status }}</div>
 
+        <!-- Facet bar — per-entity-type hit counts. Click a chip to
+             narrow the search to that entity type and re-run. -->
+        <div *ngIf="facets.length" class="facet-bar">
+          <span class="facet-label">Narrow:</span>
+          <button *ngFor="let f of facets"
+                  class="facet-chip"
+                  [class.active]="isFacetActive(f.entityType)"
+                  [disabled]="f.count === 0"
+                  (click)="toggleFacet(f.entityType)">
+            {{ f.entityType }}
+            <span class="facet-count">{{ f.count }}</span>
+          </button>
+        </div>
+
         <dx-data-grid [dataSource]="results" [showBorders]="true" [hoverStateEnabled]="true"
                        [columnAutoWidth]="true" [searchPanel]="{ visible: true }"
                        [filterRow]="{ visible: true }" [headerFilter]="{ visible: true }"
@@ -90,6 +104,13 @@ import { environment } from '../../../../environments/environment';
     .search-bar .query { flex: 1; }
     .search-bar .entity-types { width: 260px; }
     .status-line { margin: 6px 0 10px; color: #666; font-size: 12px; }
+    .facet-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; }
+    .facet-label { color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .facet-chip { background: rgba(59,130,246,0.1); color: #9ca3af; border: 1px solid rgba(59,130,246,0.2); border-radius: 12px; padding: 2px 10px; font-size: 12px; cursor: pointer; }
+    .facet-chip:hover:not(:disabled) { background: rgba(59,130,246,0.2); color: #d1d5db; }
+    .facet-chip.active { background: rgba(59,130,246,0.3); color: #60a5fa; border-color: rgba(59,130,246,0.5); }
+    .facet-chip:disabled { opacity: 0.4; cursor: not-allowed; }
+    .facet-count { color: #60a5fa; margin-left: 6px; font-weight: 600; }
   `]
 })
 export class NetworkSearchComponent implements OnInit {
@@ -100,6 +121,7 @@ export class NetworkSearchComponent implements OnInit {
   query = '';
   selectedEntityTypes: string[] = [];
   results: SearchResult[] = [];
+  facets: SearchFacet[] = [];
   status = '';
 
   savedViews: SavedView[] = [];
@@ -172,12 +194,37 @@ export class NetworkSearchComponent implements OnInit {
           this.results = [];
         },
       });
+
+    // Fire the facets query in parallel — independent from the main
+    // ranked search so a slow facet query doesn't delay the grid.
+    this.engine.searchFacets(environment.defaultTenantId, q).subscribe({
+      next: (rows) => { this.facets = rows; },
+      error: () => { this.facets = []; },
+    });
+  }
+
+  /// True when the given entity type is currently filtering the search.
+  isFacetActive(entityType: string): boolean {
+    return this.selectedEntityTypes.includes(entityType);
+  }
+
+  /// Click-to-narrow. When inactive, replace the filter with just this
+  /// type (explicit narrow). When active, clear the filter (back to
+  /// "all types"). This matches most faceted-search UX conventions.
+  toggleFacet(entityType: string): void {
+    if (this.isFacetActive(entityType) && this.selectedEntityTypes.length === 1) {
+      this.selectedEntityTypes = [];
+    } else {
+      this.selectedEntityTypes = [entityType];
+    }
+    this.run();
   }
 
   clear(): void {
     this.query = '';
     this.selectedEntityTypes = [];
     this.results = [];
+    this.facets = [];
     this.status = '';
   }
 

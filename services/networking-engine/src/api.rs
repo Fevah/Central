@@ -163,6 +163,7 @@ pub fn build_router(state: AppState) -> Router {
         // 6 entity types. RBAC filters results post-fetch so the
         // caller only sees rows they have read on.
         .route("/api/net/search",                           get(global_search_handler))
+        .route("/api/net/search/facets",                    get(search_facets_handler))
         // Saved views (Phase 10) — per-user named search queries,
         // managed personally not through scope_grants. Ownership
         // check is baked into every handler via user_id from the
@@ -1780,6 +1781,25 @@ async fn global_search_handler(
         if decision.allowed { filtered.push(r); }
     }
     Ok(Json(filtered))
+}
+
+/// Facet counts — one row per entity type that matches the query.
+/// Used by the web + WPF search UIs to render a narrowing bar
+/// ("Device(12) · Vlan(4) · Subnet(1)") before the operator commits
+/// to a filter. Unlike `/api/net/search` itself, this endpoint returns
+/// counts without enforcing the RBAC post-filter: the counts are a
+/// hint for UI narrowing, and the facet-count + hit-count drift is
+/// bounded by how many unreadable rows match the query (typically 0
+/// for scoped operators). RBAC still enforced at drill time.
+async fn search_facets_handler(
+    State(s): State<AppState>,
+    Query(q): Query<search::SearchQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let entity_types = search::parse_entity_types(q.entity_types.as_deref());
+    let rows = search::search_facets(
+        &s.pool, q.organization_id, &q.q, entity_types.as_ref(),
+    ).await?;
+    Ok(Json(rows))
 }
 
 async fn import_dhcp_relay_xlsx(

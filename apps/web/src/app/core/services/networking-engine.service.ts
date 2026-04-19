@@ -14,6 +14,15 @@ export interface SearchResult {
   snippet: string;
 }
 
+/// One row in a search-facets response — matches `SearchFacet` in
+/// services/networking-engine/src/search.rs. Used to render a
+/// per-entity-type count bar in the search UI so operators can narrow
+/// without running the full search first.
+export interface SearchFacet {
+  entityType: string;
+  count: number;
+}
+
 /// Saved search — per-user named query state. Matches
 /// `SavedViewDto` in the engine's saved_views module.
 export interface SavedView {
@@ -283,6 +292,24 @@ export class NetworkingEngineService {
       params = params.set('limit', limit.toString());
     }
     return this.http.get<SearchResult[]>(`${this.base}/api/net/search`, { params });
+  }
+
+  /// Per-entity-type facet counts for a search query. Returns one row
+  /// per entity type matching the query (including zeros when the
+  /// caller restricted `entityTypes`). Renders a narrowing hint bar
+  /// in the search UI without running the full ranked query.
+  searchFacets(
+    organizationId: string,
+    q: string,
+    entityTypes?: string[],
+  ): Observable<SearchFacet[]> {
+    let params = new HttpParams()
+      .set('organizationId', organizationId)
+      .set('q', q);
+    if (entityTypes && entityTypes.length > 0) {
+      params = params.set('entityTypes', entityTypes.join(','));
+    }
+    return this.http.get<SearchFacet[]>(`${this.base}/api/net/search/facets`, { params });
   }
 
   /// List the caller's saved views (X-User-Id scoped on the engine
