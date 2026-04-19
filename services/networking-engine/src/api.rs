@@ -121,6 +121,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/modules",           get(list_modules))
         .route("/api/net/mstp-rules",        get(list_mstp_rules))
         .route("/api/net/reservation-shelf", get(list_reservation_shelf))
+        .route("/api/net/asn-allocations",   get(list_asn_allocations))
         // Thin pool/block reads (WPF convenience-form pickers)
         .route("/api/net/vlan-blocks", get(list_vlan_blocks))
         .route("/api/net/asn-blocks",  get(list_asn_blocks))
@@ -1473,6 +1474,54 @@ async fn list_reservation_shelf(
           WHERE organization_id = $1
             AND deleted_at IS NULL
           ORDER BY retired_at DESC
+          LIMIT 5000")
+        .bind(q.organization_id)
+        .fetch_all(&s.pool)
+        .await?;
+    Ok(Json(rows))
+}
+
+// ─── ASN allocation thin list ───────────────────────────────────────────
+
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct AsnAllocationListRow {
+    id: Uuid,
+    block_id: Uuid,
+    block_code: Option<String>,
+    asn: i64,
+    allocated_to_type: String,
+    allocated_to_id: Uuid,
+    /// Resolved hostname when allocated_to_type is Device / Server
+    /// — LEFT JOIN both tables, COALESCE to the first match. For
+    /// Building / other target types, falls back to the uuid.
+    target_display: Option<String>,
+    status: String,
+}
+
+/// Thin list of net.asn_allocation rows. 5000-row cap. LEFT JOIN
+/// net.asn_block for block_code + LEFT JOIN net.device / net.server
+/// for target display. Ordered by ASN ASC so gaps are visible.
+async fn list_asn_allocations(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let rows: Vec<AsnAllocationListRow> = sqlx::query_as(
+        "SELECT a.id,
+                a.block_id,
+                b.block_code,
+                a.asn,
+                a.allocated_to_type,
+                a.allocated_to_id,
+                COALESCE(d.hostname, s.hostname) AS target_display,
+                a.status::text AS status
+           FROM net.asn_allocation a
+           LEFT JOIN net.asn_block b ON b.id = a.block_id
+           LEFT JOIN net.device    d ON d.id = a.allocated_to_id AND a.allocated_to_type = 'Device'
+           LEFT JOIN net.server    s ON s.id = a.allocated_to_id AND a.allocated_to_type = 'Server'
+          WHERE a.organization_id = $1
+            AND a.deleted_at IS NULL
+          ORDER BY a.asn
           LIMIT 5000")
         .bind(q.organization_id)
         .fetch_all(&s.pool)

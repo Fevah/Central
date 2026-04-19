@@ -164,6 +164,21 @@ export interface MlagDomainListRow {
   version: number;
 }
 
+/// ASN allocation list row — matches `AsnAllocationListRow` in
+/// the engine. `targetDisplay` is resolved via LEFT JOIN on
+/// net.device / net.server when `allocatedToType` is Device /
+/// Server; null for other target types (e.g. Building).
+export interface AsnAllocationListRow {
+  id: string;
+  blockId: string;
+  blockCode: string | null;
+  asn: number;
+  allocatedToType: string;
+  allocatedToId: string;
+  targetDisplay: string | null;
+  status: string;
+}
+
 /// VLAN block list row — matches `VlanBlockListRow` in the engine.
 /// `available` = vlan_last - vlan_first + 1 - COUNT(allocated VLANs).
 export interface VlanBlockListRow {
@@ -1436,6 +1451,14 @@ export class NetworkingEngineService {
   listVlanPools():  Observable<VlanPoolRow[]>  { return this.http.get<VlanPoolRow[]>(`${this.base}/api/net/vlan-pools`); }
   listVlanBlocks(): Observable<VlanBlockRow[]> { return this.http.get<VlanBlockRow[]>(`${this.base}/api/net/vlan-blocks`); }
   listIpPools():   Observable<IpPoolRow[]>   { return this.http.get<IpPoolRow[]>(`${this.base}/api/net/ip-pools`); }
+
+  /// Thin ASN allocation list — 5000-row cap, ORDER BY asn ASC
+  /// so gaps in the allocated set are visible.
+  listAsnAllocations(organizationId: string): Observable<AsnAllocationListRow[]> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.get<AsnAllocationListRow[]>(
+      `${this.base}/api/net/asn-allocations`, { params });
+  }
 
   /// Engine-backed thin VLAN block list with `available` count.
   /// Distinct from listVlanBlocks (Central.Api PascalCase) — this
