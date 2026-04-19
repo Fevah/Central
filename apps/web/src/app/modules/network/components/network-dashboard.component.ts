@@ -59,6 +59,8 @@ import notify from 'devextreme/ui/notify';
       <a routerLink="/network/modules" routerLinkActive="active">Modules</a>
       <a routerLink="/network/mstp-rules" routerLinkActive="active">MSTP</a>
       <a routerLink="/network/reservation-shelf" routerLinkActive="active">Shelf</a>
+      <a routerLink="/network/vlan-blocks" routerLinkActive="active">VLAN blocks</a>
+      <a routerLink="/network/asn-blocks" routerLinkActive="active">ASN blocks</a>
       <a routerLink="/network/ip-addresses" routerLinkActive="active">IPs</a>
       <a routerLink="/network/dhcp-relay" routerLinkActive="active">DHCP relay</a>
       <a routerLink="/network/change-sets" routerLinkActive="active">Change sets</a>

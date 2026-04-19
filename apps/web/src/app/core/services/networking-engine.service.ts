@@ -164,6 +164,29 @@ export interface MlagDomainListRow {
   version: number;
 }
 
+/// VLAN block list row — matches `VlanBlockListRow` in the engine.
+/// `available` = vlan_last - vlan_first + 1 - COUNT(allocated VLANs).
+export interface VlanBlockListRow {
+  id: string;
+  blockCode: string;
+  displayName: string;
+  vlanFirst: number;
+  vlanLast: number;
+  available: number;
+}
+
+/// ASN block list row — matches `AsnBlockListRow`. Range fields are
+/// bigint on the wire (string-safe JSON numbers for 2-byte ASN ranges
+/// but bigint-fine for 4-byte 32-bit ASNs).
+export interface AsnBlockListRow {
+  id: string;
+  blockCode: string;
+  displayName: string;
+  asnFirst: number;
+  asnLast: number;
+  available: number;
+}
+
 /// Thin aggregate-ethernet list row — matches
 /// `AggregateEthernetListRow` in the engine. memberCount is a
 /// correlated subquery on net.port so under-populated bundles
@@ -1413,6 +1436,23 @@ export class NetworkingEngineService {
   listVlanPools():  Observable<VlanPoolRow[]>  { return this.http.get<VlanPoolRow[]>(`${this.base}/api/net/vlan-pools`); }
   listVlanBlocks(): Observable<VlanBlockRow[]> { return this.http.get<VlanBlockRow[]>(`${this.base}/api/net/vlan-blocks`); }
   listIpPools():   Observable<IpPoolRow[]>   { return this.http.get<IpPoolRow[]>(`${this.base}/api/net/ip-pools`); }
+
+  /// Engine-backed thin VLAN block list with `available` count.
+  /// Distinct from listVlanBlocks (Central.Api PascalCase) — this
+  /// one threads organizationId + returns the engine's
+  /// VlanBlockListRow with the availability subquery.
+  listVlanBlockAvailability(organizationId: string): Observable<VlanBlockListRow[]> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.get<VlanBlockListRow[]>(
+      `${this.base}/api/net/vlan-blocks`, { params });
+  }
+
+  /// Engine-backed thin ASN block list with `available` count.
+  listAsnBlockAvailability(organizationId: string): Observable<AsnBlockListRow[]> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.get<AsnBlockListRow[]>(
+      `${this.base}/api/net/asn-blocks`, { params });
+  }
 
   /// Hierarchy listings — the endpoints are on Central.Api but the
   /// URL path is the same /api/net/ namespace the engine uses, so
