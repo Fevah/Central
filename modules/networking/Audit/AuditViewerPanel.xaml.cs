@@ -38,11 +38,11 @@ public partial class AuditViewerPanel : UserControl
     private CancellationTokenSource? _cts;
     private IReadOnlyList<AuditRowDto> _lastResult = Array.Empty<AuditRowDto>();
 
-    /// <summary>Pending entity-id filter set by cross-panel drill-down
-    /// (e.g. from SearchPanel context menu). BuildRequest reads this
-    /// instead of the filter-bar fields when it's non-null, and the
-    /// next user-driven filter change clears it.</summary>
-    private Guid? _pendingEntityId;
+    // Entity-id filter now lives in the visible EntityIdBox in the
+    // filter bar. The private _pendingEntityId of earlier revisions
+    // was invisible to operators — drilled-in state was easy to
+    // lose. The box is the source of truth; cross-panel drill-down
+    // writes into it via ApplyEntityDrillDown.
 
     // Static list of entity types seen in the wild — drives the combo's
     // autocomplete. Keeps in step with the engine's audit stamps
@@ -111,9 +111,9 @@ public partial class AuditViewerPanel : UserControl
     }
 
     /// <summary>Parse "selectEntity:Device:{guid}" — set the filter
-    /// bar + pending entity id, run the query. Silently no-ops on a
-    /// malformed payload rather than popping a dialog; the worst
-    /// outcome is the existing filter state stays + nothing
+    /// bar (entity type + entity id), run the query. Silently no-ops
+    /// on a malformed payload rather than popping a dialog; the
+    /// worst outcome is the existing filter state stays + nothing
     /// auto-runs.</summary>
     internal void ApplyEntityDrillDown(string payload)
     {
@@ -124,7 +124,7 @@ public partial class AuditViewerPanel : UserControl
         if (!Guid.TryParse(parts[2], out var entityId)) return;
 
         EntityTypeCombo.EditValue = entityType;
-        _pendingEntityId = entityId;
+        EntityIdBox.Text = entityId.ToString();
         // Clear the other filter inputs so the drill-down is what
         // the operator sees — not last session's stale action box.
         ActionBox.Text = "";
@@ -277,11 +277,18 @@ public partial class AuditViewerPanel : UserControl
         Guid? correlationId = null;
         if (Guid.TryParse(CorrelationBox.Text?.Trim(), out var c)) correlationId = c;
 
+        // Entity id from the visible box — operators can see, edit,
+        // clear it directly. Invalid UUIDs are treated as no-filter
+        // rather than rejected so the run button works even when
+        // they're mid-typing.
+        Guid? entityId = null;
+        if (Guid.TryParse(EntityIdBox.Text?.Trim(), out var eid)) entityId = eid;
+
         return new ListAuditRequest
         {
             OrganizationId = _tenantId,
             EntityType = Empty2Null(EntityTypeCombo.Text),
-            EntityId = _pendingEntityId,   // set by ApplyEntityDrillDown; null for normal queries
+            EntityId = entityId,
             Action = Empty2Null(ActionBox.Text),
             ActorUserId = actorUserId,
             CorrelationId = correlationId,
@@ -289,6 +296,23 @@ public partial class AuditViewerPanel : UserControl
             ToAt = ToDate.DateTime == DateTime.MinValue ? null : ToDate.DateTime.ToUniversalTime(),
             Limit = 500,
         };
+    }
+
+    /// <summary>Clear every filter input back to blank so the next
+    /// Run Query returns the full tenant-scope set. Explicit button
+    /// because drill-down state isn't always obvious — an operator
+    /// who drilled in from a search two screens ago shouldn't have
+    /// to hunt for the entity id box to widen their view.</summary>
+    private void OnClearFilters(object sender, RoutedEventArgs e)
+    {
+        EntityTypeCombo.EditValue = null;
+        EntityIdBox.Text = "";
+        ActionBox.Text = "";
+        ActorBox.Text = "";
+        FromDate.DateTime = DateTime.MinValue;
+        ToDate.DateTime = DateTime.MinValue;
+        CorrelationBox.Text = "";
+        StatusLabel.Text = "Filters cleared — hit Run Query to refresh.";
     }
 
     private static string? Empty2Null(string? s)

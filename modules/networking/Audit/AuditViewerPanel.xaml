@@ -20,47 +20,66 @@
             </StackPanel>
         </Border>
 
-        <!-- Filter bar -->
-        <Grid Grid.Row="1" Margin="8,6,8,6">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="160"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="140"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="80"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="150"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="150"/>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="220"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
+        <!-- Filter bar (two rows so Entity id has space to show a full uuid) -->
+        <StackPanel Grid.Row="1" Margin="8,6,8,6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="160"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="140"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="80"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="150"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="150"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
 
-            <TextBlock Grid.Column="0" Text="Entity:" VerticalAlignment="Center" Margin="0,0,4,0" Foreground="#B0B0B0"/>
-            <dxe:ComboBoxEdit Grid.Column="1" x:Name="EntityTypeCombo"
-                              IsTextEditable="True" NullText="(any)"/>
+                <TextBlock Grid.Column="0" Text="Entity:" VerticalAlignment="Center" Margin="0,0,4,0" Foreground="#B0B0B0"/>
+                <dxe:ComboBoxEdit Grid.Column="1" x:Name="EntityTypeCombo"
+                                  IsTextEditable="True" NullText="(any)"/>
 
-            <TextBlock Grid.Column="2" Text="Action:" VerticalAlignment="Center" Margin="10,0,4,0" Foreground="#B0B0B0"/>
-            <TextBox   Grid.Column="3" x:Name="ActionBox"/>
+                <TextBlock Grid.Column="2" Text="Action:" VerticalAlignment="Center" Margin="10,0,4,0" Foreground="#B0B0B0"/>
+                <TextBox   Grid.Column="3" x:Name="ActionBox"/>
 
-            <TextBlock Grid.Column="4" Text="Actor:" VerticalAlignment="Center" Margin="10,0,4,0" Foreground="#B0B0B0"/>
-            <TextBox   Grid.Column="5" x:Name="ActorBox"/>
+                <TextBlock Grid.Column="4" Text="Actor:" VerticalAlignment="Center" Margin="10,0,4,0" Foreground="#B0B0B0"/>
+                <TextBox   Grid.Column="5" x:Name="ActorBox"/>
 
-            <TextBlock Grid.Column="6" Text="From:" VerticalAlignment="Center" Margin="10,0,4,0" Foreground="#B0B0B0"/>
-            <dxe:DateEdit Grid.Column="7" x:Name="FromDate"/>
+                <TextBlock Grid.Column="6" Text="From:" VerticalAlignment="Center" Margin="10,0,4,0" Foreground="#B0B0B0"/>
+                <dxe:DateEdit Grid.Column="7" x:Name="FromDate"/>
 
-            <TextBlock Grid.Column="8" Text="To:" VerticalAlignment="Center" Margin="10,0,4,0" Foreground="#B0B0B0"/>
-            <dxe:DateEdit Grid.Column="9" x:Name="ToDate"/>
+                <TextBlock Grid.Column="8" Text="To:" VerticalAlignment="Center" Margin="10,0,4,0" Foreground="#B0B0B0"/>
+                <dxe:DateEdit Grid.Column="9" x:Name="ToDate"/>
 
-            <TextBlock Grid.Column="10" Text="Correlation:" VerticalAlignment="Center" Margin="10,0,4,0" Foreground="#B0B0B0"/>
-            <TextBox    Grid.Column="11" x:Name="CorrelationBox"/>
+                <Button Grid.Column="11" x:Name="ClearFiltersButton" Content="Clear filters"
+                        Width="100" Margin="8,0,4,0" Click="OnClearFilters"
+                        ToolTip="Empty every filter field including a drill-down entity id from another panel"/>
+                <Button Grid.Column="12" x:Name="RunButton" Content="Run Query" Width="100"
+                        Click="OnRun" Margin="0,0,0,0"/>
+            </Grid>
 
-            <Button Grid.Column="13" x:Name="RunButton" Content="Run Query" Width="100"
-                    Click="OnRun" Margin="8,0,0,0"/>
-        </Grid>
+            <Grid Margin="0,6,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="320"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="320"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Text="Entity ID:" VerticalAlignment="Center"
+                           Margin="0,0,4,0" Foreground="#B0B0B0"
+                           ToolTip="When a search / grid context menu drills into the audit panel, the entity uuid it targeted lands here — editable so operators can widen or narrow manually"/>
+                <TextBox   Grid.Column="1" x:Name="EntityIdBox" FontFamily="Consolas"/>
+
+                <TextBlock Grid.Column="2" Text="Correlation:" VerticalAlignment="Center" Margin="10,0,4,0" Foreground="#B0B0B0"/>
+                <TextBox   Grid.Column="3" x:Name="CorrelationBox" FontFamily="Consolas"/>
+            </Grid>
+        </StackPanel>
 
         <!-- Result grid -->
         <dxg:GridControl Grid.Row="2" x:Name="AuditGrid"
