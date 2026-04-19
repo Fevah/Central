@@ -117,8 +117,8 @@ SELECT net.attach_lock_enforcement('subnet');
 SELECT net.attach_lock_enforcement('ip_address');
 
 -- ─── schema_versions record ──────────────────────────────────────────────
-INSERT INTO public.schema_versions (version, description)
+INSERT INTO public.schema_versions (version_number, description)
 VALUES (100, 'Networking Phase 8f: lock_state enforcement trigger')
-ON CONFLICT (version) DO NOTHING;
+ON CONFLICT (version_number) DO NOTHING;
 
 COMMIT;

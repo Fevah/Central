@@ -99,8 +99,8 @@ COMMENT ON TABLE net.rendered_config IS
     'body, its sha256 for O(1) change detection, the flavor that emitted '
     'it, and a chain pointer to the previous render for diff.';
 
-INSERT INTO public.schema_versions (version, description)
+INSERT INTO public.schema_versions (version_number, description)
 VALUES (102, 'Networking Phase 10: tenant_cli_flavor + rendered_config')
-ON CONFLICT (version) DO NOTHING;
+ON CONFLICT (version_number) DO NOTHING;
 
 COMMIT;

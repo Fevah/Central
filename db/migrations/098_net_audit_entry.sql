@@ -96,8 +96,8 @@ COMMENT ON TABLE net.audit_entry IS
     'services/networking-engine/ enforces ordering via pg_advisory_xact_lock '
     'keyed on the tenant id.';
 
-INSERT INTO public.schema_versions (version, description)
+INSERT INTO public.schema_versions (version_number, description)
 VALUES (98, 'Networking audit: net.audit_entry hash-chained append-only log')
-ON CONFLICT (version) DO NOTHING;
+ON CONFLICT (version_number) DO NOTHING;
 
 COMMIT;

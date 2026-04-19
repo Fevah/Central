@@ -199,8 +199,8 @@ COMMENT ON TABLE net.change_set_approval IS
     'move to Approved. Any single Reject flips it to Rejected (terminal).';
 
 -- ─── schema_versions ─────────────────────────────────────────────────────
-INSERT INTO public.schema_versions (version, description)
+INSERT INTO public.schema_versions (version_number, description)
 VALUES (99, 'Networking governance (Phase 8a): change_set + items + approvals')
-ON CONFLICT (version) DO NOTHING;
+ON CONFLICT (version_number) DO NOTHING;
 
 COMMIT;

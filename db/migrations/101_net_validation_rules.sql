@@ -58,8 +58,8 @@ COMMENT ON TABLE net.tenant_rule_config IS
     'NULL columns mean "use the rule''s default". The rule catalog itself '
     'lives in services/networking-engine/src/validation.rs.';
 
-INSERT INTO public.schema_versions (version, description)
+INSERT INTO public.schema_versions (version_number, description)
 VALUES (101, 'Networking Phase 9a: validation rule per-tenant configuration')
-ON CONFLICT (version) DO NOTHING;
+ON CONFLICT (version_number) DO NOTHING;
 
 COMMIT;

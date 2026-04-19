@@ -134,8 +134,8 @@ COMMENT ON TABLE net.tenant_naming_config IS
     'newly-created templates only — existing templates stay untouched.';
 
 -- ─── schema_versions record ──────────────────────────────────────────────
-INSERT INTO public.schema_versions (version, description)
+INSERT INTO public.schema_versions (version_number, description)
 VALUES (97, 'Networking Phase 7a: naming template overrides + tenant naming config')
-ON CONFLICT (version) DO NOTHING;
+ON CONFLICT (version_number) DO NOTHING;
 
 COMMIT;
