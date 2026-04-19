@@ -21,6 +21,23 @@ public partial class NewScopeGrantDialog : Window
         ScopeTypeCombo.EditValue    = "Global";
     }
 
+    /// <summary>Pre-fill EntityType + ScopeType=EntityId + scope uuid
+    /// so the cross-panel "Grant access to this…" quick action lands
+    /// an operator on the create dialog with only user_id + action
+    /// left to fill. Call before ShowDialog().</summary>
+    public void PrefillForEntity(string entityType, Guid scopeEntityId, string? preferredAction = null)
+    {
+        if (!string.IsNullOrWhiteSpace(entityType))
+            EntityTypeCombo.EditValue = entityType;
+        ScopeTypeCombo.EditValue = "EntityId";
+        ScopeEntityIdBox.Text = scopeEntityId.ToString();
+        if (!string.IsNullOrWhiteSpace(preferredAction))
+            ActionCombo.EditValue = preferredAction;
+        // Cursor lands on user-id so the operator's only typing step
+        // is the user they're granting access to.
+        UserIdBox.Focus();
+    }
+
     /// <summary>Parsed user_id. Populated only after the dialog OKs.</summary>
     public int GrantUserId { get; private set; }
     public string GrantAction     { get; private set; } = "";

@@ -99,15 +99,24 @@ public partial class ScopeGrantsAdminPanel : UserControl
         switch (msg.SelectItem)
         {
             case "action:reload":   _ = ReloadAsync(); break;
-            case "action:newGrant": _ = NewGrantAsync(); break;
+            case "action:newGrant": _ = NewGrantAsync(null, null); break;
             case "action:check":    _ = CheckPermissionAsync(); break;
+            // `newGrantForEntity:{EntityType}:{guid}` — pushed by
+            // entity grids / hierarchy tree. Opens the New Grant
+            // dialog with EntityType + ScopeType=EntityId + the
+            // uuid pre-filled; operator only types user_id + action.
+            case string s when s.StartsWith("newGrantForEntity:", StringComparison.Ordinal):
+                var parts = s.Split(':', 3);
+                if (parts.Length == 3 && Guid.TryParse(parts[2], out var preId))
+                    _ = NewGrantAsync(parts[1], preId);
+                break;
         }
     }
 
     // ─── Toolbar handlers ──────────────────────────────────────────────
 
     private void OnRunFilter(object sender, RoutedEventArgs e) => _ = ReloadAsync();
-    private void OnNewGrant(object sender, RoutedEventArgs e)  => _ = NewGrantAsync();
+    private void OnNewGrant(object sender, RoutedEventArgs e)  => _ = NewGrantAsync(null, null);
     private void OnDeleteGrant(object sender, RoutedEventArgs e) => _ = DeleteSelectedAsync();
     private void OnCheckPermission(object sender, RoutedEventArgs e) => _ = CheckPermissionAsync();
 
@@ -163,7 +172,7 @@ public partial class ScopeGrantsAdminPanel : UserControl
 
     // ─── New grant ─────────────────────────────────────────────────────
 
-    private async Task NewGrantAsync()
+    private async Task NewGrantAsync(string? prefillEntityType, Guid? prefillScopeEntityId)
     {
         if (!RequireContext()) return;
 
@@ -171,6 +180,10 @@ public partial class ScopeGrantsAdminPanel : UserControl
         {
             Owner = Window.GetWindow(this),
         };
+        if (prefillEntityType is not null && prefillScopeEntityId is Guid id)
+        {
+            dlg.PrefillForEntity(prefillEntityType, id);
+        }
         if (dlg.ShowDialog() != true) return;
 
         try

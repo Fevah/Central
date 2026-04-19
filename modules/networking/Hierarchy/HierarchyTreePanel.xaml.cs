@@ -365,6 +365,17 @@ public partial class HierarchyTreePanel : UserControl
             e.Customizations.Add(MakeButton($"Show audit history",
                 () => ShowAuditForNode(selected.NodeType, selected.EntityId)));
 
+            // Grant access to this entity — only meaningful on nodes
+            // the scope resolver actually walks (Region / Site /
+            // Building). Floor / Room / Rack aren't scope-eligible
+            // in the current resolver so skip to avoid dead-end
+            // grants that would never match.
+            if (selected.NodeType is "Region" or "Site" or "Building")
+            {
+                e.Customizations.Add(MakeButton("Grant access to this…",
+                    () => GrantAccessToNode(selected.NodeType, selected.EntityId)));
+            }
+
             e.Customizations.Add(new BarItemLinkSeparator());
 
             // All six levels are now editable + soft-deletable (Phase 2e).
@@ -386,6 +397,20 @@ public partial class HierarchyTreePanel : UserControl
         PanelMessageBus.Publish(new NavigateToPanelMessage(
             "devices", $"filterBy:Building:{buildingCode}"));
         StatusLabel.Text = $"Filtered devices to building '{buildingCode}'";
+    }
+
+    /// <summary>Cross-panel quick action: open Scope Grants with a
+    /// pre-filled New Grant dialog (EntityType + ScopeType=EntityId
+    /// + scope_entity_id set from this hierarchy node). Operator
+    /// only types user_id + picks action. Saves the
+    /// find-uuid-then-paste dance.</summary>
+    private void GrantAccessToNode(string nodeType, Guid entityId)
+    {
+        if (entityId == Guid.Empty) return;
+        PanelMessageBus.Publish(new OpenPanelMessage("scopeGrants"));
+        PanelMessageBus.Publish(new NavigateToPanelMessage(
+            "scopeGrants", $"newGrantForEntity:{nodeType}:{entityId}"));
+        StatusLabel.Text = $"Opening grant dialog for {nodeType} {entityId}";
     }
 
     /// <summary>Publish the audit drill-down pair for a hierarchy
