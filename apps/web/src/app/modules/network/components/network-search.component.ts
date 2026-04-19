@@ -1,9 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { DxDataGridModule, DxTextBoxModule, DxButtonModule, DxTagBoxModule } from 'devextreme-angular';
-import { NetworkingEngineService, SearchResult } from '../../../core/services/networking-engine.service';
+import { DxDataGridModule, DxTextBoxModule, DxButtonModule, DxTagBoxModule, DxListModule } from 'devextreme-angular';
+import { NetworkingEngineService, SearchResult, SavedView } from '../../../core/services/networking-engine.service';
 import { environment } from '../../../../environments/environment';
 
 /// Angular counterpart to the WPF SearchPanel (Phase 10b). Hits
@@ -16,49 +16,83 @@ import { environment } from '../../../../environments/environment';
   selector: 'app-network-search',
   standalone: true,
   imports: [CommonModule, FormsModule, DxDataGridModule, DxTextBoxModule,
-            DxButtonModule, DxTagBoxModule],
+            DxButtonModule, DxTagBoxModule, DxListModule],
   template: `
     <div class="page-header">
       <h2>Search</h2>
       <small class="subtitle">Full-text across Device / Vlan / Subnet / Server / Link / DhcpRelayTarget.</small>
     </div>
 
-    <div class="search-bar">
-      <dx-text-box class="query" placeholder="Query — e.g. MEP-91 or 10.11.1.0/24"
-                   [(value)]="query" (onEnterKey)="run()"
-                   [showClearButton]="true" />
-      <dx-tag-box class="entity-types" [items]="availableEntityTypes"
-                   [(value)]="selectedEntityTypes" placeholder="(all types)"
-                   [showClearButton]="true" />
-      <dx-button text="Search" type="default" (onClick)="run()" />
-      <dx-button text="Clear" (onClick)="clear()" />
+    <div class="search-layout">
+      <!-- Saved views sidebar — mirrors the WPF SearchPanel. Clicking
+           a view populates query + entity-types + auto-runs. -->
+      <aside class="saved-views">
+        <div class="saved-views-header">
+          <strong>Saved views</strong>
+          <dx-button icon="refresh" stylingMode="text"
+                     hint="Reload saved views"
+                     (onClick)="reloadSavedViews()" />
+        </div>
+        <div *ngIf="savedViewsError" class="saved-views-error">
+          {{ savedViewsError }}
+        </div>
+        <dx-list [items]="savedViews"
+                 [selectionMode]="'single'"
+                 displayExpr="name"
+                 (onItemClick)="onSavedViewClick($event)"
+                 [noDataText]="'No saved views yet — create one from the WPF client.'">
+          <div *dxTemplate="let v of 'item'">
+            <div class="sv-name">{{ v.name }}</div>
+            <div class="sv-sub">{{ summariseView(v) }}</div>
+          </div>
+        </dx-list>
+      </aside>
+
+      <main class="search-main">
+        <div class="search-bar">
+          <dx-text-box class="query" placeholder="Query — e.g. MEP-91 or 10.11.1.0/24"
+                       [(value)]="query" (onEnterKey)="run()"
+                       [showClearButton]="true" />
+          <dx-tag-box class="entity-types" [items]="availableEntityTypes"
+                       [(value)]="selectedEntityTypes" placeholder="(all types)"
+                       [showClearButton]="true" />
+          <dx-button text="Search" type="default" (onClick)="run()" />
+          <dx-button text="Clear" (onClick)="clear()" />
+        </div>
+
+        <div *ngIf="status" class="status-line">{{ status }}</div>
+
+        <dx-data-grid [dataSource]="results" [showBorders]="true" [hoverStateEnabled]="true"
+                       [columnAutoWidth]="true" [searchPanel]="{ visible: true }"
+                       [filterRow]="{ visible: true }" [headerFilter]="{ visible: true }"
+                       [groupPanel]="{ visible: true }"
+                       (onRowDblClick)="onRowDoubleClick($event)">
+          <dxi-column dataField="entityType" caption="Entity" [groupIndex]="0" width="140" />
+          <dxi-column dataField="label" caption="Label" width="280" />
+          <dxi-column dataField="snippet" caption="Snippet" />
+          <dxi-column dataField="rank" caption="Rank" width="80" format="#0.0000" />
+          <dxi-column dataField="id" caption="Id" width="260" />
+        </dx-data-grid>
+      </main>
     </div>
-
-    <div *ngIf="status" class="status-line">{{ status }}</div>
-
-    <dx-data-grid [dataSource]="results" [showBorders]="true" [hoverStateEnabled]="true"
-                   [columnAutoWidth]="true" [searchPanel]="{ visible: true }"
-                   [filterRow]="{ visible: true }" [headerFilter]="{ visible: true }"
-                   [groupPanel]="{ visible: true }"
-                   (onRowDblClick)="onRowDoubleClick($event)">
-      <dxi-column dataField="entityType" caption="Entity" [groupIndex]="0" width="140" />
-      <dxi-column dataField="label" caption="Label" width="280" />
-      <dxi-column dataField="snippet" caption="Snippet" />
-      <dxi-column dataField="rank" caption="Rank" width="80" format="#0.0000" />
-      <dxi-column dataField="id" caption="Id" width="260" />
-    </dx-data-grid>
   `,
   styles: [`
     .page-header { margin-bottom: 12px; }
     .page-header h2 { margin: 0 0 4px 0; }
     .page-header .subtitle { color: #888; }
+    .search-layout { display: grid; grid-template-columns: 240px 1fr; gap: 16px; }
+    .saved-views { border: 1px solid #333; padding: 6px; }
+    .saved-views-header { display: flex; justify-content: space-between; align-items: center; padding: 4px; }
+    .saved-views-error { color: #888; padding: 4px; font-size: 11px; }
+    .sv-name { font-weight: 600; }
+    .sv-sub { color: #888; font-size: 11px; }
     .search-bar { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
     .search-bar .query { flex: 1; }
     .search-bar .entity-types { width: 260px; }
     .status-line { margin: 6px 0 10px; color: #666; font-size: 12px; }
   `]
 })
-export class NetworkSearchComponent {
+export class NetworkSearchComponent implements OnInit {
   /// Entity-types the engine's UNION covers (`is_supported_entity_type`
   /// in search.rs). Keep in sync with the server-side list.
   availableEntityTypes = ['Device', 'Vlan', 'Subnet', 'Server', 'Link', 'DhcpRelayTarget'];
@@ -68,10 +102,49 @@ export class NetworkSearchComponent {
   results: SearchResult[] = [];
   status = '';
 
+  savedViews: SavedView[] = [];
+  savedViewsError = '';
+
   constructor(
     private engine: NetworkingEngineService,
     private router: Router,
   ) {}
+
+  ngOnInit(): void {
+    this.reloadSavedViews();
+  }
+
+  reloadSavedViews(): void {
+    this.savedViewsError = '';
+    this.engine.listSavedViews(environment.defaultTenantId).subscribe({
+      next: (views) => { this.savedViews = views; },
+      error: (err) => {
+        // Soft-fail — the sidebar is a nice-to-have, search still
+        // works when the endpoint is unreachable.
+        this.savedViews = [];
+        this.savedViewsError = err?.message ?? 'failed to load';
+      },
+    });
+  }
+
+  onSavedViewClick(e: { itemData?: SavedView }): void {
+    const view = e?.itemData;
+    if (!view) return;
+    this.query = view.q ?? '';
+    this.selectedEntityTypes = view.entityTypes
+      ? view.entityTypes.split(',').map(s => s.trim()).filter(s => s.length > 0)
+      : [];
+    this.run();
+  }
+
+  /// Condensed one-liner under the view name. Matches the WPF
+  /// SubtitleText layout: truncated query + entity-type summary.
+  summariseView(v: SavedView): string {
+    const q = (v.q ?? '').trim();
+    const qShort = q.length === 0 ? '(empty)' : (q.length > 40 ? q.slice(0, 40) + '…' : q);
+    const types = v.entityTypes && v.entityTypes.length > 0 ? v.entityTypes : 'all types';
+    return `${qShort} · ${types}`;
+  }
 
   run(): void {
     const q = this.query.trim();
