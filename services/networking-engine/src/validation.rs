@@ -926,6 +926,46 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "port.breakout_parent_on_same_device",
+        name: "Port's breakout parent must be on the same device",
+        description: "A net.port row with breakout_parent_id \
+                      pointing at a port on a different device is \
+                      nonsensical — breakout is a physical \
+                      operation on a single switch's port module. \
+                      FK is schema-wide by design (ON DELETE \
+                      CASCADE) so the constraint must be checked \
+                      explicitly.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "port.aggregate_on_same_device",
+        name: "Port's aggregate_ethernet must be on the same device",
+        description: "Similar to breakout_parent: an aggregate \
+                      ethernet (LACP bundle) is a single-device \
+                      construct. A member port whose \
+                      aggregate_ethernet_id points at an ae on a \
+                      different device won't config-gen correctly.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "aggregate_ethernet.name_unique_per_device",
+        name: "Aggregate ethernet name must be unique per device",
+        description: "Two net.aggregate_ethernet rows with the same \
+                      (device_id, ae_name) make config-gen emit \
+                      duplicate `set interface ae-N ...` stanzas. \
+                      The DB doesn't carry a UNIQUE constraint \
+                      because name swaps during migrations could \
+                      temporarily violate it; this rule flags the \
+                      steady-state case.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1188,6 +1228,9 @@ async fn dispatch(
         "server_nic.target_port_resolves"         => run_server_nic_port_resolves(pool, org_id, severity, out).await,
         "asn_allocation.block_resolves_active"    => run_asn_alloc_block_active(pool, org_id, severity, out).await,
         "server_nic.target_device_matches_port_device" => run_server_nic_device_matches(pool, org_id, severity, out).await,
+        "port.breakout_parent_on_same_device"     => run_port_breakout_same_device(pool, org_id, severity, out).await,
+        "port.aggregate_on_same_device"           => run_port_aggregate_same_device(pool, org_id, severity, out).await,
+        "aggregate_ethernet.name_unique_per_device" => run_ae_name_unique(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -3025,6 +3068,85 @@ async fn run_server_nic_device_matches(
     Ok(())
 }
 
+/// `port.breakout_parent_on_same_device` — breakout is a physical
+/// operation on one switch's port module, so parent must be on the
+/// same device. Self-join on net.port to compare device_id.
+async fn run_port_breakout_same_device(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, Uuid, Uuid)> = sqlx::query_as(
+        "SELECT child.id, child.interface_name, child.device_id, parent.device_id
+           FROM net.port child
+           JOIN net.port parent ON parent.id = child.breakout_parent_id
+          WHERE child.organization_id = $1
+            AND child.deleted_at IS NULL
+            AND child.breakout_parent_id IS NOT NULL
+            AND parent.device_id != child.device_id")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, name, child_dev, parent_dev) in rows {
+        out.push(Violation {
+            rule_code: "port.breakout_parent_on_same_device".into(),
+            severity, entity_type: "Port".into(), entity_id: Some(id),
+            message: format!(
+                "Port '{name}' on device {child_dev} has breakout_parent on device {parent_dev}."),
+        });
+    }
+    Ok(())
+}
+
+/// `port.aggregate_on_same_device` — an ae (LACP bundle) is a
+/// single-device construct; members must be on the same device.
+async fn run_port_aggregate_same_device(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, Uuid, Uuid)> = sqlx::query_as(
+        "SELECT p.id, p.interface_name, p.device_id, ae.device_id
+           FROM net.port p
+           JOIN net.aggregate_ethernet ae ON ae.id = p.aggregate_ethernet_id
+          WHERE p.organization_id = $1
+            AND p.deleted_at IS NULL
+            AND p.aggregate_ethernet_id IS NOT NULL
+            AND ae.device_id != p.device_id")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, name, port_dev, ae_dev) in rows {
+        out.push(Violation {
+            rule_code: "port.aggregate_on_same_device".into(),
+            severity, entity_type: "Port".into(), entity_id: Some(id),
+            message: format!(
+                "Port '{name}' on device {port_dev} bundled into aggregate_ethernet on device {ae_dev}."),
+        });
+    }
+    Ok(())
+}
+
+/// `aggregate_ethernet.name_unique_per_device` — GROUP BY
+/// (device_id, ae_name) HAVING count>1 catches collisions that
+/// would make config-gen emit duplicate `set interface ae-N` lines.
+async fn run_ae_name_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i64, Vec<Uuid>)> = sqlx::query_as(
+        "SELECT device_id, ae_name, COUNT(*) AS n, array_agg(id) AS ids
+           FROM net.aggregate_ethernet
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+          GROUP BY device_id, ae_name
+         HAVING COUNT(*) > 1")
+        .bind(org_id).fetch_all(pool).await?;
+    for (device_id, name, n, ids) in rows {
+        let primary = ids.first().copied();
+        let id_list = ids.iter().map(|id| id.to_string())
+            .collect::<Vec<_>>().join(", ");
+        out.push(Violation {
+            rule_code: "aggregate_ethernet.name_unique_per_device".into(),
+            severity, entity_type: "AggregateEthernet".into(), entity_id: primary,
+            message: format!(
+                "{n} aggregate ethernet rows on device {device_id} share name '{name}': {id_list}."),
+        });
+    }
+    Ok(())
+}
+
 /// `port.interface_name_not_empty` — net.port.interface_name is
 /// NOT NULL but the CHECK doesn't cover the blank-string case.
 /// Empty name breaks config-gen's `set interface ... ...` stanza.
@@ -3281,6 +3403,9 @@ mod tests {
             "server_nic.target_port_resolves",
             "asn_allocation.block_resolves_active",
             "server_nic.target_device_matches_port_device",
+            "port.breakout_parent_on_same_device",
+            "port.aggregate_on_same_device",
+            "aggregate_ethernet.name_unique_per_device",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
