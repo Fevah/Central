@@ -251,10 +251,13 @@ export class NetworkDhcpRelayComponent implements OnInit {
       });
   }
 
+  /// Double-click → relay detail page (Summary + Audit). Audit is
+  /// a tab-click away inside the detail page; matches the pattern
+  /// used by the other entity grids.
   onRowDoubleClick(e: { data: DhcpRelayTargetRow }): void {
     const r = e?.data;
     if (!r?.id) return;
-    this.router.navigate(['/network/audit', 'DhcpRelayTarget', r.id]);
+    this.router.navigate(['/network/net-dhcp-relay', r.id]);
   }
 
   // ─── Create dialog ────────────────────────────────────────────────
