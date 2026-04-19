@@ -361,6 +361,11 @@ public class MainViewModel : INotifyPropertyChanged
     private bool _isBulkPanelOpen;
     public bool IsBulkPanelOpen { get => _isBulkPanelOpen; set { _isBulkPanelOpen = value; OnPropertyChanged(); } }
 
+    /// <summary>Phase-10 global search — tsvector-backed UNION
+    /// across all six entity types with double-click drill-down.</summary>
+    private bool _isSearchPanelOpen;
+    public bool IsSearchPanelOpen { get => _isSearchPanelOpen; set { _isSearchPanelOpen = value; OnPropertyChanged(); } }
+
     private bool _isSettingsPanelOpen;
     public bool IsSettingsPanelOpen
     {

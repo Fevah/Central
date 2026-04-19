@@ -33,23 +33,25 @@ public class NetworkingRibbonAuditTests
     }
 
     [Fact]
-    public void HasTwelveFunctionalGroupsPlusPanels()
+    public void HasThirteenFunctionalGroupsPlusPanels()
     {
         // Spec: Devices, Switches, Links, Routing, VLANs, Servers,
-        // Governance, Validation, Locks, Audit, Bulk, Panels.
+        // Governance, Validation, Locks, Audit, Search, Bulk, Panels.
         // Locks group: Phase 8f trigger-backed HardLock / Immutable
         // enforcement needs an admin-facing path to apply it; the
         // Locks panel lists currently-locked rows + its ribbon lets
         // admins Change State or Clear Lock on the selection.
-        // Bulk group: Phase 10 bulk surface — Export / Validate / Apply
-        // dispatch to the single BulkPanel covering all six bulk-capable
+        // Search + Bulk: Phase 10 workspaces — Search runs the
+        // tsvector UNION; Bulk dispatches Export / Validate / Apply
+        // to the single BulkPanel covering all six bulk-capable
         // entities.
         var rb = new RibbonBuilder();
         NetworkingRibbonRegistrar.BuildRibbon(rb, 20);
         var groups = rb.Pages[0].Groups.Select(g => g.Header).ToList();
         Assert.Equal(
             new[] { "Devices", "Switches", "Links", "Routing", "VLANs",
-                    "Servers", "Governance", "Validation", "Locks", "Audit", "Bulk", "Panels" },
+                    "Servers", "Governance", "Validation", "Locks", "Audit",
+                    "Search", "Bulk", "Panels" },
             groups);
     }
 
@@ -129,6 +131,8 @@ public class NetworkingRibbonAuditTests
     [InlineData("Bulk",       "Export",           "bulk",       "action:export")]
     [InlineData("Bulk",       "Validate",         "bulk",       "action:validate")]
     [InlineData("Bulk",       "Apply",            "bulk",       "action:apply")]
+    [InlineData("Search",     "Run Search",       "search",     "action:run")]
+    [InlineData("Search",     "Clear",            "search",     "action:clear")]
     public void NavigateButton_PublishesCorrectTargetAndAction(
         string groupHeader, string buttonContent, string expectedPanel, string expectedAction)
     {

@@ -148,6 +148,7 @@ public partial class MainWindow
             if (e.Item == AuditPanel) VM.IsAuditPanelOpen = false;
             if (e.Item == LocksPanel) VM.IsLocksPanelOpen = false;
             if (e.Item == BulkPanel) VM.IsBulkPanelOpen = false;
+            if (e.Item == SearchPanel) VM.IsSearchPanelOpen = false;
             if (e.Item == P2PPanel) VM.IsP2PPanelOpen = false;
             if (e.Item == B2BPanel) VM.IsB2BPanelOpen = false;
             if (e.Item == FWPanel) VM.IsFWPanelOpen = false;
@@ -425,6 +426,12 @@ public partial class MainWindow
                 // BulkPanel is operator-driven — no auto-reload on open
                 // (it has no reloadable state until the user picks an
                 // entity + hits Export / Validate).
+            }
+            if (e.PropertyName == nameof(MainViewModel.IsSearchPanelOpen))
+            {
+                ToggleDockPanel(SearchPanel, VM.IsSearchPanelOpen);
+                // Same pattern — no auto-fetch; empty query returns
+                // nothing so there's nothing useful to prefetch.
             }
             if (e.PropertyName == nameof(MainViewModel.IsMlagPanelOpen))
                 ToggleDockPanel(MlagPanel, VM.IsMlagPanelOpen);
@@ -898,6 +905,8 @@ public partial class MainWindow
             LocksPanelView.SetContext(neUrl, App.CurrentTenantId,
                 AuthContext.Instance.CurrentUser?.Id);
             BulkPanelView.SetContext(neUrl, App.CurrentTenantId,
+                AuthContext.Instance.CurrentUser?.Id);
+            SearchPanelView.SetContext(neUrl, App.CurrentTenantId,
                 AuthContext.Instance.CurrentUser?.Id);
         }
         await Task.Yield(); // Let splash repaint

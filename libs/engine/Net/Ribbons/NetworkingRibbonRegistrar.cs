@@ -36,6 +36,7 @@ public static class NetworkingRibbonRegistrar
     public const string PanelAudit      = "audit";
     public const string PanelLocks      = "locks";
     public const string PanelBulk       = "bulk";
+    public const string PanelSearch     = "search";
 
     public static void BuildRibbon(IRibbonBuilder ribbon, int sortOrder)
     {
@@ -209,6 +210,22 @@ public static class NetworkingRibbonRegistrar
                     () => PanelMessageBus.Publish(new RefreshPanelMessage(PanelAudit)));
             });
 
+            // ── Search (Phase 10) ────────────────────────────────────────
+            // Global search across the 6 tenant-owned entities. Engine
+            // runs `to_tsvector('english'::regconfig, …)` backed by
+            // per-entity partial GIN indexes from migration 107. The
+            // ribbon button publishes a trigger message; SearchPanel
+            // honours the payload when populated ("q:...") or leaves
+            // the existing text in place so operators can click Search
+            // from the ribbon without retyping.
+            page.AddGroup("Search", group =>
+            {
+                group.AddButton("Run Search",  P.DevicesRead,  "FindData_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelSearch, "action:run")));
+                group.AddButton("Clear",       P.DevicesRead,  "Cancel_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelSearch, "action:clear")));
+            });
+
             // ── Bulk (Phase 10) ──────────────────────────────────────────
             // Bulk import / export workspace — drives every entity in the
             // engine's bulk surface (Devices / VLANs / Subnets / Servers /
@@ -241,6 +258,7 @@ public static class NetworkingRibbonRegistrar
                 group.AddCheckButton("Audit",          panelId: "AuditPanel");
                 group.AddCheckButton("Locks",          panelId: "LocksPanel");
                 group.AddCheckButton("Bulk",           panelId: "BulkPanel");
+                group.AddCheckButton("Search",         panelId: "SearchPanel");
                 group.AddCheckButton("IPAM",           panelId: "DevicesPanel");
                 group.AddCheckButton("Device Details", panelId: "DeviceDetailPanel");
                 group.AddCheckButton("Switches",       panelId: "SwitchesPanel");
