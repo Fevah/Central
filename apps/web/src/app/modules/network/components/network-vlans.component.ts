@@ -77,9 +77,12 @@ export class NetworkVlansComponent implements OnInit {
     });
   }
 
+  /// Double-click → VLAN detail (tabbed Summary + Audit + DHCP relays).
+  /// Audit + relay drill both reachable inside the detail page —
+  /// matches the device + server grid UX.
   onRowDoubleClick(e: { data: VlanListRow }): void {
     const row = e?.data;
     if (!row?.id) return;
-    this.router.navigate(['/network/audit', 'Vlan', row.id]);
+    this.router.navigate(['/network/net-vlan', row.id]);
   }
 }
