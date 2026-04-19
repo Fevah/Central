@@ -117,6 +117,24 @@ export interface SubnetListRow {
   version: number;
 }
 
+/// DHCP relay target — matches `DhcpRelayTarget` in
+/// services/networking-engine/src/dhcp_relay.rs. `serverIp` ships as
+/// the bare host string (e.g. `"10.11.120.10"`) via a custom
+/// serialize_with, not the CIDR form.
+export interface DhcpRelayTargetRow {
+  id: string;
+  organizationId: string;
+  vlanId: string;
+  serverIp: string;
+  ipAddressId: string | null;
+  priority: number;
+  status: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  notes: string | null;
+}
+
 /// One violation from the validation rule engine. Matches `Violation`
 /// in services/networking-engine/src/validation.rs.
 export interface Violation {
@@ -350,6 +368,18 @@ export class NetworkingEngineService {
   listSubnets(organizationId: string): Observable<SubnetListRow[]> {
     const params = new HttpParams().set('organizationId', organizationId);
     return this.http.get<SubnetListRow[]>(`${this.base}/api/net/subnets`, { params });
+  }
+
+  /// DHCP relay targets — optionally filter to one VLAN. Requires
+  /// read:DhcpRelayTarget on the caller (engine returns 403 when the
+  /// X-User-Id header is set + caller lacks the grant).
+  listDhcpRelayTargets(
+    organizationId: string,
+    vlanId?: string,
+  ): Observable<DhcpRelayTargetRow[]> {
+    let params = new HttpParams().set('organizationId', organizationId);
+    if (vlanId) params = params.set('vlanId', vlanId);
+    return this.http.get<DhcpRelayTargetRow[]>(`${this.base}/api/net/dhcp-relay-targets`, { params });
   }
 
   /// Bulk validate — POSTs the CSV body to the engine's dry_run
