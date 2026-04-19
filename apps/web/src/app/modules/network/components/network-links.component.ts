@@ -80,9 +80,10 @@ export class NetworkLinksGridComponent implements OnInit {
     });
   }
 
+  /// Double-click → link detail (endpoints + audit).
   onRowDoubleClick(e: { data: LinkListRow }): void {
     const row = e?.data;
     if (!row?.id) return;
-    this.router.navigate(['/network/audit', 'Link', row.id]);
+    this.router.navigate(['/network/net-link', row.id]);
   }
 }
