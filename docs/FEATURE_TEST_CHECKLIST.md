@@ -2892,6 +2892,45 @@ parity on the remaining Phase-10 + Phase-10b read + write surfaces.
 - [ ] `scope_grant.no_duplicate_tuple` (Warning) — GROUP BY resolver key HAVING count>1 across active rows
 - [ ] `change_set.applied_has_no_pending_items` (Warning) — Applied sets with items whose applied_at is NULL
 
+### 7.X.21 Phase 10b — fourth wave (commits 2026-04-19+)
+
+Detail pages, turn-up packs, write flows, full CRUD forms, and the
+legacy-ribbon cleanup that removed pre-merge Devices + Switches tabs.
+
+**Legacy ribbon cleanup** (commit `50a83804a`, migration 108)
+- [ ] `apps/desktop/MainWindow.xaml` — Devices + Switches `<RibbonPage>` blocks removed (~449 lines)
+- [ ] `apps/desktop/MainWindow.xaml.cs` — ApplyRibbonPermissions uses FindName-with-null-check for all permission-gated tabs (no direct field reference to tabs that might not exist in XAML)
+- [ ] Migration 108 — DELETE FROM ribbon_pages WHERE header IN ('Devices','Switches') AND is_system=true. FK cascade drops child ribbon_groups + ribbon_items. user_ribbon_overrides with matching item_key prefix also deleted
+- [ ] Networking module's in-code registrar is the sole source of Devices + Switches ribbon groups under the unified Networking tab
+
+**net.device detail page** (commit `21c14e778`)
+- [ ] `/network/net-device/:id` — tabbed page with Summary / Audit / Renders
+- [ ] Tabs load lazily on first view + cache across switches
+- [ ] Renders tab embeds the same "Render now" trigger + body viewer + diff as the render-history page
+- [ ] Distinct from legacy `/network/devices/:id` which loads the switch_guide editor
+
+**Turn-up pack page** (commit `b1e3d7f6b`)
+- [ ] `/network/render-pack` — Building / Site / Region scope picker + matching hierarchy combo + Run button
+- [ ] Summary cards (total blue / succeeded green / failed red) + rendered grid + errors grid (only when errors.length > 0)
+- [ ] 403 surfaces as "lacks write:{scope}"
+
+**Change-set write flow** (commit `9a244a1da`)
+- [ ] Submit / Apply / Cancel action bar on change-set detail page
+- [ ] Button enablement driven by current status — Draft → Submit, Approved → Apply, non-terminal → Cancel
+- [ ] Apply + Cancel guarded by window.confirm with Set title echoed; Cancel prompts for optional note
+- [ ] Three failure classes: 403 permission, 409 illegal-state-transition, generic RFC 7807
+
+**DHCP relay full CRUD** (commit `ae723cbf6`)
+- [ ] "New target" button + create dialog (VLAN picker + serverIp text + priority number + notes)
+- [ ] Per-row edit / delete icons; edit dialog shows VLAN + serverIp as readonly (unique key of the row)
+- [ ] Delete confirms with VLAN label + serverIp echoed
+- [ ] Failure classes: 403 permission, 409 unique-collision (VLAN × serverIp), 412 stale-version
+
+**Validation rule expansion — batch 11** (commit `b2dfbe2a4`)
+- [ ] `naming_template_override.scope_entity_resolves` (Warning)
+- [ ] `asn_allocation.unique_allocated_to` (Warning)
+- [ ] `port.interface_name_not_empty` (Error)
+
 ---
 
 ## 8. Enterprise SaaS
