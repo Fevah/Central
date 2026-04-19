@@ -292,6 +292,33 @@ export interface PermissionDecision {
   matchedGrantId: string | null;
 }
 
+/// Change-set lifecycle row — matches `ChangeSet` in the engine. Status
+/// values are PascalCase on the wire (`#[serde(rename_all = "PascalCase")]`):
+/// Draft / Submitted / Approved / Rejected / Applied / RolledBack /
+/// Cancelled. `itemCount` is a computed COUNT aggregate, not a
+/// stored column.
+export interface ChangeSet {
+  id: string;
+  organizationId: string;
+  title: string;
+  description: string | null;
+  status: string;
+  requestedBy: number | null;
+  requestedByDisplay: string | null;
+  submittedBy: number | null;
+  submittedAt: string | null;
+  approvedAt: string | null;
+  appliedAt: string | null;
+  rolledBackAt: string | null;
+  cancelledAt: string | null;
+  requiredApprovals: number | null;
+  correlationId: string;
+  version: number;
+  itemCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /// One scope_grant tuple. Matches `ScopeGrantDto` from the engine.
 export interface ScopeGrant {
   id: string;
@@ -445,6 +472,20 @@ export class NetworkingEngineService {
   listSubnets(organizationId: string): Observable<SubnetListRow[]> {
     const params = new HttpParams().set('organizationId', organizationId);
     return this.http.get<SubnetListRow[]>(`${this.base}/api/net/subnets`, { params });
+  }
+
+  /// List change-sets, optionally narrowed to a status. Capped at
+  /// `limit` server-side (default 50 from the engine; 1..=500
+  /// range). Ordered by updated_at DESC so the freshest sit at top.
+  listChangeSets(
+    organizationId: string,
+    status?: string,
+    limit?: number,
+  ): Observable<ChangeSet[]> {
+    let params = new HttpParams().set('organizationId', organizationId);
+    if (status)                   params = params.set('status', status);
+    if (limit !== undefined)      params = params.set('limit',  limit.toString());
+    return this.http.get<ChangeSet[]>(`${this.base}/api/net/change-sets`, { params });
   }
 
   /// DHCP relay targets — optionally filter to one VLAN. Requires

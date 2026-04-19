@@ -31,6 +31,7 @@ import notify from 'devextreme/ui/notify';
       <a routerLink="/network/links-grid" routerLinkActive="active">Links (net.*)</a>
       <a routerLink="/network/subnets" routerLinkActive="active">Subnets</a>
       <a routerLink="/network/dhcp-relay" routerLinkActive="active">DHCP relay</a>
+      <a routerLink="/network/change-sets" routerLinkActive="active">Change sets</a>
       <a routerLink="/network/audit-stats" routerLinkActive="active">Audit stats</a>
       <a routerLink="/network/audit-search" routerLinkActive="active">Audit search</a>
     </div>
