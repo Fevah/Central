@@ -315,6 +315,45 @@ public partial class AuditViewerPanel : UserControl
         StatusLabel.Text = "Filters cleared — hit Run Query to refresh.";
     }
 
+    // ─── Quick date-range chips ────────────────────────────────────────
+    //
+    // Covers the three forensic questions operators reach for
+    // constantly: "what changed in the last hour / last day / last
+    // week". Each button sets From → now-N, To → now, and auto-runs
+    // so it's a one-click filter instead of two DatePicker clicks.
+    // Times land as local; BuildRequest converts to UTC before it
+    // hits the engine (the `ToUniversalTime()` there is the
+    // contract).
+
+    private void OnQuickRange1Hour(object sender, RoutedEventArgs e)
+        => ApplyQuickRange(TimeSpan.FromHours(1), "last hour");
+
+    private void OnQuickRange1Day(object sender, RoutedEventArgs e)
+        => ApplyQuickRange(TimeSpan.FromDays(1), "last 24 hours");
+
+    private void OnQuickRange7Days(object sender, RoutedEventArgs e)
+        => ApplyQuickRange(TimeSpan.FromDays(7), "last 7 days");
+
+    private void OnQuickRange30Days(object sender, RoutedEventArgs e)
+        => ApplyQuickRange(TimeSpan.FromDays(30), "last 30 days");
+
+    private void OnQuickRangeAll(object sender, RoutedEventArgs e)
+    {
+        FromDate.DateTime = DateTime.MinValue;
+        ToDate.DateTime   = DateTime.MinValue;
+        StatusLabel.Text  = "Date range cleared — running…";
+        _ = RunQueryAsync();
+    }
+
+    private void ApplyQuickRange(TimeSpan window, string label)
+    {
+        var now = DateTime.Now;
+        FromDate.DateTime = now - window;
+        ToDate.DateTime   = now;
+        StatusLabel.Text  = $"Date range set to {label} — running…";
+        _ = RunQueryAsync();
+    }
+
     private static string? Empty2Null(string? s)
         => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 

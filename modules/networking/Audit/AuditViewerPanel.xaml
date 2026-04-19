@@ -68,6 +68,7 @@
                     <ColumnDefinition Width="320"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="320"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
@@ -78,6 +79,31 @@
 
                 <TextBlock Grid.Column="2" Text="Correlation:" VerticalAlignment="Center" Margin="10,0,4,0" Foreground="#B0B0B0"/>
                 <TextBox   Grid.Column="3" x:Name="CorrelationBox" FontFamily="Consolas"/>
+
+                <!-- Quick date-range chips — the most common forensic
+                     questions ("what changed in the last hour / day /
+                     week") shouldn't need two DatePicker clicks. Each
+                     button sets From → now-N, To → now, then runs. -->
+                <StackPanel Grid.Column="4" Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="10,0,0,0">
+                    <TextBlock Text="Recent:" VerticalAlignment="Center"
+                               Margin="0,0,6,0" Foreground="#B0B0B0"/>
+                    <Button Content="1h"  Width="40" Margin="0,0,2,0"
+                            Click="OnQuickRange1Hour"
+                            ToolTip="Filter to audit rows from the last hour"/>
+                    <Button Content="24h" Width="40" Margin="0,0,2,0"
+                            Click="OnQuickRange1Day"
+                            ToolTip="Filter to audit rows from the last 24 hours"/>
+                    <Button Content="7d"  Width="40" Margin="0,0,2,0"
+                            Click="OnQuickRange7Days"
+                            ToolTip="Filter to audit rows from the last 7 days"/>
+                    <Button Content="30d" Width="40" Margin="0,0,2,0"
+                            Click="OnQuickRange30Days"
+                            ToolTip="Filter to audit rows from the last 30 days"/>
+                    <Button Content="All" Width="40"
+                            Click="OnQuickRangeAll"
+                            ToolTip="Clear From + To dates — widens to the full tenant-scope set (up to the 500 row cap)"/>
+                </StackPanel>
             </Grid>
         </StackPanel>
 
