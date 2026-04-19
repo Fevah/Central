@@ -5850,12 +5850,17 @@ public partial class MainWindow
     {
         var auth = AuthContext.Instance;
 
-        // Static tabs — gated by module permission
-        AdminRibbonTab.IsVisible = auth.HasPermission("admin:users") || auth.HasPermission("admin:roles");
-
-        // Map tab names to required permissions
+        // Static tabs — gated by module permission. Every tab is
+        // looked up by x:Name via FindName so the code doesn't fail
+        // at compile time when the XAML is rearranged. The Devices
+        // + Switches tabs were removed after migration 083 folded
+        // them into the Networking module's in-code ribbon; their
+        // entries here survive as dead-noops so any lingering user
+        // ribbon override keyed on those tab names just drops
+        // through silently.
         var tabPermissions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
+            ["AdminRibbonTab"]    = "admin:users",
             ["DevicesRibbonTab"]  = "devices:read",
             ["SwitchesRibbonTab"] = "switches:read",
         };
