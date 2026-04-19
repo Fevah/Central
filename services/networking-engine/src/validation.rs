@@ -1142,6 +1142,42 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Error,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "mlag_domain.scope_entity_present_when_non_global",
+        name: "MLAG domain non-Global scope must carry a scope_entity_id",
+        description: "A net.mlag_domain with scope_level != 'Global' \
+                      must have scope_entity_id populated pointing \
+                      at a live row in the matching hierarchy table. \
+                      Mirrors the shape of the earlier \
+                      vlan.scope_entity_resolves rule (batch 8).",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "change_set_item.entity_id_required_for_mutations",
+        name: "Non-Create change-set items must carry an entity_id",
+        description: "A net.change_set_item with action in \
+                      (Update / Delete / Rename) must have entity_id \
+                      set — there's nothing to mutate without a \
+                      target. Only Create allows NULL entity_id (the \
+                      entity doesn't exist yet).",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "port.speed_mbps_positive_when_set",
+        name: "Port speed_mbps should be positive when populated",
+        description: "NULL speed_mbps means unknown / auto-negotiate \
+                      (fine). Zero or negative speed is nonsensical + \
+                      breaks config-gen's speed-override stanza \
+                      emission. Warning because it's recoverable by \
+                      clearing the column to NULL.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1422,6 +1458,9 @@ async fn dispatch(
         "module.slot_unique_per_device"           => run_module_slot_unique(pool, org_id, severity, out).await,
         "mstp_priority_rule.has_steps"            => run_mstp_rule_has_steps(pool, org_id, severity, out).await,
         "reservation_shelf.resource_key_not_empty" => run_shelf_resource_key_not_empty(pool, org_id, severity, out).await,
+        "mlag_domain.scope_entity_present_when_non_global" => run_mlag_scope_entity_present(pool, org_id, severity, out).await,
+        "change_set_item.entity_id_required_for_mutations" => run_cs_item_entity_id_required(pool, org_id, severity, out).await,
+        "port.speed_mbps_positive_when_set"       => run_port_speed_positive(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -3685,6 +3724,79 @@ async fn run_site_display_name(
     Ok(())
 }
 
+/// `mlag_domain.scope_entity_present_when_non_global` — parallel
+/// to vlan.scope_entity_resolves. Non-Global scope_level needs a
+/// populated scope_entity_id.
+async fn run_mlag_scope_entity_present(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32, String)> = sqlx::query_as(
+        "SELECT id, domain_id, scope_level
+           FROM net.mlag_domain
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND scope_level != 'Global'
+            AND scope_entity_id IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, domain_id, scope_level) in rows {
+        out.push(Violation {
+            rule_code: "mlag_domain.scope_entity_present_when_non_global".into(),
+            severity, entity_type: "MlagDomain".into(), entity_id: Some(id),
+            message: format!(
+                "MLAG domain {domain_id} with scope_level='{scope_level}' has no scope_entity_id."),
+        });
+    }
+    Ok(())
+}
+
+/// `change_set_item.entity_id_required_for_mutations` — Update /
+/// Delete / Rename need entity_id; Create may be NULL (entity
+/// doesn't exist yet).
+async fn run_cs_item_entity_id_required(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, Uuid, String)> = sqlx::query_as(
+        "SELECT id, change_set_id, action::text
+           FROM net.change_set_item
+          WHERE organization_id = $1
+            AND action IN ('Update','Delete','Rename')
+            AND entity_id IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, cs_id, action) in rows {
+        out.push(Violation {
+            rule_code: "change_set_item.entity_id_required_for_mutations".into(),
+            severity, entity_type: "ChangeSetItem".into(), entity_id: Some(id),
+            message: format!(
+                "Item in change set {cs_id} has action '{action}' but null entity_id — nothing to mutate."),
+        });
+    }
+    Ok(())
+}
+
+/// `port.speed_mbps_positive_when_set` — NULL is fine (auto-neg);
+/// only check populated rows for positive value.
+async fn run_port_speed_positive(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i64)> = sqlx::query_as(
+        "SELECT id, interface_name, speed_mbps
+           FROM net.port
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND speed_mbps IS NOT NULL
+            AND speed_mbps <= 0")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, name, speed) in rows {
+        out.push(Violation {
+            rule_code: "port.speed_mbps_positive_when_set".into(),
+            severity, entity_type: "Port".into(), entity_id: Some(id),
+            message: format!(
+                "Port '{name}' has speed_mbps={speed} — clear to NULL for auto-negotiate or set a positive value."),
+        });
+    }
+    Ok(())
+}
+
 /// `module.slot_unique_per_device` — GROUP BY (device_id, slot)
 /// HAVING count>1. Slots are physical positions.
 async fn run_module_slot_unique(
@@ -3995,6 +4107,9 @@ mod tests {
             "module.slot_unique_per_device",
             "mstp_priority_rule.has_steps",
             "reservation_shelf.resource_key_not_empty",
+            "mlag_domain.scope_entity_present_when_non_global",
+            "change_set_item.entity_id_required_for_mutations",
+            "port.speed_mbps_positive_when_set",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
