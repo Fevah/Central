@@ -187,6 +187,48 @@ public partial class BulkPanel : UserControl
         StatusLabel.Text = "Cleared.";
     }
 
+    /// <summary>Canonical CSV header for each entity — mirrors the
+    /// Rust engine's `*_COLUMNS` constants in
+    /// `services/networking-engine/src/bulk_import.rs`. Kept in lock-
+    /// step with the engine; if the engine adds a column here needs
+    /// to follow, otherwise Copy header produces a header the
+    /// import rejects. The round-trip integration tests pin the
+    /// other direction (export → import works with the emitted
+    /// header).</summary>
+    private static readonly Dictionary<string, string> CanonicalHeaders = new()
+    {
+        ["Devices"]            = "hostname,role_code,building_code,site_code,management_ip,asn,status,version",
+        ["VLANs"]              = "vlan_id,display_name,description,scope_level,scope_entity_code,template_code,block_code,status",
+        ["Subnets"]            = "subnet_code,display_name,network,vlan_id,pool_code,scope_level,scope_entity_code,status",
+        ["Servers"]            = "hostname,profile_code,building_code,asn,loopback_ip,management_ip,nic_count,status",
+        ["Links"]              = "link_code,link_type,vlan_id,subnet_code,device_a,port_a,ip_a,device_b,port_b,ip_b,status",
+        ["DHCP relay targets"] = "vlan_id,server_ip,priority,linked_ip_address_id,notes,status",
+    };
+
+    /// <summary>Copy the selected entity's canonical CSV header to
+    /// clipboard. Use case: operator wants to build a fresh CSV
+    /// (new-tenant bootstrap, ad-hoc batch) without round-tripping
+    /// an empty export first. Pastes into Excel / a text editor
+    /// as the first row, then they fill in rows under it.</summary>
+    private void OnCopyHeader(object sender, RoutedEventArgs e)
+    {
+        var entityKey = (string)EntityCombo.SelectedItem;
+        if (!CanonicalHeaders.TryGetValue(entityKey, out var header))
+        {
+            StatusLabel.Text = $"No header mapping for entity '{entityKey}'.";
+            return;
+        }
+        try
+        {
+            System.Windows.Clipboard.SetText(header);
+            StatusLabel.Text = $"Copied {entityKey} header ({header.Split(',').Length} columns) to clipboard";
+        }
+        catch (Exception ex)
+        {
+            StatusLabel.Text = $"Copy failed: {ex.Message}";
+        }
+    }
+
     /// <summary>Export the outcomes grid to CSV for offline triage.
     /// When a bulk apply fails on 20 rows out of 500, operators
     /// want to paste the errors into Excel, pivot by error message,
