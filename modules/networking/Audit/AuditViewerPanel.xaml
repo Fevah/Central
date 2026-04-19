@@ -123,6 +123,17 @@
                                AllowEditing="False"
                                RowDoubleClick="OnAuditRowDoubleClick"/>
             </dxg:GridControl.View>
+            <dxg:GridControl.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Show entity in grid"
+                              Click="OnContextShowEntity"
+                              ToolTip="Open the entity panel (Devices / VLANs / Servers / Links) focused on this audit row's entity_id. Reverse of the 'Show audit history' drill."/>
+                    <MenuItem Header="Copy entity id"
+                              Click="OnContextCopyEntityId"/>
+                    <MenuItem Header="Copy correlation id"
+                              Click="OnContextCopyCorrelationId"/>
+                </ContextMenu>
+            </dxg:GridControl.ContextMenu>
             <dxg:GridControl.Columns>
                 <dxg:GridColumn FieldName="SequenceId"    Header="Seq"          Width="50"/>
                 <dxg:GridColumn FieldName="CreatedAt"     Header="At"           Width="150"/>

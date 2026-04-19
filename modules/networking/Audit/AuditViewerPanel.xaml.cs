@@ -169,6 +169,72 @@ public partial class AuditViewerPanel : UserControl
         await DrillIntoSetByCorrelationAsync(cid);
     }
 
+    // ─── Row context menu → entity grid (reverse of the drill
+    // shipped in 8dadcdcc4 — search/grid → audit). When you're
+    // staring at a mutation row and want to see the current state
+    // of what changed, right-click → Show entity in grid. The
+    // target panel opens + scrolls to the row; grids that match
+    // by uuid (Server) hit directly, grids that match by label
+    // (Device / VLAN) need the engine lookup they already do.
+    // ──────────────────────────────────────────────────────────────
+
+    /// <summary>Map engine audit entity_type → WPF panel id. Unmapped
+    /// types (ChangeSet, NamingOverride, etc.) return null — the
+    /// menu action then surfaces "no grid target" in the status
+    /// bar rather than opening something wrong.</summary>
+    private static string? EntityTypeToPanelId(string? entityType) => entityType switch
+    {
+        "Device"          => "devices",
+        "Vlan"            => "vlans",
+        "Server"          => "servers",
+        "Subnet"          => "devices",      // subnets live in IPAM grid
+        "Link"            => "links",
+        "DhcpRelayTarget" => "devices",      // no dedicated panel yet
+        _                 => null,
+    };
+
+    private void OnContextShowEntity(object sender, RoutedEventArgs e)
+    {
+        var disp = AuditGrid.CurrentItem as AuditDisplayRow;
+        if (disp is null) return;
+        var source = _lastResult.FirstOrDefault(r => r.SequenceId == disp.SequenceId);
+        if (source is null) return;
+
+        if (source.EntityId is not Guid eid)
+        {
+            StatusLabel.Text = "Audit row has no entity_id — nothing to drill to.";
+            return;
+        }
+        var target = EntityTypeToPanelId(source.EntityType);
+        if (target is null)
+        {
+            StatusLabel.Text = $"No grid target for entity type '{source.EntityType}'.";
+            return;
+        }
+        PanelMessageBus.Publish(new OpenPanelMessage(target));
+        // Three-segment selectId payload carries both uuid + label
+        // so legacy-id grids (Device / Vlan) can match by label.
+        // Audit rows don't carry a label field — send empty; grids
+        // fall back to "no label" and try uuid-only match.
+        PanelMessageBus.Publish(new NavigateToPanelMessage(
+            target, $"selectId:{eid}:"));
+        StatusLabel.Text = $"Opened {source.EntityType} grid for {eid}";
+    }
+
+    private void OnContextCopyEntityId(object sender, RoutedEventArgs e)
+    {
+        var disp = AuditGrid.CurrentItem as AuditDisplayRow;
+        if (disp is null || string.IsNullOrWhiteSpace(disp.EntityId)) return;
+        try { System.Windows.Clipboard.SetText(disp.EntityId); } catch { /* ignore */ }
+    }
+
+    private void OnContextCopyCorrelationId(object sender, RoutedEventArgs e)
+    {
+        var disp = AuditGrid.CurrentItem as AuditDisplayRow;
+        if (disp is null || string.IsNullOrWhiteSpace(disp.CorrelationId)) return;
+        try { System.Windows.Clipboard.SetText(disp.CorrelationId); } catch { /* ignore */ }
+    }
+
     private async Task DrillIntoSetByCorrelationAsync(Guid correlationId)
     {
         if (string.IsNullOrEmpty(_baseUrl) || _tenantId == Guid.Empty) return;
