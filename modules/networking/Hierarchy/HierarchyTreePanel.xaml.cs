@@ -341,12 +341,39 @@ public partial class HierarchyTreePanel : UserControl
 
             e.Customizations.Add(new BarItemLinkSeparator());
 
+            // Cross-panel drill — mirrors the entity-grid "Show in
+            // hierarchy" context item but in reverse. From a Building
+            // node, drill to the Device grid filtered to rows in
+            // this building. Only Building is wired today; Site /
+            // Region would need a different filter grammar (OR-chain
+            // over multiple buildings) that lives in a follow-up.
+            if (selected.NodeType == "Building")
+            {
+                e.Customizations.Add(MakeButton("Show devices in this building",
+                    () => ShowDevicesInBuilding(selected.Code)));
+            }
+
+            e.Customizations.Add(new BarItemLinkSeparator());
+
             // All six levels are now editable + soft-deletable (Phase 2e).
             e.Customizations.Add(MakeButton($"Edit {selected.NodeType.ToLower()}…",
                 () => _ = OpenEditAsync(selected)));
             e.Customizations.Add(MakeButton($"Delete {selected.NodeType.ToLower()}",
                 () => _ = DeleteAsync(selected)));
         }
+    }
+
+    /// <summary>Publish the OpenPanelMessage + NavigateToPanelMessage
+    /// pair so the Device grid opens filtered to rows in the given
+    /// building code. DeviceGridPanel.OnNavigate handles
+    /// `filterBy:Building:{code}` by setting the grid's FilterString.</summary>
+    private void ShowDevicesInBuilding(string buildingCode)
+    {
+        if (string.IsNullOrWhiteSpace(buildingCode)) return;
+        PanelMessageBus.Publish(new OpenPanelMessage("devices"));
+        PanelMessageBus.Publish(new NavigateToPanelMessage(
+            "devices", $"filterBy:Building:{buildingCode}"));
+        StatusLabel.Text = $"Filtered devices to building '{buildingCode}'";
     }
 
     private static BarButtonItem MakeButton(string text, Action onClick)

@@ -108,18 +108,39 @@ public partial class DeviceGridPanel : System.Windows.Controls.UserControl
     {
         if (msg.TargetPanel != "devices") return;
         if (msg.SelectItem is not string payload) return;
-        if (!payload.StartsWith("selectId:", StringComparison.Ordinal)) return;
 
-        // Payload format: `selectId:{guid}:{label}`. The guid comes
-        // from net.device; label is the hostname. We match by label
-        // because the grid's Id column holds switch_guide's numeric
-        // id, not the net.device uuid.
-        var parts = payload.Split(':', 3);
-        if (parts.Length < 3) return;
-        var label = parts[2];
-        if (string.IsNullOrWhiteSpace(label)) return;
+        // `selectId:{guid}:{label}` — focus a single row
+        if (payload.StartsWith("selectId:", StringComparison.Ordinal))
+        {
+            var parts = payload.Split(':', 3);
+            if (parts.Length < 3) return;
+            var label = parts[2];
+            if (string.IsNullOrWhiteSpace(label)) return;
+            Dispatcher.BeginInvoke(() => FocusByHostname(label));
+            return;
+        }
 
-        Dispatcher.BeginInvoke(() => FocusByHostname(label));
+        // `filterBy:Building:IT-B` — narrow the grid to rows matching
+        // the given column. Pushed from Hierarchy → "Show devices
+        // here" so operators can drill from a building node to the
+        // devices under it.
+        if (payload.StartsWith("filterBy:", StringComparison.Ordinal))
+        {
+            var parts = payload.Split(':', 3);
+            if (parts.Length < 3) return;
+            var column = parts[1];
+            var value  = parts[2];
+            if (string.IsNullOrWhiteSpace(column) || string.IsNullOrWhiteSpace(value)) return;
+            Dispatcher.BeginInvoke(() =>
+            {
+                // DX FilterString uses single-quoted string literals;
+                // escape any ' in the value by doubling it to match
+                // the CriteriaOperator grammar.
+                var safe = value.Replace("'", "''");
+                DevicesGrid.FilterString = $"[{column}] = '{safe}'";
+            });
+            return;
+        }
     }
 
     // ─── Row context menu → audit drill-down ───────────────────────────
