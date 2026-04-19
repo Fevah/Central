@@ -36,6 +36,9 @@
                     <MenuItem Header="Search for this hostname"
                               Click="OnContextSearchFromHere"
                               ToolTip="Open the Search panel pre-populated with this server's hostname"/>
+                    <MenuItem Header="Show in hierarchy"
+                              Click="OnContextShowInHierarchy"
+                              ToolTip="Open the Hierarchy tree scrolled to this server's building"/>
                     <Separator/>
                     <MenuItem Header="Copy id" Click="OnContextCopyId"/>
                 </ContextMenu>

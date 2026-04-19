@@ -120,6 +120,16 @@ public partial class ServerGridPanel : UserControl
         StatusLabel.Text = $"Searched for {row.Hostname}";
     }
 
+    private void OnContextShowInHierarchy(object sender, RoutedEventArgs e)
+    {
+        if (Grid.CurrentItem is not ServerRow row) return;
+        if (string.IsNullOrWhiteSpace(row.BuildingCode)) return;
+        PanelMessageBus.Publish(new OpenPanelMessage("hierarchy"));
+        PanelMessageBus.Publish(new NavigateToPanelMessage(
+            "hierarchy", $"focusBuilding:{row.BuildingCode}"));
+        StatusLabel.Text = $"Focused hierarchy on {row.BuildingCode}";
+    }
+
     public void SetContext(string dsn, Guid tenantId)
     {
         _dsn = dsn;

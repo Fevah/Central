@@ -4771,6 +4771,8 @@ public partial class MainWindow
                     case "devices":     VM.IsDevicesPanelOpen = true; break;
                     case "vlans":       VM.IsVlansPanelOpen = true; break;
                     case "servers":     VM.IsNetServersPanelOpen = true; break;  // net.server grid
+                    // Hierarchy tree — used by entity-grid drill-down
+                    case "hierarchy":   VM.IsHierarchyPanelOpen = true; break;
                 }
             });
         });

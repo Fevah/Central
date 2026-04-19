@@ -188,6 +188,20 @@ public partial class DeviceGridPanel : System.Windows.Controls.UserControl
         PanelMessageBus.Publish(new NavigateToPanelMessage("search", $"q:{row.SwitchName}"));
     }
 
+    /// <summary>Drill to the Hierarchy tree focused on this device's
+    /// Building. Doesn't resolve the device itself to a hierarchy
+    /// node (devices hang off a building, not the tree directly) —
+    /// landing on the building is the useful scope for "what else
+    /// is here".</summary>
+    private void OnContextShowInHierarchy(object sender, RoutedEventArgs e)
+    {
+        if (DevicesGrid.CurrentItem is not DeviceRecord row) return;
+        if (string.IsNullOrWhiteSpace(row.Building)) return;
+        PanelMessageBus.Publish(new OpenPanelMessage("hierarchy"));
+        PanelMessageBus.Publish(new NavigateToPanelMessage(
+            "hierarchy", $"focusBuilding:{row.Building}"));
+    }
+
     /// <summary>Walk the grid's ItemsSource for a DeviceRecord whose
     /// SwitchName matches the incoming hostname (case-insensitive —
     /// PicOS is case-agnostic and operators paste between tools).

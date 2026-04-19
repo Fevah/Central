@@ -71,6 +71,9 @@
                     <MenuItem Header="Search for this hostname"
                               Click="OnContextSearchFromHere"
                               ToolTip="Open the Search panel pre-populated with this hostname — useful for finding related links, subnets, VLANs"/>
+                    <MenuItem Header="Show in hierarchy"
+                              Click="OnContextShowInHierarchy"
+                              ToolTip="Open the Hierarchy tree scrolled to this device's building — useful for 'what else is in this building' scans"/>
                     <Separator/>
                     <MenuItem Header="Copy hostname" Click="OnContextCopyHostname"/>
                 </ContextMenu>

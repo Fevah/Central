@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using Central.Engine.Net.Hierarchy;
+using Central.Engine.Shell;
 using Central.Persistence.Net;
 using DevExpress.Xpf.Bars;
 using DevExpress.Xpf.Grid;
@@ -39,6 +41,103 @@ public partial class HierarchyTreePanel : UserControl
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         TreeView.ShowGridMenu += OnShowGridMenu;
+        // Cross-panel drill-down: entity grids publish
+        // `focusBuilding:{building_code}` (or the other hierarchy
+        // levels) to land the tree focus + expansion on a specific
+        // node. Completes the find-from-anywhere trio: audit drill,
+        // search drill, hierarchy drill.
+        PanelMessageBus.Subscribe<NavigateToPanelMessage>(OnNavigate);
+    }
+
+    /// <summary>Pending focus request from a cross-panel drill-down.
+    /// The tree may not have loaded when the message arrives — if so,
+    /// we stash the request and apply it once ReloadAsync populates
+    /// ItemsSource.</summary>
+    private (string nodeType, string code)? _pendingFocus;
+
+    private void OnNavigate(NavigateToPanelMessage msg)
+    {
+        if (msg.TargetPanel != "hierarchy") return;
+        if (msg.SelectItem is not string payload) return;
+
+        // Payload shape: `focus{NodeType}:{code}` — e.g.
+        // focusBuilding:IT-B, focusSite:IT-R/IT-S. Accepts the five
+        // levels the hierarchy tree exposes.
+        var (nodeType, code) = ParseFocusPayload(payload);
+        if (nodeType is null || code is null) return;
+
+        _pendingFocus = (nodeType, code);
+        Dispatcher.BeginInvoke(ApplyPendingFocus);
+    }
+
+    /// <summary>Parse `focusBuilding:IT-B` into (NodeType, code).
+    /// Returns (null, null) on unknown payload so the caller just
+    /// silently ignores it — matches the error-tolerance pattern
+    /// the other panels' OnNavigate handlers use.</summary>
+    internal static (string? nodeType, string? code) ParseFocusPayload(string payload)
+    {
+        const string prefix = "focus";
+        if (!payload.StartsWith(prefix, StringComparison.Ordinal)) return (null, null);
+        var colon = payload.IndexOf(':');
+        if (colon < prefix.Length) return (null, null);
+
+        var nodeType = payload.Substring(prefix.Length, colon - prefix.Length);
+        var code = payload.Substring(colon + 1);
+        if (string.IsNullOrEmpty(code)) return (null, null);
+        return nodeType switch
+        {
+            "Region" or "Site" or "Building" or "Floor" or "Room" or "Rack"
+                => (nodeType, code),
+            _ => (null, null),
+        };
+    }
+
+    /// <summary>Apply the pending focus to the tree: find the node,
+    /// walk up its ParentId chain to expand every ancestor, set
+    /// FocusedRow. No-op when the tree hasn't populated or the code
+    /// doesn't exist (e.g. operator filtered it out of the parent
+    /// query before drilling).</summary>
+    private void ApplyPendingFocus()
+    {
+        if (_pendingFocus is not { nodeType: var nodeType, code: var code }) return;
+        if (Tree.ItemsSource is not IEnumerable<HierarchyNode> all) return;
+
+        var byId = all.ToDictionary(n => n.Id);
+        var target = all.FirstOrDefault(n => n.NodeType == nodeType && n.Code == code);
+        if (target is null)
+        {
+            StatusLabel.Text = $"No {nodeType.ToLower()} with code '{code}' visible in this tenant";
+            return;
+        }
+
+        // Walk up the parent chain + expand each ancestor so the
+        // target is actually in view. TreeListView's ExpandNode
+        // takes the node's handle; easiest path is a recursive
+        // expand-to-root via ParentId.
+        var expandChain = new List<HierarchyNode>();
+        var cursor = target;
+        while (cursor.ParentId is string pid && byId.TryGetValue(pid, out var parent))
+        {
+            expandChain.Add(parent);
+            cursor = parent;
+        }
+        // Expand from root down so each child has its parent already
+        // materialised in the tree.
+        expandChain.Reverse();
+        foreach (var anc in expandChain)
+        {
+            var handle = TreeView.GetNodeByContent(anc)?.RowHandle;
+            if (handle is int h && h >= 0) TreeView.ExpandNode(h);
+        }
+
+        var focusHandle = TreeView.GetNodeByContent(target)?.RowHandle;
+        if (focusHandle is int fh && fh >= 0)
+        {
+            TreeView.FocusedRowHandle = fh;
+            StatusLabel.Text = $"Focused {nodeType} '{code}' · {DateTime.Now:HH:mm:ss}";
+        }
+
+        _pendingFocus = null;
     }
 
     /// <summary>
@@ -93,6 +192,10 @@ public partial class HierarchyTreePanel : UserControl
             var nodes = BuildNodes(regions, sites, buildings, floors, rooms, racks);
             Tree.ItemsSource = nodes;
             StatusLabel.Text = $"{nodes.Count} nodes · loaded {DateTime.Now:HH:mm:ss}";
+            // Apply any pending cross-panel drill-down focus that
+            // arrived before the tree was populated.
+            if (_pendingFocus is not null)
+                Dispatcher.BeginInvoke(ApplyPendingFocus);
         }
         catch (OperationCanceledException)
         {
