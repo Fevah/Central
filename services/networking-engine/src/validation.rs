@@ -545,6 +545,39 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "link.endpoint_interface_unique_per_device",
+        name: "A device's interface is used by at most one active link",
+        description: "Two non-deleted endpoints sharing the same device_id + \
+                      interface_name is a physical config error — you can't \
+                      plug two cables into one switch port. Catches the classic \
+                      'operator typo'd the port and linked A to the same port \
+                      twice' bug that bulk import is silent about.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "dhcp_relay_target.unique_per_vlan_ip",
+        name: "DHCP relay (vlan, server_ip) pairs unique per tenant",
+        description: "Two non-deleted dhcp_relay_target rows sharing both \
+                      vlan_id and server_ip add no value but double every \
+                      config-gen emission + break the bulk-import dup-check \
+                      if the CRUD path was used to insert a duplicate.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "device_role.display_name_not_empty",
+        name: "Device role display names must be non-empty",
+        description: "Role with an empty display_name renders as a blank row \
+                      in device pickers + naming-override dialogs. Integrity \
+                      twin of device_role.naming_template_not_empty.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -777,6 +810,9 @@ async fn dispatch(
         "asn_pool.range_not_empty"             => run_asn_pool_range(pool, org_id, severity, out).await,
         "mlag_domain_pool.range_not_empty"     => run_mlag_pool_range(pool, org_id, severity, out).await,
         "link_type.naming_template_not_empty"  => run_link_type_template_set(pool, org_id, severity, out).await,
+        "link.endpoint_interface_unique_per_device" => run_link_endpoint_interface_unique(pool, org_id, severity, out).await,
+        "dhcp_relay_target.unique_per_vlan_ip"  => run_dhcp_relay_target_unique(pool, org_id, severity, out).await,
+        "device_role.display_name_not_empty"    => run_device_role_display_name_set(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -1887,6 +1923,103 @@ async fn run_server_profile_template_set(
     Ok(())
 }
 
+/// `link.endpoint_interface_unique_per_device` — detects two non-deleted
+/// endpoints on the same device sharing an interface_name. Physical
+/// reality: one port = one cable = one active link. GROUP BY on
+/// (device_id, interface_name) with HAVING count > 1 finds every
+/// duplicated tuple; we surface the link that was inserted second
+/// (MIN returns the earliest id, so the 'offending' one is whatever
+/// isn't the min — report the latest so operators fix forward).
+async fn run_link_endpoint_interface_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, Option<String>, i64)> = sqlx::query_as(
+        "SELECT e.link_id,
+                d.hostname,
+                e.interface_name,
+                COUNT(*) OVER (PARTITION BY e.device_id, e.interface_name) AS dupes
+           FROM net.link_endpoint e
+           JOIN net.device d ON d.id = e.device_id AND d.deleted_at IS NULL
+          WHERE e.organization_id = $1
+            AND e.deleted_at IS NULL
+            AND e.interface_name IS NOT NULL
+            AND btrim(e.interface_name) <> ''
+          ORDER BY e.device_id, e.interface_name, e.created_at")
+        .bind(org_id).fetch_all(pool).await?;
+    // Report only once per (device, interface) — the COUNT() window
+    // gives every row its group size, but we only want to flag each
+    // duplicate group, not every member.
+    let mut seen: std::collections::HashSet<(String, String)> = std::collections::HashSet::new();
+    for (link_id, host, iface, dupes) in rows {
+        if dupes < 2 { continue; }
+        let iface_s = iface.unwrap_or_default();
+        if !seen.insert((host.clone(), iface_s.clone())) { continue; }
+        out.push(Violation {
+            rule_code: "link.endpoint_interface_unique_per_device".into(),
+            severity, entity_type: "Link".into(), entity_id: Some(link_id),
+            message: format!(
+                "{dupes} active links share interface '{iface_s}' on device '{host}' — one port, one cable."),
+        });
+    }
+    Ok(())
+}
+
+/// `dhcp_relay_target.unique_per_vlan_ip` — detects duplicate
+/// (vlan_id, server_ip) rows. The bulk importer checks this on
+/// create in upsert mode, but the CRUD endpoint / direct SQL can
+/// slip duplicates past. Reports each pair once.
+async fn run_dhcp_relay_target_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, Option<i32>, String, i64)> = sqlx::query_as(
+        "SELECT drt.id,
+                v.vlan_id,
+                host(drt.server_ip) AS server_ip,
+                COUNT(*) OVER (PARTITION BY drt.vlan_id, drt.server_ip) AS dupes
+           FROM net.dhcp_relay_target drt
+           LEFT JOIN net.vlan v ON v.id = drt.vlan_id AND v.deleted_at IS NULL
+          WHERE drt.organization_id = $1 AND drt.deleted_at IS NULL
+          ORDER BY drt.vlan_id, drt.server_ip, drt.created_at")
+        .bind(org_id).fetch_all(pool).await?;
+    let mut seen: std::collections::HashSet<(Option<i32>, String)> = std::collections::HashSet::new();
+    for (id, vid, ip, dupes) in rows {
+        if dupes < 2 { continue; }
+        if !seen.insert((vid, ip.clone())) { continue; }
+        let vid_s = vid.map(|n| n.to_string()).unwrap_or_else(|| "?".into());
+        out.push(Violation {
+            rule_code: "dhcp_relay_target.unique_per_vlan_ip".into(),
+            severity, entity_type: "DhcpRelayTarget".into(), entity_id: Some(id),
+            message: format!(
+                "{dupes} dhcp_relay_target rows share vlan {vid_s} + server_ip {ip}."),
+        });
+    }
+    Ok(())
+}
+
+/// `device_role.display_name_not_empty` — a role with a blank
+/// display_name still renders in pickers but as an empty row, which
+/// operators reach for but can't tell apart. Integrity twin of the
+/// naming_template_not_empty rule shipped earlier.
+async fn run_device_role_display_name_set(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, role_code
+           FROM net.device_role
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND (display_name IS NULL OR btrim(display_name) = '')")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "device_role.display_name_not_empty".into(),
+            severity, entity_type: "DeviceRole".into(), entity_id: Some(id),
+            message: format!(
+                "Role '{code}' has no display_name — renders as a blank row in pickers."),
+        });
+    }
+    Ok(())
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -2006,6 +2139,9 @@ mod tests {
             "mlag_domain_pool.range_not_empty",
             "link_type.naming_template_not_empty",
             "server_profile.naming_template_not_empty",
+            "link.endpoint_interface_unique_per_device",
+            "dhcp_relay_target.unique_per_vlan_ip",
+            "device_role.display_name_not_empty",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
