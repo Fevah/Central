@@ -3137,6 +3137,61 @@ batches (84 → 99).
 - [ ] Batch 19 (93→96): module.slot_unique_per_device, mstp_priority_rule.has_steps, reservation_shelf.resource_key_not_empty.
 - [ ] Batch 20 (96→99): mlag_domain.scope_entity_present_when_non_global, change_set_item.entity_id_required_for_mutations, port.speed_mbps_positive_when_set.
 
+### 7.X.26 Phase 10b — ninth wave (commits 2026-04-19+)
+
+VLAN + ASN block availability grids, ASN allocations grid, AE /
+module / port / room / rack detail pages, change-set rollback,
+validation batches 21-23 (99 → 108).
+
+**Block availability grids** (commit `98bc53f47`)
+- [ ] `/network/vlan-blocks` + `/network/asn-blocks` use the
+      existing engine thin lists with correlated-subquery
+      availability counts. Amber tint on rows < 10% remaining.
+
+**ASN allocations grid** (commit `c4e02bf46`)
+- [ ] GET /api/net/asn-allocations with LEFT JOIN net.device /
+      net.server for targetDisplay.
+- [ ] `/network/asn-allocations` grouped by blockCode, ordered
+      asn ASC so gaps show.
+
+**Aggregate-ethernet detail** (commit `a24448522`)
+- [ ] `/network/aggregate-ethernet/:id` Summary + Members tabs.
+- [ ] Members filtered from the ports thin list by
+      aggregateEthernetId (new field on PortListRow).
+- [ ] Subtitle shows amber "under-populated" flag when
+      memberCount < minLinks.
+
+**Module detail** (commit `8948ab95a`)
+- [ ] `/network/module/:id` Summary only (no audit yet since
+      net.module doesn't emit audit_entry rows).
+- [ ] Device row carried as a clickable link for round-trip.
+
+**Port detail + Usage tab** (commit `9ea9b5efb`)
+- [ ] `/network/port/:id` Summary + Audit + Usage tabs.
+- [ ] Usage cross-references the tenant link-endpoints + server-
+      nics thin lists, filtering client-side by device hostname +
+      interface name. Empty-state notes when either list is empty.
+
+**Room + rack detail pages** (commit `4c09546e3`)
+- [ ] New GET /api/net/rooms + /api/net/racks thin lists with
+      optional narrowers (floorId / roomId).
+- [ ] `/network/room/:id` Summary + Racks tabs; double-click a
+      rack drills to rack detail.
+- [ ] `/network/rack/:id` Summary only (no devices tab yet —
+      devices tie to building not rack in the current schema).
+- [ ] Full hierarchy chain reachable: region → site → building
+      → floor → room → rack.
+
+**Change-set rollback** (commit `a61497d4c`)
+- [ ] "Roll back" button on change-set detail action bar,
+      gated on Applied status. Confirmation dialog explains the
+      reverse-order execution semantics.
+
+**Validation rule expansion — batches 21-23** (commits `743ad4749` + `f9507ee98` + `63949d419`)
+- [ ] Batch 21 (99→102): naming_template_override.template_not_empty, ip_pool.network_is_network_address, loopback.active_has_ip_address.
+- [ ] Batch 22 (102→105): loopback.number_unique_per_device, vlan_template.code_unique_per_tenant, subnet.active_scope_entity_resolves.
+- [ ] Batch 23 (105→108): rack.uheight_positive, room.max_racks_positive_when_set, vlan_template.display_name_not_empty.
+
 ---
 
 ## 8. Enterprise SaaS
