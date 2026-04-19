@@ -19,6 +19,7 @@ import notify from 'devextreme/ui/notify';
       <a routerLink="/network" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Overview</a>
       <a routerLink="/network/links" routerLinkActive="active" *ngIf="modules.isEnabled('links')">Links</a>
       <a routerLink="/network/bgp"   routerLinkActive="active" *ngIf="modules.isEnabled('routing')">BGP</a>
+      <a routerLink="/network/search" routerLinkActive="active">Search</a>
     </div>
 
     <!-- Summary cards -->

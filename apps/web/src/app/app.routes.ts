@@ -42,6 +42,8 @@ export const routes: Routes = [
           { path: 'bgp',             canActivate: [moduleGuard('routing')],
             loadComponent: () => import('./modules/network/components/bgp-peers.component').then(m => m.BgpPeersComponent) },
           { path: 'search',          loadComponent: () => import('./modules/network/components/network-search.component').then(m => m.NetworkSearchComponent) },
+          { path: 'audit/:entityType/:entityId',
+            loadComponent: () => import('./modules/network/components/network-audit-timeline.component').then(m => m.NetworkAuditTimelineComponent) },
         ]
       },
 

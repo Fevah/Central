@@ -182,18 +182,20 @@ export class NetworkSearchComponent implements OnInit {
   }
 
   /// Drill into the entity detail route. Only Device has a detail
-  /// page in the web client today; everything else will eventually
-  /// grow one. Unmapped entity types surface a status hint rather
-  /// than a broken navigation.
+  /// page in the web client today; everything else falls through
+  /// to the audit timeline so operators at least see what changed
+  /// on the row.
   onRowDoubleClick(e: { data: SearchResult }): void {
     const row = e?.data;
     if (!row) return;
-    const route = this.entityTypeToRoute(row.entityType);
-    if (!route) {
-      this.status = `No detail route for entity type '${row.entityType}'.`;
+    const detailRoute = this.entityTypeToRoute(row.entityType);
+    if (detailRoute) {
+      this.router.navigate([detailRoute, row.id]);
       return;
     }
-    this.router.navigate([route, row.id]);
+    // Fallback: audit timeline is always available for any entity
+    // type the engine audits.
+    this.router.navigate(['/network/audit', row.entityType, row.id]);
   }
 
   private entityTypeToRoute(entityType: string): string | null {
