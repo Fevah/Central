@@ -3041,6 +3041,53 @@ dialog, and two validation batches (75 → 78).
 - [ ] `asn_allocation.block_resolves_active` (Error)
 - [ ] `server_nic.target_device_matches_port_device` (Warning)
 
+### 7.X.24 Phase 10b — seventh wave (commits 2026-04-19+)
+
+Closes the entity-detail set (last three entity types + three
+hierarchy levels get detail pages), adds chain-level thin lists
+(server-nics / link-endpoints / ports), wires hierarchy tree
+drill, and ships two more validation batches (84 rules total).
+
+**Chain-level thin lists + detail-page tabs** (commits `e6471f9b3` + `ff7a3f0fc` + `141f2ad96` + `612be5519`)
+- [ ] GET /api/net/server-nics with optional serverId narrower.
+      Surfaces server hostname / target device hostname / port
+      interface / IP host / MAC via LEFT JOIN. NICs tab on server
+      detail page groups by mlagSide by default.
+- [ ] GET /api/net/link-endpoints with optional linkId narrower.
+      Resolves device hostname / port interface (from net.port)
+      / free-text fallback / IP / VLAN tag. Endpoints tab on
+      link detail page sorts on endpoint_order ASC.
+- [ ] GET /api/net/ports with optional deviceId narrower. Ports
+      tab on device detail grouped by interfacePrefix (xe/ge/et).
+- [ ] Tenant-wide /network/ports page reuses the same thin list
+      without narrower; grouped by deviceHostname. Double-click
+      drills to owning device detail.
+
+**Entity + hierarchy detail pages** (commits `e4e6bd5f8` + `8fa342397` + `f4974d37f` + `ee0366135` + `daa8eb069`)
+- [ ] DHCP relay detail at /network/net-dhcp-relay/:id with
+      Summary (VLAN as clickable link) + Audit tabs.
+- [ ] Building detail at /network/building/:id with Summary +
+      Devices (filtered by buildingCode) + Servers tabs. Eager
+      loads both lists so Summary counts are populated on arrival.
+- [ ] Site detail at /network/site/:id with Summary + Buildings
+      tab. Uses listBuildings(siteId) narrower.
+- [ ] Region detail at /network/region/:id with Summary + Sites
+      tab. Uses listSites(regionId) narrower.
+- [ ] Hierarchy tree's row double-click drills to the matching
+      detail page: Region → /network/region, Site → /network/site,
+      Building → /network/building. Floor falls back to audit
+      timeline (no floor detail page yet).
+
+**Validation rule expansion — batch 14** (commit `2f06aa444`)
+- [ ] `port.breakout_parent_on_same_device` (Error)
+- [ ] `port.aggregate_on_same_device` (Error)
+- [ ] `aggregate_ethernet.name_unique_per_device` (Error)
+
+**Validation rule expansion — batch 15** (commit `61ce354cf`)
+- [ ] `change_set.submitted_has_items` (Warning)
+- [ ] `reservation_shelf.cooldown_respected` (Warning)
+- [ ] `vlan_block.range_within_pool` (Error)
+
 ---
 
 ## 8. Enterprise SaaS
