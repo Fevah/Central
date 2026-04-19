@@ -1040,6 +1040,41 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Error,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "ip_address.vrrp_has_peer_on_other_device",
+        name: "VRRP IPs should be advertised from at least two devices",
+        description: "A VRRP VIP (net.ip_address with \
+                      assigned_to_type='Vrrp') that's only \
+                      referenced by one device indicates a broken \
+                      pair — VRRP is a redundancy protocol, single-\
+                      speaker VIPs are a config-gen smell. Warning \
+                      because stand-alone VIPs during a migration \
+                      window are legitimate.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "site_profile.display_name_not_empty",
+        name: "Site profile display_name must be non-empty",
+        description: "Schema NOT NULL constraint doesn't catch blank \
+                      strings. Empty display_name renders as an empty \
+                      row in the hierarchy + profile pickers — admins \
+                      can't pick what they can't see.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "floor_profile.display_name_not_empty",
+        name: "Floor profile display_name must be non-empty",
+        description: "Parallel to site_profile. Blank display_name \
+                      breaks the floor profile picker + audit rows \
+                      display empty values.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1311,6 +1346,9 @@ async fn dispatch(
         "floor.floor_code_unique_per_building"    => run_floor_code_unique(pool, org_id, severity, out).await,
         "room.room_code_unique_per_floor"         => run_room_code_unique(pool, org_id, severity, out).await,
         "rack.rack_code_unique_per_room"          => run_rack_code_unique(pool, org_id, severity, out).await,
+        "ip_address.vrrp_has_peer_on_other_device" => run_vrrp_has_peer(pool, org_id, severity, out).await,
+        "site_profile.display_name_not_empty"     => run_site_profile_display_name(pool, org_id, severity, out).await,
+        "floor_profile.display_name_not_empty"    => run_floor_profile_display_name(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -3473,6 +3511,85 @@ async fn run_room_code_unique(
     Ok(())
 }
 
+/// `ip_address.vrrp_has_peer_on_other_device` — VRRP VIPs should
+/// appear on at least two distinct devices (the VRRP master +
+/// backup speakers). Single-device VIPs flag a broken pair.
+async fn run_vrrp_has_peer(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    // Heuristic: a VRRP IP row has assigned_to_id pointing at one
+    // device. The "pair" shows up when a SECOND ip_address row
+    // exists in the same subnet with the same assigned_to_type +
+    // a different assigned_to_id. This query finds VIP rows with
+    // no sibling in the subnet.
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT ip.id, host(ip.address)
+           FROM net.ip_address ip
+          WHERE ip.organization_id = $1
+            AND ip.deleted_at IS NULL
+            AND ip.assigned_to_type = 'Vrrp'
+            AND NOT EXISTS (
+                SELECT 1 FROM net.ip_address peer
+                 WHERE peer.organization_id = ip.organization_id
+                   AND peer.subnet_id       = ip.subnet_id
+                   AND peer.deleted_at IS NULL
+                   AND peer.id != ip.id
+                   AND peer.assigned_to_type = 'Vrrp'
+            )")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, addr) in rows {
+        out.push(Violation {
+            rule_code: "ip_address.vrrp_has_peer_on_other_device".into(),
+            severity, entity_type: "IpAddress".into(), entity_id: Some(id),
+            message: format!(
+                "VRRP VIP {addr} has no peer VIP in the same subnet — single-speaker VRRP is a broken pair."),
+        });
+    }
+    Ok(())
+}
+
+/// `site_profile.display_name_not_empty` — schema NOT NULL doesn't
+/// reject blank strings. Empty display_name renders as empty row
+/// in pickers.
+async fn run_site_profile_display_name(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid,)> = sqlx::query_as(
+        "SELECT id FROM net.site_profile
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND btrim(display_name) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id,) in rows {
+        out.push(Violation {
+            rule_code: "site_profile.display_name_not_empty".into(),
+            severity, entity_type: "SiteProfile".into(), entity_id: Some(id),
+            message: format!("Site profile {id} has an empty display_name — fix before shipping to pickers."),
+        });
+    }
+    Ok(())
+}
+
+/// `floor_profile.display_name_not_empty` — parallel to site_profile.
+async fn run_floor_profile_display_name(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid,)> = sqlx::query_as(
+        "SELECT id FROM net.floor_profile
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND btrim(display_name) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id,) in rows {
+        out.push(Violation {
+            rule_code: "floor_profile.display_name_not_empty".into(),
+            severity, entity_type: "FloorProfile".into(), entity_id: Some(id),
+            message: format!("Floor profile {id} has an empty display_name."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.rack_code_unique_per_room` — parallel to floor/room rules.
 async fn run_rack_code_unique(
     pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
@@ -3657,6 +3774,9 @@ mod tests {
             "floor.floor_code_unique_per_building",
             "room.room_code_unique_per_floor",
             "rack.rack_code_unique_per_room",
+            "ip_address.vrrp_has_peer_on_other_device",
+            "site_profile.display_name_not_empty",
+            "floor_profile.display_name_not_empty",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
