@@ -1107,6 +1107,41 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Error,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "module.slot_unique_per_device",
+        name: "Module slot must be unique within a device",
+        description: "Two net.module rows on the same device \
+                      sharing `slot` (e.g. two rows claiming 'fpc0') \
+                      is a data-quality bug — slots are physical \
+                      positions and only one card fits each.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "mstp_priority_rule.has_steps",
+        name: "Active MSTP rules should have at least one step",
+        description: "A net.mstp_priority_rule with zero steps \
+                      emits nothing at config-gen — the rule is a \
+                      name with no behaviour. Warning because the \
+                      rule may be mid-edit; operators ship with \
+                      steps defined in practice.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "reservation_shelf.resource_key_not_empty",
+        name: "Reservation shelf resource_key must be non-empty",
+        description: "A shelf entry with a blank resource_key can't \
+                      be matched by the recycler against the pool \
+                      tables. Rare (schema NOT NULL + usually \
+                      populated by the retire path) but worth the \
+                      guard.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1384,6 +1419,9 @@ async fn dispatch(
         "region.display_name_not_empty"           => run_region_display_name(pool, org_id, severity, out).await,
         "site.display_name_not_empty"             => run_site_display_name(pool, org_id, severity, out).await,
         "building.display_name_not_empty"         => run_building_display_name(pool, org_id, severity, out).await,
+        "module.slot_unique_per_device"           => run_module_slot_unique(pool, org_id, severity, out).await,
+        "mstp_priority_rule.has_steps"            => run_mstp_rule_has_steps(pool, org_id, severity, out).await,
+        "reservation_shelf.resource_key_not_empty" => run_shelf_resource_key_not_empty(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -3647,6 +3685,83 @@ async fn run_site_display_name(
     Ok(())
 }
 
+/// `module.slot_unique_per_device` — GROUP BY (device_id, slot)
+/// HAVING count>1. Slots are physical positions.
+async fn run_module_slot_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i64, Vec<Uuid>)> = sqlx::query_as(
+        "SELECT device_id, slot, COUNT(*) AS n, array_agg(id) AS ids
+           FROM net.module
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+          GROUP BY device_id, slot
+         HAVING COUNT(*) > 1")
+        .bind(org_id).fetch_all(pool).await?;
+    for (device_id, slot, n, ids) in rows {
+        let primary = ids.first().copied();
+        let id_list = ids.iter().map(|id| id.to_string())
+            .collect::<Vec<_>>().join(", ");
+        out.push(Violation {
+            rule_code: "module.slot_unique_per_device".into(),
+            severity, entity_type: "Module".into(), entity_id: primary,
+            message: format!(
+                "{n} modules on device {device_id} claim slot '{slot}': {id_list}."),
+        });
+    }
+    Ok(())
+}
+
+/// `mstp_priority_rule.has_steps` — NOT EXISTS subquery against
+/// net.mstp_priority_rule_step.
+async fn run_mstp_rule_has_steps(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT r.id, r.rule_code
+           FROM net.mstp_priority_rule r
+          WHERE r.organization_id = $1
+            AND r.deleted_at IS NULL
+            AND r.status = 'Active'::net.entity_status
+            AND NOT EXISTS (
+                SELECT 1 FROM net.mstp_priority_rule_step s
+                 WHERE s.rule_id = r.id
+                   AND s.deleted_at IS NULL
+            )")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "mstp_priority_rule.has_steps".into(),
+            severity, entity_type: "MstpPriorityRule".into(), entity_id: Some(id),
+            message: format!(
+                "MSTP rule '{code}' is Active but has no steps defined — config-gen emits nothing."),
+        });
+    }
+    Ok(())
+}
+
+/// `reservation_shelf.resource_key_not_empty` — btrim guard.
+async fn run_shelf_resource_key_not_empty(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, resource_type
+           FROM net.reservation_shelf
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND btrim(resource_key) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, resource_type) in rows {
+        out.push(Violation {
+            rule_code: "reservation_shelf.resource_key_not_empty".into(),
+            severity, entity_type: "ReservationShelf".into(), entity_id: Some(id),
+            message: format!(
+                "Shelf entry ({resource_type}) has an empty resource_key — recycler can't match it."),
+        });
+    }
+    Ok(())
+}
+
 /// `building.display_name_not_empty` — parallel to region + site.
 async fn run_building_display_name(
     pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
@@ -3877,6 +3992,9 @@ mod tests {
             "region.display_name_not_empty",
             "site.display_name_not_empty",
             "building.display_name_not_empty",
+            "module.slot_unique_per_device",
+            "mstp_priority_rule.has_steps",
+            "reservation_shelf.resource_key_not_empty",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
