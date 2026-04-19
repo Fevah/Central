@@ -1187,6 +1187,7 @@ struct PortListRow {
     description: Option<String>,
     port_mode: String,
     native_vlan_id: Option<i32>,
+    aggregate_ethernet_id: Option<Uuid>,
     status: String,
     version: i32,
 }
@@ -1210,6 +1211,7 @@ async fn list_ports(
                 p.description,
                 p.port_mode,
                 p.native_vlan_id,
+                p.aggregate_ethernet_id,
                 p.status::text      AS status,
                 p.version
            FROM net.port p

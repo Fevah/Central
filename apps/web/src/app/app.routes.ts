@@ -64,6 +64,7 @@ export const routes: Routes = [
           { path: 'subnets',         loadComponent: () => import('./modules/network/components/network-subnets.component').then(m => m.NetworkSubnetsComponent) },
           { path: 'ports',           loadComponent: () => import('./modules/network/components/network-ports.component').then(m => m.NetworkPortsComponent) },
           { path: 'aggregate-ethernet', loadComponent: () => import('./modules/network/components/network-aggregate-ethernet.component').then(m => m.NetworkAggregateEthernetComponent) },
+          { path: 'aggregate-ethernet/:id', loadComponent: () => import('./modules/network/components/network-aggregate-ethernet-detail.component').then(m => m.NetworkAggregateEthernetDetailComponent) },
           { path: 'mlag-domains',    loadComponent: () => import('./modules/network/components/network-mlag-domains.component').then(m => m.NetworkMlagDomainsComponent) },
           { path: 'modules',         loadComponent: () => import('./modules/network/components/network-modules.component').then(m => m.NetworkModulesComponent) },
           { path: 'mstp-rules',      loadComponent: () => import('./modules/network/components/network-mstp-rules.component').then(m => m.NetworkMstpRulesComponent) },

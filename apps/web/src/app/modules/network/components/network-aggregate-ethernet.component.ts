@@ -95,9 +95,11 @@ export class NetworkAggregateEthernetComponent implements OnInit {
     }
   };
 
+  /// Double-click → AE detail page (Summary + Members tabs). The
+  /// device drill is reachable via the Summary tab's device link.
   onRowDoubleClick(e: { data: AggregateEthernetListRow }): void {
     const row = e?.data;
-    if (!row?.deviceId) return;
-    this.router.navigate(['/network/net-device', row.deviceId]);
+    if (!row?.id) return;
+    this.router.navigate(['/network/aggregate-ethernet', row.id]);
   }
 }

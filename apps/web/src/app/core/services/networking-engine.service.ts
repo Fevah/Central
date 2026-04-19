@@ -223,7 +223,8 @@ export interface AggregateEthernetListRow {
 /// Device hostname resolved via LEFT JOIN. Natural sort handling
 /// (xe-1/1/2 before xe-1/1/10) is a client-side concern; the
 /// engine just returns alphabetical ORDER BY so `xe-1/1/10` sorts
-/// before `xe-1/1/2` on the wire.
+/// before `xe-1/1/2` on the wire. `aggregateEthernetId` is the
+/// LACP bundle this port joins, null for un-bundled ports.
 export interface PortListRow {
   id: string;
   deviceId: string;
@@ -235,6 +236,7 @@ export interface PortListRow {
   description: string | null;
   portMode: string;
   nativeVlanId: number | null;
+  aggregateEthernetId: string | null;
   status: string;
   version: number;
 }
