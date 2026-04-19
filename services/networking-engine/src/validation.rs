@@ -653,6 +653,45 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "subnet.within_parent_pool_cidr",
+        name: "Subnet CIDR must be contained by its parent pool",
+        description: "Active net.subnet rows must sit inside their \
+                      referenced net.ip_pool's pool_cidr. A subnet \
+                      routed outside the pool leaks allocations past \
+                      the pool's carver invariants; the GIST overlap \
+                      check only enforces no-overlap between subnets, \
+                      not containment within the pool CIDR.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "link.unique_link_code_active",
+        name: "Link code must be unique among active links",
+        description: "Two active net.link rows sharing link_code would \
+                      make cross-panel drill ambiguous and break any \
+                      audit cross-reference that keys on the code. \
+                      The DB doesn't carry a unique constraint because \
+                      soft-deleted rows retain their original code; \
+                      this rule catches the live-collision case.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "device_role.unique_role_code_per_tenant",
+        name: "Device role code must be unique per tenant",
+        description: "Two net.device_role rows sharing role_code within \
+                      a tenant make naming-template resolution + the \
+                      role picker non-deterministic. Active + \
+                      soft-deleted collisions both count because the \
+                      picker queries across the deleted_at filter \
+                      during 'show deleted' audits.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -894,6 +933,9 @@ async fn dispatch(
         "link.endpoint_devices_resolve"          => run_link_endpoint_devices_resolve(pool, org_id, severity, out).await,
         "subnet.active_subnet_has_pool"          => run_active_subnet_has_pool(pool, org_id, severity, out).await,
         "server.active_has_building"             => run_active_server_has_building(pool, org_id, severity, out).await,
+        "subnet.within_parent_pool_cidr"         => run_subnet_within_pool_cidr(pool, org_id, severity, out).await,
+        "link.unique_link_code_active"           => run_link_unique_code_active(pool, org_id, severity, out).await,
+        "device_role.unique_role_code_per_tenant" => run_device_role_unique_code(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -2247,6 +2289,93 @@ async fn run_active_server_has_building(
     Ok(())
 }
 
+/// `subnet.within_parent_pool_cidr` — Active subnets must be
+/// contained by their parent pool's pool_cidr. Uses the `<<=`
+/// inet operator ("is contained by or equal to") so a subnet
+/// equal to the pool CIDR is allowed (a pool of one subnet).
+async fn run_subnet_within_pool_cidr(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String, String)> = sqlx::query_as(
+        "SELECT sn.id, sn.subnet_code, sn.network::text, p.pool_cidr::text
+           FROM net.subnet sn
+           JOIN net.ip_pool p ON p.id = sn.pool_id
+          WHERE sn.organization_id = $1
+            AND sn.deleted_at IS NULL
+            AND sn.status = 'Active'::net.entity_status
+            AND NOT (sn.network <<= p.pool_cidr)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, network, pool_cidr) in rows {
+        out.push(Violation {
+            rule_code: "subnet.within_parent_pool_cidr".into(),
+            severity, entity_type: "Subnet".into(), entity_id: Some(id),
+            message: format!(
+                "Subnet '{code}' ({network}) is not contained by its pool CIDR {pool_cidr}."),
+        });
+    }
+    Ok(())
+}
+
+/// `link.unique_link_code_active` — GROUP BY link_code HAVING count>1
+/// across active links only. Collapses multi-row collisions into one
+/// violation per code with a comma-joined id list in the message so
+/// operators can jump straight to the duplicates.
+async fn run_link_unique_code_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(String, i64, Vec<Uuid>)> = sqlx::query_as(
+        "SELECT link_code, COUNT(*) AS n, array_agg(id) AS ids
+           FROM net.link
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND status = 'Active'::net.entity_status
+       GROUP BY link_code
+         HAVING COUNT(*) > 1")
+        .bind(org_id).fetch_all(pool).await?;
+    for (code, n, ids) in rows {
+        // Surface the first id as the violation's entity_id so drill
+        // lands somewhere; all ids go in the message.
+        let primary = ids.first().copied();
+        let id_list = ids.iter()
+            .map(|id| id.to_string()).collect::<Vec<_>>().join(", ");
+        out.push(Violation {
+            rule_code: "link.unique_link_code_active".into(),
+            severity, entity_type: "Link".into(), entity_id: primary,
+            message: format!(
+                "Link code '{code}' is shared by {n} active links: {id_list}."),
+        });
+    }
+    Ok(())
+}
+
+/// `device_role.unique_role_code_per_tenant` — GROUP BY role_code
+/// HAVING count>1, ignoring deleted_at (collisions across
+/// active/deleted still break the role picker during 'show deleted'
+/// audits).
+async fn run_device_role_unique_code(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(String, i64, Vec<Uuid>)> = sqlx::query_as(
+        "SELECT role_code, COUNT(*) AS n, array_agg(id) AS ids
+           FROM net.device_role
+          WHERE organization_id = $1
+       GROUP BY role_code
+         HAVING COUNT(*) > 1")
+        .bind(org_id).fetch_all(pool).await?;
+    for (code, n, ids) in rows {
+        let primary = ids.first().copied();
+        let id_list = ids.iter()
+            .map(|id| id.to_string()).collect::<Vec<_>>().join(", ");
+        out.push(Violation {
+            rule_code: "device_role.unique_role_code_per_tenant".into(),
+            severity, entity_type: "DeviceRole".into(), entity_id: primary,
+            message: format!(
+                "Role code '{code}' is shared by {n} device_role rows: {id_list}."),
+        });
+    }
+    Ok(())
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -2375,6 +2504,9 @@ mod tests {
             "link.endpoint_devices_resolve",
             "subnet.active_subnet_has_pool",
             "server.active_has_building",
+            "subnet.within_parent_pool_cidr",
+            "link.unique_link_code_active",
+            "device_role.unique_role_code_per_tenant",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
