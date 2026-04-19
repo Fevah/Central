@@ -60,6 +60,8 @@ export const routes: Routes = [
           { path: 'floor/:id',       loadComponent: () => import('./modules/network/components/network-floor-detail.component').then(m => m.NetworkFloorDetailComponent) },
           { path: 'room/:id',        loadComponent: () => import('./modules/network/components/network-room-detail.component').then(m => m.NetworkRoomDetailComponent) },
           { path: 'rack/:id',        loadComponent: () => import('./modules/network/components/network-rack-detail.component').then(m => m.NetworkRackDetailComponent) },
+          { path: 'rooms',           loadComponent: () => import('./modules/network/components/network-rooms.component').then(m => m.NetworkRoomsComponent) },
+          { path: 'racks',           loadComponent: () => import('./modules/network/components/network-racks.component').then(m => m.NetworkRacksComponent) },
           { path: 'vlans',           loadComponent: () => import('./modules/network/components/network-vlans.component').then(m => m.NetworkVlansComponent) },
           { path: 'servers',         loadComponent: () => import('./modules/network/components/network-servers.component').then(m => m.NetworkServersComponent) },
           { path: 'links-grid',      loadComponent: () => import('./modules/network/components/network-links.component').then(m => m.NetworkLinksGridComponent) },
