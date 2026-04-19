@@ -3218,6 +3218,108 @@ on floor, tenant-wide rooms + racks grids), validation batch 24.
       link.endpoint_count (catches < 2)
 - [ ] `floor.building_resolves_active` (Error)
 
+### 7.X.28 Phase 10b — eleventh wave (commits 2026-04-19+)
+
+ApiClient parity, tenant overview dashboard, subnet carver
+preview (engine + web), change-set item delete, validation
+batches 25 + 26 completing the "device-child lifecycle
+resolves" family.
+
+**C# ApiClient parity for Phase 10b endpoints** (commit `82114e518`)
+- [ ] `libs/api-client/NetworkingEngineClient.cs` exposes 13 new
+      list wrappers: ListIpAddressesAsync, ListPortsAsync,
+      ListAggregateEthernetAsync, ListMlagDomainsAsync,
+      ListModulesAsync, ListMstpRulesAsync,
+      ListReservationShelfAsync, ListAsnAllocationsAsync,
+      ListRoomsAsync, ListRacksAsync, ListLinkEndpointsAsync,
+      ListServerNicsAsync, WhoAmIAsync.
+- [ ] Naming override CRUD: ListNamingOverridesAsync,
+      CreateNamingOverrideAsync, UpdateNamingOverrideAsync
+      (PUT with body), DeleteNamingOverrideAsync + matching
+      DTOs.
+- [ ] ResolveNamingAsync posts ResolveNamingRequest and returns
+      NamingResolveResponseDto (template + Source tier +
+      OverrideId).
+- [ ] Solution builds with 0 errors; pre-existing engine-lib
+      warnings unchanged.
+
+**Tenant overview dashboard** (commit `50fd991dc`)
+- [ ] `/network/overview` reachable under the /network module
+      route (moduleGuard('switches')).
+- [ ] Primary row: Devices / Servers / VLANs / Links / Subnets /
+      IP addresses tiles — click drills to matching grid.
+- [ ] Secondary row: Ports / Aggregate-ethernet / Modules /
+      DHCP relay targets.
+- [ ] Numbering row: ASN allocations / VLAN blocks / ASN blocks /
+      MLAG domains / MSTP rules / Reservation shelf.
+- [ ] Hierarchy row: Rooms / Racks.
+- [ ] Governance row: Change sets / Scope grants / Locks.
+- [ ] Validation summary card set: rules run / with findings /
+      total / errors (red) / warnings (amber). Click drills to
+      /network/validation.
+- [ ] Top-5 violating rules table — severity colour-coded.
+- [ ] Refresh button reloads counts; Run validation button
+      re-runs the full catalog and updates cards + table.
+
+**Engine subnet carver preview** (commit `4df55361d`)
+- [ ] `POST /api/net/allocate/subnet/preview` with body
+      `{ poolId, organizationId, prefixLength }` returns
+      `{ poolId, poolCidr, poolPrefixLength,
+         requestedPrefixLength, candidateCidr, isIpv6 }`
+      without inserting net.subnet.
+- [ ] 404 on unknown poolId; 409 on prefix out of range OR
+      pool exhausted.
+- [ ] Read-only transaction — does NOT take the pool advisory
+      lock (allocate_subnet still does when committing for
+      real).
+- [ ] 295/295 engine unit tests pass; no new test added
+      (pure-carver coverage already exhaustive via
+      find_free_aligned_v4/_v6).
+
+**Web subnet carver preview UI** (commit `9abc6c3ff`)
+- [ ] `/network/carver-preview` page with pool select +
+      prefix-length NumberBox + Preview + Clear buttons.
+- [ ] Selecting an IPv6 pool bumps prefix to 64 (from 24);
+      selecting IPv4 bumps back down to 24 if prefix > 32.
+- [ ] Pool-info bar shows pool CIDR + family pill once a pool
+      is selected.
+- [ ] Result card renders candidate CIDR in a 28px monospace
+      hero with family / pool-prefix / requested-prefix meta.
+- [ ] 409 from the engine flows into the status line
+      (red/error colouring); result card clears.
+- [ ] Page is a pure dry-run — says so explicitly in hint text.
+
+**Change-set item delete** (commit `b42fc5d1c`)
+- [ ] `DELETE /api/net/change-sets/:id/items/:item_id`
+      (?organizationId=…) soft-deletes the item row + audits
+      "ItemRemoved" with the Set's correlation_id.
+- [ ] Parent-status guard: non-Draft Sets reject delete with
+      400 + current-status message.
+- [ ] 404 on unknown setId OR itemId.
+- [ ] Web change-set detail page: Items grid has a per-row
+      Remove button only when status === 'Draft'; confirmation
+      prompt; optimistic strip on success; full-reload via
+      ngOnInit on failure.
+- [ ] Engine change_sets tests: 7/7 pass (no delta).
+
+**Validation rule expansion — batch 25** (commit `bc0f49de6`)
+- [ ] `room.floor_resolves_active` (Error) — room's floor must
+      be live + Active.
+- [ ] `rack.room_resolves_active` (Error) — rack's room must be
+      live + Active.
+- [ ] `port.device_resolves_active` (Error) — port's device
+      must be live + Active.
+
+**Validation rule expansion — batch 26** (commit `4db6df3bb`)
+- [ ] `module.device_resolves_active` (Error) — module's
+      device must be live + Active.
+- [ ] `loopback.device_resolves_active` (Error) — loopback's
+      device must be live + Active (stranded /32 signal).
+- [ ] `aggregate_ethernet.device_resolves_active` (Error) — AE
+      bundle's device must be live + Active.
+- [ ] Catalog now at 119 rules; guardrail test
+      `dispatcher_has_arm_for_every_catalog_rule` still green.
+
 ---
 
 ## 8. Enterprise SaaS
