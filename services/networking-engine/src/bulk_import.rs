@@ -584,9 +584,24 @@ fn validate_device_row(
 
 /// Column order mirrors `bulk_export::export_vlans_csv` so exports
 /// round-trip cleanly through the import.
+/// Column order mirrors `bulk_export::export_vlans_csv`.
+///
+/// `scope_entity_code` is the human-readable path to the row's scope
+/// entity — shape depends on `scope_level`:
+///
+///   Free     → empty
+///   Region   → REGION_CODE                    (unique per tenant)
+///   Site     → REGION_CODE/SITE_CODE          (site unique per region)
+///   Building → BUILDING_CODE                  (unique per tenant)
+///   Device   → DEVICE_HOSTNAME                (unique per tenant)
+///
+/// Mirrors the subnet importer's compound-code shape but with VLAN's
+/// own scope list (VLAN's CHECK constraint in migration 086 allows
+/// Free/Region/Site/Building/Device — not Floor/Room, since a Floor
+/// isn't a meaningful L2 boundary).
 const VLAN_COLUMNS: &[&str] = &[
     "vlan_id", "display_name", "description", "scope_level",
-    "template_code", "block_code", "status",
+    "scope_entity_code", "template_code", "block_code", "status",
 ];
 
 /// Validate + optionally apply a CSV bulk import of VLANs. Same
@@ -642,6 +657,45 @@ pub async fn import_vlans(
     let template_code_to_id: std::collections::HashMap<String, Uuid> =
         template_rows.into_iter().map(|(id, c)| (c, id)).collect();
 
+    // Hierarchy + device catalogs for scope_entity_code resolution.
+    // Same pattern as the subnet importer's Region/Site/Building
+    // maps, plus a Device map (VLAN's scope list includes Device
+    // rather than Floor/Room — a device-scoped VLAN only exists
+    // on that one switch). Hostname is globally unique per tenant
+    // (migration 088, UNIQUE (org, hostname)) so no compound key
+    // needed for the device map.
+    let region_rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, region_code FROM net.region
+          WHERE organization_id = $1 AND deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let region_code_to_id: std::collections::HashMap<String, Uuid> =
+        region_rows.into_iter().map(|(id, c)| (c, id)).collect();
+
+    let site_rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT s.id, r.region_code, s.site_code
+           FROM net.site s
+           JOIN net.region r ON r.id = s.region_id AND r.deleted_at IS NULL
+          WHERE s.organization_id = $1 AND s.deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let site_code_to_id: std::collections::HashMap<String, Uuid> =
+        site_rows.into_iter()
+            .map(|(id, rg, st)| (format!("{rg}/{st}"), id))
+            .collect();
+
+    let building_rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, building_code FROM net.building
+          WHERE organization_id = $1 AND deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let building_code_to_id: std::collections::HashMap<String, Uuid> =
+        building_rows.into_iter().map(|(id, c)| (c, id)).collect();
+
+    let device_rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, hostname FROM net.device
+          WHERE organization_id = $1 AND deleted_at IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    let device_hostname_to_id: std::collections::HashMap<String, Uuid> =
+        device_rows.into_iter().map(|(id, h)| (h, id)).collect();
+
     // Existing (block_code, vlan_id) → (id, version) so the apply
     // loop can branch INSERT vs version-checked UPDATE without
     // another query per row.
@@ -673,6 +727,8 @@ pub async fn import_vlans(
         let row_number = i + 1;
         let outcome = validate_vlan_row(
             row, row_number, &block_codes, &template_codes, dup_check_set,
+            &region_code_to_id, &site_code_to_id,
+            &building_code_to_id, &device_hostname_to_id,
         );
         outcomes.push(outcome);
     }
@@ -691,12 +747,13 @@ pub async fn import_vlans(
     let mut tx = pool.begin().await?;
     for (outcome_idx, row) in rows.iter().enumerate().skip(1).map(|(_, r)| r).enumerate() {
         let vlan_id_num: i32 = row[0].trim().parse().unwrap_or(0);  // validator checked
-        let display_name  = row[1].trim();
-        let description   = row[2].trim();
-        let scope_level   = row[3].trim();
-        let template_code = row[4].trim();
-        let block_code    = row[5].trim();
-        let status        = row[6].trim();
+        let display_name      = row[1].trim();
+        let description       = row[2].trim();
+        let scope_level       = row[3].trim();
+        let scope_entity_code = row[4].trim();
+        let template_code     = row[5].trim();
+        let block_code        = row[6].trim();
+        let status            = row[7].trim();
 
         let block_id    = block_code_to_id.get(block_code).copied()
             .expect("validator enforced block_code exists");
@@ -706,6 +763,21 @@ pub async fn import_vlans(
         let scope_val   = if scope_level.is_empty() { "Free" }     else { scope_level };
         let status_val  = if status.is_empty()      { "Active" }   else { status };
 
+        // Validator has checked scope_level ↔ scope_entity_code
+        // consistency + code existence. Rehit the maps for the uuid.
+        let scope_entity_id: Option<Uuid> = match scope_val {
+            "Free"                          => None,
+            "Region"   if !scope_entity_code.is_empty() =>
+                region_code_to_id.get(scope_entity_code).copied(),
+            "Site"     if !scope_entity_code.is_empty() =>
+                site_code_to_id.get(scope_entity_code).copied(),
+            "Building" if !scope_entity_code.is_empty() =>
+                building_code_to_id.get(scope_entity_code).copied(),
+            "Device"   if !scope_entity_code.is_empty() =>
+                device_hostname_to_id.get(scope_entity_code).copied(),
+            _ => None,
+        };
+
         let pair_key = format!("{block_code}|{vlan_id_num}");
         let existing = existing_by_pair.get(&pair_key).copied();
         let (vlan_uuid, action) = match (existing, mode) {
@@ -714,29 +786,30 @@ pub async fn import_vlans(
             // operator's snapshot.
             (Some((id, db_version)), ImportMode::Upsert) => {
                 // Note: vlan import header doesn't currently include
-                // a version column (only 7 cols vs devices' 8). Fall
+                // a version column (only 8 cols vs devices' 9). Fall
                 // back to current DB version — same "I don't know,
                 // just apply" semantic devices use for blank versions.
                 let expected_version = db_version;
 
                 let update_result: Result<Option<(Uuid,)>, sqlx::Error> = sqlx::query_as(
                     "UPDATE net.vlan
-                        SET template_id  = $3,
-                            display_name = $4,
-                            description  = $5,
-                            scope_level  = $6,
-                            status       = $7::net.entity_status,
-                            updated_at   = now(),
-                            updated_by   = $8,
-                            version      = version + 1
+                        SET template_id     = $3,
+                            display_name    = $4,
+                            description     = $5,
+                            scope_level     = $6,
+                            scope_entity_id = $7,
+                            status          = $8::net.entity_status,
+                            updated_at      = now(),
+                            updated_by      = $9,
+                            version         = version + 1
                       WHERE id = $1 AND organization_id = $2
-                        AND version = $9 AND deleted_at IS NULL
+                        AND version = $10 AND deleted_at IS NULL
                       RETURNING id")
                     .bind(id).bind(org_id)
                     .bind(template_id)
                     .bind(display_name)
                     .bind(desc_opt)
-                    .bind(scope_val)
+                    .bind(scope_val).bind(scope_entity_id)
                     .bind(status_val)
                     .bind(user_id)
                     .bind(expected_version)
@@ -775,12 +848,15 @@ pub async fn import_vlans(
                 let insert_result: Result<(Uuid,), sqlx::Error> = sqlx::query_as(
                     "INSERT INTO net.vlan
                         (organization_id, block_id, template_id, vlan_id,
-                         display_name, description, scope_level, status,
-                         created_by, updated_by)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::net.entity_status, $9, $9)
+                         display_name, description, scope_level, scope_entity_id,
+                         status, created_by, updated_by)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8,
+                             $9::net.entity_status, $10, $10)
                      RETURNING id")
                     .bind(org_id).bind(block_id).bind(template_id).bind(vlan_id_num)
-                    .bind(display_name).bind(desc_opt).bind(scope_val).bind(status_val)
+                    .bind(display_name).bind(desc_opt)
+                    .bind(scope_val).bind(scope_entity_id)
+                    .bind(status_val)
                     .bind(user_id)
                     .fetch_one(&mut *tx).await;
 
@@ -829,12 +905,17 @@ pub async fn import_vlans(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn validate_vlan_row(
     row: &[String],
     row_number: usize,
     block_codes: &std::collections::HashSet<String>,
     template_codes: &std::collections::HashSet<String>,
     existing_pairs: &std::collections::HashSet<String>,
+    region_code_to_id: &std::collections::HashMap<String, Uuid>,
+    site_code_to_id: &std::collections::HashMap<String, Uuid>,
+    building_code_to_id: &std::collections::HashMap<String, Uuid>,
+    device_hostname_to_id: &std::collections::HashMap<String, Uuid>,
 ) -> ImportRowOutcome {
     let mut errors = Vec::new();
 
@@ -846,12 +927,13 @@ fn validate_vlan_row(
         };
     }
 
-    let vlan_id_str   = row[0].trim();
-    let display_name  = row[1].trim();
-    let scope_level   = row[3].trim();
-    let template_code = row[4].trim();
-    let block_code    = row[5].trim();
-    let status        = row[6].trim();
+    let vlan_id_str       = row[0].trim();
+    let display_name      = row[1].trim();
+    let scope_level       = row[3].trim();
+    let scope_entity_code = row[4].trim();
+    let template_code     = row[5].trim();
+    let block_code        = row[6].trim();
+    let status            = row[7].trim();
 
     // vlan_id: parse + range.
     let vlan_id_ok = vlan_id_str.parse::<i32>().ok();
@@ -877,6 +959,59 @@ fn validate_vlan_row(
     {
         errors.push(format!("scope_level '{scope_level}' must be Free/Region/Site/Building/Device"));
     }
+
+    // scope_entity_code ↔ scope_level consistency. Same pattern as
+    // the subnet importer but with VLAN's scope list (Device at the
+    // bottom rather than Floor/Room).
+    let effective_scope = if scope_level.is_empty() { "Free" } else { scope_level };
+    match effective_scope {
+        "Free" => {
+            if !scope_entity_code.is_empty() {
+                errors.push(format!(
+                    "scope_entity_code '{scope_entity_code}' set but scope_level is Free — clear one or the other"));
+            }
+        }
+        "Region" => {
+            if scope_entity_code.is_empty() {
+                errors.push("scope_level 'Region' requires scope_entity_code (region_code)".into());
+            } else if scope_entity_code.contains('/') {
+                errors.push(format!(
+                    "scope_entity_code '{scope_entity_code}' must be REGION_CODE (single token) for Region scope"));
+            } else if !region_code_to_id.contains_key(scope_entity_code) {
+                errors.push(format!(
+                    "scope_entity_code '{scope_entity_code}' not found in this tenant's region catalog"));
+            }
+        }
+        "Site" => {
+            if scope_entity_code.is_empty() {
+                errors.push("scope_level 'Site' requires scope_entity_code (REGION_CODE/SITE_CODE)".into());
+            } else if scope_entity_code.matches('/').count() != 1 {
+                errors.push(format!(
+                    "scope_entity_code '{scope_entity_code}' must be REGION_CODE/SITE_CODE for Site scope"));
+            } else if !site_code_to_id.contains_key(scope_entity_code) {
+                errors.push(format!(
+                    "scope_entity_code '{scope_entity_code}' not found in this tenant's site catalog"));
+            }
+        }
+        "Building" => {
+            if scope_entity_code.is_empty() {
+                errors.push("scope_level 'Building' requires scope_entity_code (building_code)".into());
+            } else if !building_code_to_id.contains_key(scope_entity_code) {
+                errors.push(format!(
+                    "scope_entity_code '{scope_entity_code}' not found in this tenant's building catalog"));
+            }
+        }
+        "Device" => {
+            if scope_entity_code.is_empty() {
+                errors.push("scope_level 'Device' requires scope_entity_code (device hostname)".into());
+            } else if !device_hostname_to_id.contains_key(scope_entity_code) {
+                errors.push(format!(
+                    "scope_entity_code '{scope_entity_code}' (hostname) not found in this tenant's device catalog"));
+            }
+        }
+        _ => { /* scope_level already flagged above */ }
+    }
+
     if !status.is_empty() &&
         !matches!(status, "Planned"|"Reserved"|"Active"|"Deprecated"|"Retired")
     {

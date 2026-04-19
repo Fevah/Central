@@ -229,7 +229,7 @@ impl PoolsFixture {
     }
 }
 
-const VLAN_HEADER: &str = "vlan_id,display_name,description,scope_level,template_code,block_code,status\r\n";
+const VLAN_HEADER: &str = "vlan_id,display_name,description,scope_level,scope_entity_code,template_code,block_code,status\r\n";
 const SUBNET_HEADER: &str = "subnet_code,display_name,network,vlan_id,pool_code,scope_level,scope_entity_code,status\r\n";
 
 #[tokio::test]
@@ -238,7 +238,7 @@ async fn vlan_import_dry_run_no_writes() {
     let Some(pool) = pool_or_skip("vlan_import_dry_run_no_writes").await else { return; };
     let fx = PoolsFixture::new(pool).await.expect("fixture");
 
-    let csv = format!("{VLAN_HEADER}101,IT,,Free,,{},Active\r\n", fx.block_code);
+    let csv = format!("{VLAN_HEADER}101,IT,,Free,,,{},Active\r\n", fx.block_code);
     let result = bulk_import::import_vlans(
         &fx.tenant.pool, fx.tenant.org_id, &csv, true, ImportMode::Create, None,
     ).await.expect("dry run");
@@ -255,8 +255,8 @@ async fn vlan_import_happy_path_commits() {
 
     let csv = format!(
         "{VLAN_HEADER}\
-         101,IT,,Free,,{b},Active\r\n\
-         120,Servers,Servers LAN,Free,,{b},Active\r\n",
+         101,IT,,Free,,,{b},Active\r\n\
+         120,Servers,Servers LAN,Free,,,{b},Active\r\n",
         b = fx.block_code);
     let result = bulk_import::import_vlans(
         // None = service-call RBAC bypass (auth tests live below).
@@ -273,7 +273,7 @@ async fn vlan_import_rejects_duplicate_vlan_id_in_block() {
     let Some(pool) = pool_or_skip("vlan_import_rejects_duplicate_vlan_id_in_block").await else { return; };
     let fx = PoolsFixture::new(pool).await.expect("fixture");
 
-    let csv1 = format!("{VLAN_HEADER}101,IT,,Free,,{},Active\r\n", fx.block_code);
+    let csv1 = format!("{VLAN_HEADER}101,IT,,Free,,,{},Active\r\n", fx.block_code);
     bulk_import::import_vlans(&fx.tenant.pool, fx.tenant.org_id, &csv1, false, ImportMode::Create, None)
         .await.expect("seed");
     assert_eq!(fx.count_vlans().await, 1);
@@ -341,7 +341,7 @@ async fn vlan_upsert_mode_updates_existing_pair_rather_than_rejecting() {
     let fx = PoolsFixture::new(pool).await.expect("fixture");
 
     // Seed via Create.
-    let csv_initial = format!("{VLAN_HEADER}101,IT,Original desc,Free,,{},Planned\r\n", fx.block_code);
+    let csv_initial = format!("{VLAN_HEADER}101,IT,Original desc,Free,,,{},Planned\r\n", fx.block_code);
     bulk_import::import_vlans(
         &fx.tenant.pool, fx.tenant.org_id, &csv_initial, false, ImportMode::Create, None,
     ).await.expect("seed");
@@ -349,7 +349,7 @@ async fn vlan_upsert_mode_updates_existing_pair_rather_than_rejecting() {
 
     // Re-import same (block, vlan_id) with Upsert mode + new
     // display_name + Active status — should UPDATE, not reject.
-    let csv_upsert = format!("{VLAN_HEADER}101,IT-Updated,New desc,Free,,{},Active\r\n", fx.block_code);
+    let csv_upsert = format!("{VLAN_HEADER}101,IT-Updated,New desc,Free,,,{},Active\r\n", fx.block_code);
     let result = bulk_import::import_vlans(
         &fx.tenant.pool, fx.tenant.org_id, &csv_upsert, false, ImportMode::Upsert, None,
     ).await.expect("upsert");
@@ -375,7 +375,7 @@ async fn vlan_upsert_mode_creates_new_pair_like_create() {
     let Some(pool) = pool_or_skip("vlan_upsert_mode_creates_new_pair_like_create").await else { return; };
     let fx = PoolsFixture::new(pool).await.expect("fixture");
 
-    let csv = format!("{VLAN_HEADER}205,Servers,,Free,,{},Active\r\n", fx.block_code);
+    let csv = format!("{VLAN_HEADER}205,Servers,,Free,,,{},Active\r\n", fx.block_code);
     let result = bulk_import::import_vlans(
         &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Upsert, None,
     ).await.expect("upsert new");
@@ -775,6 +775,187 @@ async fn subnet_building_scope_round_trips_through_export() {
     assert!(result.applied, "upsert round-trip must apply cleanly");
 }
 
+// ─── VLAN scope_entity_code resolution (Phase 10 — all 5 scope levels) ──
+//
+// Same compound-code grammar as the subnet importer but with VLAN's
+// Device scope (per migration 086 CHECK: Free/Region/Site/Building/Device).
+// Device scope is single-token (hostname unique per tenant).
+
+#[tokio::test]
+#[ignore]
+async fn vlan_region_scope_resolves_single_token_code() {
+    let Some(pool) = pool_or_skip("vlan_region_scope_resolves_single_token_code").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    // TenantFixture seeds region 'IT-R' for every tenant.
+    let csv = format!("{VLAN_HEADER}301,RegionVlan,,Region,IT-R,,{b},Active\r\n",
+                      b = fx.block_code);
+    let result = bulk_import::import_vlans(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
+    ).await.expect("apply");
+    assert!(result.applied);
+
+    let (scope_level, scope_entity_id): (String, Option<Uuid>) = sqlx::query_as(
+        "SELECT scope_level, scope_entity_id FROM net.vlan
+          WHERE organization_id = $1 AND vlan_id = 301")
+        .bind(fx.tenant.org_id).fetch_one(&fx.tenant.pool).await.unwrap();
+    assert_eq!(scope_level, "Region");
+    assert!(scope_entity_id.is_some(), "Region-scoped VLAN must carry scope_entity_id");
+}
+
+#[tokio::test]
+#[ignore]
+async fn vlan_site_scope_resolves_compound_code() {
+    let Some(pool) = pool_or_skip("vlan_site_scope_resolves_compound_code").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    let csv = format!("{VLAN_HEADER}302,SiteVlan,,Site,IT-R/IT-S,,{b},Active\r\n",
+                      b = fx.block_code);
+    let result = bulk_import::import_vlans(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
+    ).await.expect("apply");
+    assert!(result.applied);
+}
+
+#[tokio::test]
+#[ignore]
+async fn vlan_building_scope_resolves() {
+    let Some(pool) = pool_or_skip("vlan_building_scope_resolves").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    let csv = format!("{VLAN_HEADER}303,BldgVlan,,Building,IT-B,,{b},Active\r\n",
+                      b = fx.block_code);
+    let result = bulk_import::import_vlans(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
+    ).await.expect("apply");
+    assert!(result.applied);
+}
+
+#[tokio::test]
+#[ignore]
+async fn vlan_device_scope_resolves_by_hostname() {
+    let Some(pool) = pool_or_skip("vlan_device_scope_resolves_by_hostname").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    // Seed a device so Device scope has a resolvable hostname.
+    let (role_id,): (Uuid,) = sqlx::query_as(
+        "SELECT id FROM net.device_role
+          WHERE organization_id = $1 AND role_code = 'Core' AND deleted_at IS NULL")
+        .bind(fx.tenant.org_id).fetch_one(&fx.tenant.pool).await.unwrap();
+    let (building_id,): (Uuid,) = sqlx::query_as(
+        "SELECT id FROM net.building
+          WHERE organization_id = $1 AND building_code = 'IT-B' AND deleted_at IS NULL")
+        .bind(fx.tenant.org_id).fetch_one(&fx.tenant.pool).await.unwrap();
+    sqlx::query(
+        "INSERT INTO net.device (organization_id, device_role_id, building_id,
+                                 hostname, status)
+         VALUES ($1, $2, $3, 'DEV-VLAN-SCOPE', 'Active')")
+        .bind(fx.tenant.org_id).bind(role_id).bind(building_id)
+        .execute(&fx.tenant.pool).await.unwrap();
+
+    let csv = format!("{VLAN_HEADER}304,DevVlan,,Device,DEV-VLAN-SCOPE,,{b},Active\r\n",
+                      b = fx.block_code);
+    let result = bulk_import::import_vlans(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
+    ).await.expect("apply");
+    assert!(result.applied);
+
+    let (scope_entity_id,): (Option<Uuid>,) = sqlx::query_as(
+        "SELECT scope_entity_id FROM net.vlan
+          WHERE organization_id = $1 AND vlan_id = 304")
+        .bind(fx.tenant.org_id).fetch_one(&fx.tenant.pool).await.unwrap();
+    let (expected,): (Uuid,) = sqlx::query_as(
+        "SELECT id FROM net.device
+          WHERE organization_id = $1 AND hostname = 'DEV-VLAN-SCOPE'")
+        .bind(fx.tenant.org_id).fetch_one(&fx.tenant.pool).await.unwrap();
+    assert_eq!(scope_entity_id, Some(expected),
+        "scope_entity_id must resolve to the device's uuid");
+}
+
+#[tokio::test]
+#[ignore]
+async fn vlan_device_scope_rejects_unknown_hostname() {
+    let Some(pool) = pool_or_skip("vlan_device_scope_rejects_unknown_hostname").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    let csv = format!("{VLAN_HEADER}305,Ghost,,Device,NO-SUCH-HOST,,{b},Active\r\n",
+                      b = fx.block_code);
+    let result = bulk_import::import_vlans(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
+    ).await.expect("apply");
+    assert!(!result.applied);
+    assert!(result.outcomes[0].errors.iter().any(|e| e.contains("device catalog")),
+        "unknown hostname should surface: {:?}", result.outcomes[0].errors);
+}
+
+#[tokio::test]
+#[ignore]
+async fn vlan_free_scope_rejects_non_empty_code() {
+    let Some(pool) = pool_or_skip("vlan_free_scope_rejects_non_empty_code").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    // Free + code is operator error — flag it rather than silently
+    // ignore (matches the subnet importer's behaviour).
+    let csv = format!("{VLAN_HEADER}306,Mix,,Free,IT-R,,{b},Active\r\n",
+                      b = fx.block_code);
+    let result = bulk_import::import_vlans(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
+    ).await.expect("apply");
+    assert!(!result.applied);
+    assert!(result.outcomes[0].errors.iter().any(|e| e.contains("scope_level is Free")),
+        "Free-with-code error expected: {:?}", result.outcomes[0].errors);
+}
+
+#[tokio::test]
+#[ignore]
+async fn vlan_all_five_scopes_round_trip_through_export() {
+    let Some(pool) = pool_or_skip("vlan_all_five_scopes_round_trip_through_export").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    // Seed a device for the Device-scope row to reference.
+    let (role_id,): (Uuid,) = sqlx::query_as(
+        "SELECT id FROM net.device_role
+          WHERE organization_id = $1 AND role_code = 'Core' AND deleted_at IS NULL")
+        .bind(fx.tenant.org_id).fetch_one(&fx.tenant.pool).await.unwrap();
+    let (building_id,): (Uuid,) = sqlx::query_as(
+        "SELECT id FROM net.building
+          WHERE organization_id = $1 AND building_code = 'IT-B' AND deleted_at IS NULL")
+        .bind(fx.tenant.org_id).fetch_one(&fx.tenant.pool).await.unwrap();
+    sqlx::query(
+        "INSERT INTO net.device (organization_id, device_role_id, building_id,
+                                 hostname, status)
+         VALUES ($1, $2, $3, 'DEV-RT', 'Active')")
+        .bind(fx.tenant.org_id).bind(role_id).bind(building_id)
+        .execute(&fx.tenant.pool).await.unwrap();
+
+    let csv = format!("{VLAN_HEADER}\
+         310,Free-RT,,Free,,,{b},Active\r\n\
+         311,Reg-RT,,Region,IT-R,,{b},Active\r\n\
+         312,Site-RT,,Site,IT-R/IT-S,,{b},Active\r\n\
+         313,Bldg-RT,,Building,IT-B,,{b},Active\r\n\
+         314,Dev-RT,,Device,DEV-RT,,{b},Active\r\n",
+                      b = fx.block_code);
+    bulk_import::import_vlans(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
+    ).await.expect("seed");
+
+    let exported = bulk_export::export_vlans_csv(&fx.tenant.pool, fx.tenant.org_id).await
+        .expect("export");
+    assert!(exported.contains("Region,IT-R,"),
+        "Region scope must emit REGION_CODE; got:\n{exported}");
+    assert!(exported.contains("Site,IT-R/IT-S,"),
+        "Site scope must emit REGION/SITE; got:\n{exported}");
+    assert!(exported.contains("Building,IT-B,"));
+    assert!(exported.contains("Device,DEV-RT,"));
+
+    // Re-import as Upsert — every compound shape must round-trip
+    // without validation errors.
+    let result = bulk_import::import_vlans(
+        &fx.tenant.pool, fx.tenant.org_id, &exported, false, ImportMode::Upsert, None,
+    ).await.expect("re-import");
+    assert!(result.applied, "all five VLAN scopes must round-trip cleanly");
+}
+
 #[tokio::test]
 #[ignore]
 async fn apply_rejects_existing_hostname_as_row_error() {
@@ -979,7 +1160,7 @@ async fn vlan_import_forbidden_without_write_vlan_grant() {
     let Some(pool) = pool_or_skip("vlan_import_forbidden_without_write_vlan_grant").await else { return; };
     let fx = PoolsFixture::new(pool).await.expect("fixture");
 
-    let csv = format!("{VLAN_HEADER}101,IT,,Free,,{},Active\r\n", fx.block_code);
+    let csv = format!("{VLAN_HEADER}101,IT,,Free,,,{},Active\r\n", fx.block_code);
     let err = bulk_import::import_vlans(
         &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, Some(42)
     ).await.unwrap_err().to_string();

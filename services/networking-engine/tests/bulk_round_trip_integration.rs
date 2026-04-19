@@ -203,9 +203,9 @@ async fn vlans_export_edit_reimport_only_changes_edited_cell() {
     let fx = RoundTripFixture::new(pool).await.expect("fixture");
 
     let seed_csv = format!(
-        "vlan_id,display_name,description,scope_level,template_code,block_code,status\r\n\
-         101,IT,initial desc,Free,,{b},Planned\r\n\
-         120,Servers,server VLAN,Free,,{b},Planned\r\n",
+        "vlan_id,display_name,description,scope_level,scope_entity_code,template_code,block_code,status\r\n\
+         101,IT,initial desc,Free,,,{b},Planned\r\n\
+         120,Servers,server VLAN,Free,,,{b},Planned\r\n",
         b = fx.block_code);
     bulk_import::import_vlans(
         &fx.pool, fx.org_id, &seed_csv, false, ImportMode::Create, None,

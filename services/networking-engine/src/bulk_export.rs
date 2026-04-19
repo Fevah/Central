@@ -125,12 +125,16 @@ pub async fn export_devices_csv(
 /// CSV dump of `net.vlan` for a tenant. Columns — in this order:
 ///
 ///   vlan_id, display_name, description, scope_level,
-///   template_code, block_code, status
+///   scope_entity_code, template_code, block_code, status
 ///
 /// `block_code` joins through `net.vlan_block` — carried for the
 /// round-trip with bulk import, which needs to resolve a VLAN's
 /// parent block FK. `template_code` joins through `net.vlan_template`
 /// for the same reason plus the human-recognisable display.
+///
+/// `scope_entity_code` is a compound expression keyed off scope_level:
+/// Region emits REGION_CODE; Site emits REGION/SITE; Building emits
+/// BUILDING_CODE; Device emits the device hostname. Free emits empty.
 ///
 /// VLANs ordered by `(block_code, vlan_id)` so the export reads
 /// naturally when multiple blocks partition the 1..4094 space
@@ -139,18 +143,43 @@ pub async fn export_vlans_csv(
     pool: &PgPool,
     org_id: Uuid,
 ) -> Result<String, EngineError> {
-    type Row = (i32, String, Option<String>, String, Option<String>, Option<String>, String);
+    type Row = (
+        i32,             // vlan_id
+        String,          // display_name
+        Option<String>,  // description
+        String,          // scope_level
+        Option<String>,  // scope_entity_code (compound per scope_level)
+        Option<String>,  // template_code
+        Option<String>,  // block_code
+        String,          // status
+    );
     let rows: Vec<Row> = sqlx::query_as(
         r#"SELECT v.vlan_id,
                   v.display_name,
                   v.description,
                   v.scope_level,
+                  CASE v.scope_level
+                      WHEN 'Region'   THEN rg.region_code
+                      WHEN 'Site'     THEN sr.region_code || '/' || st.site_code
+                      WHEN 'Building' THEN bl.building_code
+                      WHEN 'Device'   THEN dv.hostname
+                      ELSE NULL
+                  END                              AS scope_entity_code,
                   t.template_code,
                   b.block_code,
                   v.status::text AS status
              FROM net.vlan v
              LEFT JOIN net.vlan_template t ON t.id = v.template_id AND t.deleted_at IS NULL
              LEFT JOIN net.vlan_block    b ON b.id = v.block_id    AND b.deleted_at IS NULL
+             -- Region scope: single-hop to net.region.
+             LEFT JOIN net.region   rg ON rg.id = v.scope_entity_id AND v.scope_level = 'Region'
+             -- Site scope: net.site + its parent region.
+             LEFT JOIN net.site     st ON st.id = v.scope_entity_id AND v.scope_level = 'Site'
+             LEFT JOIN net.region   sr ON sr.id = st.region_id
+             -- Building scope: single-hop to net.building.
+             LEFT JOIN net.building bl ON bl.id = v.scope_entity_id AND v.scope_level = 'Building'
+             -- Device scope: single-hop to net.device (hostname unique per tenant).
+             LEFT JOIN net.device   dv ON dv.id = v.scope_entity_id AND v.scope_level = 'Device'
             WHERE v.organization_id = $1 AND v.deleted_at IS NULL
             ORDER BY b.block_code NULLS LAST, v.vlan_id"#)
         .bind(org_id)
@@ -160,15 +189,16 @@ pub async fn export_vlans_csv(
     let mut out = String::with_capacity(128 + rows.len() * 96);
     out.push_str(&csv_row(&[
         "vlan_id".into(), "display_name".into(), "description".into(),
-        "scope_level".into(), "template_code".into(), "block_code".into(),
-        "status".into(),
+        "scope_level".into(), "scope_entity_code".into(),
+        "template_code".into(), "block_code".into(), "status".into(),
     ]));
-    for (vlan_id, name, desc, scope, tpl, block, status) in rows {
+    for (vlan_id, name, desc, scope, scope_code, tpl, block, status) in rows {
         out.push_str(&csv_row(&[
             vlan_id.to_string(),
             csv_escape(&name),
             csv_escape(&desc.unwrap_or_default()),
             csv_escape(&scope),
+            csv_escape(&scope_code.unwrap_or_default()),
             csv_escape(&tpl.unwrap_or_default()),
             csv_escape(&block.unwrap_or_default()),
             csv_escape(&status),
