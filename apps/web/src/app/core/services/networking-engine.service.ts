@@ -1339,6 +1339,19 @@ export class NetworkingEngineService {
       null, { params });
   }
 
+  /// Roll back an Applied change-set. Runs each item's reverse
+  /// mutation in reverse item_order inside a transaction;
+  /// partial rollback on error is rolled back. Set ends in
+  /// RolledBack status.
+  rollbackChangeSet(
+    id: string, organizationId: string,
+  ): Observable<ChangeSet> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.post<ChangeSet>(
+      `${this.base}/api/net/change-sets/${id}/rollback`,
+      null, { params });
+  }
+
   /// Record an Approve / Reject decision on a Submitted change-set.
   /// decision is PascalCase on the wire ('Approve' | 'Reject' —
   /// matches the engine's ChangeSetDecision enum serde config).

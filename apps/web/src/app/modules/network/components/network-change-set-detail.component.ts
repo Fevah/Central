@@ -68,6 +68,10 @@ import { environment } from '../../../../environments/environment';
                  [disabled]="busy || isTerminal(set.status)"
                  hint="Cancel this Set. Terminal — can't be reopened."
                  (onClick)="onCancel()" />
+      <dx-button text="Roll back" icon="undo" stylingMode="outlined"
+                 [disabled]="busy || set.status !== 'Applied'"
+                 hint="Reverse every item's mutation in reverse order. Moves the Set to RolledBack — terminal."
+                 (onClick)="onRollback()" />
     </div>
 
     <div *ngIf="status" class="status-line">{{ status }}</div>
@@ -413,6 +417,17 @@ export class NetworkChangeSetDetailComponent implements OnInit {
         }
       },
     });
+  }
+
+  /// Roll back an Applied Set. Reverse-order execution of each
+  /// item's reverse mutation. Same confirmation pattern as apply.
+  onRollback(): void {
+    if (!this.set || this.busy) return;
+    if (typeof window !== 'undefined' &&
+        !window.confirm(`Roll back change set '${this.set.title}'? Each item's mutation will be reversed.`)) return;
+    this.runAction(
+      this.engine.rollbackChangeSet(this.set.id, environment.defaultTenantId),
+      'Rolled back.');
   }
 
   /// Cancel set. Prompt for optional note so audit carries the
