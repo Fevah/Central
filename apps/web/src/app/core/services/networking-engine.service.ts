@@ -57,6 +57,24 @@ export interface DeviceListRow {
   version: number;
 }
 
+/// One violation from the validation rule engine. Matches `Violation`
+/// in services/networking-engine/src/validation.rs.
+export interface Violation {
+  ruleCode: string;
+  severity: 'Error' | 'Warning' | 'Info';
+  entityType: string;
+  entityId: string | null;
+  message: string;
+}
+
+/// Outcome of a validation run. Matches `ValidationRunResult`.
+export interface ValidationRunResult {
+  violations: Violation[];
+  rulesRun: number;
+  rulesWithFindings: number;
+  totalViolations: number;
+}
+
 /// Thin Phase-10 surface for the Angular web client. Parallel to
 /// the WPF `NetworkingEngineClient`; covers the operator-facing
 /// endpoints (search, saved views, audit timeline) that web
@@ -101,6 +119,15 @@ export class NetworkingEngineService {
   listDevices(organizationId: string): Observable<DeviceListRow[]> {
     const params = new HttpParams().set('organizationId', organizationId);
     return this.http.get<DeviceListRow[]>(`${this.base}/api/net/devices`, { params });
+  }
+
+  /// Run the validation rule engine. Empty `ruleCode` runs every
+  /// enabled rule; a specific code runs just that rule (useful for
+  /// fix-it + re-run-to-confirm flows).
+  runValidation(organizationId: string, ruleCode?: string): Observable<ValidationRunResult> {
+    const body: Record<string, unknown> = { organizationId };
+    if (ruleCode) body['ruleCode'] = ruleCode;
+    return this.http.post<ValidationRunResult>(`${this.base}/api/net/validation/run`, body);
   }
 
   /// Fetch the entity's full audit timeline — no 500-row cap that
