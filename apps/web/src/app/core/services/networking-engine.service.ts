@@ -292,6 +292,50 @@ export interface PermissionDecision {
   matchedGrantId: string | null;
 }
 
+/// Naming context shapes — match `LinkNamingContext` /
+/// `DeviceNamingContext` / `ServerNamingContext` in the engine.
+/// `instance` / `vlan_id` are nullable numbers; every string token
+/// is nullable so partial contexts render reasonably.
+export interface LinkNamingContext {
+  siteA?: string | null;
+  siteB?: string | null;
+  deviceA?: string | null;
+  deviceB?: string | null;
+  portA?: string | null;
+  portB?: string | null;
+  roleA?: string | null;
+  roleB?: string | null;
+  vlanId?: number | null;
+  subnet?: string | null;
+  description?: string | null;
+  linkCode?: string | null;
+}
+export interface DeviceNamingContext {
+  regionCode?: string | null;
+  siteCode?: string | null;
+  buildingCode?: string | null;
+  rackCode?: string | null;
+  roleCode?: string | null;
+  instance?: number | null;
+  instancePadding?: number;
+}
+export interface ServerNamingContext {
+  regionCode?: string | null;
+  siteCode?: string | null;
+  buildingCode?: string | null;
+  rackCode?: string | null;
+  profileCode?: string | null;
+  instance?: number | null;
+  instancePadding?: number;
+}
+
+/// Response envelope from any naming-preview endpoint. The engine
+/// returns `{ expanded: "..." }` regardless of which flavour was
+/// previewed.
+export interface NamingPreviewResponse {
+  expanded: string;
+}
+
 /// One locked row — matches `LockedRow` in the engine. Projection
 /// is uniform across the 5 numbering tables that lock enforcement
 /// covers (asn_allocation / vlan / mlag_domain / subnet / ip_address);
@@ -529,6 +573,23 @@ export class NetworkingEngineService {
     if (status)                   params = params.set('status', status);
     if (limit !== undefined)      params = params.set('limit',  limit.toString());
     return this.http.get<ChangeSet[]>(`${this.base}/api/net/change-sets`, { params });
+  }
+
+  /// Naming preview — one endpoint per context shape. Each POSTs
+  /// `{ template, context }` and returns `{ expanded }`. No tenant
+  /// dependency (pure token substitution), so these don't thread
+  /// organizationId.
+  previewLinkName(template: string, context: LinkNamingContext): Observable<NamingPreviewResponse> {
+    return this.http.post<NamingPreviewResponse>(
+      `${this.base}/api/net/naming/link/preview`, { template, context });
+  }
+  previewDeviceName(template: string, context: DeviceNamingContext): Observable<NamingPreviewResponse> {
+    return this.http.post<NamingPreviewResponse>(
+      `${this.base}/api/net/naming/device/preview`, { template, context });
+  }
+  previewServerName(template: string, context: ServerNamingContext): Observable<NamingPreviewResponse> {
+    return this.http.post<NamingPreviewResponse>(
+      `${this.base}/api/net/naming/server/preview`, { template, context });
   }
 
   /// List locked rows across the 5 numbering tables (asn_allocation,

@@ -56,6 +56,7 @@ export const routes: Routes = [
           { path: 'change-sets',     loadComponent: () => import('./modules/network/components/network-change-sets.component').then(m => m.NetworkChangeSetsComponent) },
           { path: 'change-sets/:id', loadComponent: () => import('./modules/network/components/network-change-set-detail.component').then(m => m.NetworkChangeSetDetailComponent) },
           { path: 'locks',           loadComponent: () => import('./modules/network/components/network-locks.component').then(m => m.NetworkLocksComponent) },
+          { path: 'naming-preview',  loadComponent: () => import('./modules/network/components/network-naming-preview.component').then(m => m.NetworkNamingPreviewComponent) },
           { path: 'audit-stats',     loadComponent: () => import('./modules/network/components/network-audit-stats.component').then(m => m.NetworkAuditStatsComponent) },
           { path: 'audit-search',    loadComponent: () => import('./modules/network/components/network-audit-search.component').then(m => m.NetworkAuditSearchComponent) },
           { path: 'audit/:entityType/:entityId',
