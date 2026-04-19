@@ -4,20 +4,18 @@
 //! ## Design
 //!
 //! Query-time UNION across six entity tables, no stored tsvector
-//! columns, no triggers. For small tenant sizes (thousands of rows
-//! per entity, not millions) the full-table scan cost is fine.
-//! When a tenant hits the ~10k-rows-per-entity cliff, add GIN
-//! indexes on the expression:
+//! columns, no triggers. Each entity has a partial GIN index on the
+//! same `to_tsvector('english'::regconfig, …)` expression that the
+//! query uses (migration 107 — `ix_<entity>_search_gin`). The
+//! `::regconfig` cast is load-bearing: without it the expression is
+//! STABLE rather than IMMUTABLE and the planner falls back to a
+//! Seq Scan even when an index exists.
 //!
-//! ```sql
-//! CREATE INDEX ix_device_search ON net.device
-//!   USING GIN (to_tsvector('english',
-//!     coalesce(hostname,'') || ' ' || coalesce(device_code,'')));
-//! ```
-//!
-//! Not doing that today — premature + the plan is explicit that
-//! global search lands with dynamic UNION first and indexes follow
-//! when the need is real.
+//! Index expressions in migration 107 must stay byte-for-byte
+//! identical to the SQL fragments built below — if you reorder the
+//! `coalesce(...)` chain or add a column to the search projection,
+//! land a follow-on migration that drops + recreates the matching
+//! index (`ix_<entity>_search_gin`) so the planner keeps using it.
 //!
 //! ## RBAC
 //!
@@ -127,7 +125,7 @@ pub async fn global_search(
             "SELECT 'Device' AS entity_type, d.id,
                     d.hostname AS label,
                     ts_rank(
-                        to_tsvector('english',
+                        to_tsvector('english'::regconfig,
                             coalesce(d.hostname,'') || ' ' ||
                             coalesce(d.device_code,'') || ' ' ||
                             coalesce(d.notes,'')),
@@ -137,7 +135,7 @@ pub async fn global_search(
                          coalesce(d.device_code,''), 140) AS snippet
                FROM net.device d
               WHERE d.organization_id = $2 AND d.deleted_at IS NULL
-                AND to_tsvector('english',
+                AND to_tsvector('english'::regconfig,
                         coalesce(d.hostname,'') || ' ' ||
                         coalesce(d.device_code,'') || ' ' ||
                         coalesce(d.notes,''))
@@ -148,7 +146,7 @@ pub async fn global_search(
             "SELECT 'Vlan' AS entity_type, v.id,
                     (v.vlan_id::text || ' ' || v.display_name) AS label,
                     ts_rank(
-                        to_tsvector('english',
+                        to_tsvector('english'::regconfig,
                             coalesce(v.display_name,'') || ' ' ||
                             coalesce(v.description,'') || ' ' ||
                             coalesce(v.notes,'')),
@@ -158,7 +156,7 @@ pub async fn global_search(
                          coalesce(v.description,''), 140) AS snippet
                FROM net.vlan v
               WHERE v.organization_id = $2 AND v.deleted_at IS NULL
-                AND to_tsvector('english',
+                AND to_tsvector('english'::regconfig,
                         coalesce(v.display_name,'') || ' ' ||
                         coalesce(v.description,'') || ' ' ||
                         coalesce(v.notes,''))
@@ -169,7 +167,7 @@ pub async fn global_search(
             "SELECT 'Subnet' AS entity_type, s.id,
                     (s.subnet_code || ' ' || s.display_name) AS label,
                     ts_rank(
-                        to_tsvector('english',
+                        to_tsvector('english'::regconfig,
                             coalesce(s.subnet_code,'') || ' ' ||
                             coalesce(s.display_name,'') || ' ' ||
                             coalesce(s.notes,'')),
@@ -180,7 +178,7 @@ pub async fn global_search(
                          s.network::text, 140) AS snippet
                FROM net.subnet s
               WHERE s.organization_id = $2 AND s.deleted_at IS NULL
-                AND to_tsvector('english',
+                AND to_tsvector('english'::regconfig,
                         coalesce(s.subnet_code,'') || ' ' ||
                         coalesce(s.display_name,'') || ' ' ||
                         coalesce(s.notes,''))
@@ -191,7 +189,7 @@ pub async fn global_search(
             "SELECT 'Server' AS entity_type, srv.id,
                     srv.hostname AS label,
                     ts_rank(
-                        to_tsvector('english',
+                        to_tsvector('english'::regconfig,
                             coalesce(srv.hostname,'') || ' ' ||
                             coalesce(srv.display_name,'') || ' ' ||
                             coalesce(srv.notes,'')),
@@ -201,7 +199,7 @@ pub async fn global_search(
                          coalesce(srv.display_name,''), 140) AS snippet
                FROM net.server srv
               WHERE srv.organization_id = $2 AND srv.deleted_at IS NULL
-                AND to_tsvector('english',
+                AND to_tsvector('english'::regconfig,
                         coalesce(srv.hostname,'') || ' ' ||
                         coalesce(srv.display_name,'') || ' ' ||
                         coalesce(srv.notes,''))
@@ -212,7 +210,7 @@ pub async fn global_search(
             "SELECT 'Link' AS entity_type, l.id,
                     l.link_code AS label,
                     ts_rank(
-                        to_tsvector('english',
+                        to_tsvector('english'::regconfig,
                             coalesce(l.link_code,'') || ' ' ||
                             coalesce(l.display_name,'') || ' ' ||
                             coalesce(l.description,'') || ' ' ||
@@ -223,7 +221,7 @@ pub async fn global_search(
                          coalesce(l.display_name,''), 140) AS snippet
                FROM net.link l
               WHERE l.organization_id = $2 AND l.deleted_at IS NULL
-                AND to_tsvector('english',
+                AND to_tsvector('english'::regconfig,
                         coalesce(l.link_code,'') || ' ' ||
                         coalesce(l.display_name,'') || ' ' ||
                         coalesce(l.description,'') || ' ' ||
@@ -237,7 +235,7 @@ pub async fn global_search(
             "SELECT 'DhcpRelayTarget' AS entity_type, drt.id,
                     ('vlan ' || v.vlan_id::text || ' → ' || host(drt.server_ip)) AS label,
                     ts_rank(
-                        to_tsvector('english',
+                        to_tsvector('english'::regconfig,
                             coalesce(host(drt.server_ip),'') || ' ' ||
                             coalesce(drt.notes,'')),
                         plainto_tsquery('english', $1)
@@ -247,7 +245,7 @@ pub async fn global_search(
                FROM net.dhcp_relay_target drt
                JOIN net.vlan v ON v.id = drt.vlan_id AND v.deleted_at IS NULL
               WHERE drt.organization_id = $2 AND drt.deleted_at IS NULL
-                AND to_tsvector('english',
+                AND to_tsvector('english'::regconfig,
                         coalesce(host(drt.server_ip),'') || ' ' ||
                         coalesce(drt.notes,''))
                     @@ plainto_tsquery('english', $1)"));
@@ -340,6 +338,31 @@ mod tests {
         assert!(!is_supported_entity_type("Region"));
         assert!(!is_supported_entity_type(""));
         assert!(!is_supported_entity_type("; DROP TABLE net.device;--"));
+    }
+
+    /// Guardrail: every `to_tsvector(...)` in the search query must
+    /// use the `'english'::regconfig` cast so the expression is
+    /// IMMUTABLE (and therefore matchable by the partial GIN indexes
+    /// created in migration 107). Catching a slip from `'english'` to
+    /// `'english'::regconfig` (or vice-versa) at unit-test time beats
+    /// debugging a Seq Scan in prod.
+    #[test]
+    fn every_to_tsvector_uses_regconfig_cast() {
+        // Inspect only the production (pre-test-module) source so the
+        // test's own string literals don't count toward the totals.
+        let full = include_str!("search.rs");
+        let cut = full.find("#[cfg(test)]")
+            .expect("search.rs must have a #[cfg(test)] module marker");
+        let production_src = &full[..cut];
+        let total = production_src.matches("to_tsvector(").count();
+        let casted = production_src.matches("to_tsvector('english'::regconfig").count();
+        assert!(total > 0, "expected at least one to_tsvector call in production code");
+        assert_eq!(
+            total, casted,
+            "every to_tsvector must use 'english'::regconfig — got {casted} casted out of {total} total \
+             (a plain 'english' literal makes the expression STABLE, so the partial GIN indexes from \
+             migration 107 won't match and search falls back to Seq Scan)"
+        );
     }
 
     #[test]
