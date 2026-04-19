@@ -337,6 +337,33 @@ export class NetworkingEngineService {
     return this.http.get<SavedView[]>(`${this.base}/api/net/saved-views`, { params });
   }
 
+  /// Create a saved view owned by the caller. Name is unique per
+  /// (tenant, user); the engine returns 409 on collision.
+  createSavedView(body: {
+    organizationId: string;
+    name: string;
+    q: string;
+    entityTypes?: string | null;
+    notes?: string | null;
+  }): Observable<SavedView> {
+    return this.http.post<SavedView>(`${this.base}/api/net/saved-views`, {
+      organizationId: body.organizationId,
+      name:           body.name,
+      q:              body.q,
+      entityTypes:    body.entityTypes ?? null,
+      notes:          body.notes ?? null,
+      filters:        {},
+    });
+  }
+
+  /// Soft-delete a saved view. Engine returns 404 when the view
+  /// belongs to another user (ownership-as-auth; doesn't leak
+  /// existence).
+  deleteSavedView(id: string, organizationId: string): Observable<void> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.delete<void>(`${this.base}/api/net/saved-views/${id}`, { params });
+  }
+
   /// Thin device list — capped at 5000 rows per tenant. Used by
   /// callers needing hostname → net.device uuid resolution (the
   /// WPF grid's selectId handler does the same thing).

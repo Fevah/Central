@@ -33,6 +33,10 @@ import { environment } from '../../../../environments/environment';
                      hint="Reload saved views"
                      (onClick)="reloadSavedViews()" />
         </div>
+        <dx-button text="Save current" icon="save" stylingMode="outlined"
+                   [disabled]="!query.trim()"
+                   hint="Save the current query + entity-type filter as a named view"
+                   (onClick)="saveCurrentView()" />
         <div *ngIf="savedViewsError" class="saved-views-error">
           {{ savedViewsError }}
         </div>
@@ -40,10 +44,17 @@ import { environment } from '../../../../environments/environment';
                  [selectionMode]="'single'"
                  displayExpr="name"
                  (onItemClick)="onSavedViewClick($event)"
-                 [noDataText]="'No saved views yet — create one from the WPF client.'">
+                 [noDataText]="'No saved views yet — type a query + click Save current.'">
           <div *dxTemplate="let v of 'item'">
-            <div class="sv-name">{{ v.name }}</div>
-            <div class="sv-sub">{{ summariseView(v) }}</div>
+            <div class="sv-row">
+              <div class="sv-text">
+                <div class="sv-name">{{ v.name }}</div>
+                <div class="sv-sub">{{ summariseView(v) }}</div>
+              </div>
+              <dx-button icon="trash" stylingMode="text"
+                         hint="Delete this saved view"
+                         (onClick)="deleteView($event, v)" />
+            </div>
           </div>
         </dx-list>
       </aside>
@@ -98,6 +109,8 @@ import { environment } from '../../../../environments/environment';
     .saved-views { border: 1px solid #333; padding: 6px; }
     .saved-views-header { display: flex; justify-content: space-between; align-items: center; padding: 4px; }
     .saved-views-error { color: #888; padding: 4px; font-size: 11px; }
+    .sv-row { display: flex; justify-content: space-between; align-items: center; gap: 4px; }
+    .sv-text { flex: 1; min-width: 0; }
     .sv-name { font-weight: 600; }
     .sv-sub { color: #888; font-size: 11px; }
     .search-bar { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
@@ -157,6 +170,56 @@ export class NetworkSearchComponent implements OnInit {
       ? view.entityTypes.split(',').map(s => s.trim()).filter(s => s.length > 0)
       : [];
     this.run();
+  }
+
+  /// Save the current query + entity-type filter as a named view.
+  /// Uses window.prompt for the name input — the DxPopup dialog
+  /// used elsewhere is overkill for a single text field, and
+  /// prompt() has keyboard focus by default which matters for
+  /// flow-typing.
+  saveCurrentView(): void {
+    const q = this.query.trim();
+    if (!q) return;
+    const name = typeof window !== 'undefined'
+      ? window.prompt('Name this view:', q.slice(0, 40))
+      : null;
+    if (!name || !name.trim()) return;
+    const entityTypes = this.selectedEntityTypes.length
+      ? this.selectedEntityTypes.join(',')
+      : null;
+    this.engine.createSavedView({
+      organizationId: environment.defaultTenantId,
+      name:           name.trim(),
+      q,
+      entityTypes,
+    }).subscribe({
+      next: () => { this.reloadSavedViews(); },
+      error: (err) => {
+        const status = err?.status as number | undefined;
+        if (status === 409) {
+          this.savedViewsError = `A view named '${name.trim()}' already exists — pick another name.`;
+        } else {
+          this.savedViewsError = err?.error?.detail ?? err?.message ?? 'Save failed.';
+        }
+      },
+    });
+  }
+
+  /// Delete a view from the sidebar. Event bubble is stopped so the
+  /// row click handler doesn't also fire (running the search for a
+  /// view we just deleted would be confusing).
+  deleteView(evt: { event?: Event } | Event | undefined, view: SavedView): void {
+    // DxButton onClick passes a wrapper object with `event` inside.
+    const native = (evt as { event?: Event })?.event ?? (evt as Event | undefined);
+    native?.stopPropagation?.();
+    if (typeof window !== 'undefined' &&
+        !window.confirm(`Delete saved view '${view.name}'?`)) return;
+    this.engine.deleteSavedView(view.id, environment.defaultTenantId).subscribe({
+      next: () => { this.reloadSavedViews(); },
+      error: (err) => {
+        this.savedViewsError = err?.error?.detail ?? err?.message ?? 'Delete failed.';
+      },
+    });
   }
 
   /// Condensed one-liner under the view name. Matches the WPF
