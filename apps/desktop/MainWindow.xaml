@@ -23,6 +23,7 @@
     xmlns:valViews="clr-namespace:Central.Module.Networking.Validation;assembly=Central.Module.Networking"
     xmlns:audViews="clr-namespace:Central.Module.Networking.Audit;assembly=Central.Module.Networking"
     xmlns:lockViews="clr-namespace:Central.Module.Networking.Locks;assembly=Central.Module.Networking"
+    xmlns:bulkViews="clr-namespace:Central.Module.Networking.Bulk;assembly=Central.Module.Networking"
     xmlns:admViews="clr-namespace:Central.Module.Global.Admin;assembly=Central.Module.Global"
     xmlns:sdViews="clr-namespace:Central.Module.ServiceDesk.Views;assembly=Central.Module.ServiceDesk"
     xmlns:taskViews="clr-namespace:Central.Module.Projects;assembly=Central.Module.Projects"
@@ -1255,6 +1256,13 @@
                                         Caption="Locks"
                                         AllowClose="True">
                         <lockViews:LocksPanel x:Name="LocksPanelView" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- Bulk Import / Export Panel (Phase 10 — Rust-backed) -->
+                    <dxdo:DocumentPanel x:Name="BulkPanel"
+                                        Caption="Bulk Import / Export"
+                                        AllowClose="True">
+                        <bulkViews:BulkPanel x:Name="BulkPanelView" />
                     </dxdo:DocumentPanel>
 
                     <!-- Devices Panel (extracted to Module.Devices) -->

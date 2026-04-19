@@ -35,6 +35,7 @@ public static class NetworkingRibbonRegistrar
     public const string PanelValidation = "validation";
     public const string PanelAudit      = "audit";
     public const string PanelLocks      = "locks";
+    public const string PanelBulk       = "bulk";
 
     public static void BuildRibbon(IRibbonBuilder ribbon, int sortOrder)
     {
@@ -208,6 +209,28 @@ public static class NetworkingRibbonRegistrar
                     () => PanelMessageBus.Publish(new RefreshPanelMessage(PanelAudit)));
             });
 
+            // ── Bulk (Phase 10) ──────────────────────────────────────────
+            // Bulk import / export workspace — drives every entity in the
+            // engine's bulk surface (Devices / VLANs / Subnets / Servers /
+            // Links / DHCP relay targets). Buttons dispatch to the single
+            // BulkPanel via PanelMessageBus; the panel picks up
+            // `action:export` / `action:validate` / `action:apply`.
+            //
+            // Permissions: bulk export reuses DevicesExport as the shared
+            // "allowed to read-and-download" gate; validate/apply reuse
+            // DevicesWrite because the apply path performs DB writes.
+            // Fine-grained per-entity permissions come from the engine's
+            // scope_grants RBAC layer at request time, not the ribbon.
+            page.AddGroup("Bulk", group =>
+            {
+                group.AddButton("Export",   P.DevicesExport, "ExportFile_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelBulk, "action:export")));
+                group.AddButton("Validate", P.DevicesWrite,  "CheckAll_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelBulk, "action:validate")));
+                group.AddButton("Apply",    P.DevicesWrite,  "ApplyStyle_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelBulk, "action:apply")));
+            });
+
             page.AddGroup("Panels", group =>
             {
                 group.AddCheckButton("Hierarchy",      panelId: "HierarchyPanel");
@@ -217,6 +240,7 @@ public static class NetworkingRibbonRegistrar
                 group.AddCheckButton("Validation",     panelId: "ValidationPanel");
                 group.AddCheckButton("Audit",          panelId: "AuditPanel");
                 group.AddCheckButton("Locks",          panelId: "LocksPanel");
+                group.AddCheckButton("Bulk",           panelId: "BulkPanel");
                 group.AddCheckButton("IPAM",           panelId: "DevicesPanel");
                 group.AddCheckButton("Device Details", panelId: "DeviceDetailPanel");
                 group.AddCheckButton("Switches",       panelId: "SwitchesPanel");

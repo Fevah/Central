@@ -33,20 +33,23 @@ public class NetworkingRibbonAuditTests
     }
 
     [Fact]
-    public void HasElevenFunctionalGroupsPlusPanels()
+    public void HasTwelveFunctionalGroupsPlusPanels()
     {
         // Spec: Devices, Switches, Links, Routing, VLANs, Servers,
-        // Governance, Validation, Locks, Audit, Panels.
+        // Governance, Validation, Locks, Audit, Bulk, Panels.
         // Locks group: Phase 8f trigger-backed HardLock / Immutable
         // enforcement needs an admin-facing path to apply it; the
         // Locks panel lists currently-locked rows + its ribbon lets
         // admins Change State or Clear Lock on the selection.
+        // Bulk group: Phase 10 bulk surface — Export / Validate / Apply
+        // dispatch to the single BulkPanel covering all six bulk-capable
+        // entities.
         var rb = new RibbonBuilder();
         NetworkingRibbonRegistrar.BuildRibbon(rb, 20);
         var groups = rb.Pages[0].Groups.Select(g => g.Header).ToList();
         Assert.Equal(
             new[] { "Devices", "Switches", "Links", "Routing", "VLANs",
-                    "Servers", "Governance", "Validation", "Locks", "Audit", "Panels" },
+                    "Servers", "Governance", "Validation", "Locks", "Audit", "Bulk", "Panels" },
             groups);
     }
 
@@ -123,6 +126,9 @@ public class NetworkingRibbonAuditTests
     [InlineData("Audit",      "Export CSV",       "audit",      "action:exportCsv")]
     [InlineData("Locks",      "Change State",     "locks",      "action:changeState")]
     [InlineData("Locks",      "Clear Lock",       "locks",      "action:clearLock")]
+    [InlineData("Bulk",       "Export",           "bulk",       "action:export")]
+    [InlineData("Bulk",       "Validate",         "bulk",       "action:validate")]
+    [InlineData("Bulk",       "Apply",            "bulk",       "action:apply")]
     public void NavigateButton_PublishesCorrectTargetAndAction(
         string groupHeader, string buttonContent, string expectedPanel, string expectedAction)
     {

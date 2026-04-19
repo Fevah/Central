@@ -355,6 +355,12 @@ public class MainViewModel : INotifyPropertyChanged
     private bool _isLocksPanelOpen;
     public bool IsLocksPanelOpen { get => _isLocksPanelOpen; set { _isLocksPanelOpen = value; OnPropertyChanged(); } }
 
+    /// <summary>Phase-10 bulk import / export workspace — one UI for
+    /// all six bulk-capable entities (Devices / VLANs / Subnets /
+    /// Servers / Links / DHCP relay targets).</summary>
+    private bool _isBulkPanelOpen;
+    public bool IsBulkPanelOpen { get => _isBulkPanelOpen; set { _isBulkPanelOpen = value; OnPropertyChanged(); } }
+
     private bool _isSettingsPanelOpen;
     public bool IsSettingsPanelOpen
     {
