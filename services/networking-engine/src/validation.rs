@@ -886,6 +886,46 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Error,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "server_nic.target_port_resolves",
+        name: "Server NIC's target_port_id must resolve to a live port",
+        description: "A net.server_nic row with a non-null \
+                      target_port_id pointing at a deleted port is \
+                      a dangling pointer — the fan-out allocator \
+                      walks this chain on renders. NULL target_port_id \
+                      is fine (a server profile may not have wired \
+                      its NICs yet); only checks the non-null case.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "asn_allocation.block_resolves_active",
+        name: "ASN allocation's block_id must resolve to an active block",
+        description: "A net.asn_allocation whose block_id doesn't \
+                      resolve, or resolves to a soft-deleted or \
+                      non-Active block, breaks the pool-utilization \
+                      rollup + the 'which pool did this ASN come \
+                      from' audit trail.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server_nic.target_device_matches_port_device",
+        name: "Server NIC target_device_id should match its target_port_id's device",
+        description: "server_nic.target_device_id is denormalised \
+                      from target_port_id.device_id for cheap 'all \
+                      NICs on this core' filtering. The two should \
+                      stay consistent — drift means one side was \
+                      updated without the other. Warning because \
+                      the query layer uses target_device_id + NIC \
+                      list rarely needs rebuilding; the drift \
+                      surfaces as missing rows in filter queries.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1145,6 +1185,9 @@ async fn dispatch(
         "ip_address.reserved_type_is_marked_reserved" => run_ip_reserved_type_marked(pool, org_id, severity, out).await,
         "subnet.network_is_network_address"       => run_subnet_network_is_network(pool, org_id, severity, out).await,
         "link_endpoint.port_resolves"             => run_link_endpoint_port_resolves(pool, org_id, severity, out).await,
+        "server_nic.target_port_resolves"         => run_server_nic_port_resolves(pool, org_id, severity, out).await,
+        "asn_allocation.block_resolves_active"    => run_asn_alloc_block_active(pool, org_id, severity, out).await,
+        "server_nic.target_device_matches_port_device" => run_server_nic_device_matches(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -2904,6 +2947,84 @@ async fn run_link_endpoint_port_resolves(
     Ok(())
 }
 
+/// `server_nic.target_port_resolves` — non-null target_port_id
+/// must point at a live net.port.
+async fn run_server_nic_port_resolves(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, Uuid, Uuid, i32)> = sqlx::query_as(
+        "SELECT n.id, n.server_id, n.target_port_id, n.nic_index
+           FROM net.server_nic n
+           LEFT JOIN net.port p ON p.id = n.target_port_id AND p.deleted_at IS NULL
+          WHERE n.organization_id = $1
+            AND n.deleted_at IS NULL
+            AND n.target_port_id IS NOT NULL
+            AND p.id IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, server_id, port_id, idx) in rows {
+        out.push(Violation {
+            rule_code: "server_nic.target_port_resolves".into(),
+            severity, entity_type: "ServerNic".into(), entity_id: Some(id),
+            message: format!(
+                "Server {server_id} NIC {idx} target_port_id {port_id} doesn't resolve to a live port."),
+        });
+    }
+    Ok(())
+}
+
+/// `asn_allocation.block_resolves_active` — block_id must resolve
+/// + be Active. JOIN catches both missing rows + Decommissioned blocks.
+async fn run_asn_alloc_block_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i64, Uuid, String)> = sqlx::query_as(
+        "SELECT a.id, a.asn, a.block_id, COALESCE(b.status::text, '(missing)')
+           FROM net.asn_allocation a
+           LEFT JOIN net.asn_block b ON b.id = a.block_id
+          WHERE a.organization_id = $1
+            AND a.deleted_at IS NULL
+            AND (b.id IS NULL
+                 OR b.deleted_at IS NOT NULL
+                 OR b.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, asn, block_id, status) in rows {
+        out.push(Violation {
+            rule_code: "asn_allocation.block_resolves_active".into(),
+            severity, entity_type: "AsnAllocation".into(), entity_id: Some(id),
+            message: format!(
+                "ASN {asn} (allocation {id}) references block {block_id} with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `server_nic.target_device_matches_port_device` — denorm check.
+/// target_device_id should equal target_port_id.device_id when both
+/// are populated. GROUP BY for drift between the two columns.
+async fn run_server_nic_device_matches(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, Uuid, i32, Uuid, Uuid)> = sqlx::query_as(
+        "SELECT n.id, n.server_id, n.nic_index, n.target_device_id, p.device_id
+           FROM net.server_nic n
+           JOIN net.port p ON p.id = n.target_port_id AND p.deleted_at IS NULL
+          WHERE n.organization_id = $1
+            AND n.deleted_at IS NULL
+            AND n.target_port_id IS NOT NULL
+            AND n.target_device_id IS NOT NULL
+            AND n.target_device_id != p.device_id")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, server_id, idx, target_device, port_device) in rows {
+        out.push(Violation {
+            rule_code: "server_nic.target_device_matches_port_device".into(),
+            severity, entity_type: "ServerNic".into(), entity_id: Some(id),
+            message: format!(
+                "Server {server_id} NIC {idx} target_device_id {target_device} != port's device_id {port_device} — denorm drift."),
+        });
+    }
+    Ok(())
+}
+
 /// `port.interface_name_not_empty` — net.port.interface_name is
 /// NOT NULL but the CHECK doesn't cover the blank-string case.
 /// Empty name breaks config-gen's `set interface ... ...` stanza.
@@ -3157,6 +3278,9 @@ mod tests {
             "ip_address.reserved_type_is_marked_reserved",
             "subnet.network_is_network_address",
             "link_endpoint.port_resolves",
+            "server_nic.target_port_resolves",
+            "asn_allocation.block_resolves_active",
+            "server_nic.target_device_matches_port_device",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
