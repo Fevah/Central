@@ -75,6 +75,29 @@ export interface ValidationRunResult {
   totalViolations: number;
 }
 
+/// Per-row outcome from a bulk CSV import. Matches
+/// `ImportRowOutcomeDto` from the Rust side. Ok=false means the row
+/// failed validation; the errors array carries the details the
+/// operator needs to fix.
+export interface ImportRowOutcome {
+  rowNumber: number;
+  ok: boolean;
+  errors: string[];
+  identifier: string;
+}
+
+/// Top-level bulk validate/apply result. DryRun=true + Applied=false
+/// is the validate-only path used by the web today; DryRun=false +
+/// Applied=true is the real apply path (WPF-only for this slice).
+export interface ImportValidationResult {
+  totalRows: number;
+  valid: number;
+  invalid: number;
+  dryRun: boolean;
+  applied: boolean;
+  outcomes: ImportRowOutcome[];
+}
+
 /// Pool row shapes — mirror the EntityBase subclasses served by
 /// Central.Api's /api/net/{asn,vlan,ip}-{pools,blocks} endpoints.
 /// PascalCase because the .NET side ships records as-is.
@@ -215,6 +238,27 @@ export class NetworkingEngineService {
   listDevices(organizationId: string): Observable<DeviceListRow[]> {
     const params = new HttpParams().set('organizationId', organizationId);
     return this.http.get<DeviceListRow[]>(`${this.base}/api/net/devices`, { params });
+  }
+
+  /// Bulk validate — POSTs the CSV body to the engine's dry_run
+  /// path and returns per-row outcomes. The web client sticks to
+  /// validate-only; apply/upsert goes through the WPF BulkPanel
+  /// today (needs a write-confirm dialog the web doesn't have yet).
+  validateBulk(
+    entity: 'devices' | 'vlans' | 'subnets' | 'servers' | 'links' | 'dhcp-relay-targets',
+    organizationId: string,
+    csvBody: string,
+    mode: 'create' | 'upsert' = 'create',
+  ): Observable<ImportValidationResult> {
+    const params = new HttpParams()
+      .set('organizationId', organizationId)
+      .set('dryRun', 'true')
+      .set('mode', mode);
+    return this.http.post<ImportValidationResult>(
+      `${this.base}/api/net/${entity}/import`,
+      csvBody,
+      { params, headers: { 'Content-Type': 'text/csv' } },
+    );
   }
 
   /// Pool listings — ASN / VLAN / IP pool + block enumerations
