@@ -901,6 +901,23 @@ export class NetworkingEngineService {
     return this.http.get<LockedRow[]>(`${this.base}/api/net/locks`, { params });
   }
 
+  /// PATCH the lock state on one row. `table` must be one of the
+  /// five whitelisted tables; `lockState` transitions are validated
+  /// server-side (Immutable is terminal — can't be loosened; other
+  /// transitions are permitted). 400 on a disallowed transition.
+  setEntityLock(
+    table: string,
+    id: string,
+    organizationId: string,
+    body: { lockState: string; lockReason?: string | null },
+  ): Observable<LockedRow> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.patch<LockedRow>(
+      `${this.base}/api/net/locks/${encodeURIComponent(table)}/${id}`,
+      { lockState: body.lockState, lockReason: body.lockReason ?? null },
+      { params });
+  }
+
   /// Submit a Draft change-set for approval. `requiredApprovals`
   /// caps at >=1 server-side to prevent accidental auto-approval.
   submitChangeSet(
