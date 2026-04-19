@@ -3192,6 +3192,32 @@ validation batches 21-23 (99 → 108).
 - [ ] Batch 22 (102→105): loopback.number_unique_per_device, vlan_template.code_unique_per_tenant, subnet.active_scope_entity_resolves.
 - [ ] Batch 23 (105→108): rack.uheight_positive, room.max_racks_positive_when_set, vlan_template.display_name_not_empty.
 
+### 7.X.27 Phase 10b — tenth wave (commits 2026-04-19+)
+
+Hierarchy drill completion (floors tab on building, rooms tab
+on floor, tenant-wide rooms + racks grids), validation batch 24.
+
+**Floors tab on building detail** (commit `9d5ff6bc7`)
+- [ ] Fourth tab on building detail; listFloors(buildingId)
+      narrower feeds the grid; double-click drills to floor detail.
+      Summary counts row extends with Floors count.
+
+**Rooms tab on floor detail** (commit `c8660f43c`)
+- [ ] Second tab on floor detail; listRooms(organizationId, floorId)
+      narrower. Double-click drills to room detail. Summary count
+      populated after load.
+
+**Tenant-wide rooms + racks grids** (commit `c4014e03d`)
+- [ ] `/network/rooms` grouped by roomType; double-click drills to
+      room detail.
+- [ ] `/network/racks` ungrouped; double-click drills to rack detail.
+
+**Validation rule expansion — batch 24** (commit `6590b170d`)
+- [ ] `ip_address.subnet_resolves_active` (Error)
+- [ ] `link.active_has_endpoints` (Error) — parallel to
+      link.endpoint_count (catches < 2)
+- [ ] `floor.building_resolves_active` (Error)
+
 ---
 
 ## 8. Enterprise SaaS

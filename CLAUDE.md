@@ -118,7 +118,7 @@ Client-side arc that wires every Phase 10 engine endpoint into both the WPF shel
 
 **Search facets** (commit `69991e714`): `/api/net/search/facets` returns per-entity-type COUNT for a given query in one UNION-ALL round trip. Surfaced in the web search page as a clickable chip bar ("Device(12) · Vlan(4) · Subnet(1)") for click-to-narrow UX.
 
-**Validation-rule catalog expansion** (23 batches of three rules from `cc4748f5f` through `63949d419`): 54 → 108 rules. Latest batches added naming-override template presence, IP pool canonical network address, loopback IP + uniqueness checks, VLAN template uniqueness, subnet scope resolution, rack u_height positivity, room max_racks sanity, VLAN template display_name. Guardrail test `dispatcher_has_arm_for_every_catalog_rule` updated each arc so a catalog row without a matching dispatcher arm fails CI.
+**Validation-rule catalog expansion** (24 batches of three rules from `cc4748f5f` through `6590b170d`): 54 → 111 rules. Latest batch added ip_address.subnet_resolves_active, link.active_has_endpoints, floor.building_resolves_active — orphan-parent catches paralleling the earlier ⌞.resolves_active family. Guardrail test `dispatcher_has_arm_for_every_catalog_rule` updated each arc so a catalog row without a matching dispatcher arm fails CI.
 
 **Identity + session banner** (commit `9aca7befe`): `GET /api/net/whoami` returns the caller's identity + grant-count + distinct actions / entity-types across active scope-grants. One round-trip aggregate. Web surface is a blue banner above the network dashboard sub-nav rendering "Signed in as user X · N grants · action chips · entity-type chips".
 
