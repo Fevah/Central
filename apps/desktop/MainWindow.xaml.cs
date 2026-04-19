@@ -924,6 +924,12 @@ public partial class MainWindow
                 AuthContext.Instance.CurrentUser?.Id);
             VlanGridPanel.SetEngineContext(neUrl, App.CurrentTenantId,
                 AuthContext.Instance.CurrentUser?.Id);
+            P2PGridPanel.SetEngineContext(neUrl, App.CurrentTenantId,
+                AuthContext.Instance.CurrentUser?.Id);
+            B2BGridPanel.SetEngineContext(neUrl, App.CurrentTenantId,
+                AuthContext.Instance.CurrentUser?.Id);
+            FWGridPanel.SetEngineContext(neUrl, App.CurrentTenantId,
+                AuthContext.Instance.CurrentUser?.Id);
         }
         await Task.Yield(); // Let splash repaint
         UpdateSplash("Loading ribbon icons...", 95);

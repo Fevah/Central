@@ -105,6 +105,7 @@ pub fn build_router(state: AppState) -> Router {
         // Device list (thin read — powers WPF pickers)
         .route("/api/net/devices", get(list_devices))
         .route("/api/net/vlans",   get(list_vlans))
+        .route("/api/net/links",   get(list_links))
         // Thin pool/block reads (WPF convenience-form pickers)
         .route("/api/net/vlan-blocks", get(list_vlan_blocks))
         .route("/api/net/asn-blocks",  get(list_asn_blocks))
@@ -769,6 +770,53 @@ async fn list_vlans(
            LEFT JOIN net.vlan_block b ON b.id = v.block_id
           WHERE v.organization_id = $1 AND v.deleted_at IS NULL
           ORDER BY v.vlan_id
+          LIMIT 5000")
+        .bind(q.organization_id)
+        .fetch_all(&s.pool)
+        .await?;
+    Ok(Json(rows))
+}
+
+// ─── Link thin list (picker + link_code→uuid lookup) ────────────────────
+
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct LinkListRow {
+    id: Uuid,
+    link_code: String,
+    link_type: Option<String>,      // resolved type_code from net.link_type
+    device_a: Option<String>,       // hostname of endpoint_order=0
+    device_b: Option<String>,       // hostname of endpoint_order=1
+    status: String,
+    version: i32,
+}
+
+/// Thin list of links — mirrors list_devices + list_vlans (5000 row cap,
+/// ordered for stable consumption). Resolves link_type + endpoint
+/// hostnames via three LEFT JOINs so WPF grids can drive a context-menu
+/// lookup without a second round-trip per row. Endpoint hostnames come
+/// from the A-side (endpoint_order=0) and B-side (endpoint_order=1)
+/// entries in net.link_endpoint.
+async fn list_links(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let rows: Vec<LinkListRow> = sqlx::query_as(
+        "SELECT l.id,
+                l.link_code,
+                lt.type_code AS link_type,
+                da.hostname  AS device_a,
+                db.hostname  AS device_b,
+                l.status::text AS status,
+                l.version
+           FROM net.link l
+           LEFT JOIN net.link_type     lt ON lt.id = l.link_type_id
+           LEFT JOIN net.link_endpoint ea ON ea.link_id = l.id AND ea.endpoint_order = 0
+           LEFT JOIN net.device        da ON da.id = ea.device_id
+           LEFT JOIN net.link_endpoint eb ON eb.link_id = l.id AND eb.endpoint_order = 1
+           LEFT JOIN net.device        db ON db.id = eb.device_id
+          WHERE l.organization_id = $1 AND l.deleted_at IS NULL
+          ORDER BY l.link_code
           LIMIT 5000")
         .bind(q.organization_id)
         .fetch_all(&s.pool)

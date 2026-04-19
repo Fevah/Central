@@ -47,4 +47,27 @@ public partial class P2PGridPanel : System.Windows.Controls.UserControl
         if (P2PGrid.GetRow(e.RowHandle) is P2PLink link && link.DetailConfigLines.Count == 0)
             link.GenerateDetailConfig();
     }
+
+    // ─── Engine context + audit-drill context menu ─────────────────────
+
+    private string? _engineBaseUrl;
+    private Guid _engineTenantId;
+    private int? _engineActorUserId;
+
+    public void SetEngineContext(string baseUrl, Guid tenantId, int? actorUserId = null)
+    {
+        _engineBaseUrl = baseUrl;
+        _engineTenantId = tenantId;
+        _engineActorUserId = actorUserId;
+    }
+
+    private async void OnContextShowAudit(object sender, System.Windows.RoutedEventArgs e)
+    {
+        if (P2PGrid.CurrentItem is P2PLink link)
+            await LinkAuditDrill.ShowAuditForLinkAsync(
+                _engineBaseUrl, _engineTenantId, _engineActorUserId, link);
+    }
+
+    private void OnContextCopyLinkCode(object sender, System.Windows.RoutedEventArgs e)
+        => LinkAuditDrill.CopyLinkCode(P2PGrid.CurrentItem as P2PLink);
 }

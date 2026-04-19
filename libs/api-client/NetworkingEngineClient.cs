@@ -227,6 +227,17 @@ public class NetworkingEngineClient : IDisposable
         => GetAsync<List<VlanListRowDto>>(
             $"/api/net/vlans?organizationId={organizationId}", ct);
 
+    /// <summary>Thin link list — same pattern as devices + vlans.
+    /// Carries link_code + resolved link_type + the two endpoint
+    /// hostnames (A at endpoint_order 0, B at 1) for picker display
+    /// without a second round-trip. Used by the WPF P2P/B2B/FW
+    /// grids' audit-drill handlers to resolve link_code → net.link
+    /// uuid.</summary>
+    public Task<List<LinkListRowDto>> ListLinksAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<LinkListRowDto>>(
+            $"/api/net/links?organizationId={organizationId}", ct);
+
     /// <summary>List VLAN blocks + per-block availability. Powers the
     /// WPF Create VLAN picker so admins see "VLAN 100-199 · 12 free"
     /// instead of a UUID they'd have to copy from another tool.</summary>
@@ -1182,6 +1193,10 @@ public record DeviceListRowDto(Guid Id, string Hostname, string? RoleCode,
 // VLAN list (picker / audit-drill hostname resolution)
 public record VlanListRowDto(Guid Id, int VlanId, string DisplayName,
     string? BlockCode, string ScopeLevel, string Status, int Version);
+
+// Link list (picker / audit-drill link_code resolution)
+public record LinkListRowDto(Guid Id, string LinkCode, string? LinkType,
+    string? DeviceA, string? DeviceB, string Status, int Version);
 
 // VLAN block list (picker)
 public record VlanBlockDto(Guid Id, string BlockCode, string DisplayName,

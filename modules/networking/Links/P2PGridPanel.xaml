@@ -12,6 +12,15 @@
     </UserControl.Resources>
 
     <dxg:GridControl x:Name="P2PGrid" ItemsSource="{Binding P2PLinks}" AutoGenerateColumns="None">
+        <dxg:GridControl.ContextMenu>
+            <ContextMenu>
+                <MenuItem Header="Show audit history"
+                          Click="OnContextShowAudit"
+                          ToolTip="Resolve this link's net.link uuid and open Audit filtered to that id"/>
+                <Separator/>
+                <MenuItem Header="Copy link code" Click="OnContextCopyLinkCode"/>
+            </ContextMenu>
+        </dxg:GridControl.ContextMenu>
         <dxg:GridControl.View>
             <dxg:TableView x:Name="P2PView" ShowGroupPanel="True" AllowColumnFiltering="True"
                            ShowFilterPanelMode="ShowAlways" NavigationStyle="Cell"

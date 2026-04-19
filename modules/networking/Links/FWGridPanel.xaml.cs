@@ -47,4 +47,27 @@ public partial class FWGridPanel : System.Windows.Controls.UserControl
             ConfigCogClicked?.Invoke(side, row!);
         }
     }
+
+    // ─── Engine context + audit-drill context menu ─────────────────────
+
+    private string? _engineBaseUrl;
+    private Guid _engineTenantId;
+    private int? _engineActorUserId;
+
+    public void SetEngineContext(string baseUrl, Guid tenantId, int? actorUserId = null)
+    {
+        _engineBaseUrl = baseUrl;
+        _engineTenantId = tenantId;
+        _engineActorUserId = actorUserId;
+    }
+
+    private async void OnContextShowAudit(object sender, System.Windows.RoutedEventArgs e)
+    {
+        if (FWGrid.CurrentItem is FWLink link)
+            await LinkAuditDrill.ShowAuditForLinkAsync(
+                _engineBaseUrl, _engineTenantId, _engineActorUserId, link);
+    }
+
+    private void OnContextCopyLinkCode(object sender, System.Windows.RoutedEventArgs e)
+        => LinkAuditDrill.CopyLinkCode(FWGrid.CurrentItem as FWLink);
 }
