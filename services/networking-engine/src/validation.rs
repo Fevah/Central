@@ -844,6 +844,48 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Error,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "ip_address.reserved_type_is_marked_reserved",
+        name: "Reserved-role IP addresses should carry is_reserved=true",
+        description: "A net.ip_address with assigned_to_type in \
+                      (Gateway / Broadcast / Reserved) should have \
+                      is_reserved=true. These aren't hand-allocated \
+                      to a live entity — they're policy markers at the \
+                      subnet edges. Warning because a few tenants run \
+                      with is_reserved tracked separately, but the \
+                      coupling is strong enough the audit picks it up.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "subnet.network_is_network_address",
+        name: "Subnet CIDR should be stored as the network address",
+        description: "A net.subnet.network stored with host bits set \
+                      (e.g. 10.11.0.5/24 instead of 10.11.0.0/24) \
+                      violates the carver's assumptions — GIST \
+                      containment queries can miss it. PG's \
+                      `set_masklen(network, masklen(network))` flips \
+                      the address to canonical; this rule surfaces \
+                      rows that drifted.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "link_endpoint.port_resolves",
+        name: "Link endpoint's port_id must resolve to a live net.port",
+        description: "A net.link_endpoint row with a non-null port_id \
+                      that points at a deleted or non-existent \
+                      net.port breaks config-gen's endpoint-to-port \
+                      interface resolution — it emits an empty \
+                      `set interface ... ...` slot. Warnings for \
+                      NULL port_id rows are fine (some link types \
+                      don't need port specificity).",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1100,6 +1142,9 @@ async fn dispatch(
         "naming_template_override.scope_entity_resolves" => run_naming_override_scope_resolves(pool, org_id, severity, out).await,
         "asn_allocation.unique_allocated_to"      => run_asn_unique_allocated_to(pool, org_id, severity, out).await,
         "port.interface_name_not_empty"           => run_port_name_not_empty(pool, org_id, severity, out).await,
+        "ip_address.reserved_type_is_marked_reserved" => run_ip_reserved_type_marked(pool, org_id, severity, out).await,
+        "subnet.network_is_network_address"       => run_subnet_network_is_network(pool, org_id, severity, out).await,
+        "link_endpoint.port_resolves"             => run_link_endpoint_port_resolves(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -2784,6 +2829,81 @@ async fn run_asn_unique_allocated_to(
     Ok(())
 }
 
+/// `ip_address.reserved_type_is_marked_reserved` — typed-reserved
+/// roles (Gateway / Broadcast / Reserved) should have is_reserved
+/// flipped to true. Catches rows where the type was set but the
+/// boolean wasn't.
+async fn run_ip_reserved_type_marked(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT id, host(address), assigned_to_type
+           FROM net.ip_address
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND assigned_to_type IN ('Gateway','Broadcast','Reserved')
+            AND is_reserved = false")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, addr, typ) in rows {
+        out.push(Violation {
+            rule_code: "ip_address.reserved_type_is_marked_reserved".into(),
+            severity, entity_type: "IpAddress".into(), entity_id: Some(id),
+            message: format!(
+                "IP {addr} has assigned_to_type='{typ}' but is_reserved=false — flag the policy role on is_reserved."),
+        });
+    }
+    Ok(())
+}
+
+/// `subnet.network_is_network_address` — stored CIDR should have no
+/// host bits set (should be the network address). `set_masklen(network,
+/// masklen(network)) != network` flags rows that drifted (e.g.
+/// 10.0.0.5/24 stored instead of 10.0.0.0/24).
+async fn run_subnet_network_is_network(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT id, subnet_code, network::text
+           FROM net.subnet
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND network != set_masklen(network, masklen(network))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, network) in rows {
+        out.push(Violation {
+            rule_code: "subnet.network_is_network_address".into(),
+            severity, entity_type: "Subnet".into(), entity_id: Some(id),
+            message: format!(
+                "Subnet '{code}' stored as '{network}' has host bits set — canonical form is the network address."),
+        });
+    }
+    Ok(())
+}
+
+/// `link_endpoint.port_resolves` — non-null port_id must point at
+/// a live net.port. LEFT JOIN catches orphaned references.
+async fn run_link_endpoint_port_resolves(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, Uuid, Uuid, i32)> = sqlx::query_as(
+        "SELECT e.id, e.link_id, e.port_id, e.endpoint_order
+           FROM net.link_endpoint e
+           LEFT JOIN net.port p ON p.id = e.port_id AND p.deleted_at IS NULL
+          WHERE e.organization_id = $1
+            AND e.port_id IS NOT NULL
+            AND p.id IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, link_id, port_id, order) in rows {
+        out.push(Violation {
+            rule_code: "link_endpoint.port_resolves".into(),
+            severity, entity_type: "LinkEndpoint".into(), entity_id: Some(id),
+            message: format!(
+                "Link {link_id} endpoint order {order} references port {port_id} which doesn't resolve — config-gen will emit an empty interface slot."),
+        });
+    }
+    Ok(())
+}
+
 /// `port.interface_name_not_empty` — net.port.interface_name is
 /// NOT NULL but the CHECK doesn't cover the blank-string case.
 /// Empty name breaks config-gen's `set interface ... ...` stanza.
@@ -3034,6 +3154,9 @@ mod tests {
             "naming_template_override.scope_entity_resolves",
             "asn_allocation.unique_allocated_to",
             "port.interface_name_not_empty",
+            "ip_address.reserved_type_is_marked_reserved",
+            "subnet.network_is_network_address",
+            "link_endpoint.port_resolves",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
