@@ -1244,6 +1244,37 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Error,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "rack.uheight_positive",
+        name: "Rack u_height must be positive",
+        description: "net.rack.u_height defaults to 42 but admin \
+                      edits can store 0 or negative. A rack with \
+                      non-positive height can't place any device + \
+                      breaks the placement UI.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "room.max_racks_positive_when_set",
+        name: "Room max_racks should be positive when populated",
+        description: "NULL is fine (uncapped). Zero or negative is \
+                      nonsense — no racks fit. Mirrors the shape of \
+                      port.speed_mbps_positive_when_set (batch 20).",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "vlan_template.display_name_not_empty",
+        name: "VLAN template display_name must be non-empty",
+        description: "Parallel to the *_profile display_name rules \
+                      (batches 17-18). Blank display_name breaks \
+                      the template picker at VLAN creation.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1533,6 +1564,9 @@ async fn dispatch(
         "loopback.number_unique_per_device"       => run_loopback_number_unique(pool, org_id, severity, out).await,
         "vlan_template.code_unique_per_tenant"    => run_vlan_template_code_unique(pool, org_id, severity, out).await,
         "subnet.active_scope_entity_resolves"     => run_subnet_scope_entity_resolves_active(pool, org_id, severity, out).await,
+        "rack.uheight_positive"                   => run_rack_uheight_positive(pool, org_id, severity, out).await,
+        "room.max_racks_positive_when_set"        => run_room_max_racks_positive(pool, org_id, severity, out).await,
+        "vlan_template.display_name_not_empty"    => run_vlan_template_display_name(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -3892,6 +3926,74 @@ async fn run_ip_pool_network_canonical(
     Ok(())
 }
 
+/// `rack.uheight_positive` — flag rack rows with non-positive
+/// u_height (can't place any device).
+async fn run_rack_uheight_positive(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i32)> = sqlx::query_as(
+        "SELECT id, rack_code, u_height
+           FROM net.rack
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND u_height <= 0")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, u) in rows {
+        out.push(Violation {
+            rule_code: "rack.uheight_positive".into(),
+            severity, entity_type: "Rack".into(), entity_id: Some(id),
+            message: format!(
+                "Rack '{code}' has u_height={u} — can't place any device."),
+        });
+    }
+    Ok(())
+}
+
+/// `room.max_racks_positive_when_set` — NULL is fine; zero or
+/// negative is nonsense.
+async fn run_room_max_racks_positive(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i32)> = sqlx::query_as(
+        "SELECT id, room_code, max_racks
+           FROM net.room
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND max_racks IS NOT NULL
+            AND max_racks <= 0")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, max) in rows {
+        out.push(Violation {
+            rule_code: "room.max_racks_positive_when_set".into(),
+            severity, entity_type: "Room".into(), entity_id: Some(id),
+            message: format!(
+                "Room '{code}' has max_racks={max} — clear to NULL for uncapped or set a positive value."),
+        });
+    }
+    Ok(())
+}
+
+/// `vlan_template.display_name_not_empty` — blank display_name
+/// breaks the template picker at VLAN creation.
+async fn run_vlan_template_display_name(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, template_code FROM net.vlan_template
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND btrim(display_name) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "vlan_template.display_name_not_empty".into(),
+            severity, entity_type: "VlanTemplate".into(), entity_id: Some(id),
+            message: format!("VLAN template '{code}' has an empty display_name."),
+        });
+    }
+    Ok(())
+}
+
 /// `loopback.number_unique_per_device` — GROUP BY (device_id,
 /// loopback_number) HAVING count>1 across active rows.
 async fn run_loopback_number_unique(
@@ -4350,6 +4452,9 @@ mod tests {
             "loopback.number_unique_per_device",
             "vlan_template.code_unique_per_tenant",
             "subnet.active_scope_entity_resolves",
+            "rack.uheight_positive",
+            "room.max_racks_positive_when_set",
+            "vlan_template.display_name_not_empty",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
