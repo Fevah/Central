@@ -122,6 +122,17 @@ import { environment } from '../../../../environments/environment';
       <dxi-column dataField="status"        caption="Status"       width="80" />
       <dxi-column dataField="notes"         caption="Notes" />
       <dxi-column dataField="id"            caption="Grant id"     width="260" />
+      <dxi-column caption="" width="90" [allowFiltering]="false" [allowSorting]="false"
+                  cellTemplate="actionsTemplate" />
+
+      <div *dxTemplate="let d of 'actionsTemplate'">
+        <div class="row-actions">
+          <dx-button icon="copy" stylingMode="text" hint="Copy grant id"
+                     (onClick)="copyGrantId(d.data)" />
+          <dx-button icon="trash" stylingMode="text" hint="Delete this grant"
+                     (onClick)="deleteGrant(d.data)" />
+        </div>
+      </div>
     </dx-data-grid>
   `,
   styles: [`
@@ -140,6 +151,7 @@ import { environment } from '../../../../environments/environment';
     .form-row .hint { color: #6b7280; font-size: 11px; }
     .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
     .create-error { color: #ef4444; font-size: 12px; padding: 6px 8px; background: rgba(239,68,68,0.08); border-radius: 4px; }
+    .row-actions { display: flex; gap: 4px; }
   `]
 })
 export class NetworkScopeGrantsComponent implements OnInit {
@@ -284,6 +296,8 @@ export class NetworkScopeGrantsComponent implements OnInit {
       this.createError = 'Scope entity id is required for any scope type other than Global.'; return;
     }
 
+    // Guard against typos in optional fields so the engine doesn't
+    // reject an otherwise-valid grant for a trimming reason.
     this.creating = true;
     this.engine.createScopeGrant({
       organizationId: environment.defaultTenantId,
@@ -309,6 +323,48 @@ export class NetworkScopeGrantsComponent implements OnInit {
           this.createError = 'Forbidden — your user lacks write:ScopeGrant. Ask an admin or use the WPF break-glass path.';
         } else {
           this.createError = err?.error?.detail ?? err?.message ?? 'Create failed.';
+        }
+      },
+    });
+  }
+
+  // ─── Row actions ───────────────────────────────────────────────────
+
+  /// Copy the grant uuid to the clipboard. Uses the Clipboard API if
+  /// the page is served over HTTPS; falls back to writing into the
+  /// status line so the operator can still grab the id by eye. The
+  /// async API returns a promise but we don't await — nav away before
+  /// the copy lands is acceptable.
+  copyGrantId(g: ScopeGrant): void {
+    if (!g?.id) return;
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(g.id).then(
+        () => { this.status = `Copied grant id ${g.id}.`; },
+        () => { this.status = `Clipboard write failed — id: ${g.id}`; },
+      );
+    } else {
+      this.status = `Grant id: ${g.id}`;
+    }
+  }
+
+  /// Delete a grant. Confirm with a browser prompt + surface the same
+  /// two failure classes (403 / other) as create. Reloads the grid
+  /// on success so the row disappears.
+  deleteGrant(g: ScopeGrant): void {
+    if (!g?.id) return;
+    if (typeof window !== 'undefined' &&
+        !window.confirm(`Delete grant '${g.action}:${g.entityType}' for user ${g.userId}?`)) return;
+    this.engine.deleteScopeGrant(g.id, environment.defaultTenantId).subscribe({
+      next: () => {
+        this.status = 'Grant deleted.';
+        this.reload();
+      },
+      error: (err) => {
+        const status = err?.status as number | undefined;
+        if (status === 403) {
+          this.status = 'Forbidden — your user lacks delete:ScopeGrant on this grant.';
+        } else {
+          this.status = `Delete failed: ${err?.error?.detail ?? err?.message ?? err}`;
         }
       },
     });
