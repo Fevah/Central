@@ -498,6 +498,20 @@ export interface FloorRow {
   Status: string;
 }
 
+/// Subnet-carver preview response — matches `CarvePreview` in
+/// services/networking-engine/src/ip_allocation.rs. Pure read-only
+/// dry-run: no net.subnet row is inserted, no lock taken. Shows
+/// "next /N in this pool would be …" so UIs can confirm before
+/// calling allocate_subnet for real.
+export interface CarvePreview {
+  poolId: string;
+  poolCidr: string;
+  poolPrefixLength: number;
+  requestedPrefixLength: number;
+  candidateCidr: string;
+  isIpv6: boolean;
+}
+
 /// Who-am-i summary — matches `WhoAmIResponse` in the engine.
 /// Drives the web session banner. Service calls (no X-User-Id
 /// header) get userId=null + grantCount=0 + empty arrays.
@@ -1488,6 +1502,20 @@ export class NetworkingEngineService {
   listVlanPools():  Observable<VlanPoolRow[]>  { return this.http.get<VlanPoolRow[]>(`${this.base}/api/net/vlan-pools`); }
   listVlanBlocks(): Observable<VlanBlockRow[]> { return this.http.get<VlanBlockRow[]>(`${this.base}/api/net/vlan-blocks`); }
   listIpPools():   Observable<IpPoolRow[]>   { return this.http.get<IpPoolRow[]>(`${this.base}/api/net/ip-pools`); }
+
+  /// Dry-run the subnet carver. Returns the candidate CIDR that
+  /// `allocate_subnet` would produce next for the given pool +
+  /// prefix length, without mutating anything. 404 → pool not
+  /// found; 409 → prefix out of range OR pool exhausted (UI
+  /// should read the error message to disambiguate).
+  previewSubnetCarve(body: {
+    poolId: string;
+    organizationId: string;
+    prefixLength: number;
+  }): Observable<CarvePreview> {
+    return this.http.post<CarvePreview>(
+      `${this.base}/api/net/allocate/subnet/preview`, body);
+  }
 
   /// Thin room list — 5000-row cap, optional floorId narrower.
   listRooms(
