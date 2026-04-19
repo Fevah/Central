@@ -37,24 +37,27 @@
                 </Grid.RowDefinitions>
                 <TextBlock Grid.Row="0" Text="Saved views" FontWeight="SemiBold"
                            Foreground="#B0B0B0" Padding="8,6,8,4"/>
-                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="6,0,6,4">
+                <WrapPanel Grid.Row="1" Margin="6,0,6,4">
                     <Button x:Name="SaveViewButton" Content="Save current"
-                            Width="90" Click="OnSaveView" Margin="0,0,4,0"
+                            Width="90" Click="OnSaveView" Margin="0,0,4,2"
                             ToolTip="Save the current query + entity-type filter as a named view"/>
                     <Button x:Name="RenameViewButton" Content="Rename"
-                            Width="70" Click="OnRenameView" Margin="0,0,4,0"
+                            Width="70" Click="OnRenameView" Margin="0,0,4,2"
                             ToolTip="Rename the selected saved view (keeps query, entity-types, filters intact)"/>
+                    <Button x:Name="EditNotesButton" Content="Notes"
+                            Width="60" Click="OnEditNotes" Margin="0,0,4,2"
+                            ToolTip="Edit the free-text notes attached to this view — hover the list item to see them"/>
                     <Button x:Name="DeleteViewButton" Content="Delete"
-                            Width="60" Click="OnDeleteView"
+                            Width="60" Click="OnDeleteView" Margin="0,0,0,2"
                             ToolTip="Delete the selected saved view"/>
-                </StackPanel>
+                </WrapPanel>
                 <ListBox Grid.Row="2" x:Name="SavedViewsList"
                          Background="Transparent" BorderThickness="0"
                          Foreground="#D0D0D0"
                          SelectionChanged="OnSavedViewSelected">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <StackPanel>
+                            <StackPanel ToolTip="{Binding NotesTooltip}">
                                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
                                 <TextBlock Text="{Binding SubtitleText}"
                                            Foreground="#888" FontSize="11"/>

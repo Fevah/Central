@@ -366,6 +366,53 @@ public partial class SearchPanel : UserControl
         catch (Exception ex)                 { StatusLabel.Text = $"Delete failed: {ex.Message}"; }
     }
 
+    /// <summary>Edit the notes on the selected view. Same Update
+    /// round-trip as rename, but everything except notes is echoed
+    /// back unchanged. Two separate single-field prompts (Rename +
+    /// Notes) instead of one combined dialog — TextInputPrompt is a
+    /// one-field helper, a two-field dialog would be more code + a
+    /// bespoke UI.</summary>
+    private async void OnEditNotes(object sender, RoutedEventArgs e)
+    {
+        if (SavedViewsList.SelectedItem is not SavedViewRow row)
+        {
+            StatusLabel.Text = "Pick a saved view from the sidebar first.";
+            return;
+        }
+        if (string.IsNullOrEmpty(_baseUrl) || _tenantId == Guid.Empty) return;
+
+        var newNotes = TextInputPrompt.Show(
+            "Edit notes", $"Notes for '{row.Name}':",
+            row.Source.Notes ?? "", Window.GetWindow(this));
+        if (newNotes is null) return;  // cancelled — null vs empty matters
+
+        var trimmed = newNotes.Trim();
+        if (string.Equals(trimmed, row.Source.Notes ?? "", StringComparison.Ordinal))
+        {
+            StatusLabel.Text = "Notes unchanged.";
+            return;
+        }
+
+        try
+        {
+            using var client = new NetworkingEngineClient(_baseUrl);
+            if (_actorUserId is int uid) client.SetActorUserId(uid);
+            await client.UpdateSavedViewAsync(
+                id: row.Source.Id,
+                organizationId: _tenantId,
+                name: row.Source.Name,
+                q: row.Source.Q,
+                entityTypes: row.Source.EntityTypes,
+                filters: row.Source.Filters,
+                notes: string.IsNullOrWhiteSpace(trimmed) ? null : trimmed,
+                version: row.Source.Version);
+            await ReloadSavedViewsAsync();
+            StatusLabel.Text = $"Notes updated on '{row.Name}' · {DateTime.Now:HH:mm:ss}";
+        }
+        catch (NetworkingEngineException ex) { StatusLabel.Text = $"Notes update failed ({ex.StatusCode}): {ex.Message}"; }
+        catch (Exception ex)                 { StatusLabel.Text = $"Notes update failed: {ex.Message}"; }
+    }
+
     /// <summary>Rename the selected saved view — calls UpdateSavedViewAsync
     /// with the existing query / entity-types / filters / notes /
     /// version so only the name changes. Operators build up named
@@ -440,6 +487,25 @@ internal sealed class SavedViewRow
             var types = string.IsNullOrWhiteSpace(Source.EntityTypes)
                 ? "all types" : Source.EntityTypes;
             return $"{q} · {types}";
+        }
+    }
+
+    /// <summary>Tooltip shown on hover — full query + entity types
+    /// + notes when set. Returning null suppresses the tooltip
+    /// (WPF treats null ToolTip as "no tooltip"), so views without
+    /// any of those fields don't show an empty popup.</summary>
+    public string? NotesTooltip
+    {
+        get
+        {
+            var parts = new System.Collections.Generic.List<string>();
+            if (!string.IsNullOrWhiteSpace(Source.Q))
+                parts.Add($"Query: {Source.Q}");
+            if (!string.IsNullOrWhiteSpace(Source.EntityTypes))
+                parts.Add($"Types: {Source.EntityTypes}");
+            if (!string.IsNullOrWhiteSpace(Source.Notes))
+                parts.Add($"Notes: {Source.Notes}");
+            return parts.Count == 0 ? null : string.Join("\n", parts);
         }
     }
 }
