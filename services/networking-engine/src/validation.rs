@@ -768,6 +768,45 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "rendered_config.chain_integrity",
+        name: "Rendered-config chain must resolve",
+        description: "A net.rendered_config row with a non-null \
+                      previous_render_id that doesn't resolve to an \
+                      existing render breaks the 'what changed since \
+                      last render' diff — diff_render short-circuits \
+                      to 'first render' silently. LEFT JOIN catches \
+                      the orphaned-pointer case.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "scope_grant.no_duplicate_tuple",
+        name: "Scope grants shouldn't duplicate (user, action, entity, scope) tuples",
+        description: "Two Active net.scope_grant rows for the same \
+                      (user_id, action, entity_type, scope_type, \
+                      scope_entity_id) tuple are redundant — the \
+                      second one can never change the resolver's \
+                      answer. Typically the result of a bulk-import \
+                      running twice or a manual duplicate.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "change_set.applied_has_no_pending_items",
+        name: "Applied change-sets should have every item applied",
+        description: "A net.change_set in status 'Applied' with any \
+                      item whose applied_at is NULL is a partial \
+                      apply — the Set looks done from the dashboard \
+                      but part of its payload never ran. Apply path \
+                      normally blocks this transition, but raw SQL \
+                      edits or a crashed apply can leave the state.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1018,6 +1057,9 @@ async fn dispatch(
         "ip_address.assigned_to_id_when_typed"    => run_ip_assigned_to_id_when_typed(pool, org_id, severity, out).await,
         "rack.position_positive"                  => run_rack_position_positive(pool, org_id, severity, out).await,
         "building_profile.role_counts_non_empty"  => run_building_profile_role_counts(pool, org_id, severity, out).await,
+        "rendered_config.chain_integrity"         => run_rendered_config_chain(pool, org_id, severity, out).await,
+        "scope_grant.no_duplicate_tuple"          => run_scope_grant_no_duplicates(pool, org_id, severity, out).await,
+        "change_set.applied_has_no_pending_items" => run_change_set_applied_complete(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -2575,6 +2617,96 @@ async fn run_rack_position_positive(
     Ok(())
 }
 
+/// `rendered_config.chain_integrity` — LEFT JOIN on the chained
+/// previous_render_id catches orphaned pointers (row pointed at
+/// was deleted, or never existed). Only active (non-deleted) rows
+/// are checked.
+async fn run_rendered_config_chain(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, Uuid)> = sqlx::query_as(
+        "SELECT r.id, r.previous_render_id
+           FROM net.rendered_config r
+           LEFT JOIN net.rendered_config p ON p.id = r.previous_render_id
+          WHERE r.organization_id = $1
+            AND r.previous_render_id IS NOT NULL
+            AND p.id IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, prev_id) in rows {
+        out.push(Violation {
+            rule_code: "rendered_config.chain_integrity".into(),
+            severity, entity_type: "RenderedConfig".into(), entity_id: Some(id),
+            message: format!(
+                "Render {id} references previous_render_id {prev_id} which no longer exists — diff chain broken."),
+        });
+    }
+    Ok(())
+}
+
+/// `scope_grant.no_duplicate_tuple` — GROUP BY the effective resolver
+/// key HAVING count>1 across Active rows only. COALESCE on
+/// scope_entity_id so a Global grant (NULL scope_entity_id) vs. an
+/// EntityId grant with a specific uuid compare cleanly.
+async fn run_scope_grant_no_duplicates(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(i32, String, String, String, i64, Vec<Uuid>)> = sqlx::query_as(
+        "SELECT user_id,
+                action,
+                entity_type,
+                scope_type,
+                COUNT(*) AS n,
+                array_agg(id) AS ids
+           FROM net.scope_grant
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND status = 'Active'::net.entity_status
+          GROUP BY user_id, action, entity_type, scope_type,
+                   COALESCE(scope_entity_id, '00000000-0000-0000-0000-000000000000'::uuid)
+         HAVING COUNT(*) > 1")
+        .bind(org_id).fetch_all(pool).await?;
+    for (user_id, action, entity_type, scope_type, n, ids) in rows {
+        let primary = ids.first().copied();
+        let id_list = ids.iter().map(|id| id.to_string())
+            .collect::<Vec<_>>().join(", ");
+        out.push(Violation {
+            rule_code: "scope_grant.no_duplicate_tuple".into(),
+            severity, entity_type: "ScopeGrant".into(), entity_id: primary,
+            message: format!(
+                "{n} active grants duplicate (user {user_id}, action '{action}', entity '{entity_type}', scope '{scope_type}'): {id_list}."),
+        });
+    }
+    Ok(())
+}
+
+/// `change_set.applied_has_no_pending_items` — sets marked Applied
+/// shouldn't have items with applied_at IS NULL. Surfaces the partial-
+/// apply state that normally can't happen (guarded by the transition
+/// path) but raw SQL / crashed apply can produce.
+async fn run_change_set_applied_complete(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i64)> = sqlx::query_as(
+        "SELECT cs.id, cs.title, COUNT(i.id) AS pending
+           FROM net.change_set cs
+           JOIN net.change_set_item i ON i.change_set_id = cs.id
+          WHERE cs.organization_id = $1
+            AND cs.deleted_at IS NULL
+            AND cs.status = 'Applied'
+            AND i.applied_at IS NULL
+          GROUP BY cs.id, cs.title")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, title, pending) in rows {
+        out.push(Violation {
+            rule_code: "change_set.applied_has_no_pending_items".into(),
+            severity, entity_type: "ChangeSet".into(), entity_id: Some(id),
+            message: format!(
+                "Applied change set '{title}' has {pending} item(s) with applied_at=NULL — partial apply."),
+        });
+    }
+    Ok(())
+}
+
 /// `building_profile.role_counts_non_empty` — a profile with zero
 /// role-count rows expands to an empty template. Finds every
 /// profile whose COUNT(*) in building_profile_role_count is 0.
@@ -2767,6 +2899,9 @@ mod tests {
             "ip_address.assigned_to_id_when_typed",
             "rack.position_positive",
             "building_profile.role_counts_non_empty",
+            "rendered_config.chain_integrity",
+            "scope_grant.no_duplicate_tuple",
+            "change_set.applied_has_no_pending_items",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
