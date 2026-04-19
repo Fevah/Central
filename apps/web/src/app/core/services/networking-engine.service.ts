@@ -357,6 +357,33 @@ export interface RenderedConfigRecord {
   renderedBy: number | null;
 }
 
+/// Per-device error inside a building / site / region turn-up pack.
+/// Matches `DeviceRenderError` — hostname is denormalised for the
+/// UI so a broken template on device 17 shows "MEP-91-SW17" rather
+/// than a uuid the operator has to cross-reference.
+export interface DeviceRenderError {
+  deviceId: string;
+  hostname: string;
+  error: string;
+}
+
+/// Turn-up pack result — matches `BuildingRenderResult` /
+/// `SiteRenderResult` / `RegionRenderResult`. Same shape across
+/// scopes so one grid + summary card renders them uniformly.
+export interface RenderPackResult {
+  buildingId?: string;
+  buildingCode?: string | null;
+  siteId?: string;
+  siteCode?: string | null;
+  regionId?: string;
+  regionCode?: string | null;
+  totalDevices: number;
+  succeeded: number;
+  failed: number;
+  renders: RenderedConfigResponse[];
+  errors: DeviceRenderError[];
+}
+
 /// Freshly-rendered config returned from POST
 /// /api/net/devices/:id/render-config. Same wire shape as
 /// `RenderedConfig` in the engine — id + previousRenderId are
@@ -697,6 +724,34 @@ export class NetworkingEngineService {
     const params = new HttpParams().set('organizationId', organizationId);
     return this.http.get<PoolUtilizationRow[]>(
       `${this.base}/api/net/pools/utilization`, { params });
+  }
+
+  /// Turn-up pack: render + persist every device in a building.
+  /// Per-device errors are tolerated — surface in `errors` array.
+  renderBuildingConfigs(
+    buildingId: string, organizationId: string,
+  ): Observable<RenderPackResult> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.post<RenderPackResult>(
+      `${this.base}/api/net/buildings/${buildingId}/render-configs`, null, { params });
+  }
+
+  /// Turn-up pack: render every device in every building in the site.
+  renderSiteConfigs(
+    siteId: string, organizationId: string,
+  ): Observable<RenderPackResult> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.post<RenderPackResult>(
+      `${this.base}/api/net/sites/${siteId}/render-configs`, null, { params });
+  }
+
+  /// Turn-up pack: render every device in the region. Biggest scope.
+  renderRegionConfigs(
+    regionId: string, organizationId: string,
+  ): Observable<RenderPackResult> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.post<RenderPackResult>(
+      `${this.base}/api/net/regions/${regionId}/render-configs`, null, { params });
   }
 
   /// Trigger a fresh render for one device. Persists to
