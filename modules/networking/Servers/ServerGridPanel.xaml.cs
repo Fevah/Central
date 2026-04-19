@@ -44,17 +44,36 @@ public partial class ServerGridPanel : UserControl
     {
         if (msg.TargetPanel != "servers") return;
         if (msg.SelectItem is not string payload) return;
-        if (!payload.StartsWith("selectId:", StringComparison.Ordinal)) return;
 
-        // Payload: `selectId:{guid}:{label}`. For net.server, the
-        // guid is the row's primary key — match by Id first, fall
-        // back to hostname if the row hasn't loaded yet / the id
-        // doesn't resolve.
-        var parts = payload.Split(':', 3);
-        if (parts.Length < 2) return;
-        Guid.TryParse(parts[1], out var id);
-        var label = parts.Length >= 3 ? parts[2] : "";
-        Dispatcher.BeginInvoke(() => FocusBy(id, label));
+        // `selectId:{guid}:{label}` — focus a single row
+        if (payload.StartsWith("selectId:", StringComparison.Ordinal))
+        {
+            var parts = payload.Split(':', 3);
+            if (parts.Length < 2) return;
+            Guid.TryParse(parts[1], out var id);
+            var label = parts.Length >= 3 ? parts[2] : "";
+            Dispatcher.BeginInvoke(() => FocusBy(id, label));
+            return;
+        }
+
+        // `filterBy:{Column}:{Value}` — narrow grid rows. Pushed by
+        // Hierarchy → "Show servers in this building"; DX FilterString
+        // grammar is `[Col] = 'Value'` with doubled single quotes.
+        if (payload.StartsWith("filterBy:", StringComparison.Ordinal))
+        {
+            var parts = payload.Split(':', 3);
+            if (parts.Length < 3) return;
+            var column = parts[1];
+            var value  = parts[2];
+            if (string.IsNullOrWhiteSpace(column) || string.IsNullOrWhiteSpace(value)) return;
+            Dispatcher.BeginInvoke(() =>
+            {
+                var safe = value.Replace("'", "''");
+                Grid.FilterString = $"[{column}] = '{safe}'";
+                StatusLabel.Text = $"Filtered by [{column}] = '{value}'";
+            });
+            return;
+        }
     }
 
     internal bool FocusBy(Guid id, string label)

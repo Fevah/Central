@@ -351,6 +351,8 @@ public partial class HierarchyTreePanel : UserControl
             {
                 e.Customizations.Add(MakeButton("Show devices in this building",
                     () => ShowDevicesInBuilding(selected.Code)));
+                e.Customizations.Add(MakeButton("Show servers in this building",
+                    () => ShowServersInBuilding(selected.Code)));
             }
 
             e.Customizations.Add(new BarItemLinkSeparator());
@@ -374,6 +376,19 @@ public partial class HierarchyTreePanel : UserControl
         PanelMessageBus.Publish(new NavigateToPanelMessage(
             "devices", $"filterBy:Building:{buildingCode}"));
         StatusLabel.Text = $"Filtered devices to building '{buildingCode}'";
+    }
+
+    /// <summary>Same drill pattern for servers — ServerRow.BuildingCode
+    /// is the filter field (vs DeviceRecord.Building). Column name
+    /// shapes the payload so each grid maps its own DX FilterString
+    /// without per-grid knowledge in the hierarchy panel.</summary>
+    private void ShowServersInBuilding(string buildingCode)
+    {
+        if (string.IsNullOrWhiteSpace(buildingCode)) return;
+        PanelMessageBus.Publish(new OpenPanelMessage("servers"));
+        PanelMessageBus.Publish(new NavigateToPanelMessage(
+            "servers", $"filterBy:BuildingCode:{buildingCode}"));
+        StatusLabel.Text = $"Filtered servers to building '{buildingCode}'";
     }
 
     private static BarButtonItem MakeButton(string text, Action onClick)
