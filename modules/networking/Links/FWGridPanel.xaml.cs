@@ -70,4 +70,7 @@ public partial class FWGridPanel : System.Windows.Controls.UserControl
 
     private void OnContextCopyLinkCode(object sender, System.Windows.RoutedEventArgs e)
         => LinkAuditDrill.CopyLinkCode(FWGrid.CurrentItem as FWLink);
+
+    private void OnContextSearchFromHere(object sender, System.Windows.RoutedEventArgs e)
+        => LinkAuditDrill.SearchFromHere(FWGrid.CurrentItem as FWLink);
 }

@@ -71,4 +71,7 @@ public partial class B2BGridPanel : System.Windows.Controls.UserControl
 
     private void OnContextCopyLinkCode(object sender, System.Windows.RoutedEventArgs e)
         => LinkAuditDrill.CopyLinkCode(B2BGrid.CurrentItem as B2BLink);
+
+    private void OnContextSearchFromHere(object sender, System.Windows.RoutedEventArgs e)
+        => LinkAuditDrill.SearchFromHere(B2BGrid.CurrentItem as B2BLink);
 }

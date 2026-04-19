@@ -176,6 +176,18 @@ public partial class DeviceGridPanel : System.Windows.Controls.UserControl
         try { System.Windows.Clipboard.SetText(row.SwitchName); } catch { /* ignore */ }
     }
 
+    /// <summary>Publish the OpenPanelMessage + NavigateToPanelMessage
+    /// pair so the Search panel opens pre-populated with this
+    /// device's hostname — a one-click "find every link / subnet /
+    /// VLAN that mentions this switch" flow.</summary>
+    private void OnContextSearchFromHere(object sender, RoutedEventArgs e)
+    {
+        if (DevicesGrid.CurrentItem is not DeviceRecord row) return;
+        if (string.IsNullOrWhiteSpace(row.SwitchName)) return;
+        PanelMessageBus.Publish(new OpenPanelMessage("search"));
+        PanelMessageBus.Publish(new NavigateToPanelMessage("search", $"q:{row.SwitchName}"));
+    }
+
     /// <summary>Walk the grid's ItemsSource for a DeviceRecord whose
     /// SwitchName matches the incoming hostname (case-insensitive —
     /// PicOS is case-agnostic and operators paste between tools).

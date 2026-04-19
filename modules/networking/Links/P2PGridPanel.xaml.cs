@@ -70,4 +70,7 @@ public partial class P2PGridPanel : System.Windows.Controls.UserControl
 
     private void OnContextCopyLinkCode(object sender, System.Windows.RoutedEventArgs e)
         => LinkAuditDrill.CopyLinkCode(P2PGrid.CurrentItem as P2PLink);
+
+    private void OnContextSearchFromHere(object sender, System.Windows.RoutedEventArgs e)
+        => LinkAuditDrill.SearchFromHere(P2PGrid.CurrentItem as P2PLink);
 }

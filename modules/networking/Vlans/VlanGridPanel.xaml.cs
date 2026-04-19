@@ -179,4 +179,16 @@ public partial class VlanGridPanel : System.Windows.Controls.UserControl
         if (string.IsNullOrWhiteSpace(row.VlanId)) return;
         try { System.Windows.Clipboard.SetText(row.VlanId); } catch { /* ignore */ }
     }
+
+    private void OnContextSearchFromHere(object sender, RoutedEventArgs e)
+    {
+        if (VlansGrid.CurrentItem is not VlanEntry row) return;
+        if (string.IsNullOrWhiteSpace(row.VlanId)) return;
+        // Search by the numeric vlan_id. The tsvector UNION will
+        // match it against the vlan's display_name + description +
+        // notes tokens — typically enough to turn up the vlan row
+        // itself plus subnets + links that reference the number.
+        PanelMessageBus.Publish(new OpenPanelMessage("search"));
+        PanelMessageBus.Publish(new NavigateToPanelMessage("search", $"q:{row.VlanId}"));
+    }
 }

@@ -10,6 +10,9 @@
                 <MenuItem Header="Show audit history"
                           Click="OnContextShowAudit"
                           ToolTip="Resolve this VLAN's net.vlan uuid via the engine's VLAN list, then open the Audit panel filtered to that id"/>
+                <MenuItem Header="Search for this VLAN"
+                          Click="OnContextSearchFromHere"
+                          ToolTip="Open the Search panel pre-populated with this VLAN's id — useful for finding subnets + links that reference it"/>
                 <Separator/>
                 <MenuItem Header="Copy VLAN id" Click="OnContextCopyVlanId"/>
             </ContextMenu>

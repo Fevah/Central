@@ -33,6 +33,9 @@
                     <MenuItem Header="Show audit history"
                               Click="OnContextShowAudit"
                               ToolTip="Open the Audit panel filtered to this server's id"/>
+                    <MenuItem Header="Search for this hostname"
+                              Click="OnContextSearchFromHere"
+                              ToolTip="Open the Search panel pre-populated with this server's hostname"/>
                     <Separator/>
                     <MenuItem Header="Copy id" Click="OnContextCopyId"/>
                 </ContextMenu>

@@ -111,6 +111,15 @@ public partial class ServerGridPanel : UserControl
         }
     }
 
+    private void OnContextSearchFromHere(object sender, RoutedEventArgs e)
+    {
+        if (Grid.CurrentItem is not ServerRow row) return;
+        if (string.IsNullOrWhiteSpace(row.Hostname)) return;
+        PanelMessageBus.Publish(new OpenPanelMessage("search"));
+        PanelMessageBus.Publish(new NavigateToPanelMessage("search", $"q:{row.Hostname}"));
+        StatusLabel.Text = $"Searched for {row.Hostname}";
+    }
+
     public void SetContext(string dsn, Guid tenantId)
     {
         _dsn = dsn;

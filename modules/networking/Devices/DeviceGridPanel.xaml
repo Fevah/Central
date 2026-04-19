@@ -68,6 +68,9 @@
                     <MenuItem Header="Show audit history"
                               Click="OnContextShowAudit"
                               ToolTip="Resolve this switch's net.device uuid via the engine's device list, then open the Audit panel filtered to that id"/>
+                    <MenuItem Header="Search for this hostname"
+                              Click="OnContextSearchFromHere"
+                              ToolTip="Open the Search panel pre-populated with this hostname — useful for finding related links, subnets, VLANs"/>
                     <Separator/>
                     <MenuItem Header="Copy hostname" Click="OnContextCopyHostname"/>
                 </ContextMenu>

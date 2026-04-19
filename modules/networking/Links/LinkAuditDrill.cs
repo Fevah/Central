@@ -74,4 +74,18 @@ internal static class LinkAuditDrill
         if (string.IsNullOrWhiteSpace(link.LinkId)) return;
         try { System.Windows.Clipboard.SetText(link.LinkId); } catch { /* ignore */ }
     }
+
+    /// <summary>Publish the OpenPanelMessage + NavigateToPanelMessage
+    /// pair so the Search panel opens pre-populated with this
+    /// link's code. Matches the DeviceGridPanel / ServerGridPanel
+    /// "Search for this hostname" pattern; the Search panel's
+    /// OnNavigate handles `q:{text}` payloads by populating its
+    /// query box + auto-running.</summary>
+    public static void SearchFromHere(INetworkLink? link)
+    {
+        if (link is null) return;
+        if (string.IsNullOrWhiteSpace(link.LinkId)) return;
+        PanelMessageBus.Publish(new OpenPanelMessage("search"));
+        PanelMessageBus.Publish(new NavigateToPanelMessage("search", $"q:{link.LinkId}"));
+    }
 }
