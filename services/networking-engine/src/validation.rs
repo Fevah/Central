@@ -1311,6 +1311,41 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Error,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "room.floor_resolves_active",
+        name: "Room floor_id must resolve to an Active floor",
+        description: "Rooms under soft-deleted or non-Active floors \
+                      are orphaned — the hierarchy drill to racks + \
+                      devices breaks at the room level. Parallel to \
+                      floor.building_resolves_active one step lower.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "rack.room_resolves_active",
+        name: "Rack room_id must resolve to an Active room",
+        description: "Racks under soft-deleted or non-Active rooms \
+                      are orphaned — devices placed in them can't \
+                      be found by hierarchy-scoped scope-grants. \
+                      Parallel to room.floor_resolves_active one \
+                      step lower.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "port.device_resolves_active",
+        name: "Port device_id must resolve to an Active device",
+        description: "A port whose device is soft-deleted or \
+                      Decommissioned is an orphan — the port shows \
+                      up in reports but its device has moved on. \
+                      Parallels floor/room/rack lifecycle resolves \
+                      one level lower in the phys-stack.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1606,6 +1641,9 @@ async fn dispatch(
         "ip_address.subnet_resolves_active"       => run_ip_subnet_resolves_active(pool, org_id, severity, out).await,
         "link.active_has_endpoints"               => run_link_active_has_endpoints(pool, org_id, severity, out).await,
         "floor.building_resolves_active"          => run_floor_building_active(pool, org_id, severity, out).await,
+        "room.floor_resolves_active"              => run_room_floor_active(pool, org_id, severity, out).await,
+        "rack.room_resolves_active"               => run_rack_room_active(pool, org_id, severity, out).await,
+        "port.device_resolves_active"             => run_port_device_active(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -4043,6 +4081,81 @@ async fn run_floor_building_active(
     Ok(())
 }
 
+/// `room.floor_resolves_active` — room's floor must be live.
+async fn run_room_floor_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT r.id, r.room_code, COALESCE(f.status::text, '(missing)')
+           FROM net.room r
+           LEFT JOIN net.floor f ON f.id = r.floor_id
+          WHERE r.organization_id = $1
+            AND r.deleted_at IS NULL
+            AND (f.id IS NULL
+                 OR f.deleted_at IS NOT NULL
+                 OR f.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, status) in rows {
+        out.push(Violation {
+            rule_code: "room.floor_resolves_active".into(),
+            severity, entity_type: "Room".into(), entity_id: Some(id),
+            message: format!(
+                "Room '{code}' references a floor with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `rack.room_resolves_active` — rack's room must be live.
+async fn run_rack_room_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT rk.id, rk.rack_code, COALESCE(rm.status::text, '(missing)')
+           FROM net.rack rk
+           LEFT JOIN net.room rm ON rm.id = rk.room_id
+          WHERE rk.organization_id = $1
+            AND rk.deleted_at IS NULL
+            AND (rm.id IS NULL
+                 OR rm.deleted_at IS NOT NULL
+                 OR rm.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, status) in rows {
+        out.push(Violation {
+            rule_code: "rack.room_resolves_active".into(),
+            severity, entity_type: "Rack".into(), entity_id: Some(id),
+            message: format!(
+                "Rack '{code}' references a room with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `port.device_resolves_active` — port's device must be live.
+async fn run_port_device_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT p.id, p.interface_name, COALESCE(d.status::text, '(missing)')
+           FROM net.port p
+           LEFT JOIN net.device d ON d.id = p.device_id
+          WHERE p.organization_id = $1
+            AND p.deleted_at IS NULL
+            AND (d.id IS NULL
+                 OR d.deleted_at IS NOT NULL
+                 OR d.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, iface, status) in rows {
+        out.push(Violation {
+            rule_code: "port.device_resolves_active".into(),
+            severity, entity_type: "Port".into(), entity_id: Some(id),
+            message: format!(
+                "Port '{iface}' references a device with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -4575,6 +4688,9 @@ mod tests {
             "ip_address.subnet_resolves_active",
             "link.active_has_endpoints",
             "floor.building_resolves_active",
+            "room.floor_resolves_active",
+            "rack.room_resolves_active",
+            "port.device_resolves_active",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
