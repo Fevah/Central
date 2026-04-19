@@ -151,14 +151,24 @@ export class NetworkHierarchyComponent implements OnInit {
     return out;
   }
 
-  /// Double-click drill: any node → audit timeline for that
-  /// entity type + uuid. Parallel to the WPF "Show audit
-  /// history" context-menu item on hierarchy nodes (984e95769).
-  /// Region / Room audit rows may be thin until .NET-side
-  /// audit emission lands (plan 10b gap).
+  /// Double-click drill: Region / Site / Building nodes navigate
+  /// to their matching detail page (ee0366135 / f4974d37f /
+  /// 8fa342397 — each page shows the children + relevant grids).
+  /// Floor nodes don't have a dedicated detail page yet, so they
+  /// fall back to the audit timeline.
   onRowDoubleClick(e: { data: HierarchyNode }): void {
     const node = e?.data;
     if (!node) return;
+    const route =
+      node.nodeType === 'Region'   ? '/network/region'
+    : node.nodeType === 'Site'     ? '/network/site'
+    : node.nodeType === 'Building' ? '/network/building'
+    :                                 null;
+    if (route) {
+      this.router.navigate([route, node.entityId]);
+      return;
+    }
+    // Floor (+ future Room / Rack) → audit timeline fallback.
     this.router.navigate(['/network/audit', node.nodeType, node.entityId]);
   }
 }
