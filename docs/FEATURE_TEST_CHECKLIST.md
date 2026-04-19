@@ -2784,13 +2784,70 @@ sets, and per-entity thin grids for the remaining net.* entity types.
 - [ ] Correlation id column renders as a clickable link → audit-search for that correlation; row double-click does the same drill
 - [ ] Writes (submit / approve / apply / cancel / rollback) stay WPF-only until the web approval chrome lands
 
-**Validation rule expansion — batches 7-8** (commits `a5b6e55fa` + `209306ed9`)
+**Validation rule expansion — batches 7-9** (commits `a5b6e55fa` + `209306ed9` + `93fd3bbd0`)
 - [ ] `subnet.within_parent_pool_cidr` (Error) — uses PG `<<=` operator; equal-CIDR case allowed (single-subnet pool)
 - [ ] `link.unique_link_code_active` (Error) — active-only GROUP BY; message lists all colliding uuids
 - [ ] `device_role.unique_role_code_per_tenant` (Error) — ignores deleted_at (role picker queries across it)
 - [ ] `vlan.scope_entity_resolves` (Error) — non-Free scope must point at a live row in the matching hierarchy table
 - [ ] `dhcp_relay_target.vlan_active` (Error) — LEFT JOIN catches soft-deleted + non-Active VLAN refs
 - [ ] `subnet.vlan_link_is_active` (Warning) — IP ranges often outlive VLAN tags, so it's a warning not an error
+- [ ] `ip_address.assigned_to_id_when_typed` (Error) — typed assignment needs an assigned_to_id; Gateway/Broadcast/Reserved exempt (policy markers)
+- [ ] `rack.position_positive` (Warning) — stored 0 or negative is usually a stale default; NULL allowed for tenants that don't track layout
+- [ ] `building_profile.role_counts_non_empty` (Warning) — profiles with zero role-count rows expand to an empty template
+
+### 7.X.19 Phase 10b — second wave (commits 2026-04-19+)
+
+Rollup + admin surfaces landed after §7.X.18. Completes WPF-parity
+on locks, change-sets, render history, and naming preview.
+
+**Change-set detail page** (commit `d571e3fd0`)
+- [ ] `/network/change-sets/:id` route; consumes GET /api/net/change-sets/:id (returns ChangeSetWithItems envelope: set + items)
+- [ ] Header meta grid with status badge + requestedByDisplay + requiredApprovals + correlation drill link + every lifecycle timestamp (submitted / approved / applied / rolled back / cancelled)
+- [ ] Items grid with master-detail rows revealing side-by-side before/after JSON (JSON.stringify(value, null, 2) pretty-printing, max-height 300px + overflow-x auto)
+- [ ] Title column on the list page renders as a routerLink to the detail page; stopPropagation on click so row double-click (correlation drill) doesn't also fire
+
+**Locks admin page** (commit `c52679228`)
+- [ ] `/network/locks` consumer of GET /api/net/locks — every non-Open row across the 5 Phase-5 numbering tables in a single uniform grid
+- [ ] Table filter combo (asn_allocation / vlan / mlag_domain / subnet / ip_address) + state filter (HardLock / Immutable / SoftLock)
+- [ ] Grouped by tableName by default; colour-coded state badges (HardLock red, Immutable purple, SoftLock amber) matching the WPF LocksPanel palette
+- [ ] Read-only — PATCH write path still WPF-only until the web surface has approval chrome for the Immutable transition
+
+**Naming preview page** (commit `f4e7457ad`)
+- [ ] `/network/naming-preview` — three-mode dry-run (Link / Device / Server) consuming /api/net/naming/{link,device,server}/preview
+- [ ] Mode switch resets the template to a sensible default so operators don't have to remember token syntax first time
+- [ ] Context form grid (3 columns, collapses to 2 below 900px) — one input per available token
+- [ ] Expanded result rendered in a green highlight box; error block surfaces RFC 7807 detail
+- [ ] Token cheatsheet at the bottom lists every substitution for the active mode
+- [ ] Tenant-agnostic (pure string expansion) — no organizationId threading
+
+**Render history page** (commit `98a429379`)
+- [ ] `/network/render-history?device=uuid` — device picker (searchable DxSelectBox) populated from /api/net/devices, client-sorted by hostname
+- [ ] Device id threaded through URL via replaceUrl so history isn't polluted on device swap
+- [ ] History grid columns: renderedAt / flavor / lineCount / renderDurationMs / renderedBy / truncated SHA + previousRenderId
+- [ ] Row click fires body + diff in parallel (GET /api/net/renders/:id + /renders/:id/diff)
+- [ ] Body viewer: monospace <pre> with max-height 500px + overflow auto
+- [ ] Diff viewer: two-column panel (added green, removed red) when previousRenderId present; "first render" state otherwise
+- [ ] 403 surfaced specifically ("lacks read:Device on this device")
+
+**Audit correlation drill — round-trip** (commit `3ad5dfca7`)
+- [ ] Audit-timeline correlation_id renders as clickable link → /network/audit-search?correlationId=X
+- [ ] Audit-search reads correlationId query param + renders a visible text box in the filter bar + threads through listAudit + the export URL
+- [ ] Change-sets list + detail link to the same correlation-scoped search for lifecycle-event discovery
+
+**Saved view rename** (commit `3ad5dfca7`)
+- [ ] Pencil icon per row in the search sidebar; window.prompt for new name; PUT /api/net/saved-views/:id with optimistic-concurrency (version)
+- [ ] Three failure classes: 409 name collision, 412 stale version, generic RFC 7807 pass-through
+
+**Scope-grants check permission dialog** (commit `3e1739310`)
+- [ ] "Check permission" button next to "New grant" opens a DxPopup; GET /api/net/scope-grants/check dry-runs the resolver
+- [ ] ALLOWED (green) / DENIED (red) result box with matched grant uuid on allow, or a "no grant at Global / Region / Site / Building / EntityId scopes" hint on deny
+- [ ] Entity-id semantics explained inline: filled = "this entity", blank = "any entity of this type"
+
+**Audit top-actors endpoint + leaderboard** (commit `0e83e7407`)
+- [ ] GET /api/net/audit/top-actors — per-actor rollup (count + distinctEntityTypes + lastSeenAt); clamp limit 1..=100, default 20
+- [ ] Service rows (actor_user_id IS NULL) bucket together as "(service)" in the web surface rather than being dropped
+- [ ] Surfaced in /network/audit-stats as a second grid column (two-column layout: per-entity-type + top-actors)
+- [ ] Double-click a top-actor row → audit-search pre-filtered by actorUserId; service rows have no drill target
 
 ---
 
