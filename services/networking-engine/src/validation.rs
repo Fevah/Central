@@ -1178,6 +1178,40 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "naming_template_override.template_not_empty",
+        name: "Naming override template must be non-empty",
+        description: "A net.naming_template_override with a blank \
+                      naming_template column short-circuits the \
+                      resolver — the override wins but produces an \
+                      empty hostname. Always a bug.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "ip_pool.network_is_network_address",
+        name: "IP pool CIDR should be stored as the network address",
+        description: "Parallel to subnet.network_is_network_address \
+                      (batch 12) but for net.ip_pool.network. Host \
+                      bits set violate the carver's assumptions when \
+                      picking subnets.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "loopback.active_has_ip_address",
+        name: "Active loopback should carry an ip_address_id",
+        description: "A net.loopback in status 'Active' without an \
+                      ip_address_id set is a broken allocation — the \
+                      loopback is meant to back an assigned /32 or \
+                      /128. NULL is fine during staging (status \
+                      Planned); this rule only flags Active rows.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1461,6 +1495,9 @@ async fn dispatch(
         "mlag_domain.scope_entity_present_when_non_global" => run_mlag_scope_entity_present(pool, org_id, severity, out).await,
         "change_set_item.entity_id_required_for_mutations" => run_cs_item_entity_id_required(pool, org_id, severity, out).await,
         "port.speed_mbps_positive_when_set"       => run_port_speed_positive(pool, org_id, severity, out).await,
+        "naming_template_override.template_not_empty" => run_naming_override_template_not_empty(pool, org_id, severity, out).await,
+        "ip_pool.network_is_network_address"      => run_ip_pool_network_canonical(pool, org_id, severity, out).await,
+        "loopback.active_has_ip_address"          => run_loopback_active_has_ip(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -3773,6 +3810,77 @@ async fn run_cs_item_entity_id_required(
     Ok(())
 }
 
+/// `naming_template_override.template_not_empty` — blank template
+/// shortcut-wins the resolver + produces empty hostnames.
+async fn run_naming_override_template_not_empty(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT id, entity_type, scope_level
+           FROM net.naming_template_override
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND btrim(naming_template) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, entity_type, scope_level) in rows {
+        out.push(Violation {
+            rule_code: "naming_template_override.template_not_empty".into(),
+            severity, entity_type: "NamingTemplateOverride".into(), entity_id: Some(id),
+            message: format!(
+                "Override for {entity_type} at scope '{scope_level}' has an empty template — resolver shorts-out producing blank hostnames."),
+        });
+    }
+    Ok(())
+}
+
+/// `ip_pool.network_is_network_address` — parallel to the subnet
+/// rule. `network != set_masklen(network, masklen(network))` flags
+/// non-canonical storage.
+async fn run_ip_pool_network_canonical(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT id, pool_code, network::text
+           FROM net.ip_pool
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND network != set_masklen(network, masklen(network))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, network) in rows {
+        out.push(Violation {
+            rule_code: "ip_pool.network_is_network_address".into(),
+            severity, entity_type: "IpPool".into(), entity_id: Some(id),
+            message: format!(
+                "IP pool '{code}' stored as '{network}' has host bits set — canonical form is the network address."),
+        });
+    }
+    Ok(())
+}
+
+/// `loopback.active_has_ip_address` — Active loopback needs an
+/// ip_address_id; Planned / other statuses skipped.
+async fn run_loopback_active_has_ip(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, Uuid, i32)> = sqlx::query_as(
+        "SELECT id, device_id, loopback_number
+           FROM net.loopback
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND status = 'Active'::net.entity_status
+            AND ip_address_id IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, device_id, num) in rows {
+        out.push(Violation {
+            rule_code: "loopback.active_has_ip_address".into(),
+            severity, entity_type: "Loopback".into(), entity_id: Some(id),
+            message: format!(
+                "Active loopback {num} on device {device_id} has no ip_address_id — broken allocation."),
+        });
+    }
+    Ok(())
+}
+
 /// `port.speed_mbps_positive_when_set` — NULL is fine (auto-neg);
 /// only check populated rows for positive value.
 async fn run_port_speed_positive(
@@ -4110,6 +4218,9 @@ mod tests {
             "mlag_domain.scope_entity_present_when_non_global",
             "change_set_item.entity_id_required_for_mutations",
             "port.speed_mbps_positive_when_set",
+            "naming_template_override.template_not_empty",
+            "ip_pool.network_is_network_address",
+            "loopback.active_has_ip_address",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
