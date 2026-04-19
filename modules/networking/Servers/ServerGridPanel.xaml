@@ -28,6 +28,15 @@
                                ShowGroupPanel="True"
                                AllowEditing="False"/>
             </dxg:GridControl.View>
+            <dxg:GridControl.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Show audit history"
+                              Click="OnContextShowAudit"
+                              ToolTip="Open the Audit panel filtered to this server's id"/>
+                    <Separator/>
+                    <MenuItem Header="Copy id" Click="OnContextCopyId"/>
+                </ContextMenu>
+            </dxg:GridControl.ContextMenu>
             <dxg:GridControl.Columns>
                 <dxg:GridColumn FieldName="Hostname"     Header="Hostname"    Width="220"/>
                 <dxg:GridColumn FieldName="BuildingCode" Header="Building"    Width="100"/>

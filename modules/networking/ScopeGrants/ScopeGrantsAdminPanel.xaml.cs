@@ -269,6 +269,36 @@ public partial class ScopeGrantsAdminPanel : UserControl
         catch (Exception ex)                 { StatusLabel.Text = $"Check failed: {ex.Message}"; }
     }
 
+    // ─── Row context menu → audit drill-down ───────────────────────────
+    //
+    // Grants are audited on create + delete (scope_grants.rs emits
+    // AuditEvent with entity_type="ScopeGrant"). Right-click a row
+    // to jump to its audit trail — symmetric with the SearchPanel
+    // context menu and the ServerGridPanel row menu.
+
+    private void OnContextShowAudit(object sender, RoutedEventArgs e)
+    {
+        if (GrantsGrid.CurrentItem is not ScopeGrantDto row) return;
+        PanelMessageBus.Publish(new OpenPanelMessage("audit"));
+        PanelMessageBus.Publish(new NavigateToPanelMessage(
+            "audit", $"selectEntity:ScopeGrant:{row.Id}"));
+        StatusLabel.Text = $"Drilled into audit for grant {row.Id}";
+    }
+
+    private void OnContextCopyId(object sender, RoutedEventArgs e)
+    {
+        if (GrantsGrid.CurrentItem is not ScopeGrantDto row) return;
+        try
+        {
+            System.Windows.Clipboard.SetText(row.Id.ToString());
+            StatusLabel.Text = $"Copied grant id {row.Id}";
+        }
+        catch (Exception ex)
+        {
+            StatusLabel.Text = $"Copy failed: {ex.Message}";
+        }
+    }
+
     // ─── Helpers ───────────────────────────────────────────────────────
 
     private bool RequireContext()

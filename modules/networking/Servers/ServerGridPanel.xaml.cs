@@ -80,6 +80,37 @@ public partial class ServerGridPanel : UserControl
         return false;
     }
 
+    // ─── Row context menu → audit drill-down ───────────────────────────
+    //
+    // ServerRow.Id is the net.server uuid, so the reverse drill-down
+    // to the Audit panel is symmetric with what SearchPanel does:
+    // publish OpenPanelMessage first (so MainWindow restores the
+    // Audit dock), then NavigateToPanelMessage with a
+    // `selectEntity:Server:{guid}` payload.
+
+    private void OnContextShowAudit(object sender, RoutedEventArgs e)
+    {
+        if (Grid.CurrentItem is not ServerRow row) return;
+        PanelMessageBus.Publish(new OpenPanelMessage("audit"));
+        PanelMessageBus.Publish(new NavigateToPanelMessage(
+            "audit", $"selectEntity:Server:{row.Id}"));
+        StatusLabel.Text = $"Drilled into audit for server {row.Hostname}";
+    }
+
+    private void OnContextCopyId(object sender, RoutedEventArgs e)
+    {
+        if (Grid.CurrentItem is not ServerRow row) return;
+        try
+        {
+            System.Windows.Clipboard.SetText(row.Id.ToString());
+            StatusLabel.Text = $"Copied id {row.Id}";
+        }
+        catch (Exception ex)
+        {
+            StatusLabel.Text = $"Copy failed: {ex.Message}";
+        }
+    }
+
     public void SetContext(string dsn, Guid tenantId)
     {
         _dsn = dsn;

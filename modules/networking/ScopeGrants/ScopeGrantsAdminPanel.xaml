@@ -74,6 +74,15 @@
                                ShowGroupPanel="True"
                                AllowEditing="False"/>
             </dxg:GridControl.View>
+            <dxg:GridControl.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Show audit history"
+                              Click="OnContextShowAudit"
+                              ToolTip="Open the Audit panel filtered to this grant's id — shows create / delete / any future edits"/>
+                    <Separator/>
+                    <MenuItem Header="Copy grant id" Click="OnContextCopyId"/>
+                </ContextMenu>
+            </dxg:GridControl.ContextMenu>
             <dxg:GridControl.Columns>
                 <dxg:GridColumn FieldName="UserId"        Header="User"        Width="60"/>
                 <dxg:GridColumn FieldName="Action"        Header="Action"      Width="100"/>
