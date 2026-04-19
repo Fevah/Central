@@ -412,6 +412,27 @@ export interface RenderDiff {
   unchangedCount: number;
 }
 
+/// Naming template override row — matches `NamingOverride` in
+/// services/networking-engine/src/naming_overrides.rs. Overrides
+/// let admins replace the default template on
+/// net.{device_role,link_type,server_profile} at a scope
+/// (Global / Region / Site / Building) with or without a subtype
+/// discriminator.
+export interface NamingOverride {
+  id: string;
+  organizationId: string;
+  entityType: string;
+  subtypeCode: string | null;
+  scopeLevel: string;
+  scopeEntityId: string | null;
+  namingTemplate: string;
+  status: string;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  notes: string | null;
+}
+
 /// Naming context shapes — match `LinkNamingContext` /
 /// `DeviceNamingContext` / `ServerNamingContext` in the engine.
 /// `instance` / `vlan_id` are nullable numbers; every string token
@@ -794,6 +815,59 @@ export class NetworkingEngineService {
     const params = new HttpParams().set('organizationId', organizationId);
     return this.http.get<RenderDiff>(
       `${this.base}/api/net/renders/${renderId}/diff`, { params });
+  }
+
+  /// List naming template overrides. Optional entityType +
+  /// scopeLevel filters — useful for scoping the UI to one
+  /// entity family without client-side filtering.
+  listNamingOverrides(
+    organizationId: string,
+    entityType?: string,
+    scopeLevel?: string,
+  ): Observable<NamingOverride[]> {
+    let params = new HttpParams().set('organizationId', organizationId);
+    if (entityType) params = params.set('entityType', entityType);
+    if (scopeLevel) params = params.set('scopeLevel', scopeLevel);
+    return this.http.get<NamingOverride[]>(
+      `${this.base}/api/net/naming/overrides`, { params });
+  }
+
+  /// Create a naming override. Server validates scope_level +
+  /// scope_entity_id consistency (Global requires null id; other
+  /// levels require an id that resolves to the right hierarchy row).
+  createNamingOverride(body: {
+    organizationId: string;
+    entityType: string;
+    subtypeCode?: string | null;
+    scopeLevel: string;
+    scopeEntityId?: string | null;
+    namingTemplate: string;
+    notes?: string | null;
+  }): Observable<NamingOverride> {
+    return this.http.post<NamingOverride>(
+      `${this.base}/api/net/naming/overrides`, body);
+  }
+
+  /// Update an override's naming_template + notes. Optimistic
+  /// concurrency via version.
+  updateNamingOverride(id: string, body: {
+    organizationId: string;
+    namingTemplate: string;
+    notes?: string | null;
+    version: number;
+  }): Observable<NamingOverride> {
+    const params = new HttpParams().set('organizationId', body.organizationId);
+    return this.http.put<NamingOverride>(
+      `${this.base}/api/net/naming/overrides/${id}`,
+      { namingTemplate: body.namingTemplate, notes: body.notes ?? null, version: body.version },
+      { params });
+  }
+
+  /// Soft-delete a naming override.
+  deleteNamingOverride(id: string, organizationId: string): Observable<void> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.delete<void>(
+      `${this.base}/api/net/naming/overrides/${id}`, { params });
   }
 
   /// Naming preview — one endpoint per context shape. Each POSTs

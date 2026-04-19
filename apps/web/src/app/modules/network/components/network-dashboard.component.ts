@@ -34,6 +34,7 @@ import notify from 'devextreme/ui/notify';
       <a routerLink="/network/change-sets" routerLinkActive="active">Change sets</a>
       <a routerLink="/network/locks" routerLinkActive="active">Locks</a>
       <a routerLink="/network/naming-preview" routerLinkActive="active">Naming preview</a>
+      <a routerLink="/network/naming-overrides" routerLinkActive="active">Naming overrides</a>
       <a routerLink="/network/render-history" routerLinkActive="active">Render history</a>
       <a routerLink="/network/render-pack" routerLinkActive="active">Turn-up pack</a>
       <a routerLink="/network/pool-utilization" routerLinkActive="active">Pool utilization</a>
