@@ -1,6 +1,10 @@
-﻿using System.Windows;
+﻿using System;
+using System.Linq;
+using System.Windows;
 using DevExpress.Xpf.Grid;
+using Central.ApiClient;
 using Central.Engine.Models;
+using Central.Engine.Shell;
 
 namespace Central.Module.Networking.Vlans;
 
@@ -117,5 +121,62 @@ public partial class VlanGridPanel : System.Windows.Controls.UserControl
             }
         }
         BlockLockedChanged?.Invoke();
+    }
+
+    // ─── Audit-drill context menu ──────────────────────────────────────
+    //
+    // VlanEntry.Id is the legacy public.vlans numeric id. The audit
+    // panel needs the net.vlan uuid. Resolve via ListVlansAsync by
+    // matching numeric vlan_id first, block_code as a tiebreaker
+    // when multiple blocks happen to reuse the same tag.
+
+    private string? _engineBaseUrl;
+    private Guid _engineTenantId;
+    private int? _engineActorUserId;
+
+    public void SetEngineContext(string baseUrl, Guid tenantId, int? actorUserId = null)
+    {
+        _engineBaseUrl = baseUrl;
+        _engineTenantId = tenantId;
+        _engineActorUserId = actorUserId;
+    }
+
+    private async void OnContextShowAudit(object sender, RoutedEventArgs e)
+    {
+        if (VlansGrid.CurrentItem is not VlanEntry row) return;
+        if (!int.TryParse(row.VlanId, out var vlanNumber)) return;
+        if (string.IsNullOrEmpty(_engineBaseUrl) || _engineTenantId == Guid.Empty) return;
+
+        try
+        {
+            using var client = new NetworkingEngineClient(_engineBaseUrl);
+            if (_engineActorUserId is int uid) client.SetActorUserId(uid);
+
+            var all = await client.ListVlansAsync(_engineTenantId);
+            // Tiebreaker: prefer a match on block_code when the
+            // grid row carries one; fall back to vlan_id-only when
+            // the block column is blank.
+            VlanListRowDto? match = null;
+            if (!string.IsNullOrWhiteSpace(row.Block))
+            {
+                match = all.FirstOrDefault(v =>
+                    v.VlanId == vlanNumber &&
+                    string.Equals(v.BlockCode, row.Block, StringComparison.OrdinalIgnoreCase));
+            }
+            match ??= all.FirstOrDefault(v => v.VlanId == vlanNumber);
+            if (match is null) return;
+
+            PanelMessageBus.Publish(new OpenPanelMessage("audit"));
+            PanelMessageBus.Publish(new NavigateToPanelMessage(
+                "audit", $"selectEntity:Vlan:{match.Id}"));
+        }
+        catch { /* silent — grid must keep working on engine errors */ }
+    }
+
+    private void OnContextCopyVlanId(object sender, RoutedEventArgs e)
+    {
+        if (VlansGrid.CurrentItem is not VlanEntry row) return;
+        if (string.IsNullOrWhiteSpace(row.VlanId)) return;
+        try { System.Windows.Clipboard.SetText(row.VlanId); } catch { /* ignore */ }
     }
 }

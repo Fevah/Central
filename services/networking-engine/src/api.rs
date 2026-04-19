@@ -104,6 +104,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/locks/:table/:id", axum::routing::patch(set_entity_lock))
         // Device list (thin read — powers WPF pickers)
         .route("/api/net/devices", get(list_devices))
+        .route("/api/net/vlans",   get(list_vlans))
         // Thin pool/block reads (WPF convenience-form pickers)
         .route("/api/net/vlan-blocks", get(list_vlan_blocks))
         .route("/api/net/asn-blocks",  get(list_asn_blocks))
@@ -727,6 +728,47 @@ async fn list_devices(
            LEFT JOIN net.building    b ON b.id = d.building_id
           WHERE d.organization_id = $1 AND d.deleted_at IS NULL
           ORDER BY d.hostname
+          LIMIT 5000")
+        .bind(q.organization_id)
+        .fetch_all(&s.pool)
+        .await?;
+    Ok(Json(rows))
+}
+
+// ─── VLAN thin list (picker + hostname→uuid lookup) ─────────────────────
+
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct VlanListRow {
+    id: Uuid,
+    vlan_id: i32,
+    display_name: String,
+    block_code: Option<String>,
+    scope_level: String,
+    status: String,
+    version: i32,
+}
+
+/// Thin list of VLANs — same shape + cap as list_devices. Used by the
+/// WPF VLAN grid's audit-drill handler to resolve a (vlan_id, block)
+/// row to its net.vlan uuid + by future pickers that need a cheap
+/// full-catalog read.
+async fn list_vlans(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let rows: Vec<VlanListRow> = sqlx::query_as(
+        "SELECT v.id,
+                v.vlan_id,
+                v.display_name,
+                b.block_code,
+                v.scope_level,
+                v.status::text AS status,
+                v.version
+           FROM net.vlan v
+           LEFT JOIN net.vlan_block b ON b.id = v.block_id
+          WHERE v.organization_id = $1 AND v.deleted_at IS NULL
+          ORDER BY v.vlan_id
           LIMIT 5000")
         .bind(q.organization_id)
         .fetch_all(&s.pool)

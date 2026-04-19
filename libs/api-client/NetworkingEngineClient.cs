@@ -218,6 +218,15 @@ public class NetworkingEngineClient : IDisposable
         => GetAsync<List<DeviceListRowDto>>(
             $"/api/net/devices?organizationId={organizationId}", ct);
 
+    /// <summary>Thin VLAN list — same purpose as ListDevicesAsync
+    /// (WPF picker + hostname/code → uuid resolution). Capped at
+    /// 5000 rows server-side; tenants beyond that should use the
+    /// search endpoint for narrowing.</summary>
+    public Task<List<VlanListRowDto>> ListVlansAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<VlanListRowDto>>(
+            $"/api/net/vlans?organizationId={organizationId}", ct);
+
     /// <summary>List VLAN blocks + per-block availability. Powers the
     /// WPF Create VLAN picker so admins see "VLAN 100-199 · 12 free"
     /// instead of a UUID they'd have to copy from another tool.</summary>
@@ -1169,6 +1178,10 @@ public record LockedRowDto(Guid Id, string TableName, string DisplayLabel,
 // Device list (picker)
 public record DeviceListRowDto(Guid Id, string Hostname, string? RoleCode,
     string? BuildingCode, string Status, int Version);
+
+// VLAN list (picker / audit-drill hostname resolution)
+public record VlanListRowDto(Guid Id, int VlanId, string DisplayName,
+    string? BlockCode, string ScopeLevel, string Status, int Version);
 
 // VLAN block list (picker)
 public record VlanBlockDto(Guid Id, string BlockCode, string DisplayName,

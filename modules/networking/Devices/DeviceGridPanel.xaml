@@ -63,6 +63,15 @@
                     </dxg:TableView.RowStyle>
                 </dxg:TableView>
             </dxg:GridControl.View>
+            <dxg:GridControl.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Show audit history"
+                              Click="OnContextShowAudit"
+                              ToolTip="Resolve this switch's net.device uuid via the engine's device list, then open the Audit panel filtered to that id"/>
+                    <Separator/>
+                    <MenuItem Header="Copy hostname" Click="OnContextCopyHostname"/>
+                </ContextMenu>
+            </dxg:GridControl.ContextMenu>
 
             <dxg:GridControl.Columns>
                 <!-- Status dot column -->

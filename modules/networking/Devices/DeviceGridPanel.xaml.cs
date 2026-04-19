@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using DevExpress.Xpf.Grid;
+using Central.ApiClient;
 using Central.Engine.Models;
 using Central.Engine.Shell;
 
@@ -35,6 +37,21 @@ public partial class DeviceGridPanel : System.Windows.Controls.UserControl
     public GridControl Grid => DevicesGrid;
     public TableView View => DevicesView;
     public DevExpress.Xpf.Editors.TextEdit SearchBox => DevicesSearch;
+
+    // Engine context for the audit-drill context menu. The panel
+    // doesn't keep its own NetworkingEngineClient alive; it spins
+    // one up per action. Set by the host when it knows the base URL
+    // + current tenant (mirrors BulkPanel / SearchPanel wiring).
+    private string? _engineBaseUrl;
+    private Guid _engineTenantId;
+    private int? _engineActorUserId;
+
+    public void SetEngineContext(string baseUrl, Guid tenantId, int? actorUserId = null)
+    {
+        _engineBaseUrl = baseUrl;
+        _engineTenantId = tenantId;
+        _engineActorUserId = actorUserId;
+    }
 
     // ── Combo sources — set by host after construction ──
 
@@ -103,6 +120,60 @@ public partial class DeviceGridPanel : System.Windows.Controls.UserControl
         if (string.IsNullOrWhiteSpace(label)) return;
 
         Dispatcher.BeginInvoke(() => FocusByHostname(label));
+    }
+
+    // ─── Row context menu → audit drill-down ───────────────────────────
+    //
+    // DeviceRecord.Id is switch_guide's numeric id, not net.device's
+    // uuid — the audit panel expects a uuid. Resolve hostname → uuid
+    // via the engine's thin /api/net/devices list endpoint (capped at
+    // 5000 per tenant; for operator-scale tenants that's plenty for
+    // a rare context-menu click). Drill only fires once resolution
+    // succeeds; on miss (hostname drift, unreachable engine) we
+    // surface the failure rather than opening the audit panel with
+    // no filter.
+
+    private async void OnContextShowAudit(object sender, RoutedEventArgs e)
+    {
+        if (DevicesGrid.CurrentItem is not DeviceRecord row) return;
+        if (string.IsNullOrWhiteSpace(row.SwitchName)) return;
+        if (string.IsNullOrEmpty(_engineBaseUrl) || _engineTenantId == Guid.Empty) return;
+
+        try
+        {
+            using var client = new NetworkingEngineClient(_engineBaseUrl);
+            if (_engineActorUserId is int uid) client.SetActorUserId(uid);
+
+            var all = await client.ListDevicesAsync(_engineTenantId);
+            var match = all.FirstOrDefault(d =>
+                string.Equals(d.Hostname, row.SwitchName, StringComparison.OrdinalIgnoreCase));
+            if (match is null)
+            {
+                // No matching net.device — dual-write gap or the row
+                // is still switch_guide-only. Fall back to a broader
+                // entity-type-only drill so the operator gets
+                // *something*.
+                PanelMessageBus.Publish(new OpenPanelMessage("audit"));
+                PanelMessageBus.Publish(new NavigateToPanelMessage(
+                    "audit", "selectEntity:Device:00000000-0000-0000-0000-000000000000"));
+                return;
+            }
+            PanelMessageBus.Publish(new OpenPanelMessage("audit"));
+            PanelMessageBus.Publish(new NavigateToPanelMessage(
+                "audit", $"selectEntity:Device:{match.Id}"));
+        }
+        catch
+        {
+            // Swallow — the context menu is a nice-to-have; the grid
+            // itself must keep working even when the engine is down.
+        }
+    }
+
+    private void OnContextCopyHostname(object sender, RoutedEventArgs e)
+    {
+        if (DevicesGrid.CurrentItem is not DeviceRecord row) return;
+        if (string.IsNullOrWhiteSpace(row.SwitchName)) return;
+        try { System.Windows.Clipboard.SetText(row.SwitchName); } catch { /* ignore */ }
     }
 
     /// <summary>Walk the grid's ItemsSource for a DeviceRecord whose

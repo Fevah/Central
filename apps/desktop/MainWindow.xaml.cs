@@ -916,6 +916,14 @@ public partial class MainWindow
                 AuthContext.Instance.CurrentUser?.Id);
             ScopeGrantsPanelView.SetContext(neUrl, App.CurrentTenantId,
                 AuthContext.Instance.CurrentUser?.Id);
+            // Engine context for entity-grid audit-drill context menus
+            // — the grids themselves don't need DSN/tenant for normal
+            // CRUD (handled by host VM) but do need the engine URL
+            // for the hostname → uuid resolver.
+            DeviceGridPanel.SetEngineContext(neUrl, App.CurrentTenantId,
+                AuthContext.Instance.CurrentUser?.Id);
+            VlanGridPanel.SetEngineContext(neUrl, App.CurrentTenantId,
+                AuthContext.Instance.CurrentUser?.Id);
         }
         await Task.Yield(); // Let splash repaint
         UpdateSplash("Loading ribbon icons...", 95);
