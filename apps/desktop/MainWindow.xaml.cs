@@ -149,6 +149,7 @@ public partial class MainWindow
             if (e.Item == LocksPanel) VM.IsLocksPanelOpen = false;
             if (e.Item == BulkPanel) VM.IsBulkPanelOpen = false;
             if (e.Item == SearchPanel) VM.IsSearchPanelOpen = false;
+            if (e.Item == ScopeGrantsPanel) VM.IsScopeGrantsPanelOpen = false;
             if (e.Item == P2PPanel) VM.IsP2PPanelOpen = false;
             if (e.Item == B2BPanel) VM.IsB2BPanelOpen = false;
             if (e.Item == FWPanel) VM.IsFWPanelOpen = false;
@@ -432,6 +433,11 @@ public partial class MainWindow
                 ToggleDockPanel(SearchPanel, VM.IsSearchPanelOpen);
                 // Same pattern — no auto-fetch; empty query returns
                 // nothing so there's nothing useful to prefetch.
+            }
+            if (e.PropertyName == nameof(MainViewModel.IsScopeGrantsPanelOpen))
+            {
+                ToggleDockPanel(ScopeGrantsPanel, VM.IsScopeGrantsPanelOpen);
+                if (VM.IsScopeGrantsPanelOpen) _ = ScopeGrantsPanelView.ReloadAsync();
             }
             if (e.PropertyName == nameof(MainViewModel.IsMlagPanelOpen))
                 ToggleDockPanel(MlagPanel, VM.IsMlagPanelOpen);
@@ -907,6 +913,8 @@ public partial class MainWindow
             BulkPanelView.SetContext(neUrl, App.CurrentTenantId,
                 AuthContext.Instance.CurrentUser?.Id);
             SearchPanelView.SetContext(neUrl, App.CurrentTenantId,
+                AuthContext.Instance.CurrentUser?.Id);
+            ScopeGrantsPanelView.SetContext(neUrl, App.CurrentTenantId,
                 AuthContext.Instance.CurrentUser?.Id);
         }
         await Task.Yield(); // Let splash repaint

@@ -366,6 +366,11 @@ public class MainViewModel : INotifyPropertyChanged
     private bool _isSearchPanelOpen;
     public bool IsSearchPanelOpen { get => _isSearchPanelOpen; set { _isSearchPanelOpen = value; OnPropertyChanged(); } }
 
+    /// <summary>Phase-10 RBAC foundation — net.scope_grant admin
+    /// workspace. CRUD + dry-run resolver check.</summary>
+    private bool _isScopeGrantsPanelOpen;
+    public bool IsScopeGrantsPanelOpen { get => _isScopeGrantsPanelOpen; set { _isScopeGrantsPanelOpen = value; OnPropertyChanged(); } }
+
     private bool _isSettingsPanelOpen;
     public bool IsSettingsPanelOpen
     {

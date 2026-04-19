@@ -37,6 +37,7 @@ public static class NetworkingRibbonRegistrar
     public const string PanelLocks      = "locks";
     public const string PanelBulk       = "bulk";
     public const string PanelSearch     = "search";
+    public const string PanelScopeGrants = "scopeGrants";
 
     public static void BuildRibbon(IRibbonBuilder ribbon, int sortOrder)
     {
@@ -226,6 +227,23 @@ public static class NetworkingRibbonRegistrar
                     () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelSearch, "action:clear")));
             });
 
+            // ── Scope Grants (Phase 10 RBAC) ─────────────────────────────
+            // Admin workspace for the tuple-based grants that gate every
+            // scope-aware engine endpoint. Buttons publish through the
+            // same message bus as the rest — the ScopeGrantsAdminPanel
+            // subscribes to `action:reload` / `action:newGrant` /
+            // `action:check`. Gated on AdminRead / AdminWrite because
+            // the grant table is admin-only state.
+            page.AddGroup("Scope Grants", group =>
+            {
+                group.AddButton("Refresh",     P.AdminSettings,  "Refresh_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelScopeGrants, "action:reload")));
+                group.AddButton("New Grant",   P.AdminSettings, "AddItem_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelScopeGrants, "action:newGrant")));
+                group.AddButton("Check",       P.AdminSettings,  "FindData_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage(PanelScopeGrants, "action:check")));
+            });
+
             // ── Bulk (Phase 10) ──────────────────────────────────────────
             // Bulk import / export workspace — drives every entity in the
             // engine's bulk surface (Devices / VLANs / Subnets / Servers /
@@ -259,6 +277,7 @@ public static class NetworkingRibbonRegistrar
                 group.AddCheckButton("Locks",          panelId: "LocksPanel");
                 group.AddCheckButton("Bulk",           panelId: "BulkPanel");
                 group.AddCheckButton("Search",         panelId: "SearchPanel");
+                group.AddCheckButton("Scope Grants",   panelId: "ScopeGrantsPanel");
                 group.AddCheckButton("IPAM",           panelId: "DevicesPanel");
                 group.AddCheckButton("Device Details", panelId: "DeviceDetailPanel");
                 group.AddCheckButton("Switches",       panelId: "SwitchesPanel");

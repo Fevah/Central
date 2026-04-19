@@ -25,6 +25,7 @@
     xmlns:lockViews="clr-namespace:Central.Module.Networking.Locks;assembly=Central.Module.Networking"
     xmlns:bulkViews="clr-namespace:Central.Module.Networking.Bulk;assembly=Central.Module.Networking"
     xmlns:searchViews="clr-namespace:Central.Module.Networking.Search;assembly=Central.Module.Networking"
+    xmlns:sgViews="clr-namespace:Central.Module.Networking.ScopeGrants;assembly=Central.Module.Networking"
     xmlns:admViews="clr-namespace:Central.Module.Global.Admin;assembly=Central.Module.Global"
     xmlns:sdViews="clr-namespace:Central.Module.ServiceDesk.Views;assembly=Central.Module.ServiceDesk"
     xmlns:taskViews="clr-namespace:Central.Module.Projects;assembly=Central.Module.Projects"
@@ -1271,6 +1272,13 @@
                                         Caption="Search"
                                         AllowClose="True">
                         <searchViews:SearchPanel x:Name="SearchPanelView" />
+                    </dxdo:DocumentPanel>
+
+                    <!-- Scope Grants Admin Panel (Phase 10 RBAC) -->
+                    <dxdo:DocumentPanel x:Name="ScopeGrantsPanel"
+                                        Caption="Scope Grants"
+                                        AllowClose="True">
+                        <sgViews:ScopeGrantsAdminPanel x:Name="ScopeGrantsPanelView" />
                     </dxdo:DocumentPanel>
 
                     <!-- Devices Panel (extracted to Module.Devices) -->

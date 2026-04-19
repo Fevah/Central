@@ -1,0 +1,59 @@
+<Window x:Class="Central.Module.Networking.ScopeGrants.NewScopeGrantDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
+        Title="New scope grant"
+        SizeToContent="WidthAndHeight"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner">
+    <Grid Margin="14">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="280"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Grid.ColumnSpan="2" TextWrapping="Wrap"
+                   Margin="0,0,0,10" Foreground="#B0B0B0"
+                   Text="Grant = (user_id, action, entity_type, scope_type, scope_entity_id). For hierarchy scopes, the resolver walks Region → Site → Building for Device / Server / Building / Site entity types."/>
+
+        <TextBlock Grid.Row="1" Grid.Column="0" Text="User id:"      VerticalAlignment="Center" Margin="0,4"/>
+        <TextBox   Grid.Row="1" Grid.Column="1" x:Name="UserIdBox"   Margin="0,4"
+                   ToolTip="app_users.id (integer)"/>
+
+        <TextBlock Grid.Row="2" Grid.Column="0" Text="Action:"       VerticalAlignment="Center" Margin="0,4"/>
+        <dxe:ComboBoxEdit Grid.Row="2" Grid.Column="1" x:Name="ActionCombo"
+                          IsTextEditable="True" Margin="0,4"/>
+
+        <TextBlock Grid.Row="3" Grid.Column="0" Text="Entity type:"  VerticalAlignment="Center" Margin="0,4"/>
+        <dxe:ComboBoxEdit Grid.Row="3" Grid.Column="1" x:Name="EntityTypeCombo"
+                          IsTextEditable="True" Margin="0,4"/>
+
+        <TextBlock Grid.Row="4" Grid.Column="0" Text="Scope type:"   VerticalAlignment="Center" Margin="0,4"/>
+        <dxe:ComboBoxEdit Grid.Row="4" Grid.Column="1" x:Name="ScopeTypeCombo"
+                          IsTextEditable="False" Margin="0,4"/>
+
+        <TextBlock Grid.Row="5" Grid.Column="0" Text="Scope entity:" VerticalAlignment="Center" Margin="0,4"/>
+        <TextBox   Grid.Row="5" Grid.Column="1" x:Name="ScopeEntityIdBox" Margin="0,4"
+                   ToolTip="UUID of the region / site / building / entity. Leave blank for Global scope."/>
+
+        <TextBlock Grid.Row="6" Grid.Column="0" Text="Notes:"        VerticalAlignment="Top" Margin="0,4"/>
+        <TextBox   Grid.Row="6" Grid.Column="1" x:Name="NotesBox"    AcceptsReturn="True"
+                   Height="60" TextWrapping="Wrap" Margin="0,4"/>
+
+        <StackPanel Grid.Row="7" Grid.ColumnSpan="2" Orientation="Horizontal"
+                    HorizontalAlignment="Right" Margin="0,14,0,0">
+            <Button Content="Create" Width="90" Margin="4,0" IsDefault="True" Click="OnCreate"/>
+            <Button Content="Cancel" Width="80" Margin="4,0" IsCancel="True"/>
+        </StackPanel>
+    </Grid>
+</Window>
