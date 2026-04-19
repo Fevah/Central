@@ -64,6 +64,7 @@ export const routes: Routes = [
           { path: 'subnets',         loadComponent: () => import('./modules/network/components/network-subnets.component').then(m => m.NetworkSubnetsComponent) },
           { path: 'ports',           loadComponent: () => import('./modules/network/components/network-ports.component').then(m => m.NetworkPortsComponent) },
           { path: 'aggregate-ethernet', loadComponent: () => import('./modules/network/components/network-aggregate-ethernet.component').then(m => m.NetworkAggregateEthernetComponent) },
+          { path: 'mlag-domains',    loadComponent: () => import('./modules/network/components/network-mlag-domains.component').then(m => m.NetworkMlagDomainsComponent) },
           { path: 'ip-addresses',    loadComponent: () => import('./modules/network/components/network-ip-addresses.component').then(m => m.NetworkIpAddressesComponent) },
           { path: 'ip-address/:id',  loadComponent: () => import('./modules/network/components/network-ip-address-detail.component').then(m => m.NetworkIpAddressDetailComponent) },
           { path: 'dhcp-relay',      loadComponent: () => import('./modules/network/components/network-dhcp-relay.component').then(m => m.NetworkDhcpRelayComponent) },

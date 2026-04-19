@@ -102,6 +102,20 @@ export interface ServerListRow {
   version: number;
 }
 
+/// Thin MLAG domain list row — matches `MlagDomainListRow` in
+/// the engine. `poolCode` is resolved via LEFT JOIN so the grid
+/// shows the parent pool without a second call.
+export interface MlagDomainListRow {
+  id: string;
+  poolId: string;
+  poolCode: string | null;
+  domainId: number;
+  displayName: string;
+  scopeLevel: string;
+  status: string;
+  version: number;
+}
+
 /// Thin aggregate-ethernet list row — matches
 /// `AggregateEthernetListRow` in the engine. memberCount is a
 /// correlated subquery on net.port so under-populated bundles
@@ -870,6 +884,14 @@ export class NetworkingEngineService {
     if (deviceId) params = params.set('deviceId', deviceId);
     return this.http.get<PortListRow[]>(
       `${this.base}/api/net/ports`, { params });
+  }
+
+  /// Thin MLAG-domain list — 5000 row cap. LEFT JOIN resolves
+  /// pool_code for display.
+  listMlagDomains(organizationId: string): Observable<MlagDomainListRow[]> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.get<MlagDomainListRow[]>(
+      `${this.base}/api/net/mlag-domains`, { params });
   }
 
   /// Thin aggregate-ethernet list — 5000 row cap. Optional deviceId

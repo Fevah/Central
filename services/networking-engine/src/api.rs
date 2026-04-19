@@ -117,6 +117,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/link-endpoints", get(list_link_endpoints))
         .route("/api/net/ports",          get(list_ports))
         .route("/api/net/aggregate-ethernet", get(list_aggregate_ethernet))
+        .route("/api/net/mlag-domains",      get(list_mlag_domains))
         // Thin pool/block reads (WPF convenience-form pickers)
         .route("/api/net/vlan-blocks", get(list_vlan_blocks))
         .route("/api/net/asn-blocks",  get(list_asn_blocks))
@@ -1278,6 +1279,48 @@ async fn list_aggregate_ethernet(
           LIMIT 5000")
         .bind(q.organization_id)
         .bind(q.device_id)
+        .fetch_all(&s.pool)
+        .await?;
+    Ok(Json(rows))
+}
+
+// ─── MLAG domain thin list ──────────────────────────────────────────────
+
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct MlagDomainListRow {
+    id: Uuid,
+    pool_id: Uuid,
+    pool_code: Option<String>,
+    domain_id: i32,
+    display_name: String,
+    scope_level: String,
+    status: String,
+    version: i32,
+}
+
+/// Thin list of net.mlag_domain rows. 5000-row cap. LEFT JOIN
+/// net.mlag_domain_pool for pool_code display. Used by the MLAG
+/// grid + the device-detail "MLAG pairs" drill (eventually).
+async fn list_mlag_domains(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let rows: Vec<MlagDomainListRow> = sqlx::query_as(
+        "SELECT m.id,
+                m.pool_id,
+                p.pool_code,
+                m.domain_id,
+                m.display_name,
+                m.scope_level,
+                m.status::text AS status,
+                m.version
+           FROM net.mlag_domain m
+           LEFT JOIN net.mlag_domain_pool p ON p.id = m.pool_id
+          WHERE m.organization_id = $1 AND m.deleted_at IS NULL
+          ORDER BY m.domain_id
+          LIMIT 5000")
+        .bind(q.organization_id)
         .fetch_all(&s.pool)
         .await?;
     Ok(Json(rows))

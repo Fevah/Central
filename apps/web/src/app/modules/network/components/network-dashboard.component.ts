@@ -54,6 +54,7 @@ import notify from 'devextreme/ui/notify';
       <a routerLink="/network/subnets" routerLinkActive="active">Subnets</a>
       <a routerLink="/network/ports" routerLinkActive="active">Ports</a>
       <a routerLink="/network/aggregate-ethernet" routerLinkActive="active">AE bundles</a>
+      <a routerLink="/network/mlag-domains" routerLinkActive="active">MLAG</a>
       <a routerLink="/network/ip-addresses" routerLinkActive="active">IPs</a>
       <a routerLink="/network/dhcp-relay" routerLinkActive="active">DHCP relay</a>
       <a routerLink="/network/change-sets" routerLinkActive="active">Change sets</a>
