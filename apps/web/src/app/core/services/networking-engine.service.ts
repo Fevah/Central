@@ -319,6 +319,34 @@ export interface ChangeSet {
   updatedAt: string;
 }
 
+/// One item inside a change-set's item list — matches the engine's
+/// `ChangeSetItem` struct. `beforeJson` / `afterJson` are raw JSONB
+/// snapshots taken at Set-submit time; the web detail page renders
+/// them as pretty-printed code blocks.
+export interface ChangeSetItem {
+  id: string;
+  changeSetId: string;
+  itemOrder: number;
+  entityType: string;
+  entityId: string | null;
+  action: string;
+  beforeJson: unknown | null;
+  afterJson: unknown | null;
+  expectedVersion: number | null;
+  appliedAt: string | null;
+  applyError: string | null;
+  notes: string | null;
+  createdAt: string;
+}
+
+/// Envelope returned by GET /api/net/change-sets/:id — the header
+/// row + the items array in one shot. Matches `ChangeSetWithItems`
+/// in the engine.
+export interface ChangeSetWithItems {
+  set: ChangeSet;
+  items: ChangeSetItem[];
+}
+
 /// One scope_grant tuple. Matches `ScopeGrantDto` from the engine.
 export interface ScopeGrant {
   id: string;
@@ -486,6 +514,13 @@ export class NetworkingEngineService {
     if (status)                   params = params.set('status', status);
     if (limit !== undefined)      params = params.set('limit',  limit.toString());
     return this.http.get<ChangeSet[]>(`${this.base}/api/net/change-sets`, { params });
+  }
+
+  /// Fetch one change-set with its full item list.
+  getChangeSet(id: string, organizationId: string): Observable<ChangeSetWithItems> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.get<ChangeSetWithItems>(
+      `${this.base}/api/net/change-sets/${id}`, { params });
   }
 
   /// DHCP relay targets — optionally filter to one VLAN. Requires

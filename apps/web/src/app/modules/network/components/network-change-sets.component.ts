@@ -48,7 +48,8 @@ import { environment } from '../../../../environments/environment';
                    [headerFilter]="{ visible: true }"
                    [groupPanel]="{ visible: true }"
                    (onRowDblClick)="onRowDoubleClick($event)">
-      <dxi-column dataField="title"              caption="Title"               [fixed]="true" width="260" />
+      <dxi-column dataField="title" caption="Title" [fixed]="true" width="260"
+                  cellTemplate="titleTemplate" />
       <dxi-column dataField="status"             caption="Status"              width="120" [groupIndex]="0"
                   cellTemplate="statusTemplate" />
       <dxi-column dataField="itemCount"          caption="Items"               width="80"  dataType="number" />
@@ -66,6 +67,10 @@ import { environment } from '../../../../environments/environment';
                   cellTemplate="correlationTemplate" />
       <dxi-column dataField="id"                 caption="Set id"              width="260" />
 
+      <div *dxTemplate="let d of 'titleTemplate'">
+        <a [routerLink]="['/network/change-sets', d.data.id]"
+           class="title-link" (click)="$event.stopPropagation()">{{ d.value }}</a>
+      </div>
       <div *dxTemplate="let d of 'statusTemplate'">
         <span [class]="'badge badge-' + statusBadgeClass(d.value)">{{ d.value }}</span>
       </div>
@@ -94,6 +99,8 @@ import { environment } from '../../../../environments/environment';
     .badge-cancelled  { background: rgba(107,114,128,0.2); color: #9ca3af; }
     .correlation-link { color: #60a5fa; font-family: ui-monospace, monospace; font-size: 11px; text-decoration: none; }
     .correlation-link:hover { text-decoration: underline; }
+    .title-link { color: #60a5fa; text-decoration: none; font-weight: 600; }
+    .title-link:hover { text-decoration: underline; }
   `]
 })
 export class NetworkChangeSetsComponent implements OnInit {
