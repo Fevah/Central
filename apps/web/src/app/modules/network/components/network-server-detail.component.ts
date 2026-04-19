@@ -5,15 +5,14 @@ import {
   DxDataGridModule, DxButtonModule, DxTabsModule,
 } from 'devextreme-angular';
 import {
-  NetworkingEngineService, ServerListRow, AuditRow,
+  NetworkingEngineService, ServerListRow, AuditRow, ServerNicListRow,
 } from '../../../core/services/networking-engine.service';
 import { environment } from '../../../../environments/environment';
 
 /// net.server detail page — companion to the thin /network/servers
-/// grid. Two tabs for this slice: Summary (server row + metadata),
-/// Audit (last 100 audit entries). NICs + allocation-fanout detail
-/// would be a third tab once the engine thin list for net.server_nic
-/// lands.
+/// grid. Three tabs: Summary (server row + metadata), Audit (last
+/// 100 entries), NICs (every net.server_nic for this server with
+/// target device/port/IP resolved).
 ///
 /// Routed at /network/net-server/:id. Grid double-click drills here
 /// instead of straight to audit (symmetrical with the device detail
@@ -62,6 +61,30 @@ import { environment } from '../../../../environments/environment';
         <dxi-column dataField="correlationId" caption="Correlation" width="240" />
       </dx-data-grid>
     </div>
+
+    <!-- NICs tab — every server_nic for this server with the
+         switch-side port + IP + MAC pre-resolved. Immunocore's
+         4-NIC fan-out shape means 4 rows per server by convention;
+         NIC 0+2 land on MLAG side A, 1+3 on side B. Grouping by
+         mlagSide makes that cardinality obvious at a glance. -->
+    <div *ngIf="activeTab === 2">
+      <dx-data-grid [dataSource]="nics" [showBorders]="true" [hoverStateEnabled]="true"
+                     [columnAutoWidth]="true">
+        <dxi-column dataField="nicIndex"            caption="#"          width="60"  dataType="number"
+                    sortOrder="asc" [sortIndex]="0" />
+        <dxi-column dataField="nicName"             caption="NIC name"   width="140" />
+        <dxi-column dataField="mlagSide"            caption="Side"       width="70"  [groupIndex]="0" />
+        <dxi-column dataField="targetDeviceHostname" caption="Switch"    width="180" />
+        <dxi-column dataField="targetPortInterface"  caption="Port"      width="140" />
+        <dxi-column dataField="ipAddress"           caption="IP"         width="140" />
+        <dxi-column dataField="macAddress"          caption="MAC"        width="160" />
+        <dxi-column dataField="adminUp"             caption="Admin up"   width="90"  dataType="boolean" />
+        <dxi-column dataField="status"              caption="Status"     width="90" />
+      </dx-data-grid>
+      <div *ngIf="nics.length === 0 && !loadingNics" class="empty-note">
+        No NICs recorded for this server.
+      </div>
+    </div>
   `,
   styles: [`
     .page-header { margin-bottom: 12px; }
@@ -75,16 +98,19 @@ import { environment } from '../../../../environments/environment';
     .meta-row { display: flex; flex-direction: column; gap: 2px; }
     .meta-row label { color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
     .meta-row code { color: #94a3b8; font-family: ui-monospace, monospace; font-size: 12px; }
+    .empty-note { margin-top: 12px; padding: 10px; color: #64748b; font-size: 12px; background: #0f172a; border-radius: 4px; text-align: center; }
     @media (max-width: 1100px) { .meta-grid { grid-template-columns: 1fr 1fr; } }
   `]
 })
 export class NetworkServerDetailComponent implements OnInit {
-  tabs = [{ text: 'Summary' }, { text: 'Audit' }];
+  tabs = [{ text: 'Summary' }, { text: 'Audit' }, { text: 'NICs' }];
   activeTab = 0;
 
   serverId = '';
   server: ServerListRow | null = null;
   audit: AuditRow[] = [];
+  nics: ServerNicListRow[] = [];
+  loadingNics = false;
   status = '';
 
   constructor(
@@ -116,6 +142,13 @@ export class NetworkServerDetailComponent implements OnInit {
     if (this.activeTab === 1 && this.audit.length === 0) {
       this.engine.getEntityTimeline(environment.defaultTenantId, 'Server', this.serverId, 100)
         .subscribe({ next: (rows) => { this.audit = rows; }, error: () => {} });
+    }
+    if (this.activeTab === 2 && this.nics.length === 0 && !this.loadingNics) {
+      this.loadingNics = true;
+      this.engine.listServerNics(environment.defaultTenantId, this.serverId).subscribe({
+        next: (rows) => { this.nics = rows; this.loadingNics = false; },
+        error: () => { this.loadingNics = false; },
+      });
     }
   }
 

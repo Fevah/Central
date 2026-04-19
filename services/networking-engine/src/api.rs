@@ -113,6 +113,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/servers", get(list_servers))
         .route("/api/net/subnets", get(list_subnets))
         .route("/api/net/ip-addresses", get(list_ip_addresses))
+        .route("/api/net/server-nics",  get(list_server_nics))
         // Thin pool/block reads (WPF convenience-form pickers)
         .route("/api/net/vlan-blocks", get(list_vlan_blocks))
         .route("/api/net/asn-blocks",  get(list_asn_blocks))
@@ -1017,6 +1018,73 @@ async fn list_ip_addresses(
           LIMIT 5000")
         .bind(q.organization_id)
         .bind(q.subnet_id)
+        .fetch_all(&s.pool)
+        .await?;
+    Ok(Json(rows))
+}
+
+// ─── Server NIC thin list ───────────────────────────────────────────────
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ServerNicListQuery {
+    organization_id: Uuid,
+    /// Optional — narrow to one server. The server-detail NICs tab
+    /// uses this so the grid only carries the server's own NICs.
+    server_id: Option<Uuid>,
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct ServerNicListRow {
+    id: Uuid,
+    server_id: Uuid,
+    server_hostname: Option<String>,
+    nic_index: i32,
+    nic_name: Option<String>,
+    mlag_side: Option<String>,
+    target_device_hostname: Option<String>,
+    target_port_interface: Option<String>,
+    ip_address: Option<String>,             // host() — bare string, no /prefix
+    mac_address: Option<String>,            // macaddr::text
+    admin_up: bool,
+    status: String,
+}
+
+/// Thin list of net.server_nic rows. 5000-row cap. Optional
+/// serverId narrower (drill target from the server detail NICs
+/// tab). LEFT JOINs resolve server hostname + target device hostname
+/// + target port interface_name + ip_address host — everything the
+/// grid needs to render without per-row round-trips.
+async fn list_server_nics(
+    State(s): State<AppState>,
+    Query(q): Query<ServerNicListQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let rows: Vec<ServerNicListRow> = sqlx::query_as(
+        "SELECT n.id,
+                n.server_id,
+                srv.hostname            AS server_hostname,
+                n.nic_index,
+                n.nic_name,
+                n.mlag_side,
+                d.hostname              AS target_device_hostname,
+                p.interface_name        AS target_port_interface,
+                host(ip.address)        AS ip_address,
+                n.mac_address::text     AS mac_address,
+                n.admin_up,
+                n.status::text          AS status
+           FROM net.server_nic n
+           LEFT JOIN net.server     srv ON srv.id = n.server_id
+           LEFT JOIN net.device     d   ON d.id   = n.target_device_id
+           LEFT JOIN net.port       p   ON p.id   = n.target_port_id
+           LEFT JOIN net.ip_address ip  ON ip.id  = n.ip_address_id
+          WHERE n.organization_id = $1
+            AND n.deleted_at IS NULL
+            AND ($2::uuid IS NULL OR n.server_id = $2)
+          ORDER BY srv.hostname, n.nic_index
+          LIMIT 5000")
+        .bind(q.organization_id)
+        .bind(q.server_id)
         .fetch_all(&s.pool)
         .await?;
     Ok(Json(rows))

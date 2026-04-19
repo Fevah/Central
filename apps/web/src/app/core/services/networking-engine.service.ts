@@ -102,6 +102,25 @@ export interface ServerListRow {
   version: number;
 }
 
+/// Thin server-NIC list row — matches `ServerNicListRow` in the
+/// engine. LEFT JOINs resolve display fields (server hostname,
+/// target device hostname, port interface, IP host string, MAC)
+/// so the grid renders without per-row round-trips.
+export interface ServerNicListRow {
+  id: string;
+  serverId: string;
+  serverHostname: string | null;
+  nicIndex: number;
+  nicName: string | null;
+  mlagSide: string | null;
+  targetDeviceHostname: string | null;
+  targetPortInterface: string | null;
+  ipAddress: string | null;
+  macAddress: string | null;
+  adminUp: boolean;
+  status: string;
+}
+
 /// Thin IP-address list row — matches `IpAddressListRow` in the
 /// engine. `address` is pre-rendered as a bare host string via
 /// `host(ip.address)` on the server — no CIDR suffix.
@@ -746,6 +765,19 @@ export class NetworkingEngineService {
     if (subnetId) params = params.set('subnetId', subnetId);
     return this.http.get<IpAddressListRow[]>(
       `${this.base}/api/net/ip-addresses`, { params });
+  }
+
+  /// Thin server-NIC list — 5000 row cap. Optional `serverId`
+  /// narrows to one server (the server-detail NICs tab drill).
+  /// Target device + port + IP resolved server-side.
+  listServerNics(
+    organizationId: string,
+    serverId?: string,
+  ): Observable<ServerNicListRow[]> {
+    let params = new HttpParams().set('organizationId', organizationId);
+    if (serverId) params = params.set('serverId', serverId);
+    return this.http.get<ServerNicListRow[]>(
+      `${this.base}/api/net/server-nics`, { params });
   }
 
   /// List change-sets, optionally narrowed to a status. Capped at
