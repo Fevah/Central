@@ -2849,6 +2849,49 @@ on locks, change-sets, render history, and naming preview.
 - [ ] Surfaced in /network/audit-stats as a second grid column (two-column layout: per-entity-type + top-actors)
 - [ ] Double-click a top-actor row → audit-search pre-filtered by actorUserId; service rows have no drill target
 
+### 7.X.20 Phase 10b — third wave (commits 2026-04-19+)
+
+Pool-utilization rollup, CLI-flavor admin, render trigger, C#
+ApiClient parity, and validation batch 10. Brings web + WPF to
+parity on the remaining Phase-10 + Phase-10b read + write surfaces.
+
+**Pool utilization endpoint + web dashboard** (commit `e8f333c1d`)
+- [ ] `services/networking-engine/src/pool_utilization.rs` with `PoolUtilizationRow` struct + `list_utilization(pool, org)` — three parallel queries (ASN / VLAN / IP), one uniform row shape with `poolKind` discriminator
+- [ ] ASN/VLAN capacity = last - first + 1; IP capacity = 2^(host_bits) capped at 2^48 for IPv6
+- [ ] IP pools emit two rows per pool ("IP:Subnets" + "IP:Addresses")
+- [ ] `pct()` truncates cleanly, handles zero + negative capacity, caps at 999 for data-quality outliers
+- [ ] 4 unit tests cover the pct helper edge cases
+- [ ] GET /api/net/pools/utilization route + handler
+- [ ] Web page `/network/pool-utilization` — DxDataGrid grouped by poolKind with progress-bar cell template (< 50% green, 50-80% amber, > 80% red); bar width clamps to 100% visually even when percent > 100
+- [ ] Capacity column renders "—" for IP:Subnets row (no subnet-count capacity)
+- [ ] Incidental fix in `subnet.within_parent_pool_cidr` validation rule — net.ip_pool column is `network`, not `pool_cidr`
+
+**CLI flavors admin page** (commit `f2aff16a5`)
+- [ ] Web page `/network/cli-flavors` wires GET /api/net/cli-flavors + PUT /api/net/cli-flavors/:code
+- [ ] DxSwitch per row for effectiveEnabled + isDefault
+- [ ] Default switch disabled when effectiveEnabled is false (can't default a disabled flavor)
+- [ ] After write, full reload to pick up the one-default-per-tenant cascade
+- [ ] Optimistic rollback on failure so switch state doesn't drift from server
+- [ ] Status badge per flavor status (GA green, Beta amber, Stub grey)
+
+**Device render trigger** (commit `c23213fd4`)
+- [ ] "Render now" button on `/network/render-history` fires POST /api/net/devices/:id/render-config
+- [ ] Response body immediately populates the body viewer (no click-through to the new row)
+- [ ] Diff viewer fetched in parallel since POST response doesn't carry diff
+- [ ] Grid reloads so new row appears at top (ordered renderedAt DESC)
+- [ ] 403 ("lacks write:Device") surfaced specifically vs generic pass-through
+
+**C# ApiClient parity** (commit `a1c3dafff`)
+- [ ] `NetworkingEngineClient.cs` new methods: ListServersAsync, ListSubnetsAsync, AuditStatsAsync, AuditTrendAsync, AuditTopActorsAsync, SearchFacetsAsync, PoolUtilizationAsync
+- [ ] Matching DTOs: ServerListRowDto, SubnetListRowDto, EntityTypeStatsDto, AuditTrendPointDto, TopActorDto, SearchFacetDto, PoolUtilizationRowDto
+- [ ] BuildQuery threads optional filters (fromAt/toAt/bucketBy/entityType/limit) through each method
+- [ ] Solution build clean: 0 errors
+
+**Validation rule expansion — batch 10** (commit `a3d8a9d98`)
+- [ ] `rendered_config.chain_integrity` (Warning) — LEFT JOIN catches previous_render_id pointers that don't resolve
+- [ ] `scope_grant.no_duplicate_tuple` (Warning) — GROUP BY resolver key HAVING count>1 across active rows
+- [ ] `change_set.applied_has_no_pending_items` (Warning) — Applied sets with items whose applied_at is NULL
+
 ---
 
 ## 8. Enterprise SaaS
