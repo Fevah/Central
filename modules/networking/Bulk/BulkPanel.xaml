@@ -37,6 +37,7 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
             <TextBlock Grid.Column="0" Text="Entity:" VerticalAlignment="Center"
@@ -71,7 +72,10 @@
             <Button Grid.Column="10" x:Name="ApplyButton" Content="Apply"
                     Width="90" Margin="0,0,4,0" Click="OnApply"
                     ToolTip="Run the importer for real (DB writes); confirms first when dry-run is OFF"/>
-            <Button Grid.Column="11" x:Name="ClearButton" Content="Clear"
+            <Button Grid.Column="11" x:Name="ExportOutcomesButton" Content="Outcomes…"
+                    Width="90" Margin="0,0,4,0" Click="OnExportOutcomes"
+                    ToolTip="Save the per-row outcomes grid as CSV — useful for investigating failures in Excel. No-op when no import has been run yet."/>
+            <Button Grid.Column="12" x:Name="ClearButton" Content="Clear"
                     Width="80" Click="OnClear"/>
         </Grid>
 

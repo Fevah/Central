@@ -187,6 +187,63 @@ public partial class BulkPanel : UserControl
         StatusLabel.Text = "Cleared.";
     }
 
+    /// <summary>Export the outcomes grid to CSV for offline triage.
+    /// When a bulk apply fails on 20 rows out of 500, operators
+    /// want to paste the errors into Excel, pivot by error message,
+    /// fix the source CSV, and re-import. Hand-rolled CSV writer
+    /// (no DX dependency) — same RFC 4180 escaping the engine's
+    /// export path uses so the two CSVs concatenate cleanly if
+    /// needed.</summary>
+    private void OnExportOutcomes(object sender, RoutedEventArgs e)
+    {
+        if (OutcomesGrid.ItemsSource is not IEnumerable<OutcomeRow> rows
+            || !rows.Any())
+        {
+            StatusLabel.Text = "No outcomes to export — run Validate or Apply first.";
+            return;
+        }
+
+        var entityKey = (string)EntityCombo.SelectedItem;
+        var dlg = new Microsoft.Win32.SaveFileDialog
+        {
+            Filter = "CSV files (*.csv)|*.csv",
+            FileName = SuggestedFileName($"{entityKey}-outcomes", "csv"),
+            Title = "Save outcomes",
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        try
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append("row_number,ok,identifier,error_text\r\n");
+            foreach (var r in rows)
+            {
+                sb.Append(r.RowNumber).Append(',');
+                sb.Append(r.Ok ? "true" : "false").Append(',');
+                sb.Append(CsvEscape(r.Identifier)).Append(',');
+                sb.Append(CsvEscape(r.ErrorText)).Append("\r\n");
+            }
+            File.WriteAllText(dlg.FileName, sb.ToString());
+            StatusLabel.Text = $"Outcomes saved to {Path.GetFileName(dlg.FileName)} · {rows.Count()} rows";
+        }
+        catch (Exception ex)
+        {
+            StatusLabel.Text = $"Outcomes export failed: {ex.Message}";
+        }
+    }
+
+    /// <summary>RFC 4180 field escape. Quote when the value contains
+    /// any of `,` / `"` / CR / LF; double internal quotes. Keeps
+    /// the outcomes CSV parseable by every downstream tool
+    /// (Excel, LibreOffice, Python csv module, the engine's own
+    /// import path).</summary>
+    private static string CsvEscape(string? v)
+    {
+        v ??= "";
+        if (v.IndexOfAny(new[] { ',', '"', '\r', '\n' }) < 0) return v;
+        return "\"" + v.Replace("\"", "\"\"") + "\"";
+    }
+
     // ─── Export ─────────────────────────────────────────────────────────
 
     private async Task ExportAsync()
