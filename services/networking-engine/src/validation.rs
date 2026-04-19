@@ -1212,6 +1212,38 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Error,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "loopback.number_unique_per_device",
+        name: "Loopback number must be unique per device",
+        description: "Two net.loopback rows on the same device with \
+                      duplicate loopback_number render ambiguously \
+                      in config-gen (two 'lo0' stanzas). GROUP BY + \
+                      HAVING across active rows.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "vlan_template.code_unique_per_tenant",
+        name: "VLAN template code must be unique per tenant",
+        description: "net.vlan_template rows sharing template_code \
+                      break the template picker at VLAN creation. \
+                      GROUP BY + HAVING guard for the steady state.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "subnet.active_scope_entity_resolves",
+        name: "Active subnet non-Free scope must resolve",
+        description: "Parallel to vlan.scope_entity_resolves (batch \
+                      8) but for net.subnet. Active subnets with \
+                      scope_level != 'Free' need a scope_entity_id \
+                      resolvable to a live hierarchy row.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1498,6 +1530,9 @@ async fn dispatch(
         "naming_template_override.template_not_empty" => run_naming_override_template_not_empty(pool, org_id, severity, out).await,
         "ip_pool.network_is_network_address"      => run_ip_pool_network_canonical(pool, org_id, severity, out).await,
         "loopback.active_has_ip_address"          => run_loopback_active_has_ip(pool, org_id, severity, out).await,
+        "loopback.number_unique_per_device"       => run_loopback_number_unique(pool, org_id, severity, out).await,
+        "vlan_template.code_unique_per_tenant"    => run_vlan_template_code_unique(pool, org_id, severity, out).await,
+        "subnet.active_scope_entity_resolves"     => run_subnet_scope_entity_resolves_active(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -3857,6 +3892,97 @@ async fn run_ip_pool_network_canonical(
     Ok(())
 }
 
+/// `loopback.number_unique_per_device` — GROUP BY (device_id,
+/// loopback_number) HAVING count>1 across active rows.
+async fn run_loopback_number_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32, i64, Vec<Uuid>)> = sqlx::query_as(
+        "SELECT device_id, loopback_number, COUNT(*) AS n, array_agg(id) AS ids
+           FROM net.loopback
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+          GROUP BY device_id, loopback_number
+         HAVING COUNT(*) > 1")
+        .bind(org_id).fetch_all(pool).await?;
+    for (device_id, num, n, ids) in rows {
+        let primary = ids.first().copied();
+        let id_list = ids.iter().map(|id| id.to_string())
+            .collect::<Vec<_>>().join(", ");
+        out.push(Violation {
+            rule_code: "loopback.number_unique_per_device".into(),
+            severity, entity_type: "Loopback".into(), entity_id: primary,
+            message: format!(
+                "{n} loopbacks on device {device_id} claim number {num}: {id_list}."),
+        });
+    }
+    Ok(())
+}
+
+/// `vlan_template.code_unique_per_tenant` — GROUP BY template_code
+/// HAVING count>1.
+async fn run_vlan_template_code_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(String, i64, Vec<Uuid>)> = sqlx::query_as(
+        "SELECT template_code, COUNT(*) AS n, array_agg(id) AS ids
+           FROM net.vlan_template
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+          GROUP BY template_code
+         HAVING COUNT(*) > 1")
+        .bind(org_id).fetch_all(pool).await?;
+    for (code, n, ids) in rows {
+        let primary = ids.first().copied();
+        let id_list = ids.iter().map(|id| id.to_string())
+            .collect::<Vec<_>>().join(", ");
+        out.push(Violation {
+            rule_code: "vlan_template.code_unique_per_tenant".into(),
+            severity, entity_type: "VlanTemplate".into(), entity_id: primary,
+            message: format!(
+                "{n} VLAN templates share code '{code}': {id_list}."),
+        });
+    }
+    Ok(())
+}
+
+/// `subnet.active_scope_entity_resolves` — parallel to
+/// vlan.scope_entity_resolves but for net.subnet.
+async fn run_subnet_scope_entity_resolves_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT sn.id, sn.subnet_code, sn.scope_level
+           FROM net.subnet sn
+          WHERE sn.organization_id = $1
+            AND sn.deleted_at IS NULL
+            AND sn.status = 'Active'::net.entity_status
+            AND sn.scope_level != 'Free'
+            AND (
+                  sn.scope_entity_id IS NULL
+               OR (sn.scope_level = 'Region'   AND NOT EXISTS
+                     (SELECT 1 FROM net.region   x WHERE x.id = sn.scope_entity_id AND x.deleted_at IS NULL))
+               OR (sn.scope_level = 'Site'     AND NOT EXISTS
+                     (SELECT 1 FROM net.site     x WHERE x.id = sn.scope_entity_id AND x.deleted_at IS NULL))
+               OR (sn.scope_level = 'Building' AND NOT EXISTS
+                     (SELECT 1 FROM net.building x WHERE x.id = sn.scope_entity_id AND x.deleted_at IS NULL))
+               OR (sn.scope_level = 'Floor'    AND NOT EXISTS
+                     (SELECT 1 FROM net.floor    x WHERE x.id = sn.scope_entity_id AND x.deleted_at IS NULL))
+               OR (sn.scope_level = 'Room'     AND NOT EXISTS
+                     (SELECT 1 FROM net.room     x WHERE x.id = sn.scope_entity_id AND x.deleted_at IS NULL))
+            )")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, scope_level) in rows {
+        out.push(Violation {
+            rule_code: "subnet.active_scope_entity_resolves".into(),
+            severity, entity_type: "Subnet".into(), entity_id: Some(id),
+            message: format!(
+                "Active subnet '{code}' with scope_level='{scope_level}' has no resolvable scope_entity_id."),
+        });
+    }
+    Ok(())
+}
+
 /// `loopback.active_has_ip_address` — Active loopback needs an
 /// ip_address_id; Planned / other statuses skipped.
 async fn run_loopback_active_has_ip(
@@ -4221,6 +4347,9 @@ mod tests {
             "naming_template_override.template_not_empty",
             "ip_pool.network_is_network_address",
             "loopback.active_has_ip_address",
+            "loopback.number_unique_per_device",
+            "vlan_template.code_unique_per_tenant",
+            "subnet.active_scope_entity_resolves",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
