@@ -169,6 +169,7 @@ pub fn build_router(state: AppState) -> Router {
         // caller only sees rows they have read on.
         .route("/api/net/search",                           get(global_search_handler))
         .route("/api/net/search/facets",                    get(search_facets_handler))
+        .route("/api/net/whoami",                           get(whoami_handler))
         // Saved views (Phase 10) — per-user named search queries,
         // managed personally not through scope_grants. Ownership
         // check is baked into every handler via user_id from the
@@ -1876,6 +1877,56 @@ async fn global_search_handler(
         if decision.allowed { filtered.push(r); }
     }
     Ok(Json(filtered))
+}
+
+/// Who-am-i — identity + scope-grant summary for the caller.
+/// Drives a web session banner ("signed in as user 3, 60 grants,
+/// can write Device + read Server"). Service calls (no X-User-Id
+/// header) get {userId: null, grantCount: 0, actions: [], entityTypes: []}.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WhoAmIResponse {
+    user_id: Option<i32>,
+    grant_count: i64,
+    /// Distinct set of actions the caller holds ANY grant for, sorted.
+    actions: Vec<String>,
+    /// Distinct set of entity types the caller holds ANY grant for, sorted.
+    entity_types: Vec<String>,
+}
+
+async fn whoami_handler(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    let Some(uid) = user_id else {
+        return Ok(Json(WhoAmIResponse {
+            user_id: None, grant_count: 0,
+            actions: Vec::new(), entity_types: Vec::new(),
+        }));
+    };
+
+    // One round-trip: aggregate count + distinct actions + distinct
+    // entity types across the caller's active Global-and-scoped grants.
+    let (grant_count, actions, entity_types): (i64, Vec<String>, Vec<String>) =
+        sqlx::query_as(
+            "SELECT COUNT(*)::bigint,
+                    COALESCE(array_agg(DISTINCT action      ORDER BY action),      '{}')::text[],
+                    COALESCE(array_agg(DISTINCT entity_type ORDER BY entity_type), '{}')::text[]
+               FROM net.scope_grant
+              WHERE organization_id = $1
+                AND user_id = $2
+                AND deleted_at IS NULL
+                AND status = 'Active'::net.entity_status")
+            .bind(q.organization_id)
+            .bind(uid)
+            .fetch_one(&s.pool)
+            .await?;
+
+    Ok(Json(WhoAmIResponse {
+        user_id: Some(uid), grant_count, actions, entity_types,
+    }))
 }
 
 /// Facet counts — one row per entity type that matches the query.

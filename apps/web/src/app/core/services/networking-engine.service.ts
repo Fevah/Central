@@ -298,6 +298,16 @@ export interface FloorRow {
   Status: string;
 }
 
+/// Who-am-i summary — matches `WhoAmIResponse` in the engine.
+/// Drives the web session banner. Service calls (no X-User-Id
+/// header) get userId=null + grantCount=0 + empty arrays.
+export interface WhoAmI {
+  userId: number | null;
+  grantCount: number;
+  actions: string[];
+  entityTypes: string[];
+}
+
 /// Permission-check decision returned by /api/net/scope-grants/check.
 /// Matches `PermissionDecision` in the engine. `matchedGrantId` is
 /// the uuid of the specific grant that authorised the action — nice
@@ -607,6 +617,14 @@ export class NetworkingEngineService {
       params = params.set('limit', limit.toString());
     }
     return this.http.get<SearchResult[]>(`${this.base}/api/net/search`, { params });
+  }
+
+  /// Who-am-i summary for the current user — identity + scope-grant
+  /// count + distinct actions + distinct entity types. Drives the
+  /// session banner.
+  whoAmI(organizationId: string): Observable<WhoAmI> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.get<WhoAmI>(`${this.base}/api/net/whoami`, { params });
   }
 
   /// Per-entity-type facet counts for a search query. Returns one row

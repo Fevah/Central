@@ -5,8 +5,10 @@ import { DxDataGridModule, DxToolbarModule, DxChartModule } from 'devextreme-ang
 import { Subject, Subscription, merge } from 'rxjs';
 import { auditTime, filter } from 'rxjs/operators';
 import { NetworkService, SwitchDevice, DeviceRecord } from '../../../core/services/network.service';
+import { NetworkingEngineService, WhoAmI } from '../../../core/services/networking-engine.service';
 import { ModuleRegistryService } from '../../../core/services/module-registry.service';
 import { SignalRService } from '../../../core/services/signalr.service';
+import { environment } from '../../../../environments/environment';
 import notify from 'devextreme/ui/notify';
 
 @Component({
@@ -14,6 +16,26 @@ import notify from 'devextreme/ui/notify';
   standalone: true,
   imports: [CommonModule, RouterModule, DxDataGridModule, DxToolbarModule, DxChartModule],
   template: `
+    <!-- Session banner — resolves via /api/net/whoami on init.
+         Hidden when whoami returns userId=null (service-call fallback). -->
+    <div *ngIf="whoami && whoami.userId !== null" class="session-banner">
+      <div class="banner-left">
+        <span class="banner-label">Signed in as</span>
+        <span class="banner-user">user {{ whoami.userId }}</span>
+      </div>
+      <div class="banner-right">
+        <span class="banner-chip">{{ whoami.grantCount }} grants</span>
+        <span *ngIf="whoami.actions.length" class="banner-chip actions"
+              title="Actions granted across all scopes">
+          {{ whoami.actions.join(' · ') }}
+        </span>
+        <span *ngIf="whoami.entityTypes.length" class="banner-chip entities"
+              title="Entity types granted across all scopes">
+          {{ whoami.entityTypes.join(' · ') }}
+        </span>
+      </div>
+    </div>
+
     <!-- Sub-nav: only show modules the tenant has licensed -->
     <div class="sub-nav">
       <a routerLink="/network" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Overview</a>
@@ -116,6 +138,13 @@ import notify from 'devextreme/ui/notify';
     </dx-data-grid>
   `,
   styles: [`
+    .session-banner { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 12px; margin-bottom: 12px; background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2); border-radius: 4px; font-size: 12px; flex-wrap: wrap; }
+    .banner-label { color: #9ca3af; }
+    .banner-user { color: #60a5fa; font-weight: 600; font-family: ui-monospace, monospace; margin-left: 4px; }
+    .banner-right { display: flex; gap: 6px; flex-wrap: wrap; }
+    .banner-chip { padding: 2px 8px; border-radius: 10px; background: rgba(148,163,184,0.1); color: #cbd5e1; font-size: 11px; }
+    .banner-chip.actions  { color: #22c55e; background: rgba(34,197,94,0.08); }
+    .banner-chip.entities { color: #a855f7; background: rgba(168,85,247,0.08); }
     .sub-nav { display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid #1f2937; padding-bottom: 8px; }
     .sub-nav a { color: #9ca3af; text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; }
     .sub-nav a:hover { background: rgba(59,130,246,0.1); color: #d1d5db; }
@@ -140,6 +169,10 @@ import notify from 'devextreme/ui/notify';
 export class NetworkDashboardComponent implements OnInit, OnDestroy {
   switches: SwitchDevice[] = [];
   devices: DeviceRecord[] = [];
+  /// Resolved via /api/net/whoami on init. Null until the call
+  /// completes; the banner only renders when whoami.userId != null
+  /// so service-call fallbacks don't flash an empty banner.
+  whoami: WhoAmI | null = null;
 
   get onlineCount(): number { return this.switches.filter(s => s.last_ping_ok === true).length; }
   get offlineCount(): number { return this.switches.filter(s => s.last_ping_ok === false).length; }
@@ -154,12 +187,24 @@ export class NetworkDashboardComponent implements OnInit, OnDestroy {
     private router: Router,
     public modules: ModuleRegistryService,
     private signalR: SignalRService,
+    private engine: NetworkingEngineService,
   ) {}
 
   ngOnInit(): void {
     this.loadSwitches();
     this.loadDevices();
     this.subscribeRealtime();
+    this.loadWhoAmI();
+  }
+
+  /// Fetches the session summary. Soft-fails to null on error —
+  /// banner just doesn't render rather than showing an error state,
+  /// since the page is still functional without it.
+  private loadWhoAmI(): void {
+    this.engine.whoAmI(environment.defaultTenantId).subscribe({
+      next: (w) => { this.whoami = w; },
+      error: () => { this.whoami = null; },
+    });
   }
 
   ngOnDestroy(): void {
