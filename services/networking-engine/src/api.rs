@@ -90,6 +90,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/audit/entity/:entity_type/:entity_id", get(entity_audit_timeline))
         .route("/api/net/audit/export", get(export_audit))
         .route("/api/net/audit/stats",  get(audit_stats_by_entity_type))
+        .route("/api/net/audit/trend",  get(audit_trend_handler))
         // Change Sets (Phase 8a)
         .route("/api/net/change-sets", get(list_change_sets).post(create_change_set))
         .route("/api/net/change-sets/:id", get(get_change_set))
@@ -557,6 +558,17 @@ async fn audit_stats_by_entity_type(
     Query(q): Query<audit::AuditStatsQuery>,
 ) -> Result<impl IntoResponse, EngineError> {
     Ok(Json(audit::stats_by_entity_type(&s.pool, &q).await?))
+}
+
+/// Audit trend — time-bucketed count series.
+/// Query params: organizationId (required), fromAt + toAt + bucketBy
+/// (optional: hour / day / week, default day), entityType
+/// (optional narrower).
+async fn audit_trend_handler(
+    State(s): State<AppState>,
+    Query(q): Query<audit::AuditTrendQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    Ok(Json(audit::trend(&s.pool, &q).await?))
 }
 
 async fn export_audit(

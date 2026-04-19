@@ -2,9 +2,11 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { DxDataGridModule, DxDateBoxModule, DxButtonModule } from 'devextreme-angular';
 import {
-  NetworkingEngineService, EntityTypeStats,
+  DxDataGridModule, DxDateBoxModule, DxButtonModule, DxChartModule,
+} from 'devextreme-angular';
+import {
+  NetworkingEngineService, EntityTypeStats, AuditTrendPoint,
 } from '../../../core/services/networking-engine.service';
 import { environment } from '../../../../environments/environment';
 
@@ -17,7 +19,7 @@ import { environment } from '../../../../environments/environment';
   selector: 'app-network-audit-stats',
   standalone: true,
   imports: [CommonModule, FormsModule, RouterModule,
-            DxDataGridModule, DxDateBoxModule, DxButtonModule],
+            DxDataGridModule, DxDateBoxModule, DxButtonModule, DxChartModule],
   template: `
     <div class="page-header">
       <h2>Audit activity</h2>
@@ -42,6 +44,24 @@ import { environment } from '../../../../environments/environment';
 
     <div *ngIf="status" class="status-line">{{ status }}</div>
 
+    <!-- Time-bucketed activity chart. Bucket granularity follows the
+         window automatically: <= 48h → hour, <= 90d → day, > 90d →
+         week. -->
+    <dx-chart *ngIf="trend.length"
+              [dataSource]="trend"
+              title="Audit events over time"
+              class="trend-chart">
+      <dxo-series
+        argumentField="bucketAt"
+        valueField="count"
+        type="line"
+        name="Events">
+      </dxo-series>
+      <dxo-argument-axis argumentType="datetime"></dxo-argument-axis>
+      <dxo-value-axis></dxo-value-axis>
+      <dxo-common-series-settings [point]="{ visible: false }"></dxo-common-series-settings>
+    </dx-chart>
+
     <dx-data-grid [dataSource]="rows" [showBorders]="true" [hoverStateEnabled]="true"
                    [columnAutoWidth]="true"
                    [searchPanel]="{ visible: true }"
@@ -61,12 +81,14 @@ import { environment } from '../../../../environments/environment';
     .filter-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
     .filter-bar label { color: #888; font-size: 12px; margin-right: -4px; }
     .status-line { margin: 6px 0 10px; color: #666; font-size: 12px; }
+    .trend-chart { height: 240px; margin-bottom: 16px; }
   `]
 })
 export class NetworkAuditStatsComponent implements OnInit {
   fromAt: Date | null = null;
   toAt: Date | null = null;
   rows: EntityTypeStats[] = [];
+  trend: AuditTrendPoint[] = [];
   status = '';
 
   constructor(
@@ -95,6 +117,34 @@ export class NetworkAuditStatsComponent implements OnInit {
           this.rows = [];
         },
       });
+
+    // Trend loads in parallel — independent chart, independent error
+    // path. Bucket granularity picked from the window length so the
+    // chart is always readable (~20-200 points). Fallback when both
+    // ends are null → day (all-time view keeps the buckets sane).
+    const bucket = this.pickBucket();
+    this.engine.auditTrend(environment.defaultTenantId, {
+      fromAt: from, toAt: to, bucketBy: bucket,
+    }).subscribe({
+      next: (pts) => {
+        // DxChart parses datetime strings but prefers real Date
+        // objects for consistent tick behaviour across timezones.
+        this.trend = pts.map(p => ({
+          bucketAt: p.bucketAt,
+          count:    p.count,
+        }));
+      },
+      error: () => { this.trend = []; },
+    });
+  }
+
+  private pickBucket(): 'hour' | 'day' | 'week' {
+    if (!this.fromAt || !this.toAt) return 'day';
+    const spanMs = this.toAt.getTime() - this.fromAt.getTime();
+    const spanDays = spanMs / 86_400_000;
+    if (spanDays <= 2)   return 'hour';
+    if (spanDays <= 90)  return 'day';
+    return 'week';
   }
 
   /// Set fromAt to N days ago, toAt to now. Matches the WPF audit

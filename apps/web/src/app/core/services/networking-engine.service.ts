@@ -162,6 +162,13 @@ export interface EntityTypeStats {
   lastSeenAt: string | null;
 }
 
+/// One point in an audit trend series — bucketed timestamp + count.
+/// Matches `AuditTrendPoint` in services/networking-engine/src/audit.rs.
+export interface AuditTrendPoint {
+  bucketAt: string;
+  count: number;
+}
+
 /// Per-row outcome from a bulk CSV import. Matches
 /// `ImportRowOutcomeDto` from the Rust side. Ok=false means the row
 /// failed validation; the errors array carries the details the
@@ -509,6 +516,27 @@ export class NetworkingEngineService {
     const body: Record<string, unknown> = { organizationId };
     if (ruleCode) body['ruleCode'] = ruleCode;
     return this.http.post<ValidationRunResult>(`${this.base}/api/net/validation/run`, body);
+  }
+
+  /// Time-bucketed audit activity. `bucketBy` accepts hour / day /
+  /// week (defaults to day on the engine). Optional entityType
+  /// narrows to one entity type for focused drill-downs; omit for
+  /// total activity.
+  auditTrend(
+    organizationId: string,
+    opts: {
+      fromAt?: string;
+      toAt?: string;
+      bucketBy?: 'hour' | 'day' | 'week';
+      entityType?: string;
+    } = {},
+  ): Observable<AuditTrendPoint[]> {
+    let params = new HttpParams().set('organizationId', organizationId);
+    if (opts.fromAt)     params = params.set('fromAt',     opts.fromAt);
+    if (opts.toAt)       params = params.set('toAt',       opts.toAt);
+    if (opts.bucketBy)   params = params.set('bucketBy',   opts.bucketBy);
+    if (opts.entityType) params = params.set('entityType', opts.entityType);
+    return this.http.get<AuditTrendPoint[]>(`${this.base}/api/net/audit/trend`, { params });
   }
 
   /// Per-entity-type audit activity summary. Single SQL pass with

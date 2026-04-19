@@ -600,6 +600,90 @@ pub struct AuditStatsQuery {
 /// MAX(created_at) per entity_type; the web dashboard renders the
 /// result as a summary card + list. Ordered by total_count DESC so
 /// the most-changed entity types land first.
+// ─── Audit trend (time-bucketed) ─────────────────────────────────────────
+
+/// One row in a trend series — a bucketed timestamp + the count of
+/// audit entries in that bucket. Matches `AuditTrendPoint` on the
+/// wire (camelCase).
+#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct AuditTrendPoint {
+    pub bucket_at: chrono::DateTime<chrono::Utc>,
+    pub count: i64,
+}
+
+/// Time bucket size for an audit-trend query. `Hour` is the default
+/// for short windows (24h view); `Day` for a 7d / 30d view; `Week`
+/// for longer retrospectives. PG's `date_trunc` covers each one
+/// directly so there's no client-side binning.
+#[derive(Debug, Copy, Clone)]
+pub enum TrendBucket { Hour, Day, Week }
+
+impl TrendBucket {
+    fn pg_literal(self) -> &'static str {
+        match self {
+            TrendBucket::Hour => "hour",
+            TrendBucket::Day  => "day",
+            TrendBucket::Week => "week",
+        }
+    }
+    pub fn parse(s: Option<&str>) -> Self {
+        match s.unwrap_or("day").to_ascii_lowercase().as_str() {
+            "hour" => TrendBucket::Hour,
+            "week" => TrendBucket::Week,
+            _      => TrendBucket::Day,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AuditTrendQuery {
+    pub organization_id: Uuid,
+    pub from_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub to_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// One of `hour` / `day` / `week`; defaults to `day`. Unknown
+    /// values fall through to `day` rather than erroring so a
+    /// forward-compat UI that sends `month` still gets a sensible
+    /// response.
+    pub bucket_by: Option<String>,
+    /// Optional entity-type narrower so the trend can be "just
+    /// Device activity" rather than "everything". Matches the
+    /// ListAuditQuery filter shape.
+    pub entity_type: Option<String>,
+}
+
+/// Time-bucketed audit activity. Returns one row per non-empty
+/// bucket ordered chronologically; zero-count intervals are elided
+/// (the chart component fills them via its axis logic, not the
+/// server's responsibility). Optional entity_type narrows the count
+/// to a single entity type for focused drill-downs.
+pub async fn trend(
+    pool: &PgPool,
+    q: &AuditTrendQuery,
+) -> Result<Vec<AuditTrendPoint>, EngineError> {
+    let bucket = TrendBucket::parse(q.bucket_by.as_deref());
+    let sql = format!(
+        "SELECT date_trunc('{}', created_at) AS bucket_at,
+                COUNT(*)::bigint AS count
+           FROM net.audit_entry
+          WHERE organization_id = $1
+            AND ($2::timestamptz IS NULL OR created_at >= $2)
+            AND ($3::timestamptz IS NULL OR created_at <= $3)
+            AND ($4::text         IS NULL OR entity_type = $4)
+          GROUP BY bucket_at
+          ORDER BY bucket_at ASC",
+        bucket.pg_literal());
+    let rows: Vec<AuditTrendPoint> = sqlx::query_as(&sql)
+        .bind(q.organization_id)
+        .bind(q.from_at)
+        .bind(q.to_at)
+        .bind(q.entity_type.as_deref())
+        .fetch_all(pool)
+        .await?;
+    Ok(rows)
+}
+
 pub async fn stats_by_entity_type(
     pool: &PgPool,
     q: &AuditStatsQuery,
