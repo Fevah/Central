@@ -5,17 +5,15 @@ import {
   DxDataGridModule, DxButtonModule, DxTabsModule,
 } from 'devextreme-angular';
 import {
-  NetworkingEngineService, FloorRow,
+  NetworkingEngineService, FloorRow, RoomListRow,
 } from '../../../core/services/networking-engine.service';
+import { environment } from '../../../../environments/environment';
 
-/// Floor detail — bottom of the hierarchy detail-page chain
-/// (region → site → building → floor). One tab (Summary) for this
-/// slice; Room + Rack tabs land when the engine gains thin lists
-/// for those levels.
+/// Floor detail — region → site → building → floor drill chain.
+/// Two tabs: Summary (row fields) + Rooms (every net.room under
+/// this floor). Rack detail is one more drill step from a room.
 ///
-/// Routed at /network/floor/:id. Hierarchy tree's Floor-node
-/// double-click currently falls through to audit; a follow-up
-/// wires it here.
+/// Routed at /network/floor/:id.
 @Component({
   selector: 'app-network-floor-detail',
   standalone: true,
@@ -41,6 +39,29 @@ import {
       <div class="meta-row"><label>Building id</label>  <code>{{ floor.BuildingId }}</code></div>
       <div class="meta-row"><label>Status</label>       <span>{{ floor.Status }}</span></div>
       <div class="meta-row full"><label>UUID</label>    <code>{{ floor.Id }}</code></div>
+      <div class="meta-row" *ngIf="roomsLoaded">
+        <label>Rooms</label>
+        <span>{{ rooms.length }}</span>
+      </div>
+    </div>
+
+    <!-- Rooms tab -->
+    <div *ngIf="activeTab === 1">
+      <dx-data-grid [dataSource]="rooms" [showBorders]="true" [hoverStateEnabled]="true"
+                     [columnAutoWidth]="true"
+                     [searchPanel]="{ visible: true }"
+                     [filterRow]="{ visible: true }"
+                     (onRowDblClick)="onRoomDblClick($event)">
+        <dxi-column dataField="roomCode"  caption="Room code" [fixed]="true" width="140"
+                    sortOrder="asc" [sortIndex]="0" />
+        <dxi-column dataField="roomType"  caption="Type"      width="120" />
+        <dxi-column dataField="maxRacks"  caption="Max racks" width="110" dataType="number" />
+        <dxi-column dataField="status"    caption="Status"    width="90" />
+        <dxi-column dataField="id"        caption="UUID" />
+      </dx-data-grid>
+      <div *ngIf="rooms.length === 0 && !loadingRooms" class="empty-note">
+        No rooms recorded for this floor.
+      </div>
     </div>
   `,
   styles: [`
@@ -56,20 +77,24 @@ import {
     .meta-row.full { grid-column: 1 / -1; }
     .meta-row label { color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
     .meta-row code { color: #94a3b8; font-family: ui-monospace, monospace; font-size: 12px; }
+    .empty-note { margin-top: 12px; padding: 10px; color: #64748b; font-size: 12px; background: #0f172a; border-radius: 4px; text-align: center; }
     @media (max-width: 1100px) { .meta-grid { grid-template-columns: 1fr 1fr; } }
   `]
 })
 export class NetworkFloorDetailComponent implements OnInit {
-  tabs = [{ text: 'Summary' }];
+  tabs = [{ text: 'Summary' }, { text: 'Rooms' }];
   activeTab = 0;
 
   floorId = '';
   floor: FloorRow | null = null;
+  rooms: RoomListRow[] = [];
+  loadingRooms = false;
+  roomsLoaded = false;
   status = '';
 
   constructor(
     private route: ActivatedRoute,
-    private _router: Router,
+    private router: Router,
     private engine: NetworkingEngineService,
   ) {}
 
@@ -85,8 +110,24 @@ export class NetworkFloorDetailComponent implements OnInit {
       next: (rows) => {
         this.floor = rows.find(r => r.Id === this.floorId) ?? null;
         this.status = this.floor ? '' : 'Floor not found.';
+        if (this.floor) this.loadRooms();
       },
       error: (err) => { this.status = `Load failed: ${err?.message ?? err}`; },
     });
+  }
+
+  private loadRooms(): void {
+    if (!this.floor) return;
+    this.loadingRooms = true;
+    this.engine.listRooms(environment.defaultTenantId, this.floor.Id).subscribe({
+      next: (rows) => { this.rooms = rows; this.loadingRooms = false; this.roomsLoaded = true; },
+      error: () => { this.loadingRooms = false; this.roomsLoaded = true; },
+    });
+  }
+
+  onRoomDblClick(e: { data: RoomListRow }): void {
+    const row = e?.data;
+    if (!row?.id) return;
+    this.router.navigate(['/network/room', row.id]);
   }
 }
