@@ -1005,6 +1005,41 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Error,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "floor.floor_code_unique_per_building",
+        name: "Floor code must be unique within a building",
+        description: "Two net.floor rows in the same building sharing \
+                      floor_code break the hierarchy picker + make \
+                      scope-level resolution ambiguous for floor-\
+                      scoped resources. No DB UNIQUE constraint \
+                      because floor_code is free-form across tenants; \
+                      this rule flags the per-building collision.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "room.room_code_unique_per_floor",
+        name: "Room code must be unique within a floor",
+        description: "Parallel to the floor rule. Two net.room rows \
+                      on the same floor sharing room_code make the \
+                      rack picker + hierarchy drill ambiguous.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "rack.rack_code_unique_per_room",
+        name: "Rack code must be unique within a room",
+        description: "Bottom of the hierarchy uniqueness check. Two \
+                      net.rack rows in the same room sharing \
+                      rack_code break device-placement pickers + \
+                      the physical-layout naming template's {rack_code} \
+                      token expansion.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1273,6 +1308,9 @@ async fn dispatch(
         "change_set.submitted_has_items"          => run_change_set_submitted_has_items(pool, org_id, severity, out).await,
         "reservation_shelf.cooldown_respected"    => run_shelf_cooldown_respected(pool, org_id, severity, out).await,
         "vlan_block.range_within_pool"            => run_vlan_block_range_within_pool(pool, org_id, severity, out).await,
+        "floor.floor_code_unique_per_building"    => run_floor_code_unique(pool, org_id, severity, out).await,
+        "room.room_code_unique_per_floor"         => run_room_code_unique(pool, org_id, severity, out).await,
+        "rack.rack_code_unique_per_room"          => run_rack_code_unique(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -3382,6 +3420,85 @@ async fn run_subnet_vlan_link_active(
     Ok(())
 }
 
+/// `floor.floor_code_unique_per_building` — GROUP BY
+/// (building_id, floor_code) HAVING count>1. Active rows only.
+async fn run_floor_code_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i64, Vec<Uuid>)> = sqlx::query_as(
+        "SELECT building_id, floor_code, COUNT(*) AS n, array_agg(id) AS ids
+           FROM net.floor
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+          GROUP BY building_id, floor_code
+         HAVING COUNT(*) > 1")
+        .bind(org_id).fetch_all(pool).await?;
+    for (building_id, code, n, ids) in rows {
+        let primary = ids.first().copied();
+        let id_list = ids.iter().map(|id| id.to_string())
+            .collect::<Vec<_>>().join(", ");
+        out.push(Violation {
+            rule_code: "floor.floor_code_unique_per_building".into(),
+            severity, entity_type: "Floor".into(), entity_id: primary,
+            message: format!(
+                "{n} floors in building {building_id} share floor_code '{code}': {id_list}."),
+        });
+    }
+    Ok(())
+}
+
+/// `room.room_code_unique_per_floor` — parallel to floor rule.
+async fn run_room_code_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i64, Vec<Uuid>)> = sqlx::query_as(
+        "SELECT floor_id, room_code, COUNT(*) AS n, array_agg(id) AS ids
+           FROM net.room
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+          GROUP BY floor_id, room_code
+         HAVING COUNT(*) > 1")
+        .bind(org_id).fetch_all(pool).await?;
+    for (floor_id, code, n, ids) in rows {
+        let primary = ids.first().copied();
+        let id_list = ids.iter().map(|id| id.to_string())
+            .collect::<Vec<_>>().join(", ");
+        out.push(Violation {
+            rule_code: "room.room_code_unique_per_floor".into(),
+            severity, entity_type: "Room".into(), entity_id: primary,
+            message: format!(
+                "{n} rooms on floor {floor_id} share room_code '{code}': {id_list}."),
+        });
+    }
+    Ok(())
+}
+
+/// `rack.rack_code_unique_per_room` — parallel to floor/room rules.
+async fn run_rack_code_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i64, Vec<Uuid>)> = sqlx::query_as(
+        "SELECT room_id, rack_code, COUNT(*) AS n, array_agg(id) AS ids
+           FROM net.rack
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+          GROUP BY room_id, rack_code
+         HAVING COUNT(*) > 1")
+        .bind(org_id).fetch_all(pool).await?;
+    for (room_id, code, n, ids) in rows {
+        let primary = ids.first().copied();
+        let id_list = ids.iter().map(|id| id.to_string())
+            .collect::<Vec<_>>().join(", ");
+        out.push(Violation {
+            rule_code: "rack.rack_code_unique_per_room".into(),
+            severity, entity_type: "Rack".into(), entity_id: primary,
+            message: format!(
+                "{n} racks in room {room_id} share rack_code '{code}': {id_list}."),
+        });
+    }
+    Ok(())
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -3537,6 +3654,9 @@ mod tests {
             "change_set.submitted_has_items",
             "reservation_shelf.cooldown_respected",
             "vlan_block.range_within_pool",
+            "floor.floor_code_unique_per_building",
+            "room.room_code_unique_per_floor",
+            "rack.rack_code_unique_per_room",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
