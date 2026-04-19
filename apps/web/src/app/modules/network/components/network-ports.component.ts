@@ -96,9 +96,11 @@ export class NetworkPortsComponent implements OnInit {
     });
   }
 
+  /// Double-click → port detail (Summary / Audit / Usage tabs).
+  /// Device drill is reachable via the Summary tab's device link.
   onRowDoubleClick(e: { data: PortListRow }): void {
     const row = e?.data;
-    if (!row?.deviceId) return;
-    this.router.navigate(['/network/net-device', row.deviceId]);
+    if (!row?.id) return;
+    this.router.navigate(['/network/port', row.id]);
   }
 }

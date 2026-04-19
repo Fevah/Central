@@ -63,6 +63,7 @@ export const routes: Routes = [
           { path: 'links-grid',      loadComponent: () => import('./modules/network/components/network-links.component').then(m => m.NetworkLinksGridComponent) },
           { path: 'subnets',         loadComponent: () => import('./modules/network/components/network-subnets.component').then(m => m.NetworkSubnetsComponent) },
           { path: 'ports',           loadComponent: () => import('./modules/network/components/network-ports.component').then(m => m.NetworkPortsComponent) },
+          { path: 'port/:id',        loadComponent: () => import('./modules/network/components/network-port-detail.component').then(m => m.NetworkPortDetailComponent) },
           { path: 'aggregate-ethernet', loadComponent: () => import('./modules/network/components/network-aggregate-ethernet.component').then(m => m.NetworkAggregateEthernetComponent) },
           { path: 'aggregate-ethernet/:id', loadComponent: () => import('./modules/network/components/network-aggregate-ethernet-detail.component').then(m => m.NetworkAggregateEthernetDetailComponent) },
           { path: 'mlag-domains',    loadComponent: () => import('./modules/network/components/network-mlag-domains.component').then(m => m.NetworkMlagDomainsComponent) },
