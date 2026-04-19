@@ -102,6 +102,22 @@ export interface ServerListRow {
   version: number;
 }
 
+/// Thin module list row — matches `ModuleListRow` in the engine.
+/// Represents physical hardware modules (linecards / transceivers
+/// / PSUs / fans) inside a device.
+export interface ModuleListRow {
+  id: string;
+  deviceId: string;
+  deviceHostname: string | null;
+  slot: string;
+  moduleType: string;
+  model: string | null;
+  serialNumber: string | null;
+  partNumber: string | null;
+  status: string;
+  version: number;
+}
+
 /// Thin MLAG domain list row — matches `MlagDomainListRow` in
 /// the engine. `poolCode` is resolved via LEFT JOIN so the grid
 /// shows the parent pool without a second call.
@@ -892,6 +908,17 @@ export class NetworkingEngineService {
     const params = new HttpParams().set('organizationId', organizationId);
     return this.http.get<MlagDomainListRow[]>(
       `${this.base}/api/net/mlag-domains`, { params });
+  }
+
+  /// Thin module list — 5000 row cap. Optional deviceId narrower.
+  listModules(
+    organizationId: string,
+    deviceId?: string,
+  ): Observable<ModuleListRow[]> {
+    let params = new HttpParams().set('organizationId', organizationId);
+    if (deviceId) params = params.set('deviceId', deviceId);
+    return this.http.get<ModuleListRow[]>(
+      `${this.base}/api/net/modules`, { params });
   }
 
   /// Thin aggregate-ethernet list — 5000 row cap. Optional deviceId

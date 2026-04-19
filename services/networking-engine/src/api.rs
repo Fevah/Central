@@ -118,6 +118,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/ports",          get(list_ports))
         .route("/api/net/aggregate-ethernet", get(list_aggregate_ethernet))
         .route("/api/net/mlag-domains",      get(list_mlag_domains))
+        .route("/api/net/modules",           get(list_modules))
         // Thin pool/block reads (WPF convenience-form pickers)
         .route("/api/net/vlan-blocks", get(list_vlan_blocks))
         .route("/api/net/asn-blocks",  get(list_asn_blocks))
@@ -1321,6 +1322,63 @@ async fn list_mlag_domains(
           ORDER BY m.domain_id
           LIMIT 5000")
         .bind(q.organization_id)
+        .fetch_all(&s.pool)
+        .await?;
+    Ok(Json(rows))
+}
+
+// ─── Module thin list ───────────────────────────────────────────────────
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ModuleListQuery {
+    organization_id: Uuid,
+    /// Optional — narrow to one device. Future device-detail
+    /// "Modules" tab uses this.
+    device_id: Option<Uuid>,
+}
+
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct ModuleListRow {
+    id: Uuid,
+    device_id: Uuid,
+    device_hostname: Option<String>,
+    slot: String,
+    module_type: String,
+    model: Option<String>,
+    serial_number: Option<String>,
+    part_number: Option<String>,
+    status: String,
+    version: i32,
+}
+
+/// Thin list of net.module rows (linecard / transceiver / PSU /
+/// fan hardware). 5000-row cap. Optional deviceId narrower.
+async fn list_modules(
+    State(s): State<AppState>,
+    Query(q): Query<ModuleListQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let rows: Vec<ModuleListRow> = sqlx::query_as(
+        "SELECT m.id,
+                m.device_id,
+                d.hostname      AS device_hostname,
+                m.slot,
+                m.module_type,
+                m.model,
+                m.serial_number,
+                m.part_number,
+                m.status::text  AS status,
+                m.version
+           FROM net.module m
+           LEFT JOIN net.device d ON d.id = m.device_id
+          WHERE m.organization_id = $1
+            AND m.deleted_at IS NULL
+            AND ($2::uuid IS NULL OR m.device_id = $2)
+          ORDER BY d.hostname, m.slot
+          LIMIT 5000")
+        .bind(q.organization_id)
+        .bind(q.device_id)
         .fetch_all(&s.pool)
         .await?;
     Ok(Json(rows))
