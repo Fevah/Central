@@ -72,6 +72,7 @@ export const routes: Routes = [
           { path: 'locks',           loadComponent: () => import('./modules/network/components/network-locks.component').then(m => m.NetworkLocksComponent) },
           { path: 'naming-preview',  loadComponent: () => import('./modules/network/components/network-naming-preview.component').then(m => m.NetworkNamingPreviewComponent) },
           { path: 'naming-overrides',loadComponent: () => import('./modules/network/components/network-naming-overrides.component').then(m => m.NetworkNamingOverridesComponent) },
+          { path: 'naming-resolve',  loadComponent: () => import('./modules/network/components/network-naming-resolve.component').then(m => m.NetworkNamingResolveComponent) },
           { path: 'render-history',  loadComponent: () => import('./modules/network/components/network-render-history.component').then(m => m.NetworkRenderHistoryComponent) },
           { path: 'render-pack',     loadComponent: () => import('./modules/network/components/network-render-pack.component').then(m => m.NetworkRenderPackComponent) },
           { path: 'pool-utilization',loadComponent: () => import('./modules/network/components/network-pool-utilization.component').then(m => m.NetworkPoolUtilizationComponent) },

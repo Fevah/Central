@@ -578,6 +578,16 @@ export interface NamingPreviewResponse {
   expanded: string;
 }
 
+/// Naming-resolve response — matches `ResolveResponse` in the
+/// engine's naming_resolver module. `source` is PascalCase enum:
+/// BuildingSpecificSubtype / BuildingAnySubtype / Site* / Region* /
+/// Global* / Default. `overrideId` is null for the Default case.
+export interface NamingResolveResponse {
+  template: string;
+  source: string;
+  overrideId: string | null;
+}
+
 /// One locked row — matches `LockedRow` in the engine. Projection
 /// is uniform across the 5 numbering tables that lock enforcement
 /// covers (asn_allocation / vlan / mlag_domain / subnet / ip_address);
@@ -1041,6 +1051,33 @@ export class NetworkingEngineService {
     const params = new HttpParams().set('organizationId', organizationId);
     return this.http.delete<void>(
       `${this.base}/api/net/naming/overrides/${id}`, { params });
+  }
+
+  /// Resolve which naming template applies to an entity at the
+  /// given hierarchy position. Walks the override precedence:
+  /// Building-specific → Building-any → Site-specific → Site-any →
+  /// Region-specific → Region-any → Global-specific → Global-any →
+  /// Default (from the caller's defaultTemplate). Answer shows
+  /// both the template + which tier won.
+  resolveNamingTemplate(body: {
+    organizationId: string;
+    entityType: string;
+    subtypeCode?: string | null;
+    regionId?: string | null;
+    siteId?: string | null;
+    buildingId?: string | null;
+    defaultTemplate?: string | null;
+  }): Observable<NamingResolveResponse> {
+    return this.http.post<NamingResolveResponse>(
+      `${this.base}/api/net/naming/resolve`, {
+        organizationId:   body.organizationId,
+        entityType:       body.entityType,
+        subtypeCode:      body.subtypeCode ?? null,
+        regionId:         body.regionId ?? null,
+        siteId:           body.siteId ?? null,
+        buildingId:       body.buildingId ?? null,
+        defaultTemplate:  body.defaultTemplate ?? null,
+      });
   }
 
   /// Naming preview — one endpoint per context shape. Each POSTs
