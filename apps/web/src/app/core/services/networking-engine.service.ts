@@ -827,6 +827,40 @@ export class NetworkingEngineService {
     return this.http.get<LockedRow[]>(`${this.base}/api/net/locks`, { params });
   }
 
+  /// Submit a Draft change-set for approval. `requiredApprovals`
+  /// caps at >=1 server-side to prevent accidental auto-approval.
+  submitChangeSet(
+    id: string, organizationId: string, requiredApprovals = 1,
+  ): Observable<ChangeSet> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.post<ChangeSet>(
+      `${this.base}/api/net/change-sets/${id}/submit`,
+      { requiredApprovals }, { params });
+  }
+
+  /// Cancel a change-set. Notes optional. Terminal state — can't
+  /// reopen a cancelled set.
+  cancelChangeSet(
+    id: string, organizationId: string, notes?: string,
+  ): Observable<ChangeSet> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    const body = notes ? { notes } : {};
+    return this.http.post<ChangeSet>(
+      `${this.base}/api/net/change-sets/${id}/cancel`,
+      body, { params });
+  }
+
+  /// Apply an Approved change-set. Runs every item in item_order
+  /// sequence inside a transaction; partial apply on error rolls back.
+  applyChangeSet(
+    id: string, organizationId: string,
+  ): Observable<ChangeSet> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.post<ChangeSet>(
+      `${this.base}/api/net/change-sets/${id}/apply`,
+      null, { params });
+  }
+
   /// Fetch one change-set with its full item list.
   getChangeSet(id: string, organizationId: string): Observable<ChangeSetWithItems> {
     const params = new HttpParams().set('organizationId', organizationId);

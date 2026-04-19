@@ -9,11 +9,15 @@ import {
 } from '../../../core/services/networking-engine.service';
 import { environment } from '../../../../environments/environment';
 
-/// Detail view of one change-set — header row + item list. Landed
-/// from the change-sets list page (double-click → audit-search
-/// drill), OR directly via /network/change-sets/:id for bookmarking.
-/// Read-only in Phase 10b; submit / approve / apply / cancel /
-/// rollback stay WPF-only.
+/// Detail view of one change-set — header row + item list + action
+/// bar. Landed from the change-sets list page (double-click →
+/// audit-search drill), OR directly via /network/change-sets/:id.
+///
+/// Write actions: Submit (Draft → Submitted with required-approvals=1),
+/// Apply (Approved → Applied in a transaction), Cancel (any
+/// non-terminal → Cancelled). Approve / reject / rollback stay
+/// WPF-only for now — need the approver-user selection chrome that
+/// the admin-users picker provides on the WPF side.
 ///
 /// Item list shows the before/after JSON snapshots inline so an
 /// operator can scan a Set's full payload without drilling into
@@ -32,6 +36,24 @@ import { environment } from '../../../../environments/environment';
         <span [class]="'badge badge-' + statusBadgeClass(set.status)">{{ set.status }}</span>
         · {{ set.title }}
       </small>
+    </div>
+
+    <!-- Action bar — buttons enabled based on current status. Draft
+         → Submit; Approved → Apply; !terminal → Cancel. -->
+    <div *ngIf="set" class="action-bar">
+      <dx-button text="Submit for approval" icon="export" type="default"
+                 stylingMode="contained"
+                 [disabled]="busy || set.status !== 'Draft'"
+                 hint="Submit this Draft Set for approval (sets required approvals to 1)."
+                 (onClick)="onSubmit()" />
+      <dx-button text="Apply now" icon="save" type="default"
+                 [disabled]="busy || set.status !== 'Approved'"
+                 hint="Run every item in order. Transactional — partial apply rolls back on error."
+                 (onClick)="onApply()" />
+      <dx-button text="Cancel set" icon="close" stylingMode="outlined"
+                 [disabled]="busy || isTerminal(set.status)"
+                 hint="Cancel this Set. Terminal — can't be reopened."
+                 (onClick)="onCancel()" />
     </div>
 
     <div *ngIf="status" class="status-line">{{ status }}</div>
@@ -137,6 +159,7 @@ import { environment } from '../../../../environments/environment';
     .section-title { color: #9ca3af; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; margin: 20px 0 8px; font-weight: 600; }
     .correlation-link { color: #60a5fa; font-family: ui-monospace, monospace; font-size: 11px; text-decoration: none; word-break: break-all; }
     .correlation-link:hover { text-decoration: underline; }
+    .action-bar { display: flex; gap: 8px; margin: 10px 0; }
     .apply-error { color: #ef4444; font-family: ui-monospace, monospace; font-size: 11px; }
     .json-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 8px; }
     .json-panel { background: #0f172a; border-radius: 4px; padding: 8px; }
@@ -152,6 +175,7 @@ export class NetworkChangeSetDetailComponent implements OnInit {
   set: ChangeSet | null = null;
   items: ChangeSetItem[] = [];
   status = '';
+  busy = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -211,6 +235,76 @@ export class NetworkChangeSetDetailComponent implements OnInit {
     if (!correlationId) return;
     this.router.navigate(['/network/audit-search'], {
       queryParams: { correlationId },
+    });
+  }
+
+  /// Terminal lifecycle states — matches `ChangeSetStatus::is_terminal`
+  /// in the engine. Cancel button is disabled on terminal states.
+  isTerminal(status: string): boolean {
+    return status === 'Rejected' || status === 'Applied' || status === 'Cancelled';
+  }
+
+  // ─── Write actions ────────────────────────────────────────────────
+
+  /// Submit Draft for approval. Fixed required-approvals=1 for this
+  /// surface; multi-approval sets run via the WPF client where the
+  /// approver-user picker is already wired.
+  onSubmit(): void {
+    if (!this.set || this.busy) return;
+    this.runAction(
+      this.engine.submitChangeSet(this.set.id, environment.defaultTenantId, 1),
+      'Submitted for approval.');
+  }
+
+  /// Apply Approved set. Server runs every item in item_order in one
+  /// transaction; partial apply on error rolls back.
+  onApply(): void {
+    if (!this.set || this.busy) return;
+    if (typeof window !== 'undefined' &&
+        !window.confirm(`Apply change set '${this.set.title}' now? This runs every item in sequence.`)) return;
+    this.runAction(
+      this.engine.applyChangeSet(this.set.id, environment.defaultTenantId),
+      'Applied.');
+  }
+
+  /// Cancel set. Prompt for optional note so audit carries the
+  /// reason. Terminal afterwards.
+  onCancel(): void {
+    if (!this.set || this.busy) return;
+    const notes = typeof window !== 'undefined'
+      ? window.prompt('Cancellation note (optional):', '') ?? undefined
+      : undefined;
+    if (typeof window !== 'undefined' &&
+        !window.confirm(`Cancel change set '${this.set.title}'? Can't be reopened.`)) return;
+    this.runAction(
+      this.engine.cancelChangeSet(this.set.id, environment.defaultTenantId, notes || undefined),
+      'Cancelled.');
+  }
+
+  /// Shared success/failure handler. 403 surfaces specifically so
+  /// operators see "your user lacks write:ChangeSet" rather than a
+  /// generic error. 409 is the engine's "illegal state transition"
+  /// response.
+  private runAction(obs: import('rxjs').Observable<ChangeSet>, successMsg: string): void {
+    this.busy = true;
+    this.status = 'Working…';
+    obs.subscribe({
+      next: (updated) => {
+        this.busy = false;
+        this.set = updated;
+        this.status = successMsg;
+      },
+      error: (err) => {
+        this.busy = false;
+        const status = err?.status as number | undefined;
+        if (status === 403) {
+          this.status = 'Forbidden — your user lacks the required permission on ChangeSet.';
+        } else if (status === 409) {
+          this.status = `Illegal state transition: ${err?.error?.detail ?? 'current status doesn\\'t allow that action'}.`;
+        } else {
+          this.status = `Failed: ${err?.error?.detail ?? err?.message ?? err}`;
+        }
+      },
     });
   }
 }
