@@ -2541,6 +2541,132 @@ Migration 106 `net.saved_view` — per-user named queries via `GET/POST/PUT/DELE
 - [ ] optimistic concurrency via `version` column collapsed into single UPDATE (WHERE user_id AND version → 0 rows = "not owned OR stale")
 - [ ] `filters jsonb` unstructured so future UI facet additions need no schema change
 
+### 7.X.16 WPF Operator Surface (Phase 10 UI, 2026-04-19+)
+
+After the service side closed, this arc wires every Phase 10
+engine endpoint into the WPF shell. Operators get a ribbon + panel
++ context-menu workflow for the full bulk / search / audit /
+scope-grant surface without leaving the app. Cross-panel drill-down
+uses a two-message pattern: `OpenPanelMessage(target)` to restore
+the DockManager panel, then `NavigateToPanelMessage(target, payload)`
+to drive state inside it.
+
+**Bulk workspace** (`Central.Module.Networking.Bulk.BulkPanel`, commit `6d4f94846` + `cd7a306a8`)
+- [ ] Entity combo covers all six bulk-capable entities: Devices / VLANs / Subnets / Servers / Links / DHCP relay targets
+- [ ] Mode combo: create / upsert — routes to `?mode=` query param
+- [ ] Dry-run checkbox default ON; Apply gated by a confirmation dialog when OFF that spells out create-vs-upsert semantics
+- [ ] Format combo: CSV / XLSX — CSV keeps the editor as source of truth; XLSX buffers bytes from file picker, editor shows CSV preview
+- [ ] Export fills the editor + offers Save dialog with matching extension per format
+- [ ] Open file branches on format: CSV reads text into the editor; XLSX reads bytes into `_pendingXlsxBytes` + advisory note in editor
+- [ ] Validate button forces dry_run=true regardless of checkbox; Apply honours it
+- [ ] Per-row outcomes grid binds to a flat `OutcomeRow` projection (RowNumber / Ok / Identifier / ErrorText)
+- [ ] Summary banner spells out `APPLIED / DRY-RUN / NOT APPLIED` + row counts
+- [ ] Wired into MainWindow DockLayoutManager as `BulkPanel` with AllowClose + an `IsBulkPanelOpen` VM property
+- [ ] Ribbon "Bulk" group — Export / Validate / Apply buttons dispatch `action:export` / `action:validate` / `action:apply`; 3 NetworkingRibbonAudit theory rows
+
+**Search workspace** (`Central.Module.Networking.Search.SearchPanel`, commits `950eeafef` + `540b19c4d`)
+- [ ] Query TextBox with Enter-to-search
+- [ ] Entity-types combo with suggestions for single types + common narrowing combos (Device,Vlan etc.)
+- [ ] Limit SpinEdit (1-500 server-side clamp; default 50)
+- [ ] Results grid grouped by EntityType with columns: EntityType / Label / Snippet / Rank / Id
+- [ ] Saved-views sidebar lists the caller's own views (X-User-Id scoped; `ListSavedViewsAsync`)
+- [ ] Save current — prompts for a name, POSTs CreateSavedViewRequest, reloads sidebar
+- [ ] Delete — OK/Cancel confirmation, DELETE endpoint, reloads
+- [ ] Clicking a saved view populates query + entity-types and auto-runs
+- [ ] Subtitle line shows `{query truncated 40 chars} · {entity-types or 'all types'}`
+- [ ] Ribbon "Search" group — Run Search / Clear buttons (2 theory rows)
+- [ ] Double-click / "Open in entity panel" context menu publishes OpenPanel + `selectId:{guid}:{label}` payload
+- [ ] Context menu: Show audit history (publishes OpenPanel audit + `selectEntity:{Type}:{Guid}`)
+- [ ] Context menu: Copy id
+
+**Audit panel** (`Central.Module.Networking.Audit.AuditViewerPanel`, commits `8dadcdcc4` + `944ffbc52` + `55fe6df70` + `245d85dfc`)
+- [ ] Filter bar split across two rows: primary filters (Entity / Action / Actor / From / To) on top; Entity ID + Correlation + Recent chips on second row
+- [ ] Visible Entity ID TextBox — drill-down state observable, editable, clearable (replaces earlier invisible `_pendingEntityId` field)
+- [ ] Recent: chips — `1h / 24h / 7d / 30d / All` quick-set FromDate/ToDate and auto-run
+- [ ] Clear filters button zeroes every input (dates, entity id, correlation) — escape hatch from stale drill-down state
+- [ ] Full timeline button — preconditions (EntityType + EntityId required); calls `/api/net/audit/entity/{type}/{id}` which returns unlimited rows (no 500-row ListAudit cap)
+- [ ] OnNavigate handler accepts `selectEntity:{Type}:{Guid}` payload from cross-panel drill-down; populates filter bar + auto-runs
+
+**Scope grants admin** (`Central.Module.Networking.ScopeGrants.ScopeGrantsAdminPanel`, commit `e198af3dc`)
+- [ ] Filter bar: user id / action combo / entity type combo
+- [ ] Grant grid columns: UserId / Action / EntityType / ScopeType / ScopeEntityId / Status / Notes / Id / Version
+- [ ] Summary line under grid: `N total · K distinct user(s) · M distinct action(s) · G Global-scope grant(s)`
+- [ ] New grant dialog with client-side validation (positive-int user id, required action/entity type, scope_entity_id required when scope_type != Global)
+- [ ] Check Permission dialog — dry-runs `/api/net/scope-grants/check`, renders ALLOWED via grant X / DENIED in a MessageBox with inputs echoed
+- [ ] Row context menu: Show audit history / Copy grant id
+- [ ] Ribbon "Scope Grants" group — Refresh / New Grant / Check (3 theory rows)
+
+**Cross-panel drill-down — shell plumbing**
+- [ ] `OpenPanelMessage(TargetPanel)` primitive in `libs/engine/Shell/PanelMessageBus.cs` (record, IPanelMessage)
+- [ ] MainWindow subscribes `OpenPanelMessage` and flips the matching `VM.Is*PanelOpen` boolean for audit / search / bulk / locks / scopeGrants / changesets / validation / devices / vlans / servers / hierarchy
+- [ ] Two-message pattern: open panel (shell) → navigate payload (panel) so one message doesn't need to do both
+
+**Entity-grid row context menus**
+- [ ] DeviceGridPanel: Show audit history (hostname → uuid via `ListDevicesAsync`) / Search for this hostname / Show in hierarchy (focusBuilding) / Copy hostname
+- [ ] VlanGridPanel: Show audit history (vlan_id + block_code → uuid via `ListVlansAsync`) / Search for this VLAN / Copy VLAN id
+- [ ] ServerGridPanel: Show audit history (direct uuid) / Search for this hostname / Show in hierarchy / Copy id
+- [ ] P2P / B2B / FW link grids: Show audit history (link_code → uuid via `ListLinksAsync` via shared `LinkAuditDrill`) / Search for this link code / Copy link code
+- [ ] ScopeGrantsAdminPanel: Show audit history (direct uuid — scope_grants.rs emits AuditEvent on create+delete) / Copy grant id
+
+**Hierarchy ↔ grids reverse drill**
+- [ ] HierarchyTreePanel context menu on Building nodes: Show devices in this building / Show servers in this building
+- [ ] Publishes `filterBy:{Column}:{Value}` payload — generic so each grid maps its own column name (Building vs BuildingCode) to DX FilterString
+- [ ] DeviceGridPanel + ServerGridPanel OnNavigate branch: `filterBy:{Col}:{Val}` → `GridControl.FilterString = "[Col] = 'Val'"` with single-quote escaping (doubled `''`)
+- [ ] HierarchyTreePanel subscribes to `focus{NodeType}:{code}` payload (Region/Site/Building/Floor/Room/Rack) — walks ParentId chain to expand every ancestor, sets FocusedRowHandle; `_pendingFocus` stashes the request when tree not loaded yet + replayed after ReloadAsync
+
+**Search → entity-grid row focus**
+- [ ] DeviceGridPanel OnNavigate `selectId:{guid}:{label}` → matches by hostname (SwitchName) because grid Id column holds switch_guide numeric id; case-insensitive
+- [ ] ServerGridPanel OnNavigate `selectId:{guid}:{label}` → matches by Id first, hostname fallback
+- [ ] Focus via `FocusedRowHandle = GetRowHandleByListIndex(visible_idx)` to scroll + keyboard-focus the row
+
+**Engine thin-list endpoints** (supporting context-menu uuid resolution)
+- [ ] `GET /api/net/vlans` — VlanListRow `(id, vlan_id, display_name, block_code, scope_level, status, version)`, capped at 5000, ORDER BY vlan_id
+- [ ] `GET /api/net/links` — LinkListRow `(id, link_code, link_type, device_a, device_b, status, version)` — LEFT JOIN endpoint_order=0/1 hostnames
+- [ ] C# ApiClient `ListVlansAsync` + `VlanListRowDto`; `ListLinksAsync` + `LinkListRowDto`
+- [ ] `GET /api/net/devices` thin list pre-dates this arc (ListDevicesAsync shipped in Phase 8)
+
+**Tenant context indicator** (commit `8d6113921`)
+- [ ] `App.CurrentTenantName` static resolved once during bootstrap via `LookupTenantNameAsync(dsn, tenantId)` — COALESCE(display_name, slug, '')
+- [ ] Fetch wrapped in try/catch so tenants-table hiccup doesn't block startup for a display field
+- [ ] MainViewModel `CurrentTenantDisplay` — returns resolved name or `(no tenant)` when empty so StringFormat doesn't render half-prefixed
+- [ ] MainWindow status bar `StatusBarTenantLabel` — `Tenant: {name}` with tooltip spelling out "every query, mutation and audit call targets this tenant. Reboot to switch."
+
+**Subnet scope_entity_code** (commits `00cda417d` + `24abbc8d4`)
+- [ ] CSV column 7 `scope_entity_code` in 8-column header: `subnet_code, display_name, network, vlan_id, pool_code, scope_level, scope_entity_code, status`
+- [ ] Compound format per scope_level: Free → empty · Region → REGION_CODE · Site → REGION/SITE · Building → BUILDING_CODE · Floor → BUILDING/FLOOR · Room → BUILDING/FLOOR/ROOM
+- [ ] Import: 5 catalog pre-fetch queries + HashMap lookup; validator enforces scope-level ↔ code-shape consistency with precise per-level errors
+- [ ] Apply loop binds `scope_entity_id` on INSERT + UPDATE (previously was silently dropped)
+- [ ] Export: CASE expression + 6 LEFT JOIN chain rebuilds compound code from scope_entity_id
+- [ ] 12 integration tests total: 5 scope happy-path + rejection tests + round-trip `subnet_all_five_scopes_round_trip_through_export`
+
+**VLAN scope_entity_code** (commit `013f01d5b`)
+- [ ] CSV column 5 `scope_entity_code` in 8-column header: `vlan_id, display_name, description, scope_level, scope_entity_code, template_code, block_code, status`
+- [ ] Compound format per scope_level: Free → empty · Region → REGION_CODE · Site → REGION/SITE · Building → BUILDING_CODE · Device → DEVICE_HOSTNAME
+- [ ] Device uses hostname alone (unique per tenant per migration 088)
+- [ ] 7 integration tests: `vlan_{region/site/building/device}_scope_resolves*` + `vlan_device_scope_rejects_unknown_hostname` + `vlan_free_scope_rejects_non_empty_code` + `vlan_all_five_scopes_round_trip_through_export`
+
+**Bulk import upsert mode** (commits `d9964d33a` + `7a1c554e5` + `0d7c13391`)
+- [ ] `ImportMode::{Create, Upsert}` enum + `?mode=` query param; Create (default) rejects existing keys, Upsert UPDATEs them
+- [ ] Covered across all 6 entities: Devices (with version column) / VLANs / Subnets / Servers / Links / DHCP relay targets
+- [ ] Pre-fetch existing-rows query returns `(natural_key, id, version)` HashMap for apply-loop branching
+- [ ] `dup_check_set` suppression in Upsert mode (validator's "already exists" fires only in Create)
+- [ ] Device upsert honours version-column optimistic concurrency; stale CSV version rolls back the whole batch
+- [ ] Link upsert DELETEs existing endpoints + INSERTs fresh per CSV row (port_a/port_b on re-import is authoritative)
+- [ ] Audit distinguishes action="Created"/"Updated" + `details.mode`
+- [ ] Round-trip integration tests prove export → edit → re-import-as-Upsert cycle touches only the edited cell (`bulk_round_trip_integration.rs`)
+
+**Validation rules added this arc** (commit `cc4748f5f`)
+- [ ] `link.endpoint_interface_unique_per_device` (Error) — GROUP BY (device_id, interface_name) HAVING count>1; catches port reused by two active links
+- [ ] `dhcp_relay_target.unique_per_vlan_ip` (Error) — GROUP BY (vlan_id, server_ip) HAVING count>1; catches CRUD/raw-SQL dupes past the bulk-importer check
+- [ ] `device_role.display_name_not_empty` (Warning) — integrity twin of `naming_template_not_empty`; blank display_name renders as empty row in pickers
+
+**GIN search indexes** (migration 107_net_search_gin_indexes.sql, commit `5b034abb2`)
+- [ ] Six partial GIN indexes (one per search-target entity) on `to_tsvector('english'::regconfig, …)` expressions
+- [ ] `::regconfig` cast is load-bearing — the text-overload variant is STABLE and won't key a functional index
+- [ ] `WHERE deleted_at IS NULL` partial predicate matches the search query exactly so the planner can use the index
+- [ ] search.rs updated in the same commit to use `'english'::regconfig` — byte-for-byte match between query expression and index expression
+- [ ] Unit test `every_to_tsvector_uses_regconfig_cast` scans production source (pre-`#[cfg(test)]`) as a guardrail against future drift back to the STABLE variant
+
 ---
 
 ## 8. Enterprise SaaS
@@ -3221,5 +3347,14 @@ fresh DB via `MigrationRunner` at startup or `./db/setup.sh` manually.
 | 094 | `net_servers.sql` | **Phase 6.** 3 server tables (`net.server`, `net.server_nic`, `net.server_profile`) with `Server4NIC` profile seeded for fan-out to building cores |
 | 095 | `net_server_import.sql` | **Phase 6 import.** Imports 160 legacy server rows → 31 unique servers via UNIQUE hostname dedup |
 | 096 | `net_server_dual_write.sql` | **Phase 6 dual-write.** Bidirectional sync trigger between legacy `public.servers` and `net.server` |
+| 097 | `net_naming_overrides.sql` | **Phase 7a.** `net.naming_template_override` (entity_type + subtype_code + scope_level + scope_entity_id + template) — admin-editable overrides for the naming resolver |
+| 100 | `net_enforce_lock_state.sql` | **Phase 8f.** Trigger-enforced HardLock / Immutable on the `net.*` tables — blocks UPDATE / DELETE from any session when lock_state ∈ (HardLock, Immutable) |
+| 101 | `net_validation_rules.sql` | **Phase 9a.** `net.tenant_rule_config` for per-tenant severity / enabled overrides (rule SQL lives in Rust; this table is config-only) |
+| 102 | `net_cli_flavors.sql` | **Phase 10.** CLI flavor state — tenant.cli_flavor preference + render-history table (`net.device_config_render`) with SHA-256 content-chain for tamper detection |
+| 103 | `net_dhcp_relay_targets.sql` | **Phase 10.** `net.dhcp_relay_target` M:N (vlan × server_ip) with priority ordering + linked_ip_address_id |
+| 104 | `net_immunocore_seed_gateway_vrrp_dhcp.sql` | **Phase 10.** Seeds Gateway + VRRP VIPs + DHCP relay targets from `public.vrrp_config` + `public.dhcp_relay` so config-gen reaches byte-parity on Immunocore out-of-the-box |
+| 105 | `net_scope_grants.sql` | **Phase 10 RBAC foundation.** `net.scope_grant` tuple — (user_id, action, entity_type, scope_type, scope_entity_id); resolver walks hierarchy Region→Site→Building for Device/Server/Building/Site entity types |
+| 106 | `net_saved_views.sql` | **Phase 10.** `net.saved_view` per-user named query state for the Search panel — UNIQUE (org, user_id, name); `filters jsonb` unstructured for future facet additions |
+| 107 | `net_search_gin_indexes.sql` | **Phase 10.** Six partial GIN indexes (one per search-target entity) on `to_tsvector('english'::regconfig, …)` expressions — backs the dynamic-UNION search with sub-ms index scans; `::regconfig` cast required so the expression is IMMUTABLE |
 
 ---
