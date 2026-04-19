@@ -5,14 +5,14 @@ import {
   DxDataGridModule, DxButtonModule, DxTabsModule,
 } from 'devextreme-angular';
 import {
-  NetworkingEngineService, BuildingRow, DeviceListRow, ServerListRow,
+  NetworkingEngineService, BuildingRow, DeviceListRow, ServerListRow, FloorRow,
 } from '../../../core/services/networking-engine.service';
 import { environment } from '../../../../environments/environment';
 
 /// Building detail — hero page for "what's in this building?".
-/// Three tabs: Summary (row fields), Devices (every net.device
-/// whose buildingCode matches), Servers (every net.server whose
-/// buildingCode matches).
+/// Four tabs: Summary (row fields), Floors (net.floor rows under
+/// this building), Devices (every net.device whose buildingCode
+/// matches), Servers (every net.server whose buildingCode matches).
 ///
 /// Distinct from the audit-timeline drill — this is the operational
 /// "building scorecard" page. Routed at /network/building/:id.
@@ -53,6 +53,10 @@ import { environment } from '../../../../environments/environment';
       <!-- Quick counts — these cost nothing extra because the
            tabs load eagerly on first view; we reflect the latest
            count back to the summary for scan-ability. -->
+      <div class="meta-row" *ngIf="floors.length > 0 || serversLoaded">
+        <label>Floors</label>
+        <span>{{ floors.length }}</span>
+      </div>
       <div class="meta-row" *ngIf="devices.length > 0 || serversLoaded">
         <label>Devices</label>
         <span>{{ devices.length }}</span>
@@ -63,8 +67,26 @@ import { environment } from '../../../../environments/environment';
       </div>
     </div>
 
-    <!-- Devices tab -->
+    <!-- Floors tab -->
     <div *ngIf="activeTab === 1">
+      <dx-data-grid [dataSource]="floors" [showBorders]="true" [hoverStateEnabled]="true"
+                     [columnAutoWidth]="true"
+                     [searchPanel]="{ visible: true }"
+                     [filterRow]="{ visible: true }"
+                     (onRowDblClick)="onFloorDblClick($event)">
+        <dxi-column dataField="FloorCode"   caption="Floor code"   [fixed]="true" width="140"
+                    sortOrder="asc" [sortIndex]="0" />
+        <dxi-column dataField="DisplayName" caption="Display name" width="260" />
+        <dxi-column dataField="Status"      caption="Status"       width="90" />
+        <dxi-column dataField="Id"          caption="UUID" />
+      </dx-data-grid>
+      <div *ngIf="floors.length === 0 && !loadingFloors" class="empty-note">
+        No floors recorded for this building.
+      </div>
+    </div>
+
+    <!-- Devices tab -->
+    <div *ngIf="activeTab === 2">
       <dx-data-grid [dataSource]="devices" [showBorders]="true" [hoverStateEnabled]="true"
                      [columnAutoWidth]="true"
                      [searchPanel]="{ visible: true }"
@@ -84,7 +106,7 @@ import { environment } from '../../../../environments/environment';
     </div>
 
     <!-- Servers tab -->
-    <div *ngIf="activeTab === 2">
+    <div *ngIf="activeTab === 3">
       <dx-data-grid [dataSource]="servers" [showBorders]="true" [hoverStateEnabled]="true"
                      [columnAutoWidth]="true"
                      [searchPanel]="{ visible: true }"
@@ -121,13 +143,15 @@ import { environment } from '../../../../environments/environment';
   `]
 })
 export class NetworkBuildingDetailComponent implements OnInit {
-  tabs = [{ text: 'Summary' }, { text: 'Devices' }, { text: 'Servers' }];
+  tabs = [{ text: 'Summary' }, { text: 'Floors' }, { text: 'Devices' }, { text: 'Servers' }];
   activeTab = 0;
 
   buildingId = '';
   building: BuildingRow | null = null;
+  floors: FloorRow[] = [];
   devices: DeviceListRow[] = [];
   servers: ServerListRow[] = [];
+  loadingFloors = false;
   loadingDevices = false;
   loadingServers = false;
   /// Tracks whether the servers tab has completed its load — used
@@ -156,14 +180,24 @@ export class NetworkBuildingDetailComponent implements OnInit {
         this.building = rows.find(r => r.Id === this.buildingId) ?? null;
         this.status = this.building ? '' : 'Building not found.';
         if (this.building) {
-          // Eager-load devices + servers so the Summary counts are
-          // populated before the operator clicks the tabs. Two
-          // cheap thin-list calls.
+          // Eager-load floors + devices + servers so the Summary
+          // counts are populated before the operator clicks the
+          // tabs. Three cheap thin-list calls; all run in parallel.
+          this.loadFloors();
           this.loadDevices();
           this.loadServers();
         }
       },
       error: (err) => { this.status = `Load failed: ${err?.message ?? err}`; },
+    });
+  }
+
+  private loadFloors(): void {
+    if (!this.building) return;
+    this.loadingFloors = true;
+    this.engine.listFloors(this.building.Id).subscribe({
+      next: (rows) => { this.floors = rows; this.loadingFloors = false; },
+      error: () => { this.loadingFloors = false; },
     });
   }
 
@@ -195,6 +229,12 @@ export class NetworkBuildingDetailComponent implements OnInit {
   }
 
   onTabChanged(_e: unknown): void { /* tabs already hydrated eagerly */ }
+
+  onFloorDblClick(e: { data: FloorRow }): void {
+    const row = e?.data;
+    if (!row?.Id) return;
+    this.router.navigate(['/network/floor', row.Id]);
+  }
 
   onDeviceDblClick(e: { data: DeviceListRow }): void {
     const row = e?.data;
