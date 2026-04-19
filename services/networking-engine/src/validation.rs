@@ -578,6 +578,44 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "dhcp_relay_target.priority_non_negative",
+        name: "DHCP relay target priority must be non-negative",
+        description: "The bulk import rejects negative priority at parse \
+                      time; this rule catches the same condition on rows \
+                      that came in via the CRUD endpoint or raw SQL where \
+                      the validator didn't run. Negative priorities sort \
+                      in unexpected positions inside the rendered DHCP \
+                      relay ordered list.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "vlan.display_name_not_empty",
+        name: "VLAN display name must be non-empty",
+        description: "An active VLAN with a blank display_name shows up \
+                      as 'VLAN 120' in pickers instead of the operator-\
+                      recognised name ('Servers', 'VoIP'), which hurts \
+                      troubleshooting when a tenant reuses the same \
+                      vlan_id across blocks.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "subnet.display_name_not_empty",
+        name: "Subnet display name must be non-empty",
+        description: "Parallel to vlan.display_name_not_empty — a subnet \
+                      with blank display_name renders as a CIDR in \
+                      pickers. Usually harmless but the render in Config \
+                      Gen comments reads as 'subnet  10.11.1.0/24' \
+                      (double space) which is a give-away for a missing \
+                      description.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -813,6 +851,9 @@ async fn dispatch(
         "link.endpoint_interface_unique_per_device" => run_link_endpoint_interface_unique(pool, org_id, severity, out).await,
         "dhcp_relay_target.unique_per_vlan_ip"  => run_dhcp_relay_target_unique(pool, org_id, severity, out).await,
         "device_role.display_name_not_empty"    => run_device_role_display_name_set(pool, org_id, severity, out).await,
+        "dhcp_relay_target.priority_non_negative" => run_dhcp_relay_priority_non_negative(pool, org_id, severity, out).await,
+        "vlan.display_name_not_empty"            => run_vlan_display_name_set(pool, org_id, severity, out).await,
+        "subnet.display_name_not_empty"          => run_subnet_display_name_set(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -2020,6 +2061,81 @@ async fn run_device_role_display_name_set(
     Ok(())
 }
 
+/// `dhcp_relay_target.priority_non_negative` — guard against CRUD /
+/// raw-SQL inserts that bypass the bulk-import parser's non-negative
+/// check. Negative priorities break the ordered-list render in
+/// Config Gen (sort puts them first instead of where the operator
+/// expected).
+async fn run_dhcp_relay_priority_non_negative(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, Option<i32>, String, i32)> = sqlx::query_as(
+        "SELECT drt.id, v.vlan_id, host(drt.server_ip), drt.priority
+           FROM net.dhcp_relay_target drt
+           LEFT JOIN net.vlan v ON v.id = drt.vlan_id AND v.deleted_at IS NULL
+          WHERE drt.organization_id = $1 AND drt.deleted_at IS NULL
+            AND drt.priority < 0")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, vid, ip, prio) in rows {
+        let vid_s = vid.map(|n| n.to_string()).unwrap_or_else(|| "?".into());
+        out.push(Violation {
+            rule_code: "dhcp_relay_target.priority_non_negative".into(),
+            severity, entity_type: "DhcpRelayTarget".into(), entity_id: Some(id),
+            message: format!(
+                "DHCP relay vlan {vid_s} → {ip} has negative priority {prio}."),
+        });
+    }
+    Ok(())
+}
+
+/// `vlan.display_name_not_empty` — active VLAN with blank display_name.
+/// Pickers then show "VLAN 120" which collides across blocks that
+/// reuse the same numeric tag.
+async fn run_vlan_display_name_set(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32, Option<String>)> = sqlx::query_as(
+        "SELECT v.id, v.vlan_id, b.block_code
+           FROM net.vlan v
+           LEFT JOIN net.vlan_block b ON b.id = v.block_id
+          WHERE v.organization_id = $1 AND v.deleted_at IS NULL
+            AND v.status = 'Active'::net.entity_status
+            AND (v.display_name IS NULL OR btrim(v.display_name) = '')")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, vlan_id, block_code) in rows {
+        let block = block_code.unwrap_or_else(|| "?".into());
+        out.push(Violation {
+            rule_code: "vlan.display_name_not_empty".into(),
+            severity, entity_type: "Vlan".into(), entity_id: Some(id),
+            message: format!(
+                "VLAN {vlan_id} (block '{block}') has no display_name — pickers show bare vlan_id."),
+        });
+    }
+    Ok(())
+}
+
+/// `subnet.display_name_not_empty` — parallel to vlan version.
+async fn run_subnet_display_name_set(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT id, subnet_code, network::text
+           FROM net.subnet
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND status = 'Active'::net.entity_status
+            AND (display_name IS NULL OR btrim(display_name) = '')")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, network) in rows {
+        out.push(Violation {
+            rule_code: "subnet.display_name_not_empty".into(),
+            severity, entity_type: "Subnet".into(), entity_id: Some(id),
+            message: format!(
+                "Subnet '{code}' ({network}) has no display_name."),
+        });
+    }
+    Ok(())
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -2142,6 +2258,9 @@ mod tests {
             "link.endpoint_interface_unique_per_device",
             "dhcp_relay_target.unique_per_vlan_ip",
             "device_role.display_name_not_empty",
+            "dhcp_relay_target.priority_non_negative",
+            "vlan.display_name_not_empty",
+            "subnet.display_name_not_empty",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
