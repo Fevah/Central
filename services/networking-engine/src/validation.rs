@@ -616,6 +616,43 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "link.endpoint_devices_resolve",
+        name: "Link endpoint devices must resolve",
+        description: "Every active net.link_endpoint must point at a \
+                      non-deleted device. Dangling endpoint → device \
+                      edges usually mean a device was hard-deleted while \
+                      links still referenced it; config-gen silently \
+                      skips the affected links.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "subnet.active_subnet_has_pool",
+        name: "Active subnet must reference an IP pool",
+        description: "An Active net.subnet without a pool_id is an \
+                      orphan — can't be part of the IP-allocation \
+                      lifecycle. The FK is nullable in the schema to \
+                      allow bootstrap rows; this rule catches the ones \
+                      that should have been linked up.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server.active_has_building",
+        name: "Active server should carry a building",
+        description: "Mirrors device.active_requires_building. Active \
+                      servers without a building_id bypass scope-based \
+                      RBAC + can't feed into naming templates that \
+                      reference {building_code}. Advisory because a \
+                      few tenants legitimately run portable servers \
+                      with no fixed home.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -854,6 +891,9 @@ async fn dispatch(
         "dhcp_relay_target.priority_non_negative" => run_dhcp_relay_priority_non_negative(pool, org_id, severity, out).await,
         "vlan.display_name_not_empty"            => run_vlan_display_name_set(pool, org_id, severity, out).await,
         "subnet.display_name_not_empty"          => run_subnet_display_name_set(pool, org_id, severity, out).await,
+        "link.endpoint_devices_resolve"          => run_link_endpoint_devices_resolve(pool, org_id, severity, out).await,
+        "subnet.active_subnet_has_pool"          => run_active_subnet_has_pool(pool, org_id, severity, out).await,
+        "server.active_has_building"             => run_active_server_has_building(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -2136,6 +2176,77 @@ async fn run_subnet_display_name_set(
     Ok(())
 }
 
+/// `link.endpoint_devices_resolve` — dangling endpoint → device
+/// edges. LEFT JOIN to net.device + ensure it exists. Reports the
+/// link (not the endpoint) since operators act on whole links.
+async fn run_link_endpoint_devices_resolve(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i32)> = sqlx::query_as(
+        "SELECT DISTINCT l.id, l.link_code, e.endpoint_order
+           FROM net.link_endpoint e
+           JOIN net.link l ON l.id = e.link_id AND l.deleted_at IS NULL
+           LEFT JOIN net.device d ON d.id = e.device_id AND d.deleted_at IS NULL
+          WHERE e.organization_id = $1 AND e.deleted_at IS NULL
+            AND (e.device_id IS NULL OR d.id IS NULL)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, side) in rows {
+        out.push(Violation {
+            rule_code: "link.endpoint_devices_resolve".into(),
+            severity, entity_type: "Link".into(), entity_id: Some(id),
+            message: format!(
+                "Link '{code}' endpoint order {side} does not resolve to a live device."),
+        });
+    }
+    Ok(())
+}
+
+/// `subnet.active_subnet_has_pool` — active subnets without a
+/// pool_id. Not every subnet is required to have a pool (the FK is
+/// nullable for bootstrap / imported rows), but Active ones should.
+async fn run_active_subnet_has_pool(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT id, subnet_code, network::text
+           FROM net.subnet
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND status = 'Active'::net.entity_status
+            AND pool_id IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, network) in rows {
+        out.push(Violation {
+            rule_code: "subnet.active_subnet_has_pool".into(),
+            severity, entity_type: "Subnet".into(), entity_id: Some(id),
+            message: format!(
+                "Active subnet '{code}' ({network}) has no pool_id — orphaned from IP allocation lifecycle."),
+        });
+    }
+    Ok(())
+}
+
+/// `server.active_has_building` — parallel to the device version.
+async fn run_active_server_has_building(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, hostname
+           FROM net.server
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND status = 'Active'::net.entity_status
+            AND building_id IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname) in rows {
+        out.push(Violation {
+            rule_code: "server.active_has_building".into(),
+            severity, entity_type: "Server".into(), entity_id: Some(id),
+            message: format!(
+                "Active server '{hostname}' has no building_id."),
+        });
+    }
+    Ok(())
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
@@ -2261,6 +2372,9 @@ mod tests {
             "dhcp_relay_target.priority_non_negative",
             "vlan.display_name_not_empty",
             "subnet.display_name_not_empty",
+            "link.endpoint_devices_resolve",
+            "subnet.active_subnet_has_pool",
+            "server.active_has_building",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
