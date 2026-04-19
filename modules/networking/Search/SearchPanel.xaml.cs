@@ -365,6 +365,56 @@ public partial class SearchPanel : UserControl
         catch (NetworkingEngineException ex) { StatusLabel.Text = $"Delete failed ({ex.StatusCode}): {ex.Message}"; }
         catch (Exception ex)                 { StatusLabel.Text = $"Delete failed: {ex.Message}"; }
     }
+
+    /// <summary>Rename the selected saved view — calls UpdateSavedViewAsync
+    /// with the existing query / entity-types / filters / notes /
+    /// version so only the name changes. Operators build up named
+    /// views then outgrow the names; renaming in-place beats
+    /// delete-and-recreate (which would reset the view's id + break
+    /// any external references).</summary>
+    private async void OnRenameView(object sender, RoutedEventArgs e)
+    {
+        if (SavedViewsList.SelectedItem is not SavedViewRow row)
+        {
+            StatusLabel.Text = "Pick a saved view from the sidebar first.";
+            return;
+        }
+        if (string.IsNullOrEmpty(_baseUrl) || _tenantId == Guid.Empty) return;
+
+        var newName = TextInputPrompt.Show(
+            "Rename view", "New name for this view:",
+            row.Name, Window.GetWindow(this));
+        if (string.IsNullOrWhiteSpace(newName)) return;
+        if (string.Equals(newName.Trim(), row.Name, StringComparison.Ordinal))
+        {
+            StatusLabel.Text = "Name unchanged.";
+            return;
+        }
+
+        try
+        {
+            using var client = new NetworkingEngineClient(_baseUrl);
+            if (_actorUserId is int uid) client.SetActorUserId(uid);
+
+            // Everything except name stays as-is. filters is an
+            // opaque jsonb object on the DTO; pass it through
+            // verbatim (null-safe — a view saved without facets
+            // carries null filters which the engine accepts).
+            await client.UpdateSavedViewAsync(
+                id: row.Source.Id,
+                organizationId: _tenantId,
+                name: newName.Trim(),
+                q: row.Source.Q,
+                entityTypes: row.Source.EntityTypes,
+                filters: row.Source.Filters,
+                notes: row.Source.Notes,
+                version: row.Source.Version);
+            await ReloadSavedViewsAsync();
+            StatusLabel.Text = $"Renamed '{row.Name}' → '{newName.Trim()}' · {DateTime.Now:HH:mm:ss}";
+        }
+        catch (NetworkingEngineException ex) { StatusLabel.Text = $"Rename failed ({ex.StatusCode}): {ex.Message}"; }
+        catch (Exception ex)                 { StatusLabel.Text = $"Rename failed: {ex.Message}"; }
+    }
 }
 
 /// <summary>Sidebar row binding. Keeps the full DTO accessible

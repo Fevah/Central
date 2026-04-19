@@ -41,6 +41,9 @@
                     <Button x:Name="SaveViewButton" Content="Save current"
                             Width="90" Click="OnSaveView" Margin="0,0,4,0"
                             ToolTip="Save the current query + entity-type filter as a named view"/>
+                    <Button x:Name="RenameViewButton" Content="Rename"
+                            Width="70" Click="OnRenameView" Margin="0,0,4,0"
+                            ToolTip="Rename the selected saved view (keeps query, entity-types, filters intact)"/>
                     <Button x:Name="DeleteViewButton" Content="Delete"
                             Width="60" Click="OnDeleteView"
                             ToolTip="Delete the selected saved view"/>
