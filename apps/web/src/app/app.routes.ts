@@ -45,6 +45,7 @@ export const routes: Routes = [
           { path: 'validation',      loadComponent: () => import('./modules/network/components/network-validation.component').then(m => m.NetworkValidationComponent) },
           { path: 'scope-grants',    loadComponent: () => import('./modules/network/components/network-scope-grants.component').then(m => m.NetworkScopeGrantsComponent) },
           { path: 'hierarchy',       loadComponent: () => import('./modules/network/components/network-hierarchy.component').then(m => m.NetworkHierarchyComponent) },
+          { path: 'pools',           loadComponent: () => import('./modules/network/components/network-pools.component').then(m => m.NetworkPoolsComponent) },
           { path: 'audit/:entityType/:entityId',
             loadComponent: () => import('./modules/network/components/network-audit-timeline.component').then(m => m.NetworkAuditTimelineComponent) },
         ]

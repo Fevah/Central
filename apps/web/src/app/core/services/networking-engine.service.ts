@@ -75,6 +75,53 @@ export interface ValidationRunResult {
   totalViolations: number;
 }
 
+/// Pool row shapes — mirror the EntityBase subclasses served by
+/// Central.Api's /api/net/{asn,vlan,ip}-{pools,blocks} endpoints.
+/// PascalCase because the .NET side ships records as-is.
+export interface AsnPoolRow {
+  Id: string;
+  PoolCode: string;
+  DisplayName: string;
+  AsnFirst: number;
+  AsnLast: number;
+  Status: string;
+}
+export interface AsnBlockRow {
+  Id: string;
+  PoolId: string;
+  BlockCode: string;
+  DisplayName: string;
+  AsnFirst: number;
+  AsnLast: number;
+  ScopeLevel: string;
+  Status: string;
+}
+export interface VlanPoolRow {
+  Id: string;
+  PoolCode: string;
+  DisplayName: string;
+  VlanFirst: number;
+  VlanLast: number;
+  Status: string;
+}
+export interface VlanBlockRow {
+  Id: string;
+  PoolId: string;
+  BlockCode: string;
+  DisplayName: string;
+  VlanStart: number;
+  VlanEnd: number;
+  Status: string;
+}
+export interface IpPoolRow {
+  Id: string;
+  PoolCode: string;
+  DisplayName: string;
+  PoolCidr: string;
+  AddressFamily: string;
+  Status: string;
+}
+
 /// Hierarchy row shapes — mirror the Central.Api `/api/net/regions`
 /// / `/sites` / `/buildings` / `/floors` endpoints which return
 /// PascalCase from the .NET models. Kept as flat DTOs per level
@@ -169,6 +216,15 @@ export class NetworkingEngineService {
     const params = new HttpParams().set('organizationId', organizationId);
     return this.http.get<DeviceListRow[]>(`${this.base}/api/net/devices`, { params });
   }
+
+  /// Pool listings — ASN / VLAN / IP pool + block enumerations
+  /// served by Central.Api (same /api/net/ namespace).
+
+  listAsnPools():  Observable<AsnPoolRow[]>  { return this.http.get<AsnPoolRow[]>(`${this.base}/api/net/asn-pools`); }
+  listAsnBlocks(): Observable<AsnBlockRow[]> { return this.http.get<AsnBlockRow[]>(`${this.base}/api/net/asn-blocks`); }
+  listVlanPools():  Observable<VlanPoolRow[]>  { return this.http.get<VlanPoolRow[]>(`${this.base}/api/net/vlan-pools`); }
+  listVlanBlocks(): Observable<VlanBlockRow[]> { return this.http.get<VlanBlockRow[]>(`${this.base}/api/net/vlan-blocks`); }
+  listIpPools():   Observable<IpPoolRow[]>   { return this.http.get<IpPoolRow[]>(`${this.base}/api/net/ip-pools`); }
 
   /// Hierarchy listings — the endpoints are on Central.Api but the
   /// URL path is the same /api/net/ namespace the engine uses, so
