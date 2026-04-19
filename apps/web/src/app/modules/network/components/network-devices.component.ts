@@ -84,13 +84,13 @@ export class NetworkDevicesComponent implements OnInit {
     });
   }
 
-  /// Double-click → audit timeline for that device. The legacy
-  /// dashboard drills to /network/devices/:numericId which loads
-  /// the switch_guide detail page; this grid's ids are net.device
-  /// uuids so audit is the natural drill target.
+  /// Double-click → net.device detail page (tabbed Summary + Audit +
+  /// Renders). Distinct from the legacy /network/devices/:id route
+  /// which loads the switch_guide editor — this lands on /network/net-device
+  /// for the net.* authoritative surface.
   onRowDoubleClick(e: { data: DeviceListRow }): void {
     const row = e?.data;
     if (!row?.id) return;
-    this.router.navigate(['/network/audit', 'Device', row.id]);
+    this.router.navigate(['/network/net-device', row.id]);
   }
 }

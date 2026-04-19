@@ -48,6 +48,7 @@ export const routes: Routes = [
           { path: 'pools',           loadComponent: () => import('./modules/network/components/network-pools.component').then(m => m.NetworkPoolsComponent) },
           { path: 'bulk',            loadComponent: () => import('./modules/network/components/network-bulk.component').then(m => m.NetworkBulkComponent) },
           { path: 'devices',         loadComponent: () => import('./modules/network/components/network-devices.component').then(m => m.NetworkDevicesComponent) },
+          { path: 'net-device/:id',  loadComponent: () => import('./modules/network/components/network-device-detail.component').then(m => m.NetworkDeviceDetailComponent) },
           { path: 'vlans',           loadComponent: () => import('./modules/network/components/network-vlans.component').then(m => m.NetworkVlansComponent) },
           { path: 'servers',         loadComponent: () => import('./modules/network/components/network-servers.component').then(m => m.NetworkServersComponent) },
           { path: 'links-grid',      loadComponent: () => import('./modules/network/components/network-links.component').then(m => m.NetworkLinksGridComponent) },
