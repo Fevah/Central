@@ -2738,6 +2738,60 @@ on `NetworkDashboardComponent`.
 - [ ] Sub-nav entries gated through `ModuleRegistryService.isEnabled(...)` for links + routing; others are base-module (`switches`)
 - [ ] Routes wrapped in `moduleGuard('switches')` at the parent level; per-page gating for `links` + `routing`
 
+### 7.X.18 Phase 10b extended web surface (commits 2026-04-19+)
+
+Post-initial-launch web slices. Bring the Phase 10b operator surface
+to parity with the WPF client across rollups, search facets, change
+sets, and per-entity thin grids for the remaining net.* entity types.
+
+**Engine thin lists — servers + subnets** (commit `3d003d58a`)
+- [ ] `GET /api/net/servers` — ServerListRow (id, hostname, profileCode, buildingCode, status, version); LEFT JOIN net.server_profile + net.building
+- [ ] `GET /api/net/subnets` — SubnetListRow (id, subnetCode, displayName, network::text, scopeLevel, poolCode, vlanTag, status, version); LEFT JOIN net.ip_pool + net.vlan
+
+**Web thin grids — entity coverage** (commits `73d29f8ca` + `826185e37` + `8a385b906`)
+- [ ] Devices · VLANs · Servers · Links · Subnets · DHCP relay targets — one DxDataGrid page per entity, all under `/network/{route}`
+- [ ] Links grid grouped by linkType by default so P2P / B2B / FW / DMZ / MLAG-Peer / Server-NIC / WAN cohorts are easy to scan; routed at `/network/links-grid` to avoid colliding with the earlier BGP-detail `/network/links`
+- [ ] DHCP relay grid: two-phase load (VLANs first so the filter combo + row labels have uuid → tag resolution before the target query completes); rows decorated with vlanLabel; 403 "lacks read:DhcpRelayTarget" surfaced specifically
+- [ ] Each grid double-clicks to /network/audit/:entityType/:uuid
+
+**Audit rollup trio** (commits `7095c47d4` + `e0bcda458` + `0e83e7407`)
+- [ ] `/api/net/audit/stats` (per-entity-type COUNT + COUNT(DISTINCT actor) + MAX(created_at), optional window)
+- [ ] `/api/net/audit/trend` (GROUP BY date_trunc($bucket, created_at); hour / day / week bucketing; optional entityType narrower)
+- [ ] `/api/net/audit/top-actors` (per actor_user_id + actor_display; COUNT + COUNT(DISTINCT entity_type) + MAX(created_at); LIMIT default 20, clamp 1..=100; service rows with NULL actor bucket together rather than being dropped)
+- [ ] Web audit-stats dashboard: two-column grid (per-entity-type + top-actors) + DxChart trend line above; bucket granularity auto-picked by window length (<= 2d → hour, <= 90d → day, > 90d → week)
+- [ ] Web audit-search accepts queryParams: entityType / entityId / action / actorUserId / correlationId — all auto-populate the filter bar on drill from audit-stats / audit-timeline / change-sets
+
+**Audit search export + correlation drill** (commits `77eb96c61` + `3ad5dfca7`)
+- [ ] CSV + NDJSON export buttons on the filter bar — reuse current filter state via URLSearchParams + `window.open(url, '_blank')`; engine Content-Disposition: attachment drives the download
+- [ ] Audit-timeline correlation_id column renders as clickable link → `/network/audit-search?correlationId=X`; same vocabulary as the actor / entity drills
+- [ ] Visible correlation text box on the audit-search filter bar + threaded into listAudit + the export URL
+
+**Search facets** (commit `69991e714`)
+- [ ] `GET /api/net/search/facets` — per-entity-type COUNT for a query. One UNION-ALL round trip; every branch uses '::regconfig' cast so the partial GIN indexes from migration 107 match
+- [ ] `every_to_tsvector_uses_regconfig_cast` guardrail test still passes with the new facet branches (6 additional to_tsvector calls)
+- [ ] No RBAC post-filter on facets (counts are a narrowing hint; drill to /api/net/search still enforces read:entity)
+- [ ] Web search page renders a clickable chip bar ("Device(12) · Vlan(4) · Subnet(1)") below the query input — click-to-narrow toggles (clicking an active single-facet filter clears back to "all types")
+
+**Saved views + scope grants CRUD** (commits `2f8594e99` + `d74696308` + `3e1739310` + `3ad5dfca7` + `54791f367`)
+- [ ] Saved views: "Save current" button in sidebar (window.prompt for name) + per-row trash + pencil (rename) icons; 409 "name exists" + 412 "stale version" + generic RFC 7807 pass-through
+- [ ] Scope grants: row actions column with copy (navigator.clipboard.writeText + fallback) + trash (confirm + 403-specific error); create dialog with ALLOWED_ACTIONS + ALLOWED_SCOPE_TYPES enums
+- [ ] Scope grants "Check permission" dialog — dry-runs GET /api/net/scope-grants/check without enforcing; ALLOWED (green) / DENIED (red) result box with matched grant uuid on allow
+- [ ] Scope grants + saved views both surface 403 on write attempts with a targeted message ("your user lacks write:ScopeGrant" / "delete:ScopeGrant on this grant")
+
+**Change sets (read-only)** (commit `13945b3ea`)
+- [ ] `GET /api/net/change-sets` consumer. Status filter combo (Draft / Submitted / Approved / Rejected / Applied / RolledBack / Cancelled — PascalCase round-trip)
+- [ ] Grid grouped by status by default; coloured status badges (applied green, submitted blue, approved purple, rejected red, rolledback amber, cancelled grey, draft neutral)
+- [ ] Correlation id column renders as a clickable link → audit-search for that correlation; row double-click does the same drill
+- [ ] Writes (submit / approve / apply / cancel / rollback) stay WPF-only until the web approval chrome lands
+
+**Validation rule expansion — batches 7-8** (commits `a5b6e55fa` + `209306ed9`)
+- [ ] `subnet.within_parent_pool_cidr` (Error) — uses PG `<<=` operator; equal-CIDR case allowed (single-subnet pool)
+- [ ] `link.unique_link_code_active` (Error) — active-only GROUP BY; message lists all colliding uuids
+- [ ] `device_role.unique_role_code_per_tenant` (Error) — ignores deleted_at (role picker queries across it)
+- [ ] `vlan.scope_entity_resolves` (Error) — non-Free scope must point at a live row in the matching hierarchy table
+- [ ] `dhcp_relay_target.vlan_active` (Error) — LEFT JOIN catches soft-deleted + non-Active VLAN refs
+- [ ] `subnet.vlan_link_is_active` (Warning) — IP ranges often outlive VLAN tags, so it's a warning not an error
+
 ---
 
 ## 8. Enterprise SaaS
