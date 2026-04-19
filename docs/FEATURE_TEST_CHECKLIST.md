@@ -2655,10 +2655,20 @@ to drive state inside it.
 - [ ] Audit distinguishes action="Created"/"Updated" + `details.mode`
 - [ ] Round-trip integration tests prove export → edit → re-import-as-Upsert cycle touches only the edited cell (`bulk_round_trip_integration.rs`)
 
-**Validation rules added this arc** (commit `cc4748f5f`)
+**Validation rules added this arc** (commits `cc4748f5f` + `90d931eed` + `bbd80fab9`)
 - [ ] `link.endpoint_interface_unique_per_device` (Error) — GROUP BY (device_id, interface_name) HAVING count>1; catches port reused by two active links
 - [ ] `dhcp_relay_target.unique_per_vlan_ip` (Error) — GROUP BY (vlan_id, server_ip) HAVING count>1; catches CRUD/raw-SQL dupes past the bulk-importer check
 - [ ] `device_role.display_name_not_empty` (Warning) — integrity twin of `naming_template_not_empty`; blank display_name renders as empty row in pickers
+- [ ] `link.endpoint_devices_resolve` (Error) — LEFT JOIN net.device asserts both endpoints point to a device that still exists (catches orphaned endpoints left behind by raw DELETE on net.device)
+- [ ] `subnet.active_subnet_has_pool` (Error) — active subnets without a pool_id; the subnet auto-carver never produces these, but manual INSERT / broken import can
+- [ ] `server.active_has_building` (Warning) — parallel to `device.active_requires_building`; active servers should resolve to a building for audit / hierarchy reach
+- [ ] `dispatcher_has_arm_for_every_catalog_rule` guardrail test updated on each arc so a new catalog row without a matching `match rule_code` arm fails CI
+
+**Audit activity stats endpoint** (commit `7095c47d4`)
+- [ ] `GET /api/net/audit/stats` — per-entity-type activity summary with total_count / distinct_actors / last_seen_at; optional fromAt / toAt ISO-8601 bounds
+- [ ] Single SQL pass: GROUP BY entity_type with COUNT + COUNT(DISTINCT actor_user_id) FILTER (WHERE actor_user_id IS NOT NULL) + MAX(created_at); ORDER BY total_count DESC, entity_type ASC
+- [ ] Null-safe time bounds via `$2::timestamptz IS NULL OR created_at >= $2` idiom so one query handles all-time + window-bounded calls
+- [ ] Surfaced in web client (`NetworkAuditStatsComponent`) with 24h / 7d / 30d preset buttons + double-click drill to entity-type-filtered search
 
 **GIN search indexes** (migration 107_net_search_gin_indexes.sql, commit `5b034abb2`)
 - [ ] Six partial GIN indexes (one per search-target entity) on `to_tsvector('english'::regconfig, …)` expressions
@@ -2666,6 +2676,67 @@ to drive state inside it.
 - [ ] `WHERE deleted_at IS NULL` partial predicate matches the search query exactly so the planner can use the index
 - [ ] search.rs updated in the same commit to use `'english'::regconfig` — byte-for-byte match between query expression and index expression
 - [ ] Unit test `every_to_tsvector_uses_regconfig_cast` scans production source (pre-`#[cfg(test)]`) as a guardrail against future drift back to the STABLE variant
+
+### 7.X.17 Web Operator Surface (Phase 10b web client, 2026-04-19+)
+
+Parallel to the WPF operator surface in §7.X.16, Angular pages land
+under `apps/web/src/app/modules/network/components/` and consume the
+same engine endpoints via `NetworkingEngineService`. Sub-nav lives
+on `NetworkDashboardComponent`.
+
+**Search page** (`network-search.component.ts`)
+- [ ] Query TextBox + entity-types DxTagBox + limit SpinEdit (1-500 server clamp)
+- [ ] Results grouped by entityType; double-click drills to entity detail via routerLink
+- [ ] Saved-views sidebar — list / apply / save / delete (X-User-Id scoped; cross-user 404-not-403)
+
+**Validation page** (`network-validation.component.ts`)
+- [ ] Run-all + single-rule-run modes (ruleCode text box)
+- [ ] Violations grid grouped by severity (Error/Warning/Info)
+- [ ] Summary banner: rulesRun / rulesWithFindings / totalViolations
+
+**Scope grants page** (`network-scope-grants.component.ts`)
+- [ ] Read-only today — writes flow through WPF ScopeGrantsAdminPanel until the web form component lands
+- [ ] Filter bar: user-id (with "Me" button reading `userId` from localStorage) / action / entity-type; DxSelectBox `acceptCustomValue` so future free-text-tolerant engine values surface without schema bump
+- [ ] Double-click row → /network/audit/ScopeGrant/:id
+
+**Hierarchy page** (`network-hierarchy.component.ts`)
+- [ ] Region → Site → Building → Floor DxTreeList with lazy child loads
+- [ ] Reads from Central.Api endpoints (PascalCase) — separate wire shape from the engine (camelCase) handled by TypeScript interface casing
+
+**Pools page** (`network-pools.component.ts`)
+- [ ] Three tabs: ASN / VLAN / IP (pools + blocks per family); column set matches WPF PoolAdminPanel
+
+**Bulk page** (`network-bulk.component.ts`, commit `4aa436bce`)
+- [ ] Entity combo (Devices / VLANs / Subnets / Servers / Links / DHCP relay targets) — same six the WPF BulkPanel covers
+- [ ] Mode combo (create / upsert) + dry-run-only gating (web client forces dryRun=true; Apply is WPF-only for this slice)
+- [ ] CSV editor via DxTextArea; Export fills it with rendered CSV from `GET /api/net/{entity}/export`
+- [ ] Canonical headers dict mirrors engine `*_COLUMNS` const + WPF CanonicalHeaders; Insert headers button emits for the picked entity
+- [ ] Outcomes grid binds to flat ImportRowOutcome rows (rowNumber / ok / identifier / errors-joined); summary shows valid / invalid / totalRows
+
+**Devices grid** (`network-devices.component.ts`, commit `73d29f8ca`)
+- [ ] Reads from engine thin list `/api/net/devices` (5000 cap, ORDER BY hostname)
+- [ ] Columns: hostname / roleCode / buildingCode / status / version / id; double-click drills to audit timeline for the uuid
+
+**Audit timeline** (`network-audit-timeline.component.ts`)
+- [ ] Accepts `/network/audit/:entityType/:entityId` route params
+- [ ] No 500-row cap (calls `/api/net/audit/entity/{type}/{id}` — unlimited)
+- [ ] Columns: created_at / action / actor / correlation / details (JSON-formatted)
+
+**Audit activity stats** (`network-audit-stats.component.ts`, commit `7095c47d4`)
+- [ ] Reads `GET /api/net/audit/stats` summary — one row per entity type
+- [ ] Date-range DxDateBox inputs + Last-24h / 7d / 30d preset buttons (parallel to WPF AuditDashboardPanel muscle memory)
+- [ ] Columns: entityType / totalCount / distinctActors / lastSeenAt; default sort totalCount DESC
+- [ ] Double-click row → `/network/audit-search?entityType=X`
+
+**NetworkingEngineService** (`apps/web/src/app/core/services/networking-engine.service.ts`)
+- [ ] Typed methods covering: search / listSavedViews / listDevices / listVlans / listLinks / validateBulk / listAsnPools + listAsnBlocks / listVlanPools + listVlanBlocks / listIpPools / listRegions + listSites + listBuildings + listFloors / listScopeGrants / runValidation / getEntityTimeline / auditStatsByEntityType
+- [ ] Interfaces match engine camelCase (SearchResult / SavedView / AuditRow / Violation / ImportRowOutcome / EntityTypeStats / ScopeGrant / DeviceListRow)
+- [ ] PascalCase interfaces for Central.Api-sourced rows (AsnPoolRow / AsnBlockRow / VlanPoolRow / VlanBlockRow / IpPoolRow / RegionRow / SiteRow / BuildingRow / FloorRow) — one service, two casings, matching whichever side serves each endpoint
+
+**Routing + sub-nav** (`apps/web/src/app/app.routes.ts` + `network-dashboard.component.ts`)
+- [ ] Every new component lazy-loaded via `loadComponent` so unused Phase 10b pages don't inflate the main bundle
+- [ ] Sub-nav entries gated through `ModuleRegistryService.isEnabled(...)` for links + routing; others are base-module (`switches`)
+- [ ] Routes wrapped in `moduleGuard('switches')` at the parent level; per-page gating for `links` + `routing`
 
 ---
 

@@ -40,7 +40,7 @@ project structure without updating the architecture doc first.
 | [docs/GLOBALADMIN_BUILDOUT.md](docs/GLOBALADMIN_BUILDOUT.md) | Global Admin 5-phase buildout — tenant CRUD, licensing, subscriptions, setup wizard, audit |
 | [docs/TASKS_BUILDOUT.md](docs/TASKS_BUILDOUT.md) | Task module 11-phase buildout plan (Hansoft/P4 Plan clone) — all phases complete |
 | [docs/MERGE_PLAN.md](docs/MERGE_PLAN.md) | Central + Secure merge — 10 phases, unified auth, API gateway, K8s elastic scaling |
-| [docs/NETWORKING_BUILDOUT_PLAN.md](docs/NETWORKING_BUILDOUT_PLAN.md) | Networking engine — 23-phase buildout transforming single-customer toolkit into multi-tenant source-of-truth. Phases 1-6 complete; **Phase 10 service-side COMPLETE** — byte-parity config-gen, turn-up packs, bulk export/import/edit, RBAC, XLSX, search, saved views. WPF/Angular UI integration pending (2026-04-18) |
+| [docs/NETWORKING_BUILDOUT_PLAN.md](docs/NETWORKING_BUILDOUT_PLAN.md) | Networking engine — 23-phase buildout transforming single-customer toolkit into multi-tenant source-of-truth. Phases 1-6 complete; **Phase 10 service-side COMPLETE**; **Phase 10b WPF + Angular operator surface IN PROGRESS** — byte-parity config-gen, turn-up packs, bulk export/import/edit, RBAC, XLSX, search, saved views, audit-stats endpoint, web bulk/search/validation/scope-grants/hierarchy/pools/devices/audit-stats pages (2026-04-19) |
 | [docs/NETWORKING_RIBBON_AUDIT.md](docs/NETWORKING_RIBBON_AUDIT.md) | Networking ribbon action inventory — every button, permission, message, handler; placeholder-lambda canary test |
 | [docs/CREDENTIALS.md](docs/CREDENTIALS.md) | All login credentials, DSNs, SSH info, service URLs, K8s access |
 
@@ -101,6 +101,18 @@ The config-gen + turn-up-pack halves of Phase 10 shipped as 28 self-contained Ru
 **Phase 10 service-side surface is COMPLETE** — every deliverable in the plan (config-gen byte-parity, turn-up pack generator, bulk export/import/edit, RBAC with hierarchy + enforcement, XLSX, global search, saved views) has shipped. Remaining work is WPF/Angular UI integration on top of the completed service surface.
 
 See `docs/NETWORKING_BUILDOUT_PLAN.md` §Phase 10 for the slice-by-slice commit table and acceptance-criteria check.
+
+### Networking Engine Phase 10b — WPF + Angular Operator Surface IN PROGRESS (2026-04-19)
+
+Client-side arc that wires every Phase 10 engine endpoint into both the WPF shell and the Angular web client. Consistent cross-panel drill vocabulary (`selectId:{guid}:{label}` / `selectEntity:{Type}:{Guid}` / `q:{text}` / `filterBy:{Col}:{Val}` / `focus{NodeType}:{code}` / `newGrantForEntity:{Type}:{Guid}`) lets grids + hierarchy + search + audit + scope grants drill into each other without new route plumbing per pair.
+
+**WPF panels shipped**: BulkPanel, SearchPanel + saved-views sidebar, AuditViewerPanel (with drill from Devices / Vlans / Servers / Links / ScopeGrants), ScopeGrantsAdminPanel, HierarchyTreePanel (reverse drill from building → devices/servers), Bulk/Search/Audit/ScopeGrants ribbon groups, tenant indicator in status bar. Two-message pattern `OpenPanelMessage(target)` (shell restore) + `NavigateToPanelMessage(target, payload)` (panel state).
+
+**Web pages shipped** (`apps/web/src/app/modules/network/components/`): `network-search`, `network-validation`, `network-scope-grants` (read-only; writes still WPF-only), `network-hierarchy`, `network-pools`, `network-bulk` (validate-only dry-run), `network-devices` (thin list via `/api/net/devices`), `network-audit-timeline`, `network-audit-stats` (new `/api/net/audit/stats` endpoint — 24h/7d/30d presets + per-entity-type summary). `NetworkingEngineService` is a typed thin wrapper over every Phase 10 endpoint. All pages lazy-loaded via `loadComponent` + gated by `moduleGuard('switches')`; per-page `moduleGuard('links'|'routing')` for fine-grained licensing.
+
+**Validation-rule catalog expansion** (commits `cc4748f5f` + `90d931eed` + `bbd80fab9`): 54 → 57 rules. Added `link.endpoint_interface_unique_per_device` (Error), `dhcp_relay_target.unique_per_vlan_ip` (Error), `device_role.display_name_not_empty` (Warning), `link.endpoint_devices_resolve` (Error — LEFT JOIN net.device catches orphaned endpoints), `subnet.active_subnet_has_pool` (Error), `server.active_has_building` (Warning). Guardrail test `dispatcher_has_arm_for_every_catalog_rule` updated on each arc so a catalog row without a matching dispatcher arm fails CI.
+
+**Audit activity stats** (commit `7095c47d4`): `GET /api/net/audit/stats` — per-entity-type COUNT + COUNT(DISTINCT actor_user_id) + MAX(created_at) with optional from/to window; surfaced in the web client as `/network/audit-stats`.
 
 ### Central + Secure Merge — ALL 10 PHASES COMPLETE
 
