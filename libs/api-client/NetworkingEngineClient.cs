@@ -949,6 +949,120 @@ public class NetworkingEngineClient : IDisposable
         byte[] xlsxBytes, bool dryRun = true, string? mode = null, CancellationToken ct = default)
         => PostXlsxAsync("/api/net/dhcp-relay-targets/import.xlsx", organizationId, xlsxBytes, dryRun, mode, ct);
 
+    // ─── Thin lists added in Phase 10b wave N (ApiClient parity) ──────────
+
+    public Task<List<IpAddressListRowDto>> ListIpAddressesAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<IpAddressListRowDto>>(
+            $"/api/net/ip-addresses?organizationId={organizationId}", ct);
+
+    public Task<List<PortListRowDto>> ListPortsAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<PortListRowDto>>(
+            $"/api/net/ports?organizationId={organizationId}", ct);
+
+    public Task<List<AggregateEthernetListRowDto>> ListAggregateEthernetAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<AggregateEthernetListRowDto>>(
+            $"/api/net/aggregate-ethernet?organizationId={organizationId}", ct);
+
+    public Task<List<MlagDomainListRowDto>> ListMlagDomainsAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<MlagDomainListRowDto>>(
+            $"/api/net/mlag-domains?organizationId={organizationId}", ct);
+
+    public Task<List<ModuleListRowDto>> ListModulesAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<ModuleListRowDto>>(
+            $"/api/net/modules?organizationId={organizationId}", ct);
+
+    public Task<List<MstpRuleListRowDto>> ListMstpRulesAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<MstpRuleListRowDto>>(
+            $"/api/net/mstp-rules?organizationId={organizationId}", ct);
+
+    public Task<List<ReservationShelfListRowDto>> ListReservationShelfAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<ReservationShelfListRowDto>>(
+            $"/api/net/reservation-shelf?organizationId={organizationId}", ct);
+
+    public Task<List<AsnAllocationListRowDto>> ListAsnAllocationsAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<AsnAllocationListRowDto>>(
+            $"/api/net/asn-allocations?organizationId={organizationId}", ct);
+
+    public Task<List<RoomListRowDto>> ListRoomsAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<RoomListRowDto>>(
+            $"/api/net/rooms?organizationId={organizationId}", ct);
+
+    public Task<List<RackListRowDto>> ListRacksAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<RackListRowDto>>(
+            $"/api/net/racks?organizationId={organizationId}", ct);
+
+    public Task<List<LinkEndpointListRowDto>> ListLinkEndpointsAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<LinkEndpointListRowDto>>(
+            $"/api/net/link-endpoints?organizationId={organizationId}", ct);
+
+    public Task<List<ServerNicListRowDto>> ListServerNicsAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<ServerNicListRowDto>>(
+            $"/api/net/server-nics?organizationId={organizationId}", ct);
+
+    // ─── Session / identity (Phase 10b) ──────────────────────────────────
+
+    /// <summary>Who-am-i — summary of the caller's effective scope
+    /// grants. Drives the WPF session banner + "am I allowed to do
+    /// this?" pre-flight checks. Service-origin calls (no X-User-Id
+    /// header) come back with userId=null + grantCount=0.</summary>
+    public Task<WhoAmIDto> WhoAmIAsync(Guid organizationId, CancellationToken ct = default)
+        => GetAsync<WhoAmIDto>($"/api/net/whoami?organizationId={organizationId}", ct);
+
+    // ─── Naming overrides (Phase 10b) ────────────────────────────────────
+
+    public Task<List<NamingOverrideDto>> ListNamingOverridesAsync(Guid organizationId,
+        string? entityType = null, string? scopeLevel = null, CancellationToken ct = default)
+    {
+        var qs = BuildQuery(
+            ("organizationId", organizationId.ToString()),
+            ("entityType",     entityType),
+            ("scopeLevel",     scopeLevel));
+        return GetAsync<List<NamingOverrideDto>>($"/api/net/naming/overrides{qs}", ct);
+    }
+
+    public Task<NamingOverrideDto> CreateNamingOverrideAsync(
+        CreateNamingOverrideRequest request, CancellationToken ct = default)
+        => PostAsync<NamingOverrideDto>("/api/net/naming/overrides", request, ct);
+
+    public async Task<NamingOverrideDto> UpdateNamingOverrideAsync(Guid id,
+        UpdateNamingOverrideRequest request, Guid organizationId, CancellationToken ct = default)
+    {
+        var url = $"/api/net/naming/overrides/{id}?organizationId={organizationId}";
+        var req = new HttpRequestMessage(HttpMethod.Put, url)
+        {
+            Content = JsonContent.Create(request, options: Json),
+        };
+        return await SendAsync<NamingOverrideDto>(req, ct);
+    }
+
+    public async Task DeleteNamingOverrideAsync(Guid id, Guid organizationId,
+        CancellationToken ct = default)
+    {
+        var url = $"/api/net/naming/overrides/{id}?organizationId={organizationId}";
+        var resp = await _http.DeleteAsync(url, ct);
+        await EnsureSuccessAsync(resp, ct);
+    }
+
+    /// <summary>Resolve which naming template wins for an entity at
+    /// the given hierarchy position. Returns both the resolved
+    /// template + which tier supplied it (BuildingSpecificSubtype /
+    /// BuildingAnySubtype / Site* / Region* / Global* / Default).</summary>
+    public Task<NamingResolveResponseDto> ResolveNamingAsync(
+        ResolveNamingRequest request, CancellationToken ct = default)
+        => PostAsync<NamingResolveResponseDto>("/api/net/naming/resolve", request, ct);
+
     private async Task<ImportValidationResultDto> PostXlsxAsync(string path,
         Guid organizationId, byte[] xlsxBytes, bool dryRun,
         string? mode = null, CancellationToken ct = default)
@@ -1460,3 +1574,84 @@ public record SearchFacetDto(string EntityType, long Count);
 public record PoolUtilizationRowDto(string PoolKind, Guid PoolId,
     string PoolCode, string DisplayName, long Used, long Capacity,
     int PercentFull, string Status);
+
+// ─── Thin-list DTOs added in Phase 10b (ApiClient parity) ─────────────
+
+public record IpAddressListRowDto(Guid Id, Guid SubnetId, string? SubnetCode,
+    string Address, string? AssignedToType, Guid? AssignedToId,
+    bool IsReserved, string Status, int Version);
+
+public record PortListRowDto(Guid Id, Guid DeviceId, string? DeviceHostname,
+    string InterfaceName, string InterfacePrefix, int? SpeedMbps, bool AdminUp,
+    string? Description, string PortMode, int? NativeVlanId,
+    Guid? AggregateEthernetId, string Status, int Version);
+
+public record AggregateEthernetListRowDto(Guid Id, Guid DeviceId,
+    string? DeviceHostname, string AeName, string LacpMode, int MinLinks,
+    int MemberCount, string? Description, string Status, int Version);
+
+public record MlagDomainListRowDto(Guid Id, Guid PoolId, string? PoolCode,
+    int DomainId, string DisplayName, string ScopeLevel, string Status, int Version);
+
+public record ModuleListRowDto(Guid Id, Guid DeviceId, string? DeviceHostname,
+    string Slot, string ModuleType, string? Model, string? SerialNumber,
+    string? PartNumber, string Status, int Version);
+
+public record MstpRuleListRowDto(Guid Id, string RuleCode, string DisplayName,
+    string ScopeLevel, Guid? ScopeEntityId, int StepCount, string Status, int Version);
+
+public record ReservationShelfListRowDto(Guid Id, string ResourceType,
+    string ResourceKey, Guid? PoolId, Guid? BlockId, DateTime RetiredAt,
+    DateTime AvailableAfter, string? RetiredReason, string Status, int Version);
+
+public record AsnAllocationListRowDto(Guid Id, Guid BlockId, string? BlockCode,
+    long Asn, string AllocatedToType, Guid AllocatedToId, string? TargetDisplay, string Status);
+
+public record RoomListRowDto(Guid Id, Guid FloorId, string RoomCode,
+    string RoomType, int? MaxRacks, string Status);
+
+public record RackListRowDto(Guid Id, Guid RoomId, string RackCode, int UHeight,
+    string? Row, int? Position, int? MaxDevices, string Status);
+
+public record LinkEndpointListRowDto(Guid Id, Guid LinkId, string? LinkCode,
+    int EndpointOrder, string? DeviceHostname, string? PortInterface,
+    string? InterfaceName, string? IpAddress, int? VlanTag,
+    string? Description, string Status);
+
+public record ServerNicListRowDto(Guid Id, Guid ServerId, string? ServerHostname,
+    int NicIndex, string? NicName, string? MlagSide, string? TargetDeviceHostname,
+    string? TargetPortInterface, string? IpAddress, string? MacAddress,
+    bool AdminUp, string Status);
+
+// ─── Session / identity DTOs (Phase 10b) ─────────────────────────────
+
+/// <summary>Who-am-i summary — matches `WhoAmIResponse` in the engine.
+/// Service-origin calls come back with userId=null + grantCount=0.</summary>
+public record WhoAmIDto(int? UserId, int GrantCount,
+    List<string> Actions, List<string> EntityTypes);
+
+// ─── Naming override DTOs (Phase 10b) ────────────────────────────────
+
+public record NamingOverrideDto(Guid Id, Guid OrganizationId, string EntityType,
+    string? SubtypeCode, string ScopeLevel, Guid? ScopeEntityId,
+    string NamingTemplate, string Status, int Version,
+    DateTime CreatedAt, DateTime UpdatedAt, string? Notes);
+
+public record CreateNamingOverrideRequest(Guid OrganizationId, string EntityType,
+    string? SubtypeCode, string ScopeLevel, Guid? ScopeEntityId,
+    string NamingTemplate, string? Notes = null);
+
+public record UpdateNamingOverrideRequest(string NamingTemplate,
+    int Version, string? Notes = null);
+
+public record ResolveNamingRequest(Guid OrganizationId, string EntityType,
+    string? SubtypeCode = null, Guid? RegionId = null, Guid? SiteId = null,
+    Guid? BuildingId = null, string? DefaultTemplate = null);
+
+/// <summary>Naming-resolve response — matches `ResolveResponse` in
+/// the engine. <c>Source</c> is one of
+/// BuildingSpecificSubtype / BuildingAnySubtype / SiteSpecificSubtype /
+/// SiteAnySubtype / RegionSpecificSubtype / RegionAnySubtype /
+/// GlobalSpecificSubtype / GlobalAnySubtype / Default. <c>OverrideId</c>
+/// is null for the Default case.</summary>
+public record NamingResolveResponseDto(string Template, string Source, Guid? OverrideId);
