@@ -2994,6 +2994,53 @@ four primary network entities.
       stack vertically.
 - [ ] Links grid double-click drills here.
 
+### 7.X.23 Phase 10b — sixth wave (commits 2026-04-19+)
+
+Subnet detail + IP drill, who-am-i banner, change-set add-item
+dialog, and two validation batches (75 → 78).
+
+**IP address thin list + subnet detail** (commit `7c03ae6d5`)
+- [ ] GET /api/net/ip-addresses — IpAddressListRow (id, subnetId,
+      subnetCode, address, assignedToType, assignedToId, isReserved,
+      status, version). 5000-row cap; optional subnetId narrower.
+- [ ] Address pre-rendered via host() so no CIDR suffix on the wire.
+- [ ] `/network/net-subnet/:id` with Summary / Audit / Addresses tabs.
+- [ ] Addresses tab grouped by assignedToType; empty-state note when
+      no addresses allocated.
+
+**Who-am-i endpoint + web session banner** (commit `9aca7befe`)
+- [ ] GET /api/net/whoami returns userId + grantCount + distinct
+      actions + distinct entity types across active scope-grants.
+- [ ] Service calls (no X-User-Id) get userId=null + zero counts.
+- [ ] Banner rendered above the sub-nav only when userId != null.
+- [ ] Actions chip (green) + entity-types chip (purple) + count
+      chip; title attributes explain each on hover.
+- [ ] Soft-fails on load error — banner just doesn't render.
+
+**Change-set add-item dialog** (commit `2f35c8897`)
+- [ ] "Add item" button next to the Items section heading, visible
+      only when Set status is Draft.
+- [ ] Dialog: entityType (combo with acceptCustomValue) + action
+      (Create/Update/Delete/Rename) + conditional entityId (non-Create)
+      + conditional expectedVersion (Update/Rename) + conditional
+      before/after JSON text areas (before hidden on Create, after
+      hidden on Delete) + notes.
+- [ ] JSON parsed via JSON.parse; bad JSON flags a specific error.
+- [ ] On success, item appended in-place + Set's itemCount bumped
+      without a full reload.
+- [ ] Three failure classes: 403 "lacks write:ChangeSet", 409 "can
+      only add to Draft", generic RFC 7807.
+
+**Validation rule expansion — batch 12** (commit `97d919672`)
+- [ ] `ip_address.reserved_type_is_marked_reserved` (Warning)
+- [ ] `subnet.network_is_network_address` (Warning)
+- [ ] `link_endpoint.port_resolves` (Error)
+
+**Validation rule expansion — batch 13** (commit `167fc0dcf`)
+- [ ] `server_nic.target_port_resolves` (Error)
+- [ ] `asn_allocation.block_resolves_active` (Error)
+- [ ] `server_nic.target_device_matches_port_device` (Warning)
+
 ---
 
 ## 8. Enterprise SaaS

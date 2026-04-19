@@ -118,7 +118,13 @@ Client-side arc that wires every Phase 10 engine endpoint into both the WPF shel
 
 **Search facets** (commit `69991e714`): `/api/net/search/facets` returns per-entity-type COUNT for a given query in one UNION-ALL round trip. Surfaced in the web search page as a clickable chip bar ("Device(12) · Vlan(4) · Subnet(1)") for click-to-narrow UX.
 
-**Validation-rule catalog expansion** (commits `cc4748f5f` + `90d931eed` + `bbd80fab9` + `a5b6e55fa` + `209306ed9` + `93fd3bbd0` + `a3d8a9d98` + `b2dfbe2a4`): 54 → 72 rules. Latest batch added `naming_template_override.scope_entity_resolves`, `asn_allocation.unique_allocated_to`, `port.interface_name_not_empty`. Guardrail test `dispatcher_has_arm_for_every_catalog_rule` updated each arc so a catalog row without a matching dispatcher arm fails CI.
+**Validation-rule catalog expansion** (commits `cc4748f5f` + `90d931eed` + `bbd80fab9` + `a5b6e55fa` + `209306ed9` + `93fd3bbd0` + `a3d8a9d98` + `b2dfbe2a4` + `97d919672` + `167fc0dcf`): 54 → 78 rules. Latest batches added `ip_address.reserved_type_is_marked_reserved`, `subnet.network_is_network_address`, `link_endpoint.port_resolves`, `server_nic.target_port_resolves`, `asn_allocation.block_resolves_active`, `server_nic.target_device_matches_port_device`. Guardrail test `dispatcher_has_arm_for_every_catalog_rule` updated each arc so a catalog row without a matching dispatcher arm fails CI.
+
+**Identity + session banner** (commit `9aca7befe`): `GET /api/net/whoami` returns the caller's identity + grant-count + distinct actions / entity-types across active scope-grants. One round-trip aggregate. Web surface is a blue banner above the network dashboard sub-nav rendering "Signed in as user X · N grants · action chips · entity-type chips".
+
+**IP address thin list + subnet detail** (commit `7c03ae6d5`): `GET /api/net/ip-addresses` with optional subnetId narrower. Backs the new `/network/net-subnet/:id` page's Addresses tab — answers "what's actually allocated from this /24?" without a CSV export.
+
+**Change-set add-item dialog** (commit `2f35c8897`): Completes the web change-set write flow — operators can create Draft sets (e269ebcf2), add items (this slice), submit / apply / cancel (9a244a1da). Add-item dialog parses free-form JSON for before/after snapshots; conditional form fields based on action (no before on Create, no after on Delete).
 
 **Pool utilization rollup** (commit `e8f333c1d`): `GET /api/net/pools/utilization` — used vs capacity across ASN / VLAN / IP pool families in one round trip. IP pools emit two rows ("IP:Subnets" + "IP:Addresses") so both dimensions surface without a second call. Web surface at `/network/pool-utilization` renders a progress-bar grid with colour thresholds (< 50% green, 50-80% amber, > 80% red).
 
