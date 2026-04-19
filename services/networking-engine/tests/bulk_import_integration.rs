@@ -239,7 +239,7 @@ async fn vlan_import_dry_run_no_writes() {
 
     let csv = format!("{VLAN_HEADER}101,IT,,Free,,{},Active\r\n", fx.block_code);
     let result = bulk_import::import_vlans(
-        &fx.tenant.pool, fx.tenant.org_id, &csv, true, None,
+        &fx.tenant.pool, fx.tenant.org_id, &csv, true, ImportMode::Create, None,
     ).await.expect("dry run");
     assert_eq!(result.valid, 1);
     assert!(!result.applied);
@@ -259,7 +259,7 @@ async fn vlan_import_happy_path_commits() {
         b = fx.block_code);
     let result = bulk_import::import_vlans(
         // None = service-call RBAC bypass (auth tests live below).
-        &fx.tenant.pool, fx.tenant.org_id, &csv, false, None,
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
     ).await.expect("apply");
     assert_eq!(result.valid, 2);
     assert!(result.applied);
@@ -273,11 +273,11 @@ async fn vlan_import_rejects_duplicate_vlan_id_in_block() {
     let fx = PoolsFixture::new(pool).await.expect("fixture");
 
     let csv1 = format!("{VLAN_HEADER}101,IT,,Free,,{},Active\r\n", fx.block_code);
-    bulk_import::import_vlans(&fx.tenant.pool, fx.tenant.org_id, &csv1, false, None)
+    bulk_import::import_vlans(&fx.tenant.pool, fx.tenant.org_id, &csv1, false, ImportMode::Create, None)
         .await.expect("seed");
     assert_eq!(fx.count_vlans().await, 1);
 
-    let result = bulk_import::import_vlans(&fx.tenant.pool, fx.tenant.org_id, &csv1, false, None)
+    let result = bulk_import::import_vlans(&fx.tenant.pool, fx.tenant.org_id, &csv1, false, ImportMode::Create, None)
         .await.expect("re-apply");
     assert_eq!(result.invalid, 1);
     assert!(!result.applied);
@@ -298,7 +298,7 @@ async fn subnet_import_happy_path_commits() {
          BI-SUB-B,Subnet B,10.99.2.0/24,,{p},Free,Active\r\n",
         p = fx.pool_code);
     let result = bulk_import::import_subnets(
-        &fx.tenant.pool, fx.tenant.org_id, &csv, false, None,
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
     ).await.expect("apply");
     assert_eq!(result.valid, 2);
     assert!(result.applied);
@@ -317,12 +317,124 @@ async fn subnet_import_rejects_invalid_cidr_without_writing() {
          BI-SUB-B,Subnet B,not-a-cidr,,{p},Free,Active\r\n",
         p = fx.pool_code);
     let result = bulk_import::import_subnets(
-        &fx.tenant.pool, fx.tenant.org_id, &csv, false, None,
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, None,
     ).await.expect("apply");
     assert_eq!(result.invalid, 1);
     assert!(!result.applied);
     assert_eq!(fx.count_subnets().await, 0,
         "invalid CIDR must prevent partial writes — atomic across all rows");
+}
+
+// ─── VLAN + subnet upsert tests ───────────────────────────────────────────
+//
+// VLAN + subnet CSVs don't carry a `version` column (only 7 cols vs the
+// devices' 8), so upsert always applies against the current DB version —
+// stale-version mismatch isn't expressible from a CSV body. The pattern
+// matches device upsert in spirit: re-importing the same identifier in
+// Upsert mode UPDATES instead of rejecting; new identifiers INSERT.
+
+#[tokio::test]
+#[ignore]
+async fn vlan_upsert_mode_updates_existing_pair_rather_than_rejecting() {
+    let Some(pool) = pool_or_skip("vlan_upsert_mode_updates_existing_pair_rather_than_rejecting").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    // Seed via Create.
+    let csv_initial = format!("{VLAN_HEADER}101,IT,Original desc,Free,,{},Planned\r\n", fx.block_code);
+    bulk_import::import_vlans(
+        &fx.tenant.pool, fx.tenant.org_id, &csv_initial, false, ImportMode::Create, None,
+    ).await.expect("seed");
+    assert_eq!(fx.count_vlans().await, 1);
+
+    // Re-import same (block, vlan_id) with Upsert mode + new
+    // display_name + Active status — should UPDATE, not reject.
+    let csv_upsert = format!("{VLAN_HEADER}101,IT-Updated,New desc,Free,,{},Active\r\n", fx.block_code);
+    let result = bulk_import::import_vlans(
+        &fx.tenant.pool, fx.tenant.org_id, &csv_upsert, false, ImportMode::Upsert, None,
+    ).await.expect("upsert");
+    assert!(result.applied, "upsert must succeed on existing (block, vlan_id)");
+    assert_eq!(fx.count_vlans().await, 1, "upsert must NOT create a duplicate row");
+
+    // Confirm the UPDATE actually changed the row + bumped version.
+    let (display_name, status, version): (String, String, i32) = sqlx::query_as(
+        "SELECT v.display_name, v.status::text, v.version
+           FROM net.vlan v
+           JOIN net.vlan_block b ON b.id = v.block_id
+          WHERE v.organization_id = $1 AND b.block_code = $2 AND v.vlan_id = 101")
+        .bind(fx.tenant.org_id).bind(&fx.block_code)
+        .fetch_one(&fx.tenant.pool).await.unwrap();
+    assert_eq!(display_name, "IT-Updated");
+    assert_eq!(status, "Active");
+    assert_eq!(version, 2, "version must bump on upsert UPDATE");
+}
+
+#[tokio::test]
+#[ignore]
+async fn vlan_upsert_mode_creates_new_pair_like_create() {
+    let Some(pool) = pool_or_skip("vlan_upsert_mode_creates_new_pair_like_create").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    let csv = format!("{VLAN_HEADER}205,Servers,,Free,,{},Active\r\n", fx.block_code);
+    let result = bulk_import::import_vlans(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Upsert, None,
+    ).await.expect("upsert new");
+    assert!(result.applied);
+    assert_eq!(fx.count_vlans().await, 1,
+        "upsert on a new (block, vlan_id) must INSERT, matching create behaviour");
+}
+
+#[tokio::test]
+#[ignore]
+async fn subnet_upsert_mode_updates_existing_code_rather_than_rejecting() {
+    let Some(pool) = pool_or_skip("subnet_upsert_mode_updates_existing_code_rather_than_rejecting").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    // Seed via Create — subnet_code is the unique key per tenant.
+    let csv_initial = format!(
+        "{SUBNET_HEADER}BI-SUB-A,Subnet A,10.99.1.0/24,,{p},Free,Planned\r\n",
+        p = fx.pool_code);
+    bulk_import::import_subnets(
+        &fx.tenant.pool, fx.tenant.org_id, &csv_initial, false, ImportMode::Create, None,
+    ).await.expect("seed");
+    assert_eq!(fx.count_subnets().await, 1);
+
+    // Re-import same subnet_code with new display_name + Active +
+    // network re-resized. UPDATE path, not reject.
+    let csv_upsert = format!(
+        "{SUBNET_HEADER}BI-SUB-A,Subnet A Renamed,10.99.1.0/26,,{p},Free,Active\r\n",
+        p = fx.pool_code);
+    let result = bulk_import::import_subnets(
+        &fx.tenant.pool, fx.tenant.org_id, &csv_upsert, false, ImportMode::Upsert, None,
+    ).await.expect("upsert");
+    assert!(result.applied, "upsert must succeed on existing subnet_code");
+    assert_eq!(fx.count_subnets().await, 1, "upsert must NOT duplicate the row");
+
+    let (display_name, status, version): (String, String, i32) = sqlx::query_as(
+        "SELECT display_name, status::text, version
+           FROM net.subnet
+          WHERE organization_id = $1 AND subnet_code = 'BI-SUB-A'")
+        .bind(fx.tenant.org_id)
+        .fetch_one(&fx.tenant.pool).await.unwrap();
+    assert_eq!(display_name, "Subnet A Renamed");
+    assert_eq!(status, "Active");
+    assert_eq!(version, 2);
+}
+
+#[tokio::test]
+#[ignore]
+async fn subnet_upsert_mode_creates_new_code_like_create() {
+    let Some(pool) = pool_or_skip("subnet_upsert_mode_creates_new_code_like_create").await else { return; };
+    let fx = PoolsFixture::new(pool).await.expect("fixture");
+
+    let csv = format!(
+        "{SUBNET_HEADER}BI-SUB-NEW,Brand New,10.99.42.0/24,,{p},Free,Active\r\n",
+        p = fx.pool_code);
+    let result = bulk_import::import_subnets(
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Upsert, None,
+    ).await.expect("upsert new");
+    assert!(result.applied);
+    assert_eq!(fx.count_subnets().await, 1,
+        "upsert on a new subnet_code must INSERT, matching create behaviour");
 }
 
 #[tokio::test]
@@ -531,7 +643,7 @@ async fn vlan_import_forbidden_without_write_vlan_grant() {
 
     let csv = format!("{VLAN_HEADER}101,IT,,Free,,{},Active\r\n", fx.block_code);
     let err = bulk_import::import_vlans(
-        &fx.tenant.pool, fx.tenant.org_id, &csv, false, Some(42)
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, Some(42)
     ).await.unwrap_err().to_string();
     assert!(err.contains("Forbidden"), "expected Forbidden err: {err}");
     assert_eq!(fx.count_vlans().await, 0);
@@ -549,7 +661,7 @@ async fn vlan_import_forbidden_without_write_vlan_grant() {
     }, Some(99)).await.expect("seed wrong-entity-type grant");
 
     let err = bulk_import::import_vlans(
-        &fx.tenant.pool, fx.tenant.org_id, &csv, false, Some(42)
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, Some(42)
     ).await.unwrap_err().to_string();
     assert!(err.contains("Forbidden"),
         "write:Device grant must not authorise Vlan import: {err}");
@@ -565,7 +677,7 @@ async fn subnet_import_forbidden_without_write_subnet_grant() {
         "{SUBNET_HEADER}BI-SUB,Subnet X,10.99.1.0/24,,{p},Free,Active\r\n",
         p = fx.pool_code);
     let err = bulk_import::import_subnets(
-        &fx.tenant.pool, fx.tenant.org_id, &csv, false, Some(42)
+        &fx.tenant.pool, fx.tenant.org_id, &csv, false, ImportMode::Create, Some(42)
     ).await.unwrap_err().to_string();
     assert!(err.contains("Forbidden"), "err: {err}");
     assert_eq!(fx.count_subnets().await, 0);

@@ -601,6 +601,7 @@ pub async fn import_vlans(
     org_id: Uuid,
     body: &str,
     dry_run: bool,
+    mode: ImportMode,
     user_id: Option<i32>,
 ) -> Result<ImportValidationResult, EngineError> {
     scope_grants::require_permission(
@@ -641,21 +642,38 @@ pub async fn import_vlans(
     let template_code_to_id: std::collections::HashMap<String, Uuid> =
         template_rows.into_iter().map(|(id, c)| (c, id)).collect();
 
-    // Existing (block_id, vlan_id) pairs — drives the dup check.
-    // Keyed by the string "block_code|vlan_id" for easy lookup.
-    let existing_rows: Vec<(String, i32)> = sqlx::query_as(
-        "SELECT b.block_code, v.vlan_id
+    // Existing (block_code, vlan_id) → (id, version) so the apply
+    // loop can branch INSERT vs version-checked UPDATE without
+    // another query per row.
+    let existing_rows: Vec<(String, i32, Uuid, i32)> = sqlx::query_as(
+        "SELECT b.block_code, v.vlan_id, v.id, v.version
            FROM net.vlan v
            JOIN net.vlan_block b ON b.id = v.block_id AND b.deleted_at IS NULL
           WHERE v.organization_id = $1 AND v.deleted_at IS NULL")
         .bind(org_id).fetch_all(pool).await?;
-    let existing_pairs: std::collections::HashSet<String> =
-        existing_rows.into_iter().map(|(c, id)| format!("{c}|{id}")).collect();
+    let existing_by_pair: std::collections::HashMap<String, (Uuid, i32)> =
+        existing_rows.into_iter()
+            .map(|(c, vid, id, ver)| (format!("{c}|{vid}"), (id, ver)))
+            .collect();
+    let existing_pairs_set: std::collections::HashSet<String> =
+        existing_by_pair.keys().cloned().collect();
+
+    // Suppress the "already exists" validator error when we're
+    // upserting — existing rows are valid update targets in that
+    // mode. In create mode the populated set drives the per-row
+    // error.
+    let empty_set = std::collections::HashSet::new();
+    let dup_check_set = match mode {
+        ImportMode::Create => &existing_pairs_set,
+        ImportMode::Upsert => &empty_set,
+    };
 
     let mut outcomes: Vec<ImportRowOutcome> = Vec::with_capacity(rows.len().saturating_sub(1));
     for (i, row) in rows.iter().enumerate().skip(1) {
         let row_number = i + 1;
-        let outcome = validate_vlan_row(row, row_number, &block_codes, &template_codes, &existing_pairs);
+        let outcome = validate_vlan_row(
+            row, row_number, &block_codes, &template_codes, dup_check_set,
+        );
         outcomes.push(outcome);
     }
 
@@ -672,7 +690,7 @@ pub async fn import_vlans(
 
     let mut tx = pool.begin().await?;
     for (outcome_idx, row) in rows.iter().enumerate().skip(1).map(|(_, r)| r).enumerate() {
-        let vlan_id: i32  = row[0].trim().parse().unwrap_or(0);  // validator checked
+        let vlan_id_num: i32 = row[0].trim().parse().unwrap_or(0);  // validator checked
         let display_name  = row[1].trim();
         let description   = row[2].trim();
         let scope_level   = row[3].trim();
@@ -688,36 +706,98 @@ pub async fn import_vlans(
         let scope_val   = if scope_level.is_empty() { "Free" }     else { scope_level };
         let status_val  = if status.is_empty()      { "Active" }   else { status };
 
-        let insert_result: Result<(Uuid,), sqlx::Error> = sqlx::query_as(
-            "INSERT INTO net.vlan
-                (organization_id, block_id, template_id, vlan_id,
-                 display_name, description, scope_level, status,
-                 created_by, updated_by)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8::net.entity_status, $9, $9)
-             RETURNING id")
-            .bind(org_id)
-            .bind(block_id)
-            .bind(template_id)
-            .bind(vlan_id)
-            .bind(display_name)
-            .bind(desc_opt)
-            .bind(scope_val)
-            .bind(status_val)
-            .bind(user_id)
-            .fetch_one(&mut *tx).await;
+        let pair_key = format!("{block_code}|{vlan_id_num}");
+        let existing = existing_by_pair.get(&pair_key).copied();
+        let (vlan_uuid, action) = match (existing, mode) {
+            // UPSERT path — version-checked UPDATE for the existing
+            // (block, vlan_id) pair. CSV's version column is the
+            // operator's snapshot.
+            (Some((id, db_version)), ImportMode::Upsert) => {
+                // Note: vlan import header doesn't currently include
+                // a version column (only 7 cols vs devices' 8). Fall
+                // back to current DB version — same "I don't know,
+                // just apply" semantic devices use for blank versions.
+                let expected_version = db_version;
 
-        let vlan_uuid = match insert_result {
-            Ok((id,)) => id,
-            Err(e) => {
-                let o = &mut outcomes[outcome_idx];
-                o.ok = false;
-                o.errors.push(format!("database INSERT failed: {e}"));
-                return Ok(ImportValidationResult {
-                    total_rows: outcomes.len(),
-                    valid: outcomes.iter().filter(|o| o.ok).count(),
-                    invalid: outcomes.iter().filter(|o| !o.ok).count(),
-                    dry_run: false, applied: false, outcomes,
-                });
+                let update_result: Result<Option<(Uuid,)>, sqlx::Error> = sqlx::query_as(
+                    "UPDATE net.vlan
+                        SET template_id  = $3,
+                            display_name = $4,
+                            description  = $5,
+                            scope_level  = $6,
+                            status       = $7::net.entity_status,
+                            updated_at   = now(),
+                            updated_by   = $8,
+                            version      = version + 1
+                      WHERE id = $1 AND organization_id = $2
+                        AND version = $9 AND deleted_at IS NULL
+                      RETURNING id")
+                    .bind(id).bind(org_id)
+                    .bind(template_id)
+                    .bind(display_name)
+                    .bind(desc_opt)
+                    .bind(scope_val)
+                    .bind(status_val)
+                    .bind(user_id)
+                    .bind(expected_version)
+                    .fetch_optional(&mut *tx).await;
+
+                match update_result {
+                    Ok(Some((updated_id,))) => (updated_id, "Updated"),
+                    Ok(None) => {
+                        let o = &mut outcomes[outcome_idx];
+                        o.ok = false;
+                        o.errors.push(format!(
+                            "version mismatch — DB advanced past version {expected_version} between read and write"));
+                        return Ok(ImportValidationResult {
+                            total_rows: outcomes.len(),
+                            valid: outcomes.iter().filter(|o| o.ok).count(),
+                            invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                            dry_run: false, applied: false, outcomes,
+                        });
+                    }
+                    Err(e) => {
+                        let o = &mut outcomes[outcome_idx];
+                        o.ok = false;
+                        o.errors.push(format!("database UPDATE failed: {e}"));
+                        return Ok(ImportValidationResult {
+                            total_rows: outcomes.len(),
+                            valid: outcomes.iter().filter(|o| o.ok).count(),
+                            invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                            dry_run: false, applied: false, outcomes,
+                        });
+                    }
+                }
+            }
+            // INSERT path — Create (always) or Upsert with no
+            // existing match.
+            _ => {
+                let insert_result: Result<(Uuid,), sqlx::Error> = sqlx::query_as(
+                    "INSERT INTO net.vlan
+                        (organization_id, block_id, template_id, vlan_id,
+                         display_name, description, scope_level, status,
+                         created_by, updated_by)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::net.entity_status, $9, $9)
+                     RETURNING id")
+                    .bind(org_id).bind(block_id).bind(template_id).bind(vlan_id_num)
+                    .bind(display_name).bind(desc_opt).bind(scope_val).bind(status_val)
+                    .bind(user_id)
+                    .fetch_one(&mut *tx).await;
+
+                match insert_result {
+                    Ok((id,)) => (id, "Created"),
+                    Err(e) => {
+                        let o = &mut outcomes[outcome_idx];
+                        o.ok = false;
+                        o.errors.push(format!("database INSERT failed: {e}"));
+                        return Ok(ImportValidationResult {
+                            total_rows: outcomes.len(),
+                            valid: outcomes.iter().filter(|o| o.ok).count(),
+                            invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                            dry_run: false, applied: false, outcomes,
+                        });
+                    }
+                }
             }
         };
 
@@ -726,12 +806,16 @@ pub async fn import_vlans(
             source_service: "networking-engine",
             entity_type: "Vlan",
             entity_id: Some(vlan_uuid),
-            action: "Created",
+            action,
             actor_user_id: user_id,
             actor_display: None, client_ip: None, correlation_id: None,
             details: serde_json::json!({
                 "source": "bulk_import",
-                "vlan_id": vlan_id,
+                "mode": match mode {
+                    ImportMode::Create => "create",
+                    ImportMode::Upsert => "upsert",
+                },
+                "vlan_id": vlan_id_num,
                 "block_code": block_code,
             }),
         }).await?;
@@ -840,6 +924,7 @@ pub async fn import_subnets(
     org_id: Uuid,
     body: &str,
     dry_run: bool,
+    mode: ImportMode,
     user_id: Option<i32>,
 ) -> Result<ImportValidationResult, EngineError> {
     scope_grants::require_permission(
@@ -870,17 +955,30 @@ pub async fn import_subnets(
     let pool_code_to_id: std::collections::HashMap<String, Uuid> =
         pool_rows.into_iter().map(|(id, c)| (c, id)).collect();
 
-    let existing_codes: Vec<(String,)> = sqlx::query_as(
-        "SELECT subnet_code FROM net.subnet
+    // existing subnet_code → (id, version) so the apply loop can
+    // version-check on upsert.
+    let existing_rows: Vec<(String, Uuid, i32)> = sqlx::query_as(
+        "SELECT subnet_code, id, version FROM net.subnet
           WHERE organization_id = $1 AND deleted_at IS NULL")
         .bind(org_id).fetch_all(pool).await?;
-    let existing_codes: std::collections::HashSet<String> =
-        existing_codes.into_iter().map(|(c,)| c).collect();
+    let existing_by_code: std::collections::HashMap<String, (Uuid, i32)> =
+        existing_rows.into_iter().map(|(c, id, v)| (c, (id, v))).collect();
+    let existing_codes_set: std::collections::HashSet<String> =
+        existing_by_code.keys().cloned().collect();
+
+    // Same suppression trick as VLAN — the validator's "already
+    // exists" error is only useful in create mode. Upsert treats
+    // existing rows as legitimate update targets.
+    let empty_set = std::collections::HashSet::new();
+    let dup_check_set = match mode {
+        ImportMode::Create => &existing_codes_set,
+        ImportMode::Upsert => &empty_set,
+    };
 
     let mut outcomes: Vec<ImportRowOutcome> = Vec::with_capacity(rows.len().saturating_sub(1));
     for (i, row) in rows.iter().enumerate().skip(1) {
         let row_number = i + 1;
-        outcomes.push(validate_subnet_row(row, row_number, &pool_codes, &existing_codes));
+        outcomes.push(validate_subnet_row(row, row_number, &pool_codes, dup_check_set));
     }
 
     let valid   = outcomes.iter().filter(|o| o.ok).count();
@@ -910,34 +1008,82 @@ pub async fn import_subnets(
         let scope_val   = if scope_level.is_empty() { "Free" }   else { scope_level };
         let status_val  = if status.is_empty()      { "Active" } else { status };
 
-        let insert_result: Result<(Uuid,), sqlx::Error> = sqlx::query_as(
-            "INSERT INTO net.subnet
-                (organization_id, pool_id, subnet_code, display_name,
-                 network, scope_level, status, created_by, updated_by)
-             VALUES ($1, $2, $3, $4, $5::cidr, $6, $7::net.entity_status, $8, $8)
-             RETURNING id")
-            .bind(org_id)
-            .bind(pool_id_val)
-            .bind(subnet_code)
-            .bind(display_name)
-            .bind(network)
-            .bind(scope_val)
-            .bind(status_val)
-            .bind(user_id)
-            .fetch_one(&mut *tx).await;
+        let existing = existing_by_code.get(subnet_code).copied();
+        let (subnet_id, action) = match (existing, mode) {
+            (Some((id, db_version)), ImportMode::Upsert) => {
+                // Subnet upsert: update display_name, network,
+                // scope_level, status. subnet_code stays as the
+                // identifier; pool_id stays put (re-parenting a
+                // subnet between pools is a CRUD-only operation).
+                let update_result: Result<Option<(Uuid,)>, sqlx::Error> = sqlx::query_as(
+                    "UPDATE net.subnet
+                        SET display_name = $3,
+                            network      = $4::cidr,
+                            scope_level  = $5,
+                            status       = $6::net.entity_status,
+                            updated_at   = now(),
+                            updated_by   = $7,
+                            version      = version + 1
+                      WHERE id = $1 AND organization_id = $2
+                        AND version = $8 AND deleted_at IS NULL
+                      RETURNING id")
+                    .bind(id).bind(org_id)
+                    .bind(display_name).bind(network).bind(scope_val).bind(status_val)
+                    .bind(user_id).bind(db_version)
+                    .fetch_optional(&mut *tx).await;
 
-        let subnet_id = match insert_result {
-            Ok((id,)) => id,
-            Err(e) => {
-                let o = &mut outcomes[outcome_idx];
-                o.ok = false;
-                o.errors.push(format!("database INSERT failed: {e}"));
-                return Ok(ImportValidationResult {
-                    total_rows: outcomes.len(),
-                    valid: outcomes.iter().filter(|o| o.ok).count(),
-                    invalid: outcomes.iter().filter(|o| !o.ok).count(),
-                    dry_run: false, applied: false, outcomes,
-                });
+                match update_result {
+                    Ok(Some((updated_id,))) => (updated_id, "Updated"),
+                    Ok(None) => {
+                        let o = &mut outcomes[outcome_idx];
+                        o.ok = false;
+                        o.errors.push(format!(
+                            "version mismatch — DB advanced past version {db_version} between read and write"));
+                        return Ok(ImportValidationResult {
+                            total_rows: outcomes.len(),
+                            valid: outcomes.iter().filter(|o| o.ok).count(),
+                            invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                            dry_run: false, applied: false, outcomes,
+                        });
+                    }
+                    Err(e) => {
+                        let o = &mut outcomes[outcome_idx];
+                        o.ok = false;
+                        o.errors.push(format!("database UPDATE failed: {e}"));
+                        return Ok(ImportValidationResult {
+                            total_rows: outcomes.len(),
+                            valid: outcomes.iter().filter(|o| o.ok).count(),
+                            invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                            dry_run: false, applied: false, outcomes,
+                        });
+                    }
+                }
+            }
+            _ => {
+                let insert_result: Result<(Uuid,), sqlx::Error> = sqlx::query_as(
+                    "INSERT INTO net.subnet
+                        (organization_id, pool_id, subnet_code, display_name,
+                         network, scope_level, status, created_by, updated_by)
+                     VALUES ($1, $2, $3, $4, $5::cidr, $6, $7::net.entity_status, $8, $8)
+                     RETURNING id")
+                    .bind(org_id).bind(pool_id_val).bind(subnet_code).bind(display_name)
+                    .bind(network).bind(scope_val).bind(status_val).bind(user_id)
+                    .fetch_one(&mut *tx).await;
+
+                match insert_result {
+                    Ok((id,)) => (id, "Created"),
+                    Err(e) => {
+                        let o = &mut outcomes[outcome_idx];
+                        o.ok = false;
+                        o.errors.push(format!("database INSERT failed: {e}"));
+                        return Ok(ImportValidationResult {
+                            total_rows: outcomes.len(),
+                            valid: outcomes.iter().filter(|o| o.ok).count(),
+                            invalid: outcomes.iter().filter(|o| !o.ok).count(),
+                            dry_run: false, applied: false, outcomes,
+                        });
+                    }
+                }
             }
         };
 
@@ -946,11 +1092,15 @@ pub async fn import_subnets(
             source_service: "networking-engine",
             entity_type: "Subnet",
             entity_id: Some(subnet_id),
-            action: "Created",
+            action,
             actor_user_id: user_id,
             actor_display: None, client_ip: None, correlation_id: None,
             details: serde_json::json!({
                 "source": "bulk_import",
+                "mode": match mode {
+                    ImportMode::Create => "create",
+                    ImportMode::Upsert => "upsert",
+                },
                 "subnet_code": subnet_code,
                 "network": network,
                 "pool_code": pool_code,

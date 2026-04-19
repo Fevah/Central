@@ -1281,8 +1281,9 @@ async fn import_vlans_csv(
     body: String,
 ) -> Result<impl IntoResponse, EngineError> {
     let user_id = header_user_id(&headers);
+    let mode = bulk_import::ImportMode::parse(q.mode.as_deref())?;
     let result = bulk_import::import_vlans(
-        &s.pool, q.organization_id, &body, q.dry_run, user_id
+        &s.pool, q.organization_id, &body, q.dry_run, mode, user_id
     ).await?;
     Ok(Json(result))
 }
@@ -1294,8 +1295,9 @@ async fn import_subnets_csv(
     body: String,
 ) -> Result<impl IntoResponse, EngineError> {
     let user_id = header_user_id(&headers);
+    let mode = bulk_import::ImportMode::parse(q.mode.as_deref())?;
     let result = bulk_import::import_subnets(
-        &s.pool, q.organization_id, &body, q.dry_run, user_id
+        &s.pool, q.organization_id, &body, q.dry_run, mode, user_id
     ).await?;
     Ok(Json(result))
 }
@@ -1447,9 +1449,10 @@ async fn import_vlans_xlsx(
     body: axum::body::Bytes,
 ) -> Result<impl IntoResponse, EngineError> {
     let user_id = header_user_id(&headers);
+    let mode = bulk_import::ImportMode::parse(q.mode.as_deref())?;
     let csv = xlsx_codec::xlsx_bytes_to_csv(&body)?;
     let result = bulk_import::import_vlans(
-        &s.pool, q.organization_id, &csv, q.dry_run, user_id
+        &s.pool, q.organization_id, &csv, q.dry_run, mode, user_id
     ).await?;
     Ok(Json(result))
 }
@@ -1461,9 +1464,10 @@ async fn import_subnets_xlsx(
     body: axum::body::Bytes,
 ) -> Result<impl IntoResponse, EngineError> {
     let user_id = header_user_id(&headers);
+    let mode = bulk_import::ImportMode::parse(q.mode.as_deref())?;
     let csv = xlsx_codec::xlsx_bytes_to_csv(&body)?;
     let result = bulk_import::import_subnets(
-        &s.pool, q.organization_id, &csv, q.dry_run, user_id
+        &s.pool, q.organization_id, &csv, q.dry_run, mode, user_id
     ).await?;
     Ok(Json(result))
 }

@@ -540,18 +540,28 @@ public class NetworkingEngineClient : IDisposable
     /// <summary>Bulk import VLANs. Required columns match what
     /// <see cref="ExportVlansCsvAsync"/> emits (vlan_id, display_name,
     /// description, scope_level, template_code, block_code, status);
-    /// `block_code` must resolve to an existing net.vlan_block row.</summary>
+    /// `block_code` must resolve to an existing net.vlan_block row.
+    ///
+    /// <paramref name="mode"/>="upsert" updates the existing
+    /// (block_code, vlan_id) pair via version-checked UPDATE instead
+    /// of rejecting it; new pairs INSERT either way. VLAN CSVs don't
+    /// carry a version column, so upsert applies against current DB
+    /// version (no client-side concurrency snapshot).</summary>
     public Task<ImportValidationResultDto> ImportVlansCsvAsync(Guid organizationId,
-        string csvBody, bool dryRun = true, CancellationToken ct = default)
-        => PostCsvAsync("/api/net/vlans/import", organizationId, csvBody, dryRun, ct: ct);
+        string csvBody, bool dryRun = true, string? mode = null, CancellationToken ct = default)
+        => PostCsvAsync("/api/net/vlans/import", organizationId, csvBody, dryRun, mode, ct);
 
     /// <summary>Bulk import subnets. `pool_code` is required and must
     /// resolve; the `vlan_id` column is accepted but ignored on apply
     /// (operators link via the CRUD panel — numeric vlan_id can be
-    /// ambiguous across multiple blocks).</summary>
+    /// ambiguous across multiple blocks).
+    ///
+    /// <paramref name="mode"/>="upsert" updates the existing
+    /// `subnet_code` via version-checked UPDATE instead of rejecting
+    /// it; new codes INSERT either way.</summary>
     public Task<ImportValidationResultDto> ImportSubnetsCsvAsync(Guid organizationId,
-        string csvBody, bool dryRun = true, CancellationToken ct = default)
-        => PostCsvAsync("/api/net/subnets/import", organizationId, csvBody, dryRun, ct: ct);
+        string csvBody, bool dryRun = true, string? mode = null, CancellationToken ct = default)
+        => PostCsvAsync("/api/net/subnets/import", organizationId, csvBody, dryRun, mode, ct);
 
     /// <summary>Bulk import servers. Required: hostname; optional:
     /// profile_code, building_code, management_ip, status. ASN +
@@ -805,12 +815,12 @@ public class NetworkingEngineClient : IDisposable
         => PostXlsxAsync("/api/net/devices/import.xlsx", organizationId, xlsxBytes, dryRun, mode, ct);
 
     public Task<ImportValidationResultDto> ImportVlansXlsxAsync(Guid organizationId,
-        byte[] xlsxBytes, bool dryRun = true, CancellationToken ct = default)
-        => PostXlsxAsync("/api/net/vlans/import.xlsx", organizationId, xlsxBytes, dryRun, ct: ct);
+        byte[] xlsxBytes, bool dryRun = true, string? mode = null, CancellationToken ct = default)
+        => PostXlsxAsync("/api/net/vlans/import.xlsx", organizationId, xlsxBytes, dryRun, mode, ct);
 
     public Task<ImportValidationResultDto> ImportSubnetsXlsxAsync(Guid organizationId,
-        byte[] xlsxBytes, bool dryRun = true, CancellationToken ct = default)
-        => PostXlsxAsync("/api/net/subnets/import.xlsx", organizationId, xlsxBytes, dryRun, ct: ct);
+        byte[] xlsxBytes, bool dryRun = true, string? mode = null, CancellationToken ct = default)
+        => PostXlsxAsync("/api/net/subnets/import.xlsx", organizationId, xlsxBytes, dryRun, mode, ct);
 
     public Task<ImportValidationResultDto> ImportServersXlsxAsync(Guid organizationId,
         byte[] xlsxBytes, bool dryRun = true, CancellationToken ct = default)
