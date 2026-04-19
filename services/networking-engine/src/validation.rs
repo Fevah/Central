@@ -966,6 +966,45 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Error,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "change_set.submitted_has_items",
+        name: "Submitted / Approved / Applied change-sets should carry items",
+        description: "A net.change_set past Draft status with zero \
+                      net.change_set_item rows is nonsensical — \
+                      there's nothing to approve or apply. Typically \
+                      the result of a submit-then-empty flow or a \
+                      bulk import that failed before items landed.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "reservation_shelf.cooldown_respected",
+        name: "Shelf entries shouldn't be re-used before available_after",
+        description: "A net.reservation_shelf row with status='Active' \
+                      and available_after in the past means the \
+                      cooldown window has elapsed but nothing \
+                      recycled the resource yet — the shelf grows \
+                      unbounded. Advisory: a background job typically \
+                      promotes these; this rule surfaces cases where \
+                      the job isn't running.",
+        category: "Consistency",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "vlan_block.range_within_pool",
+        name: "VLAN block range must sit within its parent pool's range",
+        description: "A net.vlan_block's (vlan_first, vlan_last) must \
+                      be contained by its parent net.vlan_pool's \
+                      (vlan_first, vlan_last). Carver stamps fresh \
+                      blocks within-range; this rule catches manual \
+                      inserts or migrations that stored a block \
+                      straddling the pool edge.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1231,6 +1270,9 @@ async fn dispatch(
         "port.breakout_parent_on_same_device"     => run_port_breakout_same_device(pool, org_id, severity, out).await,
         "port.aggregate_on_same_device"           => run_port_aggregate_same_device(pool, org_id, severity, out).await,
         "aggregate_ethernet.name_unique_per_device" => run_ae_name_unique(pool, org_id, severity, out).await,
+        "change_set.submitted_has_items"          => run_change_set_submitted_has_items(pool, org_id, severity, out).await,
+        "reservation_shelf.cooldown_respected"    => run_shelf_cooldown_respected(pool, org_id, severity, out).await,
+        "vlan_block.range_within_pool"            => run_vlan_block_range_within_pool(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -3147,6 +3189,92 @@ async fn run_ae_name_unique(
     Ok(())
 }
 
+/// `change_set.submitted_has_items` — sets past Draft status
+/// with zero items. Normal apply path guards against this, but
+/// raw SQL INSERT into net.change_set without matching
+/// change_set_item rows can produce the state.
+async fn run_change_set_submitted_has_items(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT cs.id, cs.title, cs.status
+           FROM net.change_set cs
+          WHERE cs.organization_id = $1
+            AND cs.deleted_at IS NULL
+            AND cs.status IN ('Submitted','Approved','Applied')
+            AND NOT EXISTS (
+                SELECT 1 FROM net.change_set_item i
+                 WHERE i.change_set_id = cs.id
+            )")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, title, status) in rows {
+        out.push(Violation {
+            rule_code: "change_set.submitted_has_items".into(),
+            severity, entity_type: "ChangeSet".into(), entity_id: Some(id),
+            message: format!(
+                "Change set '{title}' in status '{status}' has zero items — nothing to approve / apply."),
+        });
+    }
+    Ok(())
+}
+
+/// `reservation_shelf.cooldown_respected` — Active shelf rows with
+/// `available_after` in the past aren't "bad" per se, but mean no
+/// background job has recycled them. Surfaces the case cleanly so
+/// admins know the recycler isn't running.
+async fn run_shelf_cooldown_respected(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT id, resource_type, resource_key
+           FROM net.reservation_shelf
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND status = 'Active'::net.entity_status
+            AND available_after < now()")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, resource_type, resource_key) in rows {
+        out.push(Violation {
+            rule_code: "reservation_shelf.cooldown_respected".into(),
+            severity, entity_type: "ReservationShelf".into(), entity_id: Some(id),
+            message: format!(
+                "Shelf entry {resource_type}/{resource_key} past its cooldown — recycler hasn't run."),
+        });
+    }
+    Ok(())
+}
+
+/// `vlan_block.range_within_pool` — JOIN net.vlan_block →
+/// net.vlan_pool + compare (vlan_first, vlan_last) ranges. Flag
+/// rows where block range isn't fully contained by pool range.
+async fn run_vlan_block_range_within_pool(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i32, i32, i32, i32)> = sqlx::query_as(
+        "SELECT b.id,
+                b.block_code,
+                b.vlan_first,
+                b.vlan_last,
+                p.vlan_first,
+                p.vlan_last
+           FROM net.vlan_block b
+           JOIN net.vlan_pool p ON p.id = b.pool_id
+          WHERE b.organization_id = $1
+            AND b.deleted_at IS NULL
+            AND (b.vlan_first < p.vlan_first
+                 OR b.vlan_last > p.vlan_last)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, bfirst, blast, pfirst, plast) in rows {
+        out.push(Violation {
+            rule_code: "vlan_block.range_within_pool".into(),
+            severity, entity_type: "VlanBlock".into(), entity_id: Some(id),
+            message: format!(
+                "VLAN block '{code}' range {bfirst}-{blast} straddles parent pool range {pfirst}-{plast}."),
+        });
+    }
+    Ok(())
+}
+
 /// `port.interface_name_not_empty` — net.port.interface_name is
 /// NOT NULL but the CHECK doesn't cover the blank-string case.
 /// Empty name breaks config-gen's `set interface ... ...` stanza.
@@ -3406,6 +3534,9 @@ mod tests {
             "port.breakout_parent_on_same_device",
             "port.aggregate_on_same_device",
             "aggregate_ethernet.name_unique_per_device",
+            "change_set.submitted_has_items",
+            "reservation_shelf.cooldown_respected",
+            "vlan_block.range_within_pool",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
