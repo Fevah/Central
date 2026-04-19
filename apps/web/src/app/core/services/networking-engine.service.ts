@@ -420,6 +420,39 @@ export class NetworkingEngineService {
     return this.http.get<EntityTypeStats[]>(`${this.base}/api/net/audit/stats`, { params });
   }
 
+  /// Generic audit list — filter by entity type / entity id / action /
+  /// actor / correlation / date window. Capped at `limit` rows server
+  /// side (default 100, engine hard cap 500 for this endpoint).
+  /// `beforeSequenceId` is the descending-pagination cursor — pass the
+  /// min sequenceId from the previous page to fetch the next one.
+  listAudit(
+    organizationId: string,
+    opts: {
+      entityType?: string;
+      entityId?: string;
+      action?: string;
+      actorUserId?: number;
+      correlationId?: string;
+      fromAt?: string;
+      toAt?: string;
+      limit?: number;
+      beforeSequenceId?: number;
+    } = {},
+  ): Observable<AuditRow[]> {
+    let params = new HttpParams().set('organizationId', organizationId);
+    if (opts.entityType)                 params = params.set('entityType',       opts.entityType);
+    if (opts.entityId)                   params = params.set('entityId',         opts.entityId);
+    if (opts.action)                     params = params.set('action',           opts.action);
+    if (opts.actorUserId !== undefined)  params = params.set('actorUserId',      opts.actorUserId.toString());
+    if (opts.correlationId)              params = params.set('correlationId',    opts.correlationId);
+    if (opts.fromAt)                     params = params.set('fromAt',           opts.fromAt);
+    if (opts.toAt)                       params = params.set('toAt',             opts.toAt);
+    if (opts.limit !== undefined)        params = params.set('limit',            opts.limit.toString());
+    if (opts.beforeSequenceId !== undefined)
+      params = params.set('beforeSequenceId', opts.beforeSequenceId.toString());
+    return this.http.get<AuditRow[]>(`${this.base}/api/net/audit`, { params });
+  }
+
   /// Fetch the entity's full audit timeline — no 500-row cap that
   /// the generic /api/net/audit list applies.
   getEntityTimeline(
