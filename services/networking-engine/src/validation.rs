@@ -1275,6 +1275,42 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Error,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "ip_address.subnet_resolves_active",
+        name: "IP address subnet must resolve + be Active",
+        description: "An ip_address pointing at a soft-deleted or \
+                      Decommissioned subnet is an orphan — the \
+                      allocation lifecycle broke. Parallel to \
+                      subnet.vlan_link_is_active (batch 8) but for \
+                      IP → subnet.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "link.active_has_endpoints",
+        name: "Active link should carry at least two endpoints",
+        description: "An Active net.link with fewer than two \
+                      net.link_endpoint rows renders as a half-link \
+                      at config-gen. Existing link.endpoint_count \
+                      catches the > 2 case; this parallels for the \
+                      < 2 underflow.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "floor.building_resolves_active",
+        name: "Floor building_id must resolve to an Active building",
+        description: "A floor under a soft-deleted or Decommissioned \
+                      building is orphaned — the hierarchy drill \
+                      breaks at the floor level. Parallel to \
+                      hierarchy.floor_requires_building but checks \
+                      the parent's lifecycle state too.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1567,6 +1603,9 @@ async fn dispatch(
         "rack.uheight_positive"                   => run_rack_uheight_positive(pool, org_id, severity, out).await,
         "room.max_racks_positive_when_set"        => run_room_max_racks_positive(pool, org_id, severity, out).await,
         "vlan_template.display_name_not_empty"    => run_vlan_template_display_name(pool, org_id, severity, out).await,
+        "ip_address.subnet_resolves_active"       => run_ip_subnet_resolves_active(pool, org_id, severity, out).await,
+        "link.active_has_endpoints"               => run_link_active_has_endpoints(pool, org_id, severity, out).await,
+        "floor.building_resolves_active"          => run_floor_building_active(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -3926,6 +3965,84 @@ async fn run_ip_pool_network_canonical(
     Ok(())
 }
 
+/// `ip_address.subnet_resolves_active` — IP's subnet must be
+/// live + Active. LEFT JOIN catches missing subnet + deleted
+/// subnet + non-Active subnet.
+async fn run_ip_subnet_resolves_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT ip.id, host(ip.address), COALESCE(sn.status::text, '(missing)')
+           FROM net.ip_address ip
+           LEFT JOIN net.subnet sn ON sn.id = ip.subnet_id
+          WHERE ip.organization_id = $1
+            AND ip.deleted_at IS NULL
+            AND (sn.id IS NULL
+                 OR sn.deleted_at IS NOT NULL
+                 OR sn.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, addr, status) in rows {
+        out.push(Violation {
+            rule_code: "ip_address.subnet_resolves_active".into(),
+            severity, entity_type: "IpAddress".into(), entity_id: Some(id),
+            message: format!(
+                "IP {addr} references a subnet with status '{status}' — orphaned allocation."),
+        });
+    }
+    Ok(())
+}
+
+/// `link.active_has_endpoints` — Active link with < 2 endpoints
+/// is half-formed. Parallel to link.endpoint_count which catches > 2.
+async fn run_link_active_has_endpoints(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i64)> = sqlx::query_as(
+        "SELECT l.id, l.link_code, COUNT(e.id) AS n
+           FROM net.link l
+           LEFT JOIN net.link_endpoint e ON e.link_id = l.id
+          WHERE l.organization_id = $1
+            AND l.deleted_at IS NULL
+            AND l.status = 'Active'::net.entity_status
+          GROUP BY l.id, l.link_code
+         HAVING COUNT(e.id) < 2")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, n) in rows {
+        out.push(Violation {
+            rule_code: "link.active_has_endpoints".into(),
+            severity, entity_type: "Link".into(), entity_id: Some(id),
+            message: format!(
+                "Active link '{code}' has only {n} endpoint(s) — needs at least 2."),
+        });
+    }
+    Ok(())
+}
+
+/// `floor.building_resolves_active` — floor's building must be live.
+async fn run_floor_building_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT f.id, f.floor_code, COALESCE(b.status::text, '(missing)')
+           FROM net.floor f
+           LEFT JOIN net.building b ON b.id = f.building_id
+          WHERE f.organization_id = $1
+            AND f.deleted_at IS NULL
+            AND (b.id IS NULL
+                 OR b.deleted_at IS NOT NULL
+                 OR b.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, status) in rows {
+        out.push(Violation {
+            rule_code: "floor.building_resolves_active".into(),
+            severity, entity_type: "Floor".into(), entity_id: Some(id),
+            message: format!(
+                "Floor '{code}' references a building with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -4455,6 +4572,9 @@ mod tests {
             "rack.uheight_positive",
             "room.max_racks_positive_when_set",
             "vlan_template.display_name_not_empty",
+            "ip_address.subnet_resolves_active",
+            "link.active_has_endpoints",
+            "floor.building_resolves_active",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
