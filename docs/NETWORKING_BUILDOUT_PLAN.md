@@ -456,15 +456,89 @@ tenant) the output matches line-for-line. 230/230 unit tests +
 - **Global search + faceted filters + saved views** — full-text search via query-time UNION with RBAC post-filter; `entityTypes` filter parameter; `net.saved_view` per-user CRUD with ownership-as-auth boundary.
 - **XLSX round-trip** — `calamine` + `rust_xlsxwriter` crate deps; pure transport adapter over the CSV pipeline (no per-entity XLSX re-implementation, no drift risk).
 
-**What the plan does NOT cover today** — these are future Phase 11+ scope, not Phase 10 regressions:
-- WPF module integration consuming the new endpoints (separate client-side slice; the service surface is ready)
-- GIN indexes on the search expressions (deferred until a tenant hits the ~10k-rows-per-entity performance cliff)
-- Upsert semantics for bulk import (create-only is today's rule)
-- Hierarchy expansion in the RBAC resolver for more entity types (Link / Vlan / Subnet fall back to Global+EntityId; extending is one match arm per type in `fetch_entity_hierarchy`)
+**Phase 10b — WPF operator surface shipped (2026-04-19+).** The items below were listed as gaps at service-side closure (slice 48); they have since landed as the Phase 10b arc documented in the next section:
+
+- ~~WPF module integration consuming the new endpoints~~ — Phase 10b (BulkPanel / SearchPanel / ScopeGrantsAdminPanel / audit + hierarchy drill-downs across every grid)
+- ~~GIN indexes on the search expressions~~ — migration 107, `5b034abb2`; six partial GIN indexes on `to_tsvector('english'::regconfig, …)` expressions with a unit-test guardrail preventing drift back to STABLE variant
+- ~~Upsert semantics for bulk import~~ — commits `d9964d33a` / `7a1c554e5` / `0d7c13391`; `?mode=upsert` on all six bulk importers with version-checked UPDATE on devices (CSV carries a version column) and "apply to current DB version" semantic on the other five
+- ~~Hierarchy expansion in the RBAC resolver for more entity types~~ — commit `3341f4afb` extends `fetch_entity_hierarchy` to Link / Vlan / Subnet (one match arm per type, as predicted)
+
+**What the plan does NOT cover today** — future Phase 11+ scope:
+- Angular web-client integration (WPF surface is complete; Angular client would consume the same endpoints)
+- Region + Room audit emission on the .NET-side `HierarchyRepository` (Rust-side audit emission for those two levels is missing so drill-down from the hierarchy tree shows empty for non-migration rows — noted in the WPF slice for follow-up)
+- Preview-before-apply diff endpoint (dry_run returns pass/fail per row; a "show what rows would change" preview is a separate API that lands with Phase 7's override + preview work)
 
 **Known limitations / follow-up:**
 - The `#[ignore]` live-DB integration tests need a `TEST_DATABASE_URL` to actually run — CI doesn't yet opt them in (add in a follow-up PR when a test DB is available)
-- WPF module integration — the C# client surface is ready but no panel exposes it yet. The admin-side "Render preview / history / diff" UI is a separate slice
+
+---
+
+### Phase 10b — WPF operator surface (2026-04-19+)
+
+**Scope:** Consume every Phase 10 engine endpoint from the WPF shell. Operators get a ribbon + panel + context-menu workflow for the full bulk / search / audit / scope-grant / hierarchy surface. No new engine endpoints except a thin-list pair for VLAN + Link lookup and migration 107 for GIN indexes — the server-side was already complete.
+
+**Status (2026-04-19):** In progress. Audit-drill + search-drill + hierarchy-drill trio is complete across every operator-facing grid and both tree panels. Remaining polish is incremental.
+
+**Architectural primitives added for cross-panel drill-down:**
+- `OpenPanelMessage(TargetPanel)` — new IPanelMessage record in `libs/engine/Shell/PanelMessageBus.cs`. MainWindow subscribes + flips the matching `VM.Is*PanelOpen` boolean, which cascades through the existing DockController.Restore path. Pairs with a follow-on `NavigateToPanelMessage(TargetPanel, payload)` to drive state inside the restored panel. One message covered the in-panel half already; the shell half was missing
+- Payload vocabulary used by every entity grid + tree:
+  - `selectId:{guid}:{label}` — focus a single row (grid uses uuid first, falls back to label)
+  - `selectEntity:{Type}:{guid}` — audit panel's auto-filter form
+  - `q:{text}` — search panel populate query + auto-run
+  - `filterBy:{Column}:{Value}` — apply a DX `FilterString` (column + value; grid maps its own column)
+  - `focus{NodeType}:{code}` — hierarchy tree expand-to-node + focus
+  - `action:{verb}` — ribbon-style trigger (validate / apply / clear / etc.)
+
+**Slice table:**
+
+| # | What | Commit |
+|---|------|--------|
+| 49 | Bulk import upsert — devices (version-checked UPDATE, ImportMode enum, dup_check suppression) | `d9964d33a` |
+| 50 | Bulk import upsert — VLANs + subnets; new compound keys | `7a1c554e5` |
+| 51 | Bulk import upsert — servers + DHCP relay + links (link path DELETE-then-INSERT endpoints) | `0d7c13391` |
+| 52 | GIN indexes for global search (migration 107, `::regconfig` cast, guardrail test) | `5b034abb2` |
+| 53 | Round-trip integration tests (export → edit cell → re-import Upsert → state matches) | `68210a7f9` |
+| 54 | WPF `BulkPanel` — entity combo + mode + dry-run + CSV editor + outcomes grid | `6d4f94846` |
+| 55 | Wire BulkPanel into MainWindow DockLayoutManager + ribbon (Bulk group, Panels check button) | `33af0029a` |
+| 56 | WPF `SearchPanel` — query + entity-types combo + results grid + context menu | `950eeafef` |
+| 57 | Saved-views sidebar on SearchPanel (per-user CRUD, click-to-populate) | `540b19c4d` |
+| 58 | WPF `ScopeGrantsAdminPanel` — filter / CRUD / check-permission dialog | `e198af3dc` |
+| 59 | Search → audit drill-down via `OpenPanelMessage` primitive | `8dadcdcc4` |
+| 60 | Search → entity-grid row focus (hostname / uuid match) | `2fc2cbed9` |
+| 61 | Subnet Floor/Room scope_entity_code in bulk CSV (compound path format) | `00cda417d` |
+| 62 | Row-level "Show audit" context menu — server + scope grants grids (uuid-direct) | `b0e35d15c` |
+| 63 | Audit drill for Device + VLAN grids via `ListDevicesAsync` / `ListVlansAsync` (hostname→uuid lookup) | `f1fdcee46` |
+| 64 | Audit drill on P2P / B2B / FW link grids via shared `LinkAuditDrill` + `/api/net/links` thin list | `d041f7821` |
+| 65 | Subnet Region/Site scope_entity_code — 5 scope levels complete | `24abbc8d4` |
+| 66 | Audit panel — visible Entity ID filter + Clear filters button (replaces invisible `_pendingEntityId`) | `944ffbc52` |
+| 67 | "Search from here" context menu on every entity grid (publishes `q:{text}`) | `33d2770cb` |
+| 68 | VLAN scope_entity_code — 5 scope levels (Free/Region/Site/Building/Device) | `013f01d5b` |
+| 69 | BulkPanel XLSX transport toggle — editor stays CSV source of truth, XLSX buffers bytes | `cd7a306a8` |
+| 70 | Tenant context in status bar — resolves `display_name` at bootstrap | `8d6113921` |
+| 71 | Audit panel — Recent:{1h/24h/7d/30d/All} quick-range chips | `55fe6df70` |
+| 72 | "Show in hierarchy" drill from entity grids; Hierarchy handles `focus{NodeType}:{code}` with ancestor-chain expand | `625ac29c2` |
+| 73 | Three new validation rules (link endpoint interface uniq, DHCP relay pair uniq, device role display name) | `cc4748f5f` |
+| 74 | Reverse drill — Hierarchy Building → "Show devices here" filters Device grid | `8bbc6bcec` |
+| 75 | Audit panel — Full timeline button (`/api/net/audit/entity/{type}/{id}` — no 500-row cap) | `245d85dfc` |
+| 76 | Hierarchy Building → "Show servers here" — same `filterBy` payload, different column | `4d21e177c` |
+| 77 | FEATURE_TEST_CHECKLIST refresh — 7.X.16 + migrations 097-107 | `e2b650ee4` |
+| 78 | Audit drill on Hierarchy + Pools tree nodes — completes drill across every panel | `984e95769` |
+| 79 | This plan doc refresh — Phase 10b section + stale "not covered" list corrected | this commit |
+
+**Acceptance criteria check:**
+- [x] Every Phase 10 engine endpoint reachable from the WPF shell
+- [x] Cross-panel drill-down: search ↔ audit ↔ entity-grid ↔ hierarchy all one click away
+- [x] Row-level context menus: Show audit / Search from here / Show in hierarchy / Copy — every operator-facing grid
+- [x] Tree-level context menus: Show audit on Hierarchy + Pools trees; Show devices-here / servers-here from Hierarchy Buildings
+- [x] Bulk surface fully exposed: CSV + XLSX transport, create + upsert mode, dry-run + apply, per-row outcomes grid
+- [x] Audit panel polish: visible entity-id filter, Recent chips, Full timeline button, Clear filters escape hatch
+- [x] Tenant context indicator in the status bar
+
+**What Phase 10b does NOT cover:**
+- Audit emission from the .NET `HierarchyRepository` — Rust-side CRUD on Region/Room is minimal, so the hierarchy audit drill lands on empty result sets for manually-created rows until that gap is closed
+- Full tenant-switching UI (current build is session-fixed — operators reboot to switch)
+- Rename / edit on saved views (sidebar has Save + Delete only; rename lands with a follow-up dialog)
+- Preview-before-apply diff for bulk imports (Phase 7 territory — the naming override + preview API is the foundation a richer diff UI would build on)
 
 ---
 
