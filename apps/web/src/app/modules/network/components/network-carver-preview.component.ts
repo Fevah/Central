@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import {
   DxSelectBoxModule, DxNumberBoxModule, DxButtonModule,
 } from 'devextreme-angular';
@@ -140,15 +141,27 @@ export class NetworkCarverPreviewComponent implements OnInit {
   error = false;
   result: CarvePreview | null = null;
 
-  constructor(private engine: NetworkingEngineService) {}
+  constructor(
+    private engine: NetworkingEngineService,
+    private route: ActivatedRoute,
+  ) {}
 
   get currentPool(): IpPoolRow | null {
     return this.pools.find(p => p.Id === this.selectedPoolId) ?? null;
   }
 
   ngOnInit(): void {
+    // Optional query param `?poolId=…` pre-selects the pool — lets the
+    // IP-pool detail page deep-link straight into "Preview next subnet".
+    const paramPoolId = this.route.snapshot.queryParamMap.get('poolId');
     this.engine.listIpPools().subscribe({
-      next: (rows) => { this.pools = rows ?? []; },
+      next: (rows) => {
+        this.pools = rows ?? [];
+        if (paramPoolId && this.pools.some(p => p.Id === paramPoolId)) {
+          this.selectedPoolId = paramPoolId;
+          this.onPoolChanged();
+        }
+      },
       error: (err) => { this.status = `Pool load failed: ${err?.message ?? err}`; this.error = true; },
     });
   }

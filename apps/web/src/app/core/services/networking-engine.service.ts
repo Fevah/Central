@@ -954,8 +954,12 @@ export class NetworkingEngineService {
 
   /// Thin subnet list — 5000 row cap, pool code + linked VLAN tag
   /// resolved, network rendered as a CIDR string.
-  listSubnets(organizationId: string): Observable<SubnetListRow[]> {
-    const params = new HttpParams().set('organizationId', organizationId);
+  listSubnets(
+    organizationId: string,
+    poolId?: string,
+  ): Observable<SubnetListRow[]> {
+    let params = new HttpParams().set('organizationId', organizationId);
+    if (poolId) params = params.set('poolId', poolId);
     return this.http.get<SubnetListRow[]>(`${this.base}/api/net/subnets`, { params });
   }
 

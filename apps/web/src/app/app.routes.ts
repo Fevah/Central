@@ -48,6 +48,7 @@ export const routes: Routes = [
           { path: 'hierarchy',       loadComponent: () => import('./modules/network/components/network-hierarchy.component').then(m => m.NetworkHierarchyComponent) },
           { path: 'pools',           loadComponent: () => import('./modules/network/components/network-pools.component').then(m => m.NetworkPoolsComponent) },
           { path: 'carver-preview',  loadComponent: () => import('./modules/network/components/network-carver-preview.component').then(m => m.NetworkCarverPreviewComponent) },
+          { path: 'ip-pool/:id',     loadComponent: () => import('./modules/network/components/network-ip-pool-detail.component').then(m => m.NetworkIpPoolDetailComponent) },
           { path: 'bulk',            loadComponent: () => import('./modules/network/components/network-bulk.component').then(m => m.NetworkBulkComponent) },
           { path: 'devices',         loadComponent: () => import('./modules/network/components/network-devices.component').then(m => m.NetworkDevicesComponent) },
           { path: 'net-device/:id',  loadComponent: () => import('./modules/network/components/network-device-detail.component').then(m => m.NetworkDeviceDetailComponent) },
