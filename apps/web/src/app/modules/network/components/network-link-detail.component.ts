@@ -67,6 +67,14 @@ import { environment } from '../../../../environments/environment';
         <div class="meta-row"><label>Type</label>       <span>{{ link.linkType ?? '—' }}</span></div>
         <div class="meta-row"><label>Status</label>     <span>{{ link.status }}</span></div>
         <div class="meta-row"><label>Version</label>    <span>{{ link.version }}</span></div>
+        <div class="meta-row">
+          <label>Endpoints</label>
+          <span>{{ endpointCount === null ? '…' : endpointCount }}</span>
+        </div>
+        <div class="meta-row">
+          <label>Distinct devices</label>
+          <span>{{ distinctDeviceCount === null ? '…' : distinctDeviceCount }}</span>
+        </div>
         <div class="meta-row full"><label>UUID</label>  <code>{{ link.id }}</code></div>
       </div>
     </div>
@@ -145,6 +153,11 @@ export class NetworkLinkDetailComponent implements OnInit {
   audit: AuditRow[] = [];
   endpoints: LinkEndpointListRow[] = [];
   loadingEndpoints = false;
+  /// Summary count enrichment — populated on page load from the
+  /// listLinkEndpoints narrower; distinctDeviceCount is the Set-
+  /// size of deviceHostname across the endpoints.
+  endpointCount: number | null = null;
+  distinctDeviceCount: number | null = null;
   status = '';
 
   /// Hostname → net.device uuid map, filled lazily when the user
@@ -169,9 +182,31 @@ export class NetworkLinkDetailComponent implements OnInit {
       next: (rows) => {
         this.link = rows.find(r => r.id === this.linkId) ?? null;
         this.status = this.link ? '' : 'Link not found.';
-        if (this.link) this.loadTabData();
+        if (this.link) {
+          this.loadTabData();
+          this.loadSummaryCounts();
+        }
       },
       error: (err) => { this.status = `Load failed: ${err?.message ?? err}`; },
+    });
+  }
+
+  /// Summary-tab enrichment — one parallel listLinkEndpoints call
+  /// so the endpoint count + distinct-device count surface on the
+  /// Summary tab without waiting for the Endpoints tab. Caches
+  /// this.endpoints to avoid a second fetch when the tab is opened.
+  private loadSummaryCounts(): void {
+    this.engine.listLinkEndpoints(environment.defaultTenantId, this.linkId).subscribe({
+      next: (rows) => {
+        this.endpoints = rows ?? [];
+        this.endpointCount = this.endpoints.length;
+        const devices = new Set<string>();
+        for (const e of this.endpoints) {
+          if (e.deviceHostname) devices.add(e.deviceHostname);
+        }
+        this.distinctDeviceCount = devices.size;
+      },
+      error: () => { this.endpointCount = 0; this.distinctDeviceCount = 0; },
     });
   }
 
