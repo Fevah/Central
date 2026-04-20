@@ -2304,6 +2304,33 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "asn_pool.pool_code_no_leading_trailing_whitespace",
+        name: "ASN pool pool_code should not have leading or trailing whitespace",
+        description: "Trim-hygiene on asn_pool pool_code. pool_code \
+                      is UNIQUE per tenant + referenced by imports \
+                      so whitespace breaks exact-match lookups.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "vlan_pool.pool_code_no_leading_trailing_whitespace",
+        name: "VLAN pool pool_code should not have leading or trailing whitespace",
+        description: "Trim-hygiene mirror on vlan_pool pool_code.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "ip_pool.pool_code_no_leading_trailing_whitespace",
+        name: "IP pool pool_code should not have leading or trailing whitespace",
+        description: "Trim-hygiene mirror on ip_pool pool_code. \
+                      Completes the pool_code trim family.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2696,6 +2723,9 @@ async fn dispatch(
         "asn_pool.display_name_no_leading_trailing_whitespace" => run_asn_pool_name_ws(pool, org_id, severity, out).await,
         "vlan_pool.display_name_no_leading_trailing_whitespace" => run_vlan_pool_name_ws(pool, org_id, severity, out).await,
         "mlag_domain_pool.display_name_no_leading_trailing_whitespace" => run_mlag_pool_name_ws(pool, org_id, severity, out).await,
+        "asn_pool.pool_code_no_leading_trailing_whitespace" => run_asn_pool_code_ws(pool, org_id, severity, out).await,
+        "vlan_pool.pool_code_no_leading_trailing_whitespace" => run_vlan_pool_code_ws(pool, org_id, severity, out).await,
+        "ip_pool.pool_code_no_leading_trailing_whitespace" => run_ip_pool_code_ws(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -7298,6 +7328,72 @@ async fn run_mlag_pool_name_ws(
     Ok(())
 }
 
+/// `asn_pool.pool_code_no_leading_trailing_whitespace` — trim-equal.
+async fn run_asn_pool_code_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, pool_code
+           FROM net.asn_pool
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (pool_code <> btrim(pool_code))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "asn_pool.pool_code_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "AsnPool".into(), entity_id: Some(id),
+            message: format!(
+                "ASN pool pool_code '{code}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
+/// `vlan_pool.pool_code_no_leading_trailing_whitespace` — trim-equal.
+async fn run_vlan_pool_code_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, pool_code
+           FROM net.vlan_pool
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (pool_code <> btrim(pool_code))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "vlan_pool.pool_code_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "VlanPool".into(), entity_id: Some(id),
+            message: format!(
+                "VLAN pool pool_code '{code}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
+/// `ip_pool.pool_code_no_leading_trailing_whitespace` — trim-equal.
+async fn run_ip_pool_code_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, pool_code
+           FROM net.ip_pool
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (pool_code <> btrim(pool_code))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "ip_pool.pool_code_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "IpPool".into(), entity_id: Some(id),
+            message: format!(
+                "IP pool pool_code '{code}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -7917,6 +8013,9 @@ mod tests {
             "asn_pool.display_name_no_leading_trailing_whitespace",
             "vlan_pool.display_name_no_leading_trailing_whitespace",
             "mlag_domain_pool.display_name_no_leading_trailing_whitespace",
+            "asn_pool.pool_code_no_leading_trailing_whitespace",
+            "vlan_pool.pool_code_no_leading_trailing_whitespace",
+            "ip_pool.pool_code_no_leading_trailing_whitespace",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
