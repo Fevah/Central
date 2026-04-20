@@ -2,6 +2,18 @@
 
 namespace Central.Tests.Shell;
 
+/// <summary>
+/// <see cref="PanelMessageBus"/> is a static singleton — any test
+/// that subscribes on it is visible to every other test xUnit runs
+/// in parallel. The <c>AllModules*AuditTests</c> classes invoke
+/// ribbon OnClick handlers that publish messages on the same bus;
+/// without a shared <c>[Collection]</c> those publishes race into
+/// the subscribers below and the <c>Assert.Equal()</c> on captured
+/// content fails non-deterministically. Every bus-touching test
+/// class is tagged <c>[Collection("RibbonAudit")]</c> so xUnit
+/// serialises them.
+/// </summary>
+[Collection("RibbonAudit")]
 public class PanelMessageBusTests
 {
     [Fact]
