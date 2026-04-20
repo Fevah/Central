@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { DxButtonModule } from 'devextreme-angular';
-import { NetworkingEngineService } from '../../../core/services/networking-engine.service';
+import { NetworkingEngineService, AuditRow } from '../../../core/services/networking-engine.service';
 import { environment } from '../../../../environments/environment';
 
 interface CountTile {
@@ -110,6 +110,32 @@ interface StatusBreakdown {
         </tr>
       </tbody>
     </table>
+
+    <h3 class="section-header">
+      Recent activity
+      <a routerLink="/network/audit-search" class="section-link">see all →</a>
+    </h3>
+    <div *ngIf="recentLoading" class="empty-note">Loading recent activity…</div>
+    <div *ngIf="!recentLoading && !recentActivity.length" class="empty-note">
+      No recent audit entries.
+    </div>
+    <table class="recent" *ngIf="recentActivity.length">
+      <thead>
+        <tr>
+          <th>At</th><th>Actor</th><th>Entity</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let r of recentActivity"
+            class="recent-row"
+            (click)="openRecent(r)">
+          <td>{{ r.createdAt | date:'yyyy-MM-dd HH:mm:ss' }}</td>
+          <td>{{ r.actorDisplay ?? (r.actorUserId ?? '(service)') }}</td>
+          <td>{{ r.entityType }}</td>
+          <td><code>{{ r.action }}</code></td>
+        </tr>
+      </tbody>
+    </table>
   `,
   styles: [`
     :host { display: block; padding: 12px 16px; }
@@ -172,6 +198,31 @@ interface StatusBreakdown {
     .sev-error   { color: #cf222e; font-weight: 600; }
     .sev-warning { color: #bf8700; }
     .sev-info    { color: #6b6b6b; }
+
+    .section-link {
+      float: right; font-size: 11px; font-weight: normal;
+      color: #3b82f6; text-decoration: none; text-transform: none;
+      letter-spacing: normal;
+    }
+    .section-link:hover { text-decoration: underline; }
+    .empty-note {
+      padding: 12px; color: #888; font-size: 12px; font-style: italic;
+      text-align: center;
+      background: #f6f8fa; border: 1px solid #e1e4e8; border-radius: 6px;
+    }
+    .recent {
+      width: 100%; border-collapse: collapse; margin-top: 8px;
+      background: #ffffff; border: 1px solid #e1e4e8; border-radius: 6px;
+    }
+    .recent th, .recent td {
+      text-align: left; padding: 6px 12px; border-bottom: 1px solid #e1e4e8;
+      font-size: 12px;
+    }
+    .recent tr:last-child td { border-bottom: none; }
+    .recent-row { cursor: pointer; }
+    .recent-row:hover { background: #f6f8fa; }
+    .recent code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px;
+                   background: rgba(148,163,184,0.1); padding: 1px 6px; border-radius: 3px; }
   `],
 })
 export class NetworkOverviewComponent implements OnInit {
@@ -187,6 +238,9 @@ export class NetworkOverviewComponent implements OnInit {
   warningCount = 0;
   topRules: { ruleCode: string; severity: string; count: number }[] = [];
 
+  recentActivity: AuditRow[] = [];
+  recentLoading = false;
+
   private tenantId = environment.defaultTenantId;
 
   constructor(
@@ -199,6 +253,28 @@ export class NetworkOverviewComponent implements OnInit {
   ngOnInit(): void {
     this.reload();
     this.runValidation();
+    this.loadRecentActivity();
+  }
+
+  /// Last 10 audit entries across the tenant. Tiny widget —
+  /// click a row to drill into the entity's full timeline.
+  private loadRecentActivity(): void {
+    this.recentLoading = true;
+    this.engine.listAudit(this.tenantId, { limit: 10 }).subscribe({
+      next: (rows) => {
+        this.recentActivity = rows ?? [];
+        this.recentLoading = false;
+      },
+      error: () => { this.recentLoading = false; },
+    });
+  }
+
+  /// Double-click a recent activity row → drill to the entity's
+  /// audit timeline (falls back silently when entityId is null,
+  /// e.g. tenant-scope audit entries).
+  openRecent(r: AuditRow): void {
+    if (!r?.entityType || !r?.entityId) return;
+    this.router.navigate(['/network/audit', r.entityType, r.entityId]);
   }
 
   private buildSections(): void {
