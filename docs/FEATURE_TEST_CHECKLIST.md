@@ -4132,6 +4132,42 @@ name whitespace fields. Validation page gains Reset filters.
 - [ ] Catalog at 212 rules — every display_name + *_code in
       the net.* graph now has a trim check.
 
+### 7.X.50 Phase 10b — thirty-third wave (commits 2026-04-20+)
+
+Per-entity-type lifecycle rollup endpoint + overview dashboard
+table. Validation batch 58 covers change-set title hygiene.
+
+**Engine /api/net/tenant/lifecycle-summary endpoint** (commit `e338ce5c9`)
+- [ ] GET /api/net/tenant/lifecycle-summary?organizationId=…
+      returns [{ entityType, status, count }] for Device /
+      Server / Vlan / Subnet / Link.
+- [ ] UNION ALL across five per-table GROUP BYs.
+- [ ] Only non-zero buckets appear (zero counts are absent).
+- [ ] Ordered by entityType + status.
+
+**Overview lifecycle-state table** (commit `c4d844a14`)
+- [ ] /network/overview gains a "Lifecycle state" section
+      above the pending-approvals panel.
+- [ ] Columns: Entity / Planned / Active / Decommissioned / Other.
+- [ ] Fixed entity-type order (Device, Server, Vlan, Subnet, Link).
+- [ ] Active count rendered in green; decommissioned + other
+      muted.
+- [ ] New tenantLifecycleSummary service method + LifecycleBucket
+      interface.
+
+**C# ApiClient — TenantLifecycleSummaryAsync** (commit `2e1f42382`)
+- [ ] TenantLifecycleSummaryAsync(organizationId, ct) →
+      List<LifecycleBucketDto>.
+- [ ] New LifecycleBucketDto(EntityType, Status, Count).
+- [ ] 0 errors on build.
+
+**Validation rule expansion — batch 58** (commit `8c0bd509b`)
+- [ ] `change_set.title_not_empty` (Error) — title required +
+      non-empty + non-whitespace.
+- [ ] `change_set.title_no_leading_trailing_whitespace` (Warning)
+- [ ] `vlan_template.template_code_no_leading_trailing_whitespace` (Warning)
+- [ ] Catalog now at 215 rules.
+
 ---
 
 ## 8. Enterprise SaaS
