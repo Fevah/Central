@@ -1515,6 +1515,45 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "vlan_template.default_unique_per_tenant",
+        name: "At most one vlan_template may have is_default=true per tenant",
+        description: "Two default templates within a tenant leave \
+                      the fall-back path ambiguous — whichever one \
+                      the resolver picks first wins, which is \
+                      insertion-order and not reproducible. Guards \
+                      against an operator forgetting to flip the \
+                      old default off before marking the new one.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "port.interface_name_starts_with_prefix",
+        name: "Port interface_name must begin with its interface_prefix",
+        description: "Ports are categorised by prefix (xe- / ge- / \
+                      et- / fe-) but the name is free-form. If the \
+                      two disagree the device editor's filter / \
+                      group-by behaviour gets confused. Catches \
+                      typos + legacy imports that stamped the \
+                      wrong prefix.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "device.hardware_model_set_when_active",
+        name: "Active device should have hardware_model set",
+        description: "An Active device with NULL hardware_model is \
+                      a data-quality gap — config-gen can still \
+                      render, but inventory reports + hardware-\
+                      compatibility scans miss the row. Warning \
+                      severity so existing tenants aren't flooded \
+                      with errors at the point this rule ships.",
+        category: "Advisory",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1828,6 +1867,9 @@ async fn dispatch(
         "server_nic.vlan_resolves_active_when_set" => run_server_nic_vlan_active(pool, org_id, severity, out).await,
         "server_nic.subnet_resolves_active_when_set" => run_server_nic_subnet_active(pool, org_id, severity, out).await,
         "link_endpoint.vlan_resolves_active_when_set" => run_link_endpoint_vlan_active(pool, org_id, severity, out).await,
+        "vlan_template.default_unique_per_tenant" => run_vlan_template_default_unique(pool, org_id, severity, out).await,
+        "port.interface_name_starts_with_prefix"  => run_port_name_prefix(pool, org_id, severity, out).await,
+        "device.hardware_model_set_when_active"   => run_device_model_set(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -4725,6 +4767,88 @@ async fn run_link_endpoint_vlan_active(
     Ok(())
 }
 
+/// `vlan_template.default_unique_per_tenant` — at most one
+/// is_default=true vlan_template per tenant.
+async fn run_vlan_template_default_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    // If more than one is_default row exists, every such row is a
+    // violation (they're all ambiguous — pick-by-insertion-order
+    // doesn't privilege any of them).
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, template_code
+           FROM net.vlan_template
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND is_default = true
+            AND (SELECT COUNT(*) FROM net.vlan_template
+                  WHERE organization_id = $1
+                    AND deleted_at IS NULL
+                    AND is_default = true) > 1")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "vlan_template.default_unique_per_tenant".into(),
+            severity, entity_type: "VlanTemplate".into(), entity_id: Some(id),
+            message: format!(
+                "VLAN template '{code}' is marked is_default but so is at \
+                 least one other template in the same tenant — fall-back \
+                 resolver becomes ambiguous."),
+        });
+    }
+    Ok(())
+}
+
+/// `port.interface_name_starts_with_prefix` — port's interface_name
+/// should begin with its interface_prefix + a '-'.
+async fn run_port_name_prefix(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT id, interface_name, interface_prefix
+           FROM net.port
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND interface_name NOT LIKE interface_prefix || '-%'")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, name, prefix) in rows {
+        out.push(Violation {
+            rule_code: "port.interface_name_starts_with_prefix".into(),
+            severity, entity_type: "Port".into(), entity_id: Some(id),
+            message: format!(
+                "Port interface_name '{name}' does not start with \
+                 interface_prefix '{prefix}-' — filter/group-by by \
+                 prefix will misclassify this port."),
+        });
+    }
+    Ok(())
+}
+
+/// `device.hardware_model_set_when_active` — Active devices
+/// should carry a hardware_model. Warning severity.
+async fn run_device_model_set(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, hostname
+           FROM net.device
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND status = 'Active'::net.entity_status
+            AND (hardware_model IS NULL OR hardware_model = '')")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname) in rows {
+        out.push(Violation {
+            rule_code: "device.hardware_model_set_when_active".into(),
+            severity, entity_type: "Device".into(), entity_id: Some(id),
+            message: format!(
+                "Active device '{hostname}' has no hardware_model — \
+                 inventory + compatibility reports won't include it."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -5275,6 +5399,9 @@ mod tests {
             "server_nic.vlan_resolves_active_when_set",
             "server_nic.subnet_resolves_active_when_set",
             "link_endpoint.vlan_resolves_active_when_set",
+            "vlan_template.default_unique_per_tenant",
+            "port.interface_name_starts_with_prefix",
+            "device.hardware_model_set_when_active",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
