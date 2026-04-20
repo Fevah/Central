@@ -2422,6 +2422,39 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "change_set.title_not_empty",
+        name: "Change-set title must not be empty or whitespace-only",
+        description: "change_set.title is NOT NULL but the DB \
+                      allows empty-string + whitespace-only values. \
+                      Empty titles break the change-sets list UX — \
+                      operators can't identify the set without \
+                      opening it.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "change_set.title_no_leading_trailing_whitespace",
+        name: "Change-set title should not have leading or trailing whitespace",
+        description: "Trim-hygiene on change_set.title. Whitespace \
+                      breaks search + sort ordering on the change-\
+                      sets list page.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "vlan_template.template_code_no_leading_trailing_whitespace",
+        name: "VLAN template template_code should not have leading or trailing whitespace",
+        description: "Trim-hygiene on vlan_template.template_code. \
+                      UNIQUE per tenant + referenced by exact match \
+                      during VLAN creation flows; whitespace breaks \
+                      template picker lookups.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2826,6 +2859,9 @@ async fn dispatch(
         "device_role.display_name_no_leading_trailing_whitespace" => run_device_role_name_ws(pool, org_id, severity, out).await,
         "link_type.display_name_no_leading_trailing_whitespace" => run_link_type_name_ws(pool, org_id, severity, out).await,
         "server_profile.display_name_no_leading_trailing_whitespace" => run_server_profile_name_ws(pool, org_id, severity, out).await,
+        "change_set.title_not_empty"              => run_change_set_title_empty(pool, org_id, severity, out).await,
+        "change_set.title_no_leading_trailing_whitespace" => run_change_set_title_ws(pool, org_id, severity, out).await,
+        "vlan_template.template_code_no_leading_trailing_whitespace" => run_vlan_template_code_ws(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -7692,6 +7728,74 @@ async fn run_server_profile_name_ws(
     Ok(())
 }
 
+/// `change_set.title_not_empty` — flag change-sets with empty /
+/// whitespace-only titles.
+async fn run_change_set_title_empty(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid,)> = sqlx::query_as(
+        "SELECT id
+           FROM net.change_set
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (title IS NULL OR btrim(title) = '')")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id,) in rows {
+        out.push(Violation {
+            rule_code: "change_set.title_not_empty".into(),
+            severity, entity_type: "ChangeSet".into(), entity_id: Some(id),
+            message: "Change-set title is empty or whitespace-only — operators can't identify the set.".to_string(),
+        });
+    }
+    Ok(())
+}
+
+/// `change_set.title_no_leading_trailing_whitespace` — trim-equal.
+async fn run_change_set_title_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, title
+           FROM net.change_set
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND title IS NOT NULL
+            AND (title <> btrim(title))
+            AND btrim(title) <> ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, title) in rows {
+        out.push(Violation {
+            rule_code: "change_set.title_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "ChangeSet".into(), entity_id: Some(id),
+            message: format!(
+                "Change-set title '{title}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
+/// `vlan_template.template_code_no_leading_trailing_whitespace` — trim-equal.
+async fn run_vlan_template_code_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, template_code
+           FROM net.vlan_template
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (template_code <> btrim(template_code))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "vlan_template.template_code_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "VlanTemplate".into(), entity_id: Some(id),
+            message: format!(
+                "VLAN template template_code '{code}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -8323,6 +8427,9 @@ mod tests {
             "device_role.display_name_no_leading_trailing_whitespace",
             "link_type.display_name_no_leading_trailing_whitespace",
             "server_profile.display_name_no_leading_trailing_whitespace",
+            "change_set.title_not_empty",
+            "change_set.title_no_leading_trailing_whitespace",
+            "vlan_template.template_code_no_leading_trailing_whitespace",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
