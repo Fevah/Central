@@ -2740,6 +2740,74 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    // ── Batch 68 — port/loopback/module range + uniqueness ───────────────
+    RuleMeta {
+        code: "port.interface_name_unique_per_device",
+        name: "Port interface_name must be unique within its device",
+        description: "Two ports on the same device can't share an \
+                      interface_name (e.g. 'ge-0/0/1' appearing \
+                      twice). Breaks config generation + the port \
+                      picker. GROUP BY (device_id, interface_name) \
+                      HAVING COUNT > 1.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "loopback.loopback_number_non_negative",
+        name: "Loopback loopback_number must be >= 0",
+        description: "Loopback interfaces are numbered from 0 \
+                      (lo0 is conventional). Negative numbers are \
+                      invalid + would break config generation.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "module.slot_non_negative",
+        name: "Module slot must be >= 0",
+        description: "Chassis slots are numbered from 0 (PSU slots \
+                      sometimes from 1; either way, negative is \
+                      nonsensical). DB has no CHECK — rule surfaces \
+                      bad imports.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    // ── Batch 69 — change-set + scope-grant shape hygiene ────────────────
+    RuleMeta {
+        code: "change_set_item.action_in_allowed_set",
+        name: "Change-set item action must be Create/Update/Rename/Delete",
+        description: "DB has no enum on change_set_item.action; this \
+                      rule catches typos like 'update' (lowercase) or \
+                      historical variants ('Modify') that would slip \
+                      through the audit pipeline silently.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "scope_grant.action_not_empty",
+        name: "Scope grant action must not be empty",
+        description: "Empty action effectively grants nothing but \
+                      still clutters the grant picker + resolver \
+                      output. Companion to the existing \
+                      scope_grant.no_duplicate_tuple rule.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "scope_grant.entity_type_not_empty",
+        name: "Scope grant entity_type must not be empty",
+        description: "entity_type drives the resolver's join targets; \
+                      empty value falls through to a no-op grant. \
+                      Audit-layer sanity check rather than a DB CHECK \
+                      so legacy imports stay rescuable.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -3181,6 +3249,14 @@ async fn dispatch(
         "asn_block.block_code_unique_per_pool"    => run_asn_block_code_unique(pool, org_id, severity, out).await,
         "vlan_block.block_code_unique_per_pool"   => run_vlan_block_code_unique(pool, org_id, severity, out).await,
         "vlan_template.template_code_not_empty"   => run_vlan_template_code_not_empty(pool, org_id, severity, out).await,
+        // Batch 68 — port/loopback/module range + uniqueness
+        "port.interface_name_unique_per_device"   => run_port_interface_name_unique(pool, org_id, severity, out).await,
+        "loopback.loopback_number_non_negative"   => run_loopback_number_non_negative(pool, org_id, severity, out).await,
+        "module.slot_non_negative"                => run_module_slot_non_negative(pool, org_id, severity, out).await,
+        // Batch 69 — change-set + scope-grant shape hygiene
+        "change_set_item.action_in_allowed_set"   => run_change_set_item_action_allowed(pool, org_id, severity, out).await,
+        "scope_grant.action_not_empty"            => run_scope_grant_action_not_empty(pool, org_id, severity, out).await,
+        "scope_grant.entity_type_not_empty"       => run_scope_grant_entity_type_not_empty(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
     }
@@ -9022,6 +9098,125 @@ async fn run_vlan_template_code_not_empty(
     Ok(())
 }
 
+/// Batch 68 — `port.interface_name_unique_per_device`.
+async fn run_port_interface_name_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i64, Vec<Uuid>)> = sqlx::query_as(
+        "SELECT device_id, interface_name, COUNT(*) AS n, array_agg(id) AS ids
+           FROM net.port
+          WHERE organization_id = $1 AND deleted_at IS NULL
+       GROUP BY device_id, interface_name HAVING COUNT(*) > 1")
+        .bind(org_id).fetch_all(pool).await?;
+    for (device_id, iface, n, ids) in rows {
+        let primary = ids.first().copied();
+        let id_list = ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", ");
+        out.push(Violation {
+            rule_code: "port.interface_name_unique_per_device".into(),
+            severity, entity_type: "Port".into(), entity_id: primary,
+            message: format!("{n} ports on device {device_id} share interface_name '{iface}': {id_list}."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 68 — `loopback.loopback_number_non_negative`.
+async fn run_loopback_number_non_negative(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32)> = sqlx::query_as(
+        "SELECT id, loopback_number FROM net.loopback
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND loopback_number < 0")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, num) in rows {
+        out.push(Violation {
+            rule_code: "loopback.loopback_number_non_negative".into(),
+            severity, entity_type: "Loopback".into(), entity_id: Some(id),
+            message: format!("Loopback {id} has loopback_number={num} — must be >= 0."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 68 — `module.slot_non_negative`.
+async fn run_module_slot_non_negative(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32)> = sqlx::query_as(
+        "SELECT id, slot FROM net.module
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND slot < 0")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, slot) in rows {
+        out.push(Violation {
+            rule_code: "module.slot_non_negative".into(),
+            severity, entity_type: "Module".into(), entity_id: Some(id),
+            message: format!("Module {id} has slot={slot} — must be >= 0."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 69 — `change_set_item.action_in_allowed_set`.
+async fn run_change_set_item_action_allowed(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT csi.id, csi.action
+           FROM net.change_set_item csi
+           JOIN net.change_set cs ON cs.id = csi.change_set_id
+          WHERE cs.organization_id = $1
+            AND csi.action NOT IN ('Create', 'Update', 'Rename', 'Delete')")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, action) in rows {
+        out.push(Violation {
+            rule_code: "change_set_item.action_in_allowed_set".into(),
+            severity, entity_type: "ChangeSetItem".into(), entity_id: Some(id),
+            message: format!("Change-set item {id} has action='{action}' — must be Create/Update/Rename/Delete."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 69 — `scope_grant.action_not_empty`.
+async fn run_scope_grant_action_not_empty(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid,)> = sqlx::query_as(
+        "SELECT id FROM net.scope_grant
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND btrim(action) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id,) in rows {
+        out.push(Violation {
+            rule_code: "scope_grant.action_not_empty".into(),
+            severity, entity_type: "ScopeGrant".into(), entity_id: Some(id),
+            message: format!("Scope grant {id} has an empty action."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 69 — `scope_grant.entity_type_not_empty`.
+async fn run_scope_grant_entity_type_not_empty(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid,)> = sqlx::query_as(
+        "SELECT id FROM net.scope_grant
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND btrim(entity_type) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id,) in rows {
+        out.push(Violation {
+            rule_code: "scope_grant.entity_type_not_empty".into(),
+            severity, entity_type: "ScopeGrant".into(), entity_id: Some(id),
+            message: format!("Scope grant {id} has an empty entity_type."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.rack_code_unique_per_room` — parallel to floor/room rules.
 async fn run_rack_code_unique(
     pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
@@ -9359,6 +9554,12 @@ mod tests {
             "asn_block.block_code_unique_per_pool",
             "vlan_block.block_code_unique_per_pool",
             "vlan_template.template_code_not_empty",
+            "port.interface_name_unique_per_device",
+            "loopback.loopback_number_non_negative",
+            "module.slot_non_negative",
+            "change_set_item.action_in_allowed_set",
+            "scope_grant.action_not_empty",
+            "scope_grant.entity_type_not_empty",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
