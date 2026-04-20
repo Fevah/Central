@@ -204,6 +204,18 @@ public class NetworkingEngineClient : IDisposable
         => PostAsync<ChangeSetItemDto>(
             $"/api/net/change-sets/{setId}/items?organizationId={organizationId}", request, ct);
 
+    /// <summary>Soft-delete a pending item from a Draft change-set.
+    /// 400 when the parent Set isn't Draft; 404 when the set or
+    /// item is missing. Audits "ItemRemoved" with the Set's
+    /// correlation_id.</summary>
+    public async Task DeleteChangeSetItemAsync(Guid setId, Guid itemId,
+        Guid organizationId, CancellationToken ct = default)
+    {
+        var url = $"/api/net/change-sets/{setId}/items/{itemId}?organizationId={organizationId}";
+        var resp = await _http.DeleteAsync(url, ct);
+        await EnsureSuccessAsync(resp, ct);
+    }
+
     public Task<ChangeSetDto> SubmitChangeSetAsync(Guid setId, Guid organizationId,
         int requiredApprovals = 1, CancellationToken ct = default)
         => PostAsync<ChangeSetDto>(
