@@ -2117,6 +2117,37 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "server.display_name_no_leading_trailing_whitespace",
+        name: "Server display_name should not have leading or trailing whitespace",
+        description: "Trim-hygiene mirror on server display_name. \
+                      server.display_name is optional — rule only \
+                      fires when it's set.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "link.display_name_no_leading_trailing_whitespace",
+        name: "Link display_name should not have leading or trailing whitespace",
+        description: "Trim-hygiene mirror on link display_name. \
+                      link.display_name is optional — rule only \
+                      fires when it's set.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "ip_pool.display_name_no_leading_trailing_whitespace",
+        name: "IP pool display_name should not have leading or trailing whitespace",
+        description: "Trim-hygiene mirror on ip_pool display_name. \
+                      Pool display names drive pool-utilization \
+                      search + filter so stray whitespace breaks \
+                      drill-downs.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2481,6 +2512,9 @@ async fn dispatch(
         "ip_address.gateway_unique_per_subnet"    => run_ip_gateway_unique(pool, org_id, severity, out).await,
         "subnet.display_name_no_leading_trailing_whitespace" => run_subnet_name_ws(pool, org_id, severity, out).await,
         "vlan.display_name_no_leading_trailing_whitespace" => run_vlan_name_ws(pool, org_id, severity, out).await,
+        "server.display_name_no_leading_trailing_whitespace" => run_server_name_ws(pool, org_id, severity, out).await,
+        "link.display_name_no_leading_trailing_whitespace" => run_link_name_ws(pool, org_id, severity, out).await,
+        "ip_pool.display_name_no_leading_trailing_whitespace" => run_ip_pool_name_ws(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -6682,6 +6716,74 @@ async fn run_vlan_name_ws(
     Ok(())
 }
 
+/// `server.display_name_no_leading_trailing_whitespace` — trim on optional display_name.
+async fn run_server_name_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, display_name
+           FROM net.server
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND display_name IS NOT NULL
+            AND (display_name <> btrim(display_name))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, name) in rows {
+        out.push(Violation {
+            rule_code: "server.display_name_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "Server".into(), entity_id: Some(id),
+            message: format!(
+                "Server display_name '{name}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
+/// `link.display_name_no_leading_trailing_whitespace` — trim on optional display_name.
+async fn run_link_name_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, display_name
+           FROM net.link
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND display_name IS NOT NULL
+            AND (display_name <> btrim(display_name))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, name) in rows {
+        out.push(Violation {
+            rule_code: "link.display_name_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "Link".into(), entity_id: Some(id),
+            message: format!(
+                "Link display_name '{name}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
+/// `ip_pool.display_name_no_leading_trailing_whitespace` — trim on pool display_name.
+async fn run_ip_pool_name_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, display_name
+           FROM net.ip_pool
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (display_name <> btrim(display_name))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, name) in rows {
+        out.push(Violation {
+            rule_code: "ip_pool.display_name_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "IpPool".into(), entity_id: Some(id),
+            message: format!(
+                "IP pool display_name '{name}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -7283,6 +7385,9 @@ mod tests {
             "ip_address.gateway_unique_per_subnet",
             "subnet.display_name_no_leading_trailing_whitespace",
             "vlan.display_name_no_leading_trailing_whitespace",
+            "server.display_name_no_leading_trailing_whitespace",
+            "link.display_name_no_leading_trailing_whitespace",
+            "ip_pool.display_name_no_leading_trailing_whitespace",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
