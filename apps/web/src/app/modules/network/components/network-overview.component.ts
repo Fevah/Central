@@ -1,7 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
-import { forkJoin } from 'rxjs';
 import { DxButtonModule } from 'devextreme-angular';
 import { NetworkingEngineService, AuditRow } from '../../../core/services/networking-engine.service';
 import { environment } from '../../../../environments/environment';
@@ -380,64 +379,41 @@ export class NetworkOverviewComponent implements OnInit {
     this.loading = true;
     this.status = 'Loading counts…';
 
-    const t = this.tenantId;
-    const all = forkJoin({
-      devices:      this.engine.listDevices(t),
-      servers:      this.engine.listServers(t),
-      vlans:        this.engine.listVlans(t),
-      links:        this.engine.listLinks(t),
-      subnets:      this.engine.listSubnets(t),
-      ipAddresses:  this.engine.listIpAddresses(t),
-      ports:        this.engine.listPorts(t),
-      aggEth:       this.engine.listAggregateEthernet(t),
-      modules:      this.engine.listModules(t),
-      dhcpRelays:   this.engine.listDhcpRelayTargets(t),
-      asnAllocs:    this.engine.listAsnAllocations(t),
-      vlanBlocks:   this.engine.listVlanBlockAvailability(t),
-      asnBlocks:    this.engine.listAsnBlockAvailability(t),
-      mlagDomains:  this.engine.listMlagDomains(t),
-      mstpRules:    this.engine.listMstpRules(t),
-      shelf:        this.engine.listReservationShelf(t),
-      rooms:        this.engine.listRooms(t),
-      racks:        this.engine.listRacks(t),
-      changeSets:   this.engine.listChangeSets(t),
-      scopeGrants:  this.engine.listScopeGrants(t),
-      locks:        this.engine.listLockedRows(t),
-    });
-
-    all.subscribe({
-      next: (r) => {
+    // Single compound call — replaces the 21-parallel listX pattern
+    // with one SQL statement on the engine side. Tiles that map to
+    // entity types not covered by the summary endpoint (Locks,
+    // VLAN blocks, ASN blocks) fall back to their own call after.
+    this.engine.tenantSummary(this.tenantId).subscribe({
+      next: (s) => {
         const setCount = (label: string, count: number) => {
-          for (const s of this.sections) {
-            const tile = s.tiles.find(x => x.label === label);
+          for (const section of this.sections) {
+            const tile = section.tiles.find(x => x.label === label);
             if (tile) { tile.count = count; tile.loading = false; return; }
           }
         };
 
-        setCount('Devices',             r.devices.length);
-        setCount('Servers',             r.servers.length);
-        setCount('VLANs',               r.vlans.length);
-        setCount('Links',               r.links.length);
-        setCount('Subnets',             r.subnets.length);
-        setCount('IP addresses',        r.ipAddresses.length);
-        setCount('Ports',               r.ports.length);
-        setCount('Aggregate-ethernet',  r.aggEth.length);
-        setCount('Modules',             r.modules.length);
-        setCount('DHCP relay targets',  r.dhcpRelays.length);
-        setCount('ASN allocations',     r.asnAllocs.length);
-        setCount('VLAN blocks',         r.vlanBlocks.length);
-        setCount('ASN blocks',          r.asnBlocks.length);
-        setCount('MLAG domains',        r.mlagDomains.length);
-        setCount('MSTP rules',          r.mstpRules.length);
-        setCount('Reservation shelf',   r.shelf.length);
-        setCount('Rooms',               r.rooms.length);
-        setCount('Racks',               r.racks.length);
-        setCount('Change sets',         r.changeSets.length);
-        setCount('Scope grants',        r.scopeGrants.length);
-        setCount('Locks',               r.locks.length);
+        setCount('Devices',             s.devices);
+        setCount('Servers',             s.servers);
+        setCount('VLANs',               s.vlans);
+        setCount('Links',               s.links);
+        setCount('Subnets',             s.subnets);
+        setCount('IP addresses',        s.ipAddresses);
+        setCount('Ports',               s.ports);
+        setCount('Aggregate-ethernet',  s.aggregateEthernet);
+        setCount('Modules',             s.modules);
+        setCount('DHCP relay targets',  s.dhcpRelayTargets);
+        setCount('ASN allocations',     s.asnAllocations);
+        setCount('MLAG domains',        s.mlagDomains);
+        setCount('MSTP rules',          s.mstpRules);
+        setCount('Reservation shelf',   s.reservationShelf);
+        setCount('Rooms',               s.rooms);
+        setCount('Racks',               s.racks);
+        setCount('Change sets',         s.changeSets);
+        setCount('Scope grants',        s.scopeGrants);
 
         this.loading = false;
         this.status = 'Counts loaded.';
+        this.loadExtraCounts();
       },
       error: (err) => {
         this.loading = false;
@@ -446,6 +422,32 @@ export class NetworkOverviewComponent implements OnInit {
           for (const t of s.tiles) { t.loading = false; }
         }
       },
+    });
+  }
+
+  /// Three tiles — VLAN blocks, ASN blocks, Locks — aren't in the
+  /// tenant-summary payload because they compute per-block
+  /// availability or span non-net.* tables. Fetch separately so
+  /// the main summary call is still one round-trip.
+  private loadExtraCounts(): void {
+    const t = this.tenantId;
+    const setCount = (label: string, count: number) => {
+      for (const section of this.sections) {
+        const tile = section.tiles.find(x => x.label === label);
+        if (tile) { tile.count = count; tile.loading = false; return; }
+      }
+    };
+    this.engine.listVlanBlockAvailability(t).subscribe({
+      next: (rows) => setCount('VLAN blocks', rows?.length ?? 0),
+      error: () => setCount('VLAN blocks', 0),
+    });
+    this.engine.listAsnBlockAvailability(t).subscribe({
+      next: (rows) => setCount('ASN blocks', rows?.length ?? 0),
+      error: () => setCount('ASN blocks', 0),
+    });
+    this.engine.listLockedRows(t).subscribe({
+      next: (rows) => setCount('Locks', rows?.length ?? 0),
+      error: () => setCount('Locks', 0),
     });
   }
 

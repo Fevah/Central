@@ -395,6 +395,35 @@ export interface ChangeSetStatusCount {
   count: number;
 }
 
+/// Compound tenant summary — one call returns every entity
+/// count in the net.* schema. Matches `TenantSummary` in
+/// services/networking-engine/src/api.rs. Replaces the 21
+/// parallel listX calls the overview page was using to take
+/// .length of each.
+export interface TenantSummary {
+  devices: number;
+  servers: number;
+  vlans: number;
+  links: number;
+  subnets: number;
+  ipAddresses: number;
+  ports: number;
+  aggregateEthernet: number;
+  modules: number;
+  dhcpRelayTargets: number;
+  asnAllocations: number;
+  mlagDomains: number;
+  mstpRules: number;
+  reservationShelf: number;
+  rooms: number;
+  racks: number;
+  changeSets: number;
+  scopeGrants: number;
+  buildings: number;
+  sites: number;
+  regions: number;
+}
+
 /// One row per distinct audit action. Matches `DistinctAction` in
 /// services/networking-engine/src/audit.rs. Drives UI action-filter
 /// dropdowns + the count badge per action.
@@ -1496,6 +1525,15 @@ export class NetworkingEngineService {
         notes:            body.notes ?? null,
       },
       { params });
+  }
+
+  /// Compound tenant summary — one call, every entity count.
+  /// Server-side scan via parallel COUNT(*) subselects; cheap
+  /// because every table has a `deleted_at IS NULL` partial index.
+  tenantSummary(organizationId: string): Observable<TenantSummary> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.get<TenantSummary>(
+      `${this.base}/api/net/tenant/summary`, { params });
   }
 
   /// Status rollup for the tenant's change-sets. Returns all 7
