@@ -586,13 +586,36 @@ pub struct EntityTypeStats {
 /// Request shape for `stats_by_entity_type` — optional time window
 /// for the common "activity in the last N hours/days" operator
 /// question. Both bounds default to unbounded so an empty request
-/// counts everything.
+/// counts everything. `entity_types` narrows to a subset (comma-
+/// separated on the wire, parsed into a Vec<String> server-side)
+/// so dashboards can render "Device / Server / Vlan only".
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AuditStatsQuery {
     pub organization_id: Uuid,
     pub from_at: Option<chrono::DateTime<chrono::Utc>>,
     pub to_at: Option<chrono::DateTime<chrono::Utc>>,
+    /// Comma-separated list of entity_type values ("Device,Server,Vlan").
+    /// Empty / missing = no narrower.
+    #[serde(default)]
+    pub entity_types: Option<String>,
+}
+
+impl AuditStatsQuery {
+    /// Parse the optional `entity_types` param into a trimmed Vec.
+    /// Empty strings after trim are dropped; an entirely empty /
+    /// whitespace input returns `None` so the SQL can keep using the
+    /// `$N::text[] IS NULL` branch.
+    pub fn entity_types_list(&self) -> Option<Vec<String>> {
+        let raw = self.entity_types.as_deref()?.trim();
+        if raw.is_empty() { return None; }
+        let list: Vec<String> = raw
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+        if list.is_empty() { None } else { Some(list) }
+    }
 }
 
 /// Grouped audit counts per entity_type, optionally narrowed by a
@@ -751,6 +774,7 @@ pub async fn stats_by_entity_type(
     pool: &PgPool,
     q: &AuditStatsQuery,
 ) -> Result<Vec<EntityTypeStats>, EngineError> {
+    let entity_filter = q.entity_types_list();
     let rows: Vec<EntityTypeStats> = sqlx::query_as(
         "SELECT entity_type,
                 COUNT(*)                     AS total_count,
@@ -760,11 +784,13 @@ pub async fn stats_by_entity_type(
           WHERE organization_id = $1
             AND ($2::timestamptz IS NULL OR created_at >= $2)
             AND ($3::timestamptz IS NULL OR created_at <= $3)
+            AND ($4::text[] IS NULL OR entity_type = ANY($4))
           GROUP BY entity_type
           ORDER BY total_count DESC, entity_type ASC")
         .bind(q.organization_id)
         .bind(q.from_at)
         .bind(q.to_at)
+        .bind(entity_filter)
         .fetch_all(pool)
         .await?;
     Ok(rows)
@@ -795,6 +821,39 @@ mod tests {
         let a = compute_hash(&sample_payload(1, None));
         let b = compute_hash(&sample_payload(1, None));
         assert_eq!(a, b);
+    }
+
+    fn mk_stats_query(entity_types: Option<&str>) -> AuditStatsQuery {
+        AuditStatsQuery {
+            organization_id: Uuid::nil(),
+            from_at: None,
+            to_at: None,
+            entity_types: entity_types.map(|s| s.to_string()),
+        }
+    }
+
+    #[test]
+    fn entity_types_list_splits_on_commas_and_trims() {
+        let q = mk_stats_query(Some("Device, Server ,Vlan"));
+        assert_eq!(
+            q.entity_types_list(),
+            Some(vec!["Device".into(), "Server".into(), "Vlan".into()]));
+    }
+
+    #[test]
+    fn entity_types_list_returns_none_for_empty_or_whitespace() {
+        assert_eq!(mk_stats_query(None).entity_types_list(), None);
+        assert_eq!(mk_stats_query(Some("")).entity_types_list(), None);
+        assert_eq!(mk_stats_query(Some("   ")).entity_types_list(), None);
+        assert_eq!(mk_stats_query(Some(",,,")).entity_types_list(), None);
+    }
+
+    #[test]
+    fn entity_types_list_drops_empty_segments() {
+        let q = mk_stats_query(Some("Device,,Server, ,Vlan"));
+        assert_eq!(
+            q.entity_types_list(),
+            Some(vec!["Device".into(), "Server".into(), "Vlan".into()]));
     }
 
     #[test]

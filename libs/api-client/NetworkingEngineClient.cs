@@ -384,11 +384,13 @@ public class NetworkingEngineClient : IDisposable
     /// COUNT(DISTINCT actor) + MAX(created_at) grouped by entity type.
     /// Optional fromAt/toAt window.</summary>
     public Task<List<EntityTypeStatsDto>> AuditStatsAsync(Guid organizationId,
-        DateTime? fromAt = null, DateTime? toAt = null, CancellationToken ct = default)
+        DateTime? fromAt = null, DateTime? toAt = null,
+        string? entityTypes = null, CancellationToken ct = default)
     {
         var qs = BuildQuery(("organizationId", organizationId.ToString()),
                             ("fromAt", fromAt?.ToString("o")),
-                            ("toAt", toAt?.ToString("o")));
+                            ("toAt", toAt?.ToString("o")),
+                            ("entityTypes", entityTypes));
         return GetAsync<List<EntityTypeStatsDto>>($"/api/net/audit/stats{qs}", ct);
     }
 

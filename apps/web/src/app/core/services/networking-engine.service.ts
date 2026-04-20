@@ -1717,14 +1717,18 @@ export class NetworkingEngineService {
   /// Per-entity-type audit activity summary. Single SQL pass with
   /// COUNT + distinct-actor count + last-seen-at, grouped by entity
   /// type. Optional from/to bounds the window; omit both for all-time.
+  /// `entityTypes` narrows to a comma-separated subset (e.g.
+  /// 'Device,Server,Vlan') — omit for all types.
   auditStatsByEntityType(
     organizationId: string,
     fromAt?: string,
     toAt?: string,
+    entityTypes?: string,
   ): Observable<EntityTypeStats[]> {
     let params = new HttpParams().set('organizationId', organizationId);
-    if (fromAt) params = params.set('fromAt', fromAt);
-    if (toAt)   params = params.set('toAt', toAt);
+    if (fromAt)       params = params.set('fromAt', fromAt);
+    if (toAt)         params = params.set('toAt', toAt);
+    if (entityTypes)  params = params.set('entityTypes', entityTypes);
     return this.http.get<EntityTypeStats[]>(`${this.base}/api/net/audit/stats`, { params });
   }
 
