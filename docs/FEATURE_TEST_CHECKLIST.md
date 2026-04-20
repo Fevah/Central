@@ -3320,6 +3320,56 @@ resolves" family.
 - [ ] Catalog now at 119 rules; guardrail test
       `dispatcher_has_arm_for_every_catalog_rule` still green.
 
+### 7.X.29 Phase 10b — twelfth wave (commits 2026-04-20+)
+
+IP pool detail page closes the pool-family entity-detail chain.
+Deep-link from pool detail into the carver preview via query
+param. ApiClient catchup covers both new endpoints. Validation
+batch 27 rounds out the lifecycle-resolves family on the server
++ link branches.
+
+**list_subnets poolId narrower** (commit `b67201433`)
+- [ ] `GET /api/net/subnets?poolId=…` narrows to one pool; omit
+      preserves tenant-wide behaviour.
+- [ ] 5000-row cap unchanged.
+
+**/network/ip-pool/:id detail page** (commit `599c22a12`)
+- [ ] Summary tab: pool code / CIDR / family / status / subnet
+      count.
+- [ ] Subnets tab: grid of subnets carved from this pool (uses
+      the poolId narrower); double-click drills to
+      /network/net-subnet/:id.
+- [ ] Toolbar "Preview next subnet" navigates to
+      /network/carver-preview?poolId=… with the pool pre-selected.
+- [ ] NetworkingEngineService.listSubnets gains optional second
+      poolId argument.
+- [ ] /network/carver-preview honours `?poolId=…` — pre-selects
+      the dropdown + fires onPoolChanged() for the family-
+      appropriate default prefix.
+
+**C# ApiClient — carver preview + subnet poolId narrower** (commit `d47b3f4ad`)
+- [ ] PreviewSubnetCarveAsync(poolId, organizationId, prefixLength)
+      → CarvePreviewDto. 404 = NotFoundException;
+      409 = PoolExhaustedException.
+- [ ] ListSubnetsAsync gains optional Guid? poolId second
+      parameter; omit preserves existing tenant-wide behaviour.
+- [ ] CarvePreviewDto(PoolId, PoolCidr, PoolPrefixLength,
+      RequestedPrefixLength, CandidateCidr, IsIpv6) matches the
+      engine wire shape byte-for-byte.
+- [ ] Solution builds with 0 errors.
+
+**Validation rule expansion — batch 27** (commit `355cb5b1c`)
+- [ ] `server_nic.server_resolves_active` (Error) — NIC's server
+      must be live + Active.
+- [ ] `link_endpoint.link_resolves_active` (Error) — endpoint's
+      parent link must be live + Active.
+- [ ] `device.role_resolves_active` (Warning) — optional
+      device_role_id must be Active when set. Soft-severity
+      because config-gen falls back to catalog defaults on a
+      decommissioned role rather than failing outright.
+- [ ] Catalog now at 122 rules; guardrail test
+      `dispatcher_has_arm_for_every_catalog_rule` still green.
+
 ---
 
 ## 8. Enterprise SaaS
