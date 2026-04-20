@@ -1,7 +1,7 @@
 # Auth Service — Phased Buildout
 
 Last updated: 2026-04-20
-Status: **Phase A in progress** — all other phases not started.
+Status: **Phases A + B shipped**; C-G not started.
 
 ## Why this exists as a separate service
 
@@ -77,20 +77,40 @@ Non-goals in Phase A:
 - Tests beyond `cargo check` (tests need a live `secure_auth` DB + come in Phase G).
 - K8s deployment (Phase F) — Phase A runs locally via `cargo run`.
 
-### Phase B — Token lifecycle
+### Phase B — Token lifecycle  **(shipped 2026-04-20)**
 
 **Goal:** Access tokens are short-lived (15 min) and refresh tokens rotate
-properly. Logout revokes.
+properly. Logout revokes the current session.
 
-Deliverables:
-- `POST /api/v1/auth/refresh` — accepts `{ refresh_token }`, validates
-  against `secure_auth.sessions`, rotates + returns a new access + refresh.
-- `POST /api/v1/auth/logout` — authenticated; revokes the current
-  session.
-- `secure_auth.sessions` table — id / user_id / refresh_token_hash /
-  issued_at / expires_at / revoked_at / user_agent / ip_address.
-- Argon2-hashed refresh tokens stored; raw value returned once to client.
-- Clock skew tolerance built in (30s default).
+Shipped:
+- Migration 111 — `secure_auth.sessions` table (id / user_id /
+  refresh_token_hash / issued_at / expires_at / revoked_at /
+  rotated_to_session_id / user_agent / ip_address). Partial index
+  on `(refresh_token_hash)` filtered to live rows.
+- `POST /api/v1/auth/refresh` — validates the incoming refresh
+  token's SHA-256 hash against `sessions.refresh_token_hash`,
+  issues a new pair in the same transaction that marks the old
+  row revoked + sets `rotated_to_session_id`. Failure at any step
+  rolls back; the client keeps using the old token.
+- `POST /api/v1/auth/logout` — extracts `sid` from the bearer JWT
+  (even if already expired — signature still checked), revokes
+  that specific session. Always returns 204 so retries are safe.
+- Login + refresh both bake `sid` into the JWT claims so logout +
+  future audit queries know which session to act on.
+- 30s clock-skew leeway on JWT validation (`jsonwebtoken::Validation::leeway`).
+- Refresh tokens are NOT Argon2'd (unlike passwords). The input is
+  256 bits of crypto-random entropy, so SHA-256 gives sufficient
+  protection + lets the refresh-handler do an O(1) indexed lookup
+  rather than scanning every live row.
+- `rt_<43-chars-base64url>` prefix on generated tokens so they're
+  identifiable in logs.
+
+Not shipped (deferred):
+- MFA branching — Phase C.
+- Refresh token reuse-detection "someone replayed a revoked token;
+  nuke the whole chain" — pragmatic next iteration, not blocking.
+- IP-address-based session metadata — the column exists; Phase D's
+  lockout flow needs it filled in from the request.
 
 ### Phase C — MFA
 
