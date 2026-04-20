@@ -33,6 +33,10 @@ type CategoryFilter = 'All' | 'Integrity' | 'Consistency' | 'Safety' | 'Advisory
     <div class="toolbar">
       <dx-button text="Run all rules" type="default" icon="check"
                  (onClick)="run()" [disabled]="busy" />
+      <dx-button *ngFor="let c of runableCategories"
+                 [text]="'Run ' + c"
+                 stylingMode="outlined"
+                 (onClick)="run(c)" [disabled]="busy" />
       <dx-load-indicator *ngIf="busy" height="24" width="24" />
       <span *ngIf="summary" class="summary">{{ summary }}</span>
     </div>
@@ -101,6 +105,11 @@ export class NetworkValidationComponent implements OnInit {
   categoryFilters: CategoryFilter[] = ['All', 'Integrity', 'Consistency', 'Safety', 'Advisory'];
   category: CategoryFilter = 'All';
 
+  /// Categories offered as "Run <category>" toolbar buttons —
+  /// drops the All sentinel (the existing Run button covers it)
+  /// so the four buckets get their own quick-run.
+  readonly runableCategories = ['Integrity', 'Consistency', 'Safety', 'Advisory'];
+
   /// ruleCode → category map built from /api/net/validation/rules.
   /// Used to derive a Violation's category at filter time since
   /// the Violation shape doesn't carry it.
@@ -126,11 +135,24 @@ export class NetworkValidationComponent implements OnInit {
     });
   }
 
-  run(): void {
+  /// Runs the full catalog when no category is supplied, or just
+  /// the requested category. The category filter is server-side
+  /// (see RunValidationBody.category) so the rules_run counter
+  /// reflects only the executed subset.
+  run(category?: string): void {
     this.busy = true;
-    this.status = 'Running validation…';
+    this.status = category
+      ? `Running ${category} rules…`
+      : 'Running validation…';
     this.summary = '';
-    this.engine.runValidation(environment.defaultTenantId).subscribe({
+    // When running a category, auto-activate the matching client-
+    // side filter so the grid shows only those rows instead of
+    // stale violations from prior broader runs.
+    if (category) {
+      const match = this.categoryFilters.find(f => f === category);
+      if (match) this.category = match;
+    }
+    this.engine.runValidation(environment.defaultTenantId, undefined, category).subscribe({
       next: (result: ValidationRunResult) => {
         this.violations = result.violations;
         this.applyFilter();

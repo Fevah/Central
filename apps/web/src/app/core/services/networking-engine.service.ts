@@ -1813,9 +1813,14 @@ export class NetworkingEngineService {
   /// Run the validation rule engine. Empty `ruleCode` runs every
   /// enabled rule; a specific code runs just that rule (useful for
   /// fix-it + re-run-to-confirm flows).
-  runValidation(organizationId: string, ruleCode?: string): Observable<ValidationRunResult> {
+  runValidation(
+    organizationId: string,
+    ruleCode?: string,
+    category?: string,
+  ): Observable<ValidationRunResult> {
     const body: Record<string, unknown> = { organizationId };
     if (ruleCode) body['ruleCode'] = ruleCode;
+    if (category) body['category'] = category;
     return this.http.post<ValidationRunResult>(`${this.base}/api/net/validation/run`, body);
   }
 
