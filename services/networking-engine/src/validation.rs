@@ -2244,6 +2244,37 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "site.site_code_no_leading_trailing_whitespace",
+        name: "Site site_code should not have leading or trailing whitespace",
+        description: "Trim-hygiene on site_code. Site codes often \
+                      interpolate into naming templates + are the \
+                      primary hierarchy handle — whitespace breaks \
+                      cross-referencing silently.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "region.region_code_no_leading_trailing_whitespace",
+        name: "Region region_code should not have leading or trailing whitespace",
+        description: "Trim-hygiene on region_code — the top of the \
+                      hierarchy. Same whitespace concern as the \
+                      lower-level code columns.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "device.device_code_no_leading_trailing_whitespace",
+        name: "Device device_code should not have leading or trailing whitespace",
+        description: "Trim-hygiene on device_code (optional short \
+                      code alongside hostname). Whitespace breaks \
+                      imports that match by exact device_code.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2630,6 +2661,9 @@ async fn dispatch(
         "room.room_code_no_leading_trailing_whitespace" => run_room_code_ws(pool, org_id, severity, out).await,
         "floor.floor_code_no_leading_trailing_whitespace" => run_floor_code_ws(pool, org_id, severity, out).await,
         "building.building_code_no_leading_trailing_whitespace" => run_building_code_ws(pool, org_id, severity, out).await,
+        "site.site_code_no_leading_trailing_whitespace" => run_site_code_ws(pool, org_id, severity, out).await,
+        "region.region_code_no_leading_trailing_whitespace" => run_region_code_ws(pool, org_id, severity, out).await,
+        "device.device_code_no_leading_trailing_whitespace" => run_device_code_ws(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -7099,6 +7133,73 @@ async fn run_building_code_ws(
     Ok(())
 }
 
+/// `site.site_code_no_leading_trailing_whitespace` — trim-equal on site_code.
+async fn run_site_code_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, site_code
+           FROM net.site
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (site_code <> btrim(site_code))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "site.site_code_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "Site".into(), entity_id: Some(id),
+            message: format!(
+                "Site site_code '{code}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
+/// `region.region_code_no_leading_trailing_whitespace` — trim-equal on region_code.
+async fn run_region_code_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, region_code
+           FROM net.region
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (region_code <> btrim(region_code))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "region.region_code_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "Region".into(), entity_id: Some(id),
+            message: format!(
+                "Region region_code '{code}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
+/// `device.device_code_no_leading_trailing_whitespace` — optional device_code.
+async fn run_device_code_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, device_code
+           FROM net.device
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND device_code IS NOT NULL
+            AND (device_code <> btrim(device_code))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "device.device_code_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "Device".into(), entity_id: Some(id),
+            message: format!(
+                "Device device_code '{code}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -7712,6 +7813,9 @@ mod tests {
             "room.room_code_no_leading_trailing_whitespace",
             "floor.floor_code_no_leading_trailing_whitespace",
             "building.building_code_no_leading_trailing_whitespace",
+            "site.site_code_no_leading_trailing_whitespace",
+            "region.region_code_no_leading_trailing_whitespace",
+            "device.device_code_no_leading_trailing_whitespace",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
