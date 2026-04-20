@@ -559,10 +559,15 @@ public class NetworkingEngineClient : IDisposable
         await EnsureSuccessAsync(resp, ct);
     }
 
+    /// <summary>Run the validation catalog. Pass a <paramref name="ruleCode"/>
+    /// to run exactly one rule, or a <paramref name="category"/>
+    /// (Integrity / Consistency / Safety / Advisory) to run just that
+    /// bucket. Both optional; combined filters AND together server-
+    /// side (rule must match code AND category).</summary>
     public Task<ValidationRunResultDto> RunValidationAsync(Guid organizationId,
-        string? ruleCode = null, CancellationToken ct = default)
+        string? ruleCode = null, string? category = null, CancellationToken ct = default)
         => PostAsync<ValidationRunResultDto>("/api/net/validation/run",
-            new { organizationId, ruleCode }, ct);
+            new { organizationId, ruleCode, category }, ct);
 
     // ─── Locks (Phase 8f) ────────────────────────────────────────────────
 
