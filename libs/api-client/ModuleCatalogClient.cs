@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 
 namespace Central.ApiClient;
@@ -45,6 +46,73 @@ public class ModuleCatalogClient
             $"api/modules/{Uri.EscapeDataString(moduleCode)}/versions", ct);
         return versions ?? new List<ModuleVersionDto>();
     }
+
+    /// <summary>
+    /// Phase 2 — cheap metadata lookup before downloading. Clients
+    /// call this to read the SHA-256 + size + change_kind without
+    /// pulling the DLL bytes. Returns null when the version is
+    /// unknown.
+    /// </summary>
+    public async Task<ModuleManifestDto?> GetManifestAsync(string moduleCode, string version, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync(
+            $"api/modules/{Uri.EscapeDataString(moduleCode)}/{Uri.EscapeDataString(version)}/manifest", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<ModuleManifestDto>(cancellationToken: ct);
+    }
+
+    /// <summary>
+    /// Phase 2 — download the DLL bytes for <paramref name="moduleCode"/>
+    /// at <paramref name="version"/>. Returns null when the version is
+    /// unknown or yanked (HTTP 410 Gone). Caller verifies SHA-256
+    /// against <see cref="ModuleManifestDto.Sha256"/> before trusting
+    /// the bytes.
+    /// </summary>
+    public async Task<byte[]?> DownloadDllAsync(string moduleCode, string version, CancellationToken ct = default)
+    {
+        var resp = await _http.GetAsync(
+            $"api/modules/{Uri.EscapeDataString(moduleCode)}/{Uri.EscapeDataString(version)}/dll", ct);
+        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound) return null;
+        if (resp.StatusCode == System.Net.HttpStatusCode.Gone)     return null;
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadAsByteArrayAsync(ct);
+    }
+
+    /// <summary>
+    /// Phase 2 — CI publish. Uploads a DLL + metadata as
+    /// multipart/form-data. Returns the server-computed row (ID,
+    /// SHA-256, sizeBytes) for telemetry / the CI log.
+    /// </summary>
+    public async Task<ModulePublishResultDto?> PublishAsync(
+        string moduleCode,
+        string version,
+        string changeKind,
+        int minEngineContract,
+        byte[] dllBytes,
+        string? releaseNotes = null,
+        bool setAsCurrent = true,
+        CancellationToken ct = default)
+    {
+        using var form = new MultipartFormDataContent
+        {
+            { new StringContent(moduleCode),                       "moduleCode" },
+            { new StringContent(version),                          "version" },
+            { new StringContent(changeKind),                       "changeKind" },
+            { new StringContent(minEngineContract.ToString()),     "minEngineContract" },
+            { new StringContent(setAsCurrent ? "true" : "false"),  "setAsCurrent" },
+        };
+        if (!string.IsNullOrEmpty(releaseNotes))
+            form.Add(new StringContent(releaseNotes), "releaseNotes");
+
+        var fileContent = new ByteArrayContent(dllBytes);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        form.Add(fileContent, "dll", $"{moduleCode}-{version}.dll");
+
+        var resp = await _http.PostAsync("api/modules/publish", form, ct);
+        resp.EnsureSuccessStatusCode();
+        return await resp.Content.ReadFromJsonAsync<ModulePublishResultDto>(cancellationToken: ct);
+    }
 }
 
 /// <summary>One row from /api/modules/catalog.</summary>
@@ -79,4 +147,31 @@ public record ModuleVersionDto(
     bool IsYanked,
     DateTime? YankedAt,
     string? YankedReason
+);
+
+/// <summary>Response from /manifest — lightweight metadata for a single published version.</summary>
+public record ModuleManifestDto(
+    string ModuleCode,
+    string Version,
+    string ChangeKind,
+    int MinEngineContract,
+    string? Sha256,
+    long? SizeBytes,
+    string? ReleaseNotes,
+    DateTime PublishedAt,
+    bool IsYanked,
+    string? YankedReason
+);
+
+/// <summary>Response from /publish — server-computed identity + integrity.</summary>
+public record ModulePublishResultDto(
+    long Id,
+    string ModuleCode,
+    string Version,
+    string ChangeKind,
+    int MinEngineContract,
+    string Sha256,
+    long SizeBytes,
+    DateTime PublishedAt,
+    bool SetAsCurrent
 );

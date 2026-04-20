@@ -95,6 +95,18 @@ builder.Services.AddSingleton<SshOperationsService>();
 // Rate limiter for SSH endpoints (10 requests per 60s per user)
 builder.Services.AddSingleton(new RateLimiter(maxRequests: 10, windowSeconds: 60));
 
+// Module blob storage (Phase 2 of the module-update system). Root dir
+// is taken from CENTRAL_MODULE_STORAGE_ROOT, defaulting to a sibling
+// directory of the API workdir. Multi-replica prod will swap in a
+// MinIO adapter implementing the same interface — don't couple any
+// endpoint or repository to the filesystem adapter directly.
+{
+    var storageRoot = Environment.GetEnvironmentVariable("CENTRAL_MODULE_STORAGE_ROOT")
+        ?? Path.Combine(Directory.GetCurrentDirectory(), "module-storage");
+    builder.Services.AddSingleton<Central.Api.Services.IModuleBlobStorage>(
+        _ => new Central.Api.Services.FilesystemModuleBlobStorage(storageRoot));
+}
+
 // Background job scheduler
 builder.Services.AddHostedService<JobSchedulerService>();
 
