@@ -57,6 +57,10 @@ type CategoryFilter = 'All' | 'Integrity' | 'Consistency' | 'Safety' | 'Advisory
                  [type]="category === f ? 'default' : 'normal'"
                  stylingMode="outlined"
                  (onClick)="setCategory(f)" />
+      <dx-button *ngIf="severity !== 'All' || category !== 'All'"
+                 text="Reset filters" stylingMode="text"
+                 icon="clear"
+                 (onClick)="resetFilters()" />
     </div>
 
     <div *ngIf="status" class="status-line">{{ status }}</div>
@@ -213,6 +217,14 @@ export class NetworkValidationComponent implements OnInit {
 
   setCategory(f: CategoryFilter): void {
     this.category = f;
+    this.applyFilter();
+  }
+
+  /// Reset both severity + category to All in one click. Appears
+  /// only when either filter is active.
+  resetFilters(): void {
+    this.severity = 'All';
+    this.category = 'All';
     this.applyFilter();
   }
 
