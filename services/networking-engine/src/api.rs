@@ -100,6 +100,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/change-sets", get(list_change_sets).post(create_change_set))
         .route("/api/net/change-sets/summary", get(change_set_summary_handler))
         .route("/api/net/tenant/summary",      get(tenant_summary_handler))
+        .route("/api/net/tenant/lifecycle-summary", get(tenant_lifecycle_summary_handler))
         .route("/api/net/change-sets/:id", get(get_change_set))
         .route("/api/net/change-sets/by-correlation/:correlation_id", get(get_change_set_by_correlation))
         .route("/api/net/change-sets/:id/items", post(add_change_set_item))
@@ -1755,6 +1756,52 @@ struct TenantSummary {
     buildings: i64,
     sites: i64,
     regions: i64,
+}
+
+/// Per-entity-type lifecycle rollup — for each of the four main
+/// entity types (Device / Server / Vlan / Subnet) returns a count
+/// per status bucket (Planned / Active / Decommissioned + any
+/// others present). Lets dashboards render "how much of my
+/// estate is still Planned?" in one round-trip. UNION ALL across
+/// per-table GROUP BYs; all targets have `deleted_at IS NULL`
+/// partial indexes so the scan is cheap.
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct LifecycleBucket {
+    entity_type: String,
+    status: String,
+    count: i64,
+}
+
+async fn tenant_lifecycle_summary_handler(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let rows: Vec<LifecycleBucket> = sqlx::query_as(
+        "SELECT 'Device'::text AS entity_type, status::text AS status, COUNT(*)::bigint AS count
+           FROM net.device WHERE organization_id = $1 AND deleted_at IS NULL
+          GROUP BY status
+        UNION ALL
+         SELECT 'Server', status::text, COUNT(*)::bigint
+           FROM net.server WHERE organization_id = $1 AND deleted_at IS NULL
+          GROUP BY status
+        UNION ALL
+         SELECT 'Vlan', status::text, COUNT(*)::bigint
+           FROM net.vlan WHERE organization_id = $1 AND deleted_at IS NULL
+          GROUP BY status
+        UNION ALL
+         SELECT 'Subnet', status::text, COUNT(*)::bigint
+           FROM net.subnet WHERE organization_id = $1 AND deleted_at IS NULL
+          GROUP BY status
+        UNION ALL
+         SELECT 'Link', status::text, COUNT(*)::bigint
+           FROM net.link WHERE organization_id = $1 AND deleted_at IS NULL
+          GROUP BY status
+         ORDER BY entity_type, status")
+        .bind(q.organization_id)
+        .fetch_all(&s.pool)
+        .await?;
+    Ok(Json(rows))
 }
 
 async fn tenant_summary_handler(
