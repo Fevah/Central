@@ -852,6 +852,15 @@ export class NetworkingEngineService {
     return this.http.get<WhoAmI>(`${this.base}/api/net/whoami`, { params });
   }
 
+  /// Full scope-grant list for the current caller. Unlike
+  /// listScopeGrants, bypasses the read:ScopeGrant gate because
+  /// reading your own access is always permitted. Service-origin
+  /// callers (no X-User-Id header) get an empty array.
+  listMyGrants(organizationId: string): Observable<ScopeGrant[]> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.get<ScopeGrant[]>(`${this.base}/api/net/whoami/grants`, { params });
+  }
+
   /// Per-entity-type facet counts for a search query. Returns one row
   /// per entity type matching the query (including zeros when the
   /// caller restricted `entityTypes`). Renders a narrowing hint bar

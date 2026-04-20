@@ -98,6 +98,7 @@ export const routes: Routes = [
           { path: 'audit-stats',     loadComponent: () => import('./modules/network/components/network-audit-stats.component').then(m => m.NetworkAuditStatsComponent) },
           { path: 'audit-search',    loadComponent: () => import('./modules/network/components/network-audit-search.component').then(m => m.NetworkAuditSearchComponent) },
           { path: 'my-activity',     loadComponent: () => import('./modules/network/components/network-my-activity.component').then(m => m.NetworkMyActivityComponent) },
+          { path: 'my-grants',       loadComponent: () => import('./modules/network/components/network-my-grants.component').then(m => m.NetworkMyGrantsComponent) },
           { path: 'audit/:entityType/:entityId',
             loadComponent: () => import('./modules/network/components/network-audit-timeline.component').then(m => m.NetworkAuditTimelineComponent) },
         ]
