@@ -3413,6 +3413,60 @@ adds the missing change-set delete wrapper.
 - [ ] Catalog now at 128 rules; guardrail test
       `dispatcher_has_arm_for_every_catalog_rule` still green.
 
+### 7.X.31 Phase 10b — fourteenth wave (commits 2026-04-20+)
+
+Nullable-FK `_when_set` lifecycle resolves, non-lifecycle data-
+quality rules, carver preview UX polish, and an entityTypes
+filter on the audit-stats rollup endpoint.
+
+**Validation rule expansion — batch 30** (commit `87cbab0e0`)
+- [ ] `server_nic.vlan_resolves_active_when_set` (Warning) —
+      NIC's optional vlan_id must resolve to an Active VLAN.
+- [ ] `server_nic.subnet_resolves_active_when_set` (Warning) —
+      NIC's optional subnet_id must resolve to an Active subnet.
+- [ ] `link_endpoint.vlan_resolves_active_when_set` (Warning) —
+      endpoint's optional vlan_id must resolve to an Active VLAN.
+
+**Validation rule expansion — batch 31** (commit `8135ed68d`)
+- [ ] `vlan_template.default_unique_per_tenant` (Error) — at
+      most one is_default=true template per tenant; every extra
+      default row is flagged (all ambiguous, not just the extras).
+- [ ] `port.interface_name_starts_with_prefix` (Warning) — port
+      interface_name must begin with interface_prefix + '-'.
+- [ ] `device.hardware_model_set_when_active` (Warning,
+      Advisory) — Active devices should carry a hardware_model.
+- [ ] Catalog now at 134 rules; guardrail test
+      `dispatcher_has_arm_for_every_catalog_rule` still green.
+- [ ] New category "Advisory" allowed by the guardrail test.
+
+**Carver-preview UX polish** (commit `3581e10d1`)
+- [ ] Prefix-length NumberBox `min` binds to the pool's own
+      prefix length (parsed from PoolCidr).
+- [ ] NumberBox `max` binds to 32 / 128 by pool AddressFamily.
+- [ ] Preview button disables when prefix is out of range via
+      `prefixLengthValid()`.
+- [ ] Pool-info bar shows "Requested prefix must be /N or
+      narrower" when the pool's prefix is > 1.
+- [ ] Helper `parsePoolPrefix()` returns null for malformed
+      CIDR input; the UI's min-clamp is permissive rather
+      than restrictive.
+
+**Engine audit/stats entityTypes filter** (commit `200ed2153`)
+- [ ] `GET /api/net/audit/stats?entityTypes=Device,Server,Vlan`
+      narrows the rollup to the listed types; omit for all.
+- [ ] `AuditStatsQuery::entity_types_list()` parses the
+      comma-separated string, trims whitespace, drops empty
+      segments, returns None for empty/whitespace-only input.
+- [ ] SQL branch `AND ($4::text[] IS NULL OR entity_type =
+      ANY($4))` adds zero overhead when the narrower isn't
+      supplied.
+- [ ] 3 new parser unit tests (audit suite 21 passing; engine
+      lib 298 passing).
+- [ ] Angular service `auditStatsByEntityType()` gains optional
+      `entityTypes` parameter.
+- [ ] C# ApiClient `AuditStatsAsync` gains optional
+      `entityTypes` string parameter. 0 errors on build.
+
 ---
 
 ## 8. Enterprise SaaS
