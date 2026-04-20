@@ -4049,6 +4049,33 @@ rules. Overview quick-links pick up the new page.
 - [ ] /network/overview quick-links chip bar gains a "Rules
       catalog" entry pointing at /network/validation-rules.
 
+### 7.X.47 Phase 10b — thirtieth wave (commits 2026-04-20+)
+
+200-rule milestone for the validation catalog + catalog-to-
+validation drill workflow.
+
+**Validation rule expansion — batch 52** (commit `0f867509a`)
+- [ ] `site.site_code_no_leading_trailing_whitespace` (Warning)
+- [ ] `region.region_code_no_leading_trailing_whitespace` (Warning)
+- [ ] `device.device_code_no_leading_trailing_whitespace` (Warning)
+- [ ] Catalog now at 197 rules.
+
+**Rules-catalog → validation drill** (commit `2a0809b46`)
+- [ ] /network/validation-rules double-click navigates to
+      /network/validation?ruleCode={code}.
+- [ ] /network/validation reads ruleCode query param on
+      ngOnInit + auto-runs the single rule.
+- [ ] runSingle() helper produces a specialised summary line
+      (rule code + violation count) instead of the generic
+      validations-run message.
+
+**Validation rule expansion — batch 53 (200 milestone!)** (commit `8745b8ca3`)
+- [ ] `asn_pool.display_name_no_leading_trailing_whitespace` (Warning)
+- [ ] `vlan_pool.display_name_no_leading_trailing_whitespace` (Warning)
+- [ ] `mlag_domain_pool.display_name_no_leading_trailing_whitespace` (Warning)
+- [ ] Catalog now at 200 rules — started at 54, shipped 146
+      rules across 29 waves.
+
 ---
 
 ## 8. Enterprise SaaS
