@@ -468,6 +468,21 @@ public class NetworkingEngineClient : IDisposable
         return GetAsync<List<RecentCorrelationDto>>($"/api/net/audit/correlations{qs}", ct);
     }
 
+    /// <summary>Distinct audit-action catalog for the tenant. One
+    /// row per action string seen in the log, ordered by last-seen
+    /// DESC. Drives UI action-filter dropdowns + populates the
+    /// "what actions fire on Device?" narrow view (pass the
+    /// <paramref name="entityType"/> filter). Default limit 100,
+    /// clamped server-side to 1..=500.</summary>
+    public Task<List<DistinctActionDto>> AuditActionsAsync(Guid organizationId,
+        string? entityType = null, int? limit = null, CancellationToken ct = default)
+    {
+        var qs = BuildQuery(("organizationId", organizationId.ToString()),
+                            ("entityType", entityType),
+                            ("limit", limit?.ToString()));
+        return GetAsync<List<DistinctActionDto>>($"/api/net/audit/actions{qs}", ct);
+    }
+
     public Task<List<TopActorDto>> AuditTopActorsAsync(Guid organizationId,
         DateTime? fromAt = null, DateTime? toAt = null, string? entityType = null,
         int? limit = null, CancellationToken ct = default)
@@ -1664,6 +1679,12 @@ public record TopActorDto(int? ActorUserId, string? ActorDisplay,
 public record RecentCorrelationDto(Guid CorrelationId, long EntryCount,
     long DistinctEntityTypes, DateTime FirstSeenAt, DateTime LastSeenAt,
     Guid? SetId, string? SetTitle, string? SetStatus);
+
+/// <summary>Distinct audit-action row — matches `DistinctAction` in
+/// services/networking-engine/src/audit.rs. Rows ordered by
+/// lastSeenAt DESC so rare-but-recent actions bubble to the top
+/// of filter pickers.</summary>
+public record DistinctActionDto(string Action, long Count, DateTime LastSeenAt);
 
 // ─── Search facets (Phase 10b) ────────────────────────────────────────
 
