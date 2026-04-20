@@ -99,6 +99,7 @@ pub fn build_router(state: AppState) -> Router {
         // Change Sets (Phase 8a)
         .route("/api/net/change-sets", get(list_change_sets).post(create_change_set))
         .route("/api/net/change-sets/summary", get(change_set_summary_handler))
+        .route("/api/net/tenant/summary",      get(tenant_summary_handler))
         .route("/api/net/change-sets/:id", get(get_change_set))
         .route("/api/net/change-sets/by-correlation/:correlation_id", get(get_change_set_by_correlation))
         .route("/api/net/change-sets/:id/items", post(add_change_set_item))
@@ -1721,6 +1722,72 @@ async fn change_set_summary_handler(
     // gate beyond tenant scoping since the counts alone don't
     // leak set content.
     Ok(Json(change_sets::status_summary(&s.pool, q.organization_id).await?))
+}
+
+/// Compound tenant summary — every entity count across the
+/// `net.*` schema in a single round-trip. Replaces the web
+/// overview dashboard's 21 parallel thin-list calls with one
+/// SQL query that scans the same tables via COUNT(*) subselects
+/// (cheap: all targets are small, all have `deleted_at IS NULL`
+/// partial indexes). Counts on the wire are i64/bigint to match
+/// other rollups.
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+struct TenantSummary {
+    devices: i64,
+    servers: i64,
+    vlans: i64,
+    links: i64,
+    subnets: i64,
+    ip_addresses: i64,
+    ports: i64,
+    aggregate_ethernet: i64,
+    modules: i64,
+    dhcp_relay_targets: i64,
+    asn_allocations: i64,
+    mlag_domains: i64,
+    mstp_rules: i64,
+    reservation_shelf: i64,
+    rooms: i64,
+    racks: i64,
+    change_sets: i64,
+    scope_grants: i64,
+    buildings: i64,
+    sites: i64,
+    regions: i64,
+}
+
+async fn tenant_summary_handler(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    let row: TenantSummary = sqlx::query_as(
+        "SELECT
+           (SELECT COUNT(*)::bigint FROM net.device             WHERE organization_id = $1 AND deleted_at IS NULL) AS devices,
+           (SELECT COUNT(*)::bigint FROM net.server             WHERE organization_id = $1 AND deleted_at IS NULL) AS servers,
+           (SELECT COUNT(*)::bigint FROM net.vlan               WHERE organization_id = $1 AND deleted_at IS NULL) AS vlans,
+           (SELECT COUNT(*)::bigint FROM net.link               WHERE organization_id = $1 AND deleted_at IS NULL) AS links,
+           (SELECT COUNT(*)::bigint FROM net.subnet             WHERE organization_id = $1 AND deleted_at IS NULL) AS subnets,
+           (SELECT COUNT(*)::bigint FROM net.ip_address         WHERE organization_id = $1 AND deleted_at IS NULL) AS ip_addresses,
+           (SELECT COUNT(*)::bigint FROM net.port               WHERE organization_id = $1 AND deleted_at IS NULL) AS ports,
+           (SELECT COUNT(*)::bigint FROM net.aggregate_ethernet WHERE organization_id = $1 AND deleted_at IS NULL) AS aggregate_ethernet,
+           (SELECT COUNT(*)::bigint FROM net.module             WHERE organization_id = $1 AND deleted_at IS NULL) AS modules,
+           (SELECT COUNT(*)::bigint FROM net.dhcp_relay_target  WHERE organization_id = $1 AND deleted_at IS NULL) AS dhcp_relay_targets,
+           (SELECT COUNT(*)::bigint FROM net.asn_allocation     WHERE organization_id = $1 AND deleted_at IS NULL) AS asn_allocations,
+           (SELECT COUNT(*)::bigint FROM net.mlag_domain        WHERE organization_id = $1 AND deleted_at IS NULL) AS mlag_domains,
+           (SELECT COUNT(*)::bigint FROM net.mstp_priority_rule WHERE organization_id = $1 AND deleted_at IS NULL) AS mstp_rules,
+           (SELECT COUNT(*)::bigint FROM net.reservation_shelf  WHERE organization_id = $1 AND deleted_at IS NULL) AS reservation_shelf,
+           (SELECT COUNT(*)::bigint FROM net.room               WHERE organization_id = $1 AND deleted_at IS NULL) AS rooms,
+           (SELECT COUNT(*)::bigint FROM net.rack               WHERE organization_id = $1 AND deleted_at IS NULL) AS racks,
+           (SELECT COUNT(*)::bigint FROM net.change_set         WHERE organization_id = $1 AND deleted_at IS NULL) AS change_sets,
+           (SELECT COUNT(*)::bigint FROM net.scope_grant        WHERE organization_id = $1 AND deleted_at IS NULL) AS scope_grants,
+           (SELECT COUNT(*)::bigint FROM net.building           WHERE organization_id = $1 AND deleted_at IS NULL) AS buildings,
+           (SELECT COUNT(*)::bigint FROM net.site               WHERE organization_id = $1 AND deleted_at IS NULL) AS sites,
+           (SELECT COUNT(*)::bigint FROM net.region             WHERE organization_id = $1 AND deleted_at IS NULL) AS regions")
+        .bind(q.organization_id)
+        .fetch_one(&s.pool)
+        .await?;
+    Ok(Json(row))
 }
 
 async fn list_change_sets(
