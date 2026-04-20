@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { DxButtonModule } from 'devextreme-angular';
-import { NetworkingEngineService, AuditRow } from '../../../core/services/networking-engine.service';
+import { NetworkingEngineService, AuditRow, ChangeSet } from '../../../core/services/networking-engine.service';
 import { environment } from '../../../../environments/environment';
 
 interface CountTile {
@@ -142,6 +142,30 @@ interface StatusBreakdown {
           <td>{{ r.ruleCode }}</td>
           <td [ngClass]="'sev-' + r.severity.toLowerCase()">{{ r.severity }}</td>
           <td class="num">{{ r.count }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3 class="section-header" *ngIf="pendingApprovals.length > 0">
+      Pending approvals
+      <a routerLink="/network/change-sets"
+         [queryParams]="{ status: 'Submitted' }"
+         class="section-link">see all →</a>
+    </h3>
+    <table class="recent" *ngIf="pendingApprovals.length > 0">
+      <thead>
+        <tr>
+          <th>Submitted</th><th>Title</th><th>Requested by</th><th class="num">Items</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let c of pendingApprovals"
+            class="recent-row"
+            (click)="openChangeSet(c)">
+          <td>{{ c.submittedAt | date:'yyyy-MM-dd HH:mm' }}</td>
+          <td>{{ c.title }}</td>
+          <td>{{ c.requestedByDisplay ?? (c.requestedBy ?? '—') }}</td>
+          <td class="num">{{ c.itemCount }}</td>
         </tr>
       </tbody>
     </table>
@@ -288,6 +312,11 @@ export class NetworkOverviewComponent implements OnInit {
   recentActivity: AuditRow[] = [];
   recentLoading = false;
 
+  /// Submitted change-sets awaiting approval — top of the queue
+  /// the operator should review. Fetched with limit=10 so the
+  /// overview widget stays compact.
+  pendingApprovals: ChangeSet[] = [];
+
   private tenantId = environment.defaultTenantId;
 
   constructor(
@@ -301,6 +330,21 @@ export class NetworkOverviewComponent implements OnInit {
     this.reload();
     this.runValidation();
     this.loadRecentActivity();
+    this.loadPendingApprovals();
+  }
+
+  /// Submitted change-sets awaiting approval, ordered by
+  /// createdAt DESC, capped at 10 for a compact overview widget.
+  private loadPendingApprovals(): void {
+    this.engine.listChangeSets(this.tenantId, 'Submitted', 10).subscribe({
+      next: (rows) => { this.pendingApprovals = rows ?? []; },
+      error: () => { /* silent — widget just won't render */ },
+    });
+  }
+
+  openChangeSet(c: ChangeSet): void {
+    if (!c?.id) return;
+    this.router.navigate(['/network/change-sets', c.id]);
   }
 
   /// Last 10 audit entries across the tenant. Tiny widget —
