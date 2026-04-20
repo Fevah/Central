@@ -1803,6 +1803,44 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "server_nic.target_port_resolves_active_when_set",
+        name: "Server NIC target_port_id must resolve to an Active port when set",
+        description: "NIC's optional target_port_id pointer, when \
+                      set, must resolve to an Active net.port. \
+                      Sibling to link_endpoint.port_resolves_\
+                      active_when_set on the server NIC branch. \
+                      Complements the existing server_nic.target_\
+                      port_resolves rule which only checks \
+                      existence, not lifecycle state.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "rack.uheight_within_reason",
+        name: "Rack u_height should be in a realistic range",
+        description: "Rack u_height > 60 is almost certainly a \
+                      data-entry typo — most racks are 42U, \
+                      enterprise-high racks cap at 48U. Advisory \
+                      — the row is still valid, but surfaces it \
+                      for operator review.",
+        category: "Advisory",
+        default_severity: Severity::Info,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "device.firmware_version_set_when_active",
+        name: "Active device should have firmware_version set",
+        description: "Active devices without a recorded firmware_\
+                      version leave upgrade-planning + CVE-scan \
+                      reports incomplete. Advisory — config-gen \
+                      still works, but the hardware-compat pipeline \
+                      needs this field.",
+        category: "Advisory",
+        default_severity: Severity::Info,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2140,6 +2178,9 @@ async fn dispatch(
         "server.loopback_ip_address_resolves_active_when_set" => run_server_loopback_ip_active(pool, org_id, severity, out).await,
         "link_endpoint.port_resolves_active_when_set" => run_link_endpoint_port_active(pool, org_id, severity, out).await,
         "server.building_resolves_active_when_set" => run_server_building_active(pool, org_id, severity, out).await,
+        "server_nic.target_port_resolves_active_when_set" => run_server_nic_target_port_active(pool, org_id, severity, out).await,
+        "rack.uheight_within_reason"              => run_rack_uheight_reason(pool, org_id, severity, out).await,
+        "device.firmware_version_set_when_active" => run_device_firmware_set(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -5669,6 +5710,79 @@ async fn run_server_building_active(
     Ok(())
 }
 
+/// `server_nic.target_port_resolves_active_when_set` — NIC's optional target port must be live.
+async fn run_server_nic_target_port_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32, String)> = sqlx::query_as(
+        "SELECT n.id, n.nic_index, COALESCE(p.status::text, '(missing)')
+           FROM net.server_nic n
+           LEFT JOIN net.port p ON p.id = n.target_port_id
+          WHERE n.organization_id = $1
+            AND n.deleted_at IS NULL
+            AND n.target_port_id IS NOT NULL
+            AND (p.id IS NULL
+                 OR p.deleted_at IS NOT NULL
+                 OR p.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, idx, status) in rows {
+        out.push(Violation {
+            rule_code: "server_nic.target_port_resolves_active_when_set".into(),
+            severity, entity_type: "ServerNic".into(), entity_id: Some(id),
+            message: format!(
+                "NIC {idx} references a target port with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `rack.uheight_within_reason` — flag racks with u_height > 60.
+async fn run_rack_uheight_reason(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i32)> = sqlx::query_as(
+        "SELECT id, rack_code, u_height
+           FROM net.rack
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND u_height > 60")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, u_height) in rows {
+        out.push(Violation {
+            rule_code: "rack.uheight_within_reason".into(),
+            severity, entity_type: "Rack".into(), entity_id: Some(id),
+            message: format!(
+                "Rack '{code}' has u_height={u_height} — likely a data-entry typo."),
+        });
+    }
+    Ok(())
+}
+
+/// `device.firmware_version_set_when_active` — Active device
+/// should record its firmware version for upgrade + CVE tracking.
+async fn run_device_firmware_set(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, hostname
+           FROM net.device
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND status = 'Active'::net.entity_status
+            AND (firmware_version IS NULL OR firmware_version = '')")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname) in rows {
+        out.push(Violation {
+            rule_code: "device.firmware_version_set_when_active".into(),
+            severity, entity_type: "Device".into(), entity_id: Some(id),
+            message: format!(
+                "Active device '{hostname}' has no firmware_version — \
+                 upgrade + CVE-scan reports miss it."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -6243,6 +6357,9 @@ mod tests {
             "server.loopback_ip_address_resolves_active_when_set",
             "link_endpoint.port_resolves_active_when_set",
             "server.building_resolves_active_when_set",
+            "server_nic.target_port_resolves_active_when_set",
+            "rack.uheight_within_reason",
+            "device.firmware_version_set_when_active",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
