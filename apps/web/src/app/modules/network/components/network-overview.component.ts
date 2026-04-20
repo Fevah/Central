@@ -50,6 +50,38 @@ interface StatusBreakdown {
       <span *ngIf="status" class="status-line">{{ status }}</span>
     </div>
 
+    <!-- Quick-access bar surfacing the self-serve + audit workflows
+         that don't have a natural home in the entity tile rows
+         below. Each chip drills to its page; keeps /network/overview
+         the single landing surface without forcing operators to
+         memorise /network/my-activity and friends. -->
+    <div class="quicklinks">
+      <a class="chip" routerLink="/network/my-activity">
+        <span class="chip-icon">🕑</span>
+        <span>My activity</span>
+      </a>
+      <a class="chip" routerLink="/network/my-grants">
+        <span class="chip-icon">🔑</span>
+        <span>My grants</span>
+      </a>
+      <a class="chip" routerLink="/network/correlations">
+        <span class="chip-icon">🔗</span>
+        <span>Correlations</span>
+      </a>
+      <a class="chip" routerLink="/network/audit-search">
+        <span class="chip-icon">🔍</span>
+        <span>Audit search</span>
+      </a>
+      <a class="chip" routerLink="/network/data-quality">
+        <span class="chip-icon">✓</span>
+        <span>Data quality</span>
+      </a>
+      <a class="chip" routerLink="/network/carver-preview">
+        <span class="chip-icon">✂</span>
+        <span>Carver preview</span>
+      </a>
+    </div>
+
     <ng-container *ngFor="let section of sections">
       <h3 class="section-header">{{ section.label }}</h3>
       <div class="tile-row">
@@ -144,6 +176,18 @@ interface StatusBreakdown {
     .subtitle { color: #888; }
     .toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
     .status-line { color: #666; font-size: 12px; }
+
+    .quicklinks {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;
+    }
+    .chip {
+      display: inline-flex; gap: 6px; align-items: center;
+      padding: 6px 12px; border-radius: 16px; text-decoration: none;
+      background: #f6f8fa; border: 1px solid #d0d7de; color: #24292f;
+      font-size: 12px; transition: background 0.1s;
+    }
+    .chip:hover { background: #eaeef2; }
+    .chip-icon { font-size: 13px; }
 
     .section-header {
       margin: 20px 0 8px 0; font-size: 13px; text-transform: uppercase;
