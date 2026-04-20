@@ -1,0 +1,151 @@
+# Engine contract snapshot v1
+EngineContract.CurrentVersion = 1
+
+== Central.Engine.Modules.IModule ==
+kind: interface
+prop: System.Int32 EngineContractVersion { get }
+prop: System.String Name { get }
+prop: System.String PermissionCategory { get }
+prop: System.Int32 SortOrder { get }
+prop: System.String Version { get }
+
+== Central.Engine.Modules.IModuleLicenseGate ==
+kind: interface
+method: System.Boolean IsEnabled(System.String moduleCode)
+
+== Central.Engine.Modules.IModulePanels ==
+kind: interface
+method: System.Void RegisterPanels(Central.Engine.Modules.IPanelBuilder panels)
+
+== Central.Engine.Modules.IModuleRibbon ==
+kind: interface
+method: System.Void RegisterRibbon(Central.Engine.Modules.IRibbonBuilder ribbon)
+
+== Central.Engine.Modules.IPanelBuilder ==
+kind: interface
+method: System.Void AddPanel(System.String id, System.String caption, System.Type viewType, System.Type viewModelType, System.String permission, Central.Engine.Modules.DockPosition dock, System.Boolean closedByDefault)
+
+== Central.Engine.Modules.IRibbonBuilder ==
+kind: interface
+method: Central.Engine.Modules.IRibbonPageBuilder AddPage(System.String header, System.Int32 sortOrder, System.Action<Central.Engine.Modules.IRibbonPageBuilder> configure)
+method: Central.Engine.Modules.IRibbonPageBuilder AddPage(System.String header, System.Int32 sortOrder, System.String requiredPermission, System.Action<Central.Engine.Modules.IRibbonPageBuilder> configure)
+
+== Central.Engine.Modules.IRibbonGroupBuilder ==
+kind: interface
+method: System.Void AddButton(System.String content, System.String permission, System.String glyph, System.Action onClick)
+method: System.Void AddCheckButton(System.String content, System.String panelId)
+method: System.Void AddLargeButton(System.String content, System.String permission, System.String largeGlyph, System.String toolTip, System.Action onClick)
+method: System.Void AddSeparator()
+method: System.Void AddSplitButton(System.String content, System.String permission, System.String glyph, System.Action primaryClick, System.Action<System.Collections.Generic.List<Central.Engine.Shell.RibbonButtonRegistration>> configureSubItems)
+method: System.Void AddToggleButton(System.String content, System.String permission, System.Action<System.Boolean> onToggle)
+
+== Central.Engine.Modules.IRibbonPageBuilder ==
+kind: interface
+method: Central.Engine.Modules.IRibbonGroupBuilder AddGroup(System.String header, System.Action<Central.Engine.Modules.IRibbonGroupBuilder> configure)
+
+== Central.Engine.Shell.DataModifiedMessage ==
+kind: record
+prop: System.String EntityType { get/set }
+prop: System.String Operation { get/set }
+prop: System.String SourcePanel { get/set }
+method: Central.Engine.Shell.DataModifiedMessage <Clone>$()
+method: System.Void Deconstruct(System.String& SourcePanel, System.String& EntityType, System.String& Operation)
+method: System.Boolean Equals(System.Object obj)
+method: System.Boolean Equals(Central.Engine.Shell.DataModifiedMessage other)
+method: System.Int32 GetHashCode()
+method: System.String ToString()
+
+== Central.Engine.Shell.IPanelMessage ==
+kind: interface
+
+== Central.Engine.Shell.LinkSelectionMessage ==
+kind: record
+prop: System.String Field { get/set }
+prop: System.String SourcePanel { get/set }
+prop: System.Object Value { get/set }
+method: Central.Engine.Shell.LinkSelectionMessage <Clone>$()
+method: System.Void Deconstruct(System.String& SourcePanel, System.String& Field, System.Object& Value)
+method: System.Boolean Equals(System.Object obj)
+method: System.Boolean Equals(Central.Engine.Shell.LinkSelectionMessage other)
+method: System.Int32 GetHashCode()
+method: System.String ToString()
+
+== Central.Engine.Shell.ModuleLoadFailedMessage ==
+kind: record
+prop: System.String AttemptedVersion { get/set }
+prop: System.Exception Exception { get/set }
+prop: System.String ModuleCode { get/set }
+prop: System.String Reason { get/set }
+method: Central.Engine.Shell.ModuleLoadFailedMessage <Clone>$()
+method: System.Void Deconstruct(System.String& ModuleCode, System.String& AttemptedVersion, System.String& Reason, System.Exception& Exception)
+method: System.Boolean Equals(System.Object obj)
+method: System.Boolean Equals(Central.Engine.Shell.ModuleLoadFailedMessage other)
+method: System.Int32 GetHashCode()
+method: System.String ToString()
+
+== Central.Engine.Shell.ModuleReloadedMessage ==
+kind: record
+prop: System.String FromVersion { get/set }
+prop: System.String ModuleCode { get/set }
+prop: System.String ToVersion { get/set }
+method: Central.Engine.Shell.ModuleReloadedMessage <Clone>$()
+method: System.Void Deconstruct(System.String& ModuleCode, System.String& FromVersion, System.String& ToVersion)
+method: System.Boolean Equals(System.Object obj)
+method: System.Boolean Equals(Central.Engine.Shell.ModuleReloadedMessage other)
+method: System.Int32 GetHashCode()
+method: System.String ToString()
+
+== Central.Engine.Shell.ModuleReloadingMessage ==
+kind: record
+prop: System.String FromVersion { get/set }
+prop: System.String ModuleCode { get/set }
+prop: System.String ToVersion { get/set }
+method: Central.Engine.Shell.ModuleReloadingMessage <Clone>$()
+method: System.Void Deconstruct(System.String& ModuleCode, System.String& FromVersion, System.String& ToVersion)
+method: System.Boolean Equals(System.Object obj)
+method: System.Boolean Equals(Central.Engine.Shell.ModuleReloadingMessage other)
+method: System.Int32 GetHashCode()
+method: System.String ToString()
+
+== Central.Engine.Shell.NavigateToPanelMessage ==
+kind: record
+prop: System.Object SelectItem { get/set }
+prop: System.String TargetPanel { get/set }
+method: Central.Engine.Shell.NavigateToPanelMessage <Clone>$()
+method: System.Void Deconstruct(System.String& TargetPanel, System.Object& SelectItem)
+method: System.Boolean Equals(System.Object obj)
+method: System.Boolean Equals(Central.Engine.Shell.NavigateToPanelMessage other)
+method: System.Int32 GetHashCode()
+method: System.String ToString()
+
+== Central.Engine.Shell.OpenPanelMessage ==
+kind: record
+prop: System.String TargetPanel { get/set }
+method: Central.Engine.Shell.OpenPanelMessage <Clone>$()
+method: System.Void Deconstruct(System.String& TargetPanel)
+method: System.Boolean Equals(System.Object obj)
+method: System.Boolean Equals(Central.Engine.Shell.OpenPanelMessage other)
+method: System.Int32 GetHashCode()
+method: System.String ToString()
+
+== Central.Engine.Shell.RefreshPanelMessage ==
+kind: record
+prop: System.String TargetPanel { get/set }
+method: Central.Engine.Shell.RefreshPanelMessage <Clone>$()
+method: System.Void Deconstruct(System.String& TargetPanel)
+method: System.Boolean Equals(System.Object obj)
+method: System.Boolean Equals(Central.Engine.Shell.RefreshPanelMessage other)
+method: System.Int32 GetHashCode()
+method: System.String ToString()
+
+== Central.Engine.Shell.SelectionChangedMessage ==
+kind: record
+prop: System.Object SelectedItem { get/set }
+prop: System.Collections.Generic.IReadOnlyList<System.Object> SelectedItems { get/set }
+prop: System.String SourcePanel { get/set }
+method: Central.Engine.Shell.SelectionChangedMessage <Clone>$()
+method: System.Void Deconstruct(System.String& SourcePanel, System.Object& SelectedItem, System.Collections.Generic.IReadOnlyList`1[[System.Object, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]& SelectedItems)
+method: System.Boolean Equals(System.Object obj)
+method: System.Boolean Equals(Central.Engine.Shell.SelectionChangedMessage other)
+method: System.Int32 GetHashCode()
+method: System.String ToString()

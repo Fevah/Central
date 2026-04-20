@@ -139,4 +139,14 @@ public class ServiceHealthTests
     [Fact]
     public Task ContainerRegistry_IsReachable() =>
         AssertReachable("http://192.168.56.10:30500/v2/");
+
+    // Angular dev server — runs only when explicitly started via
+    // `cd apps/web && npx ng serve --port 4200 --host 0.0.0.0` (see
+    // CLAUDE.md reboot instructions). Unlike the K8s services above,
+    // this is a local dev surface, not a deployed one; the probe
+    // exists so "why isn't 4200 loading?" has a machine-readable
+    // answer in the suite output rather than a silent gap.
+    [Fact]
+    public Task AngularDevServer_IsReachable() =>
+        AssertReachable("http://localhost:4200/");
 }
