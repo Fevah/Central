@@ -3915,6 +3915,43 @@ self-serve page completes the self-serve trio. Validation batch
       the stale-write guard.
 - [ ] Catalog now at 173 rules; guardrail test still green.
 
+### 7.X.43 Phase 10b — twenty-sixth wave (commits 2026-04-20+)
+
+Validation batches 45 + 46 add hygiene rules. Validation page
+gains a Category filter bar. Overview gets a pending-approvals
+mini-panel.
+
+**Validation rule expansion — batch 45** (commit `fd3042d67`)
+- [ ] `port.speed_mbps_set_when_active` (Info, Advisory)
+- [ ] `server_nic.nic_index_in_range` (Warning) — 0..=63 range
+- [ ] `device.hostname_no_leading_trailing_whitespace` (Warning)
+- [ ] Catalog now at 176 rules.
+
+**Validation page category filter** (commit `380ec5a28`)
+- [ ] Category quick-filter bar below the existing Severity
+      bar: All / Integrity / Consistency / Safety / Advisory.
+- [ ] ruleCode → category map loaded from
+      /api/net/validation/rules on ngOnInit.
+- [ ] applyFilter() AND-combines severity + category narrowers.
+- [ ] Category bar hidden when categoryMap is empty (silent-
+      fail on rules-fetch error).
+- [ ] New listValidationRules service method + ResolvedRule
+      interface.
+
+**Validation rule expansion — batch 46** (commit `c2459726f`)
+- [ ] `server.hostname_no_leading_trailing_whitespace` (Warning)
+- [ ] `port.description_set_when_active` (Info, Advisory)
+- [ ] `link.link_code_no_leading_trailing_whitespace` (Warning)
+- [ ] Catalog now at 179 rules; guardrail test still green.
+
+**Overview pending-approvals mini-panel** (commit `83a2d63b6`)
+- [ ] New "Pending approvals" section on /network/overview
+      showing top 10 Submitted change-sets.
+- [ ] Table columns: Submitted / Title / Requested by / Items.
+- [ ] Click row → /network/change-sets/:id detail.
+- [ ] Inline "see all →" link to /network/change-sets?status=Submitted.
+- [ ] Section hidden when zero Submitted sets exist.
+
 ---
 
 ## 8. Enterprise SaaS
