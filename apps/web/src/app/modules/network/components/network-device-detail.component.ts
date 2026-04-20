@@ -49,6 +49,19 @@ import { environment } from '../../../../environments/environment';
       <div class="meta-row"><label>Status</label>      <span>{{ device.status }}</span></div>
       <div class="meta-row"><label>Version</label>     <span>{{ device.version }}</span></div>
       <div class="meta-row"><label>UUID</label>        <code>{{ device.id }}</code></div>
+
+      <div class="meta-row">
+        <label>Ports</label>
+        <span>{{ portCount === null ? '…' : portCount }}</span>
+      </div>
+      <div class="meta-row">
+        <label>Modules</label>
+        <span>{{ moduleCount === null ? '…' : moduleCount }}</span>
+      </div>
+      <div class="meta-row">
+        <label>Aggregate-ethernet</label>
+        <span>{{ aeCount === null ? '…' : aeCount }}</span>
+      </div>
     </div>
 
     <!-- Audit tab -->
@@ -184,6 +197,12 @@ export class NetworkDeviceDetailComponent implements OnInit {
   ports: PortListRow[] = [];
   loadingPorts = false;
 
+  /// Summary count enrichment — populated at page load via three
+  /// thin-list narrower calls in parallel. Null = still loading.
+  portCount: number | null = null;
+  moduleCount: number | null = null;
+  aeCount: number | null = null;
+
   rendering = false;
   status = '';
   renderStatus = '';
@@ -208,9 +227,31 @@ export class NetworkDeviceDetailComponent implements OnInit {
       next: (rows) => {
         this.device = rows.find(r => r.id === this.deviceId) ?? null;
         this.status = this.device ? '' : 'Device not found.';
-        if (this.device) this.loadTabData();
+        if (this.device) {
+          this.loadTabData();
+          this.loadSummaryCounts();
+        }
       },
       error: (err) => { this.status = `Load failed: ${err?.message ?? err}`; },
+    });
+  }
+
+  /// Three parallel thin-list narrower calls — feed the port /
+  /// module / AE counts on the Summary tab without waiting for the
+  /// Ports tab to be opened. Silent-fail on individual errors so
+  /// one failing call doesn't take out the whole summary.
+  private loadSummaryCounts(): void {
+    this.engine.listPorts(environment.defaultTenantId, this.deviceId).subscribe({
+      next: (rows) => { this.portCount = rows?.length ?? 0; },
+      error: () => { this.portCount = 0; },
+    });
+    this.engine.listModules(environment.defaultTenantId, this.deviceId).subscribe({
+      next: (rows) => { this.moduleCount = rows?.length ?? 0; },
+      error: () => { this.moduleCount = 0; },
+    });
+    this.engine.listAggregateEthernet(environment.defaultTenantId, this.deviceId).subscribe({
+      next: (rows) => { this.aeCount = rows?.length ?? 0; },
+      error: () => { this.aeCount = 0; },
     });
   }
 
