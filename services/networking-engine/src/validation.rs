@@ -1588,6 +1588,41 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "device.building_resolves_active_when_set",
+        name: "Device building_id must resolve to an Active building when set",
+        description: "Nullable-FK sibling of device.active_requires_\
+                      building (which catches the NULL case on Active \
+                      devices). Building-scoped scope-grants expand \
+                      through the building row; a decommissioned \
+                      building silently hides the device from scoped \
+                      reads.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server.room_resolves_active_when_set",
+        name: "Server room_id must resolve to an Active room when set",
+        description: "Server's optional room_id, when set, must \
+                      resolve to an Active room. Mirror of \
+                      device.room_resolves_active_when_set on the \
+                      server branch.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server.rack_resolves_active_when_set",
+        name: "Server rack_id must resolve to an Active rack when set",
+        description: "Server's optional rack_id, when set, must \
+                      resolve to an Active rack. Mirror of \
+                      device.rack_resolves_active_when_set on the \
+                      server branch.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1907,6 +1942,9 @@ async fn dispatch(
         "device.room_resolves_active_when_set"    => run_device_room_active(pool, org_id, severity, out).await,
         "device.rack_resolves_active_when_set"    => run_device_rack_active(pool, org_id, severity, out).await,
         "subnet.parent_subnet_resolves_active_when_set" => run_subnet_parent_active(pool, org_id, severity, out).await,
+        "device.building_resolves_active_when_set" => run_device_building_active(pool, org_id, severity, out).await,
+        "server.room_resolves_active_when_set"    => run_server_room_active(pool, org_id, severity, out).await,
+        "server.rack_resolves_active_when_set"    => run_server_rack_active(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -4965,6 +5003,85 @@ async fn run_subnet_parent_active(
     Ok(())
 }
 
+/// `device.building_resolves_active_when_set` — device's optional
+/// building must be live. Companion to device.active_requires_building.
+async fn run_device_building_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT d.id, d.hostname, COALESCE(b.status::text, '(missing)')
+           FROM net.device d
+           LEFT JOIN net.building b ON b.id = d.building_id
+          WHERE d.organization_id = $1
+            AND d.deleted_at IS NULL
+            AND d.building_id IS NOT NULL
+            AND (b.id IS NULL
+                 OR b.deleted_at IS NOT NULL
+                 OR b.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname, status) in rows {
+        out.push(Violation {
+            rule_code: "device.building_resolves_active_when_set".into(),
+            severity, entity_type: "Device".into(), entity_id: Some(id),
+            message: format!(
+                "Device '{hostname}' references a building with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `server.room_resolves_active_when_set` — server's optional room must be live.
+async fn run_server_room_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT s.id, s.hostname, COALESCE(r.status::text, '(missing)')
+           FROM net.server s
+           LEFT JOIN net.room r ON r.id = s.room_id
+          WHERE s.organization_id = $1
+            AND s.deleted_at IS NULL
+            AND s.room_id IS NOT NULL
+            AND (r.id IS NULL
+                 OR r.deleted_at IS NOT NULL
+                 OR r.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname, status) in rows {
+        out.push(Violation {
+            rule_code: "server.room_resolves_active_when_set".into(),
+            severity, entity_type: "Server".into(), entity_id: Some(id),
+            message: format!(
+                "Server '{hostname}' references a room with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `server.rack_resolves_active_when_set` — server's optional rack must be live.
+async fn run_server_rack_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT s.id, s.hostname, COALESCE(rk.status::text, '(missing)')
+           FROM net.server s
+           LEFT JOIN net.rack rk ON rk.id = s.rack_id
+          WHERE s.organization_id = $1
+            AND s.deleted_at IS NULL
+            AND s.rack_id IS NOT NULL
+            AND (rk.id IS NULL
+                 OR rk.deleted_at IS NOT NULL
+                 OR rk.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname, status) in rows {
+        out.push(Violation {
+            rule_code: "server.rack_resolves_active_when_set".into(),
+            severity, entity_type: "Server".into(), entity_id: Some(id),
+            message: format!(
+                "Server '{hostname}' references a rack with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -5521,6 +5638,9 @@ mod tests {
             "device.room_resolves_active_when_set",
             "device.rack_resolves_active_when_set",
             "subnet.parent_subnet_resolves_active_when_set",
+            "device.building_resolves_active_when_set",
+            "server.room_resolves_active_when_set",
+            "server.rack_resolves_active_when_set",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
