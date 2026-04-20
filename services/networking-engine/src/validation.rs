@@ -2808,6 +2808,75 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    // ── Batch 70 — positive-value + non-empty sanity (asn/prefix/body) ──
+    RuleMeta {
+        code: "asn_allocation.asn_positive",
+        name: "ASN allocation asn value must be > 0",
+        description: "ASNs are in the range 1..4294967295 (RFC 6793). \
+                      Zero + negative values are invalid + sneak in \
+                      through accidental nullable-column imports. \
+                      Block-range rule catches out-of-block values; \
+                      this rule catches the simpler sign error.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "ip_pool.prefix_length_positive",
+        name: "IP pool prefix_length must be > 0",
+        description: "A pool with prefix_length 0 covers the entire \
+                      v4 or v6 space and effectively disables the \
+                      carver's family constraints. Catches bad \
+                      imports + copy-paste errors.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "rendered_config.body_not_empty",
+        name: "Rendered config body must not be empty",
+        description: "An empty rendered config body is a useless \
+                      artefact — the device gets no configuration. \
+                      Usually indicates the renderer failed silently. \
+                      Rule surfaces those rows loudly.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    // ── Batch 71 — rendered-config + saved-view shape hygiene ────────────
+    RuleMeta {
+        code: "rendered_config.line_count_non_negative",
+        name: "Rendered config line_count must be >= 0",
+        description: "Negative line counts indicate a telemetry bug \
+                      in the renderer — it subtracted more than it \
+                      counted. Always surface these for investigation.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "rendered_config.body_sha256_length_64",
+        name: "Rendered config body_sha256 must be exactly 64 hex chars",
+        description: "SHA-256 digests are always 64 hex characters. \
+                      A shorter or longer value means the renderer \
+                      wrote something that isn't a real SHA-256 + \
+                      breaks the diff-detection path.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "saved_view.name_not_empty",
+        name: "Saved view name must not be empty",
+        description: "Empty names render as a blank row in the \
+                      saved-view sidebar — users can't tell them \
+                      apart. DB allows empty string (VARCHAR(128) \
+                      NOT NULL doesn't exclude ''); rule catches \
+                      it.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -3257,6 +3326,14 @@ async fn dispatch(
         "change_set_item.action_in_allowed_set"   => run_change_set_item_action_allowed(pool, org_id, severity, out).await,
         "scope_grant.action_not_empty"            => run_scope_grant_action_not_empty(pool, org_id, severity, out).await,
         "scope_grant.entity_type_not_empty"       => run_scope_grant_entity_type_not_empty(pool, org_id, severity, out).await,
+        // Batch 70 — positive-value + non-empty sanity (asn/prefix/body)
+        "asn_allocation.asn_positive"             => run_asn_allocation_positive(pool, org_id, severity, out).await,
+        "ip_pool.prefix_length_positive"          => run_ip_pool_prefix_positive(pool, org_id, severity, out).await,
+        "rendered_config.body_not_empty"          => run_rendered_config_body_not_empty(pool, org_id, severity, out).await,
+        // Batch 71 — rendered-config + saved-view shape hygiene
+        "rendered_config.line_count_non_negative" => run_rendered_config_line_count_non_negative(pool, org_id, severity, out).await,
+        "rendered_config.body_sha256_length_64"   => run_rendered_config_sha_length(pool, org_id, severity, out).await,
+        "saved_view.name_not_empty"               => run_saved_view_name_not_empty(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
     }
@@ -9217,6 +9294,120 @@ async fn run_scope_grant_entity_type_not_empty(
     Ok(())
 }
 
+/// Batch 70 — `asn_allocation.asn_positive`.
+async fn run_asn_allocation_positive(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i64)> = sqlx::query_as(
+        "SELECT id, asn FROM net.asn_allocation
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND asn <= 0")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, asn) in rows {
+        out.push(Violation {
+            rule_code: "asn_allocation.asn_positive".into(),
+            severity, entity_type: "AsnAllocation".into(), entity_id: Some(id),
+            message: format!("ASN allocation {id} has asn={asn} — must be > 0."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 70 — `ip_pool.prefix_length_positive`.
+async fn run_ip_pool_prefix_positive(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32)> = sqlx::query_as(
+        "SELECT id, prefix_length FROM net.ip_pool
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND prefix_length <= 0")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, plen) in rows {
+        out.push(Violation {
+            rule_code: "ip_pool.prefix_length_positive".into(),
+            severity, entity_type: "IpPool".into(), entity_id: Some(id),
+            message: format!("IP pool {id} has prefix_length={plen} — must be > 0."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 70 — `rendered_config.body_not_empty`.
+async fn run_rendered_config_body_not_empty(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid,)> = sqlx::query_as(
+        "SELECT id FROM net.rendered_config
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND btrim(body) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id,) in rows {
+        out.push(Violation {
+            rule_code: "rendered_config.body_not_empty".into(),
+            severity, entity_type: "RenderedConfig".into(), entity_id: Some(id),
+            message: format!("Rendered config {id} has an empty body — renderer likely failed silently."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 71 — `rendered_config.line_count_non_negative`.
+async fn run_rendered_config_line_count_non_negative(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32)> = sqlx::query_as(
+        "SELECT id, line_count FROM net.rendered_config
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND line_count < 0")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, lc) in rows {
+        out.push(Violation {
+            rule_code: "rendered_config.line_count_non_negative".into(),
+            severity, entity_type: "RenderedConfig".into(), entity_id: Some(id),
+            message: format!("Rendered config {id} has line_count={lc} — renderer telemetry is broken."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 71 — `rendered_config.body_sha256_length_64`.
+async fn run_rendered_config_sha_length(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, body_sha256 FROM net.rendered_config
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND char_length(body_sha256) <> 64")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, sha) in rows {
+        out.push(Violation {
+            rule_code: "rendered_config.body_sha256_length_64".into(),
+            severity, entity_type: "RenderedConfig".into(), entity_id: Some(id),
+            message: format!("Rendered config {id} has body_sha256='{sha}' ({} chars) — must be 64.", sha.len()),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 71 — `saved_view.name_not_empty`.
+async fn run_saved_view_name_not_empty(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid,)> = sqlx::query_as(
+        "SELECT id FROM net.saved_view
+          WHERE organization_id = $1
+            AND btrim(name) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id,) in rows {
+        out.push(Violation {
+            rule_code: "saved_view.name_not_empty".into(),
+            severity, entity_type: "SavedView".into(), entity_id: Some(id),
+            message: format!("Saved view {id} has an empty name."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.rack_code_unique_per_room` — parallel to floor/room rules.
 async fn run_rack_code_unique(
     pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
@@ -9560,6 +9751,12 @@ mod tests {
             "change_set_item.action_in_allowed_set",
             "scope_grant.action_not_empty",
             "scope_grant.entity_type_not_empty",
+            "asn_allocation.asn_positive",
+            "ip_pool.prefix_length_positive",
+            "rendered_config.body_not_empty",
+            "rendered_config.line_count_non_negative",
+            "rendered_config.body_sha256_length_64",
+            "saved_view.name_not_empty",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
