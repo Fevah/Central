@@ -216,6 +216,12 @@ Central.Api.Middleware.ModuleLicenseExtensions.UseModuleLicenseCheck(app);
 app.MapGroup("/api/health").MapHealthEndpoints();
 app.MapGroup("/api/version").MapVersionEndpoints();
 app.MapGroup("/api/updates").WithTags("Updates").MapUpdateEndpoints();
+// Phase 1 of the module-update system (docs/MODULE_UPDATE_SYSTEM.md). Read-only
+// module-catalog lookup — desktop compares loaded module version to the
+// current_version here and surfaces a banner when they differ. Anonymous on
+// purpose (module catalog is non-sensitive public metadata); Phase 2's
+// /publish + /dll endpoints require auth.
+app.MapGroup("/api/modules").WithTags("Modules").MapModuleCatalogEndpoints();
 
 // Inbound client-side error logging (browsers/mobile push errors here so
 // they land in app_log alongside server logs). Anonymous on purpose — auth
