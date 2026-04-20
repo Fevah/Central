@@ -2148,6 +2148,40 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "port.breakout_parent_not_self_loop",
+        name: "Port breakout_parent_id must not reference the port itself",
+        description: "A port whose breakout_parent_id equals its \
+                      own id is a self-loop — both config-gen + \
+                      the breakout-child queries will infinite-\
+                      recurse. DB has no CHECK for this so the \
+                      rule catches it at validation time.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "subnet.parent_subnet_not_self_loop",
+        name: "Subnet parent_subnet_id must not reference the subnet itself",
+        description: "Self-referential parent_subnet_id breaks \
+                      nested-pool rollup views + infinite-recurses \
+                      the ancestor-walk query.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "device.rack_implies_room",
+        name: "Device with rack_id should also carry room_id",
+        description: "Rack belongs to a room; setting rack_id on a \
+                      device without also setting room_id leaves the \
+                      hierarchy drill broken at the room level. \
+                      Warning: config-gen still renders but room-\
+                      scoped scope-grants skip the device.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2525,6 +2559,9 @@ async fn dispatch(
         "server.display_name_no_leading_trailing_whitespace" => run_server_name_ws(pool, org_id, severity, out).await,
         "link.display_name_no_leading_trailing_whitespace" => run_link_name_ws(pool, org_id, severity, out).await,
         "ip_pool.display_name_no_leading_trailing_whitespace" => run_ip_pool_name_ws(pool, org_id, severity, out).await,
+        "port.breakout_parent_not_self_loop"      => run_port_breakout_self_loop(pool, org_id, severity, out).await,
+        "subnet.parent_subnet_not_self_loop"      => run_subnet_parent_self_loop(pool, org_id, severity, out).await,
+        "device.rack_implies_room"                => run_device_rack_implies_room(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -6794,6 +6831,73 @@ async fn run_ip_pool_name_ws(
     Ok(())
 }
 
+/// `port.breakout_parent_not_self_loop` — flag self-referencing ports.
+async fn run_port_breakout_self_loop(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, interface_name
+           FROM net.port
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND breakout_parent_id = id")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, iface) in rows {
+        out.push(Violation {
+            rule_code: "port.breakout_parent_not_self_loop".into(),
+            severity, entity_type: "Port".into(), entity_id: Some(id),
+            message: format!(
+                "Port '{iface}' breakout_parent_id references itself — self-loop."),
+        });
+    }
+    Ok(())
+}
+
+/// `subnet.parent_subnet_not_self_loop` — flag self-referencing subnets.
+async fn run_subnet_parent_self_loop(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, subnet_code
+           FROM net.subnet
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND parent_subnet_id = id")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "subnet.parent_subnet_not_self_loop".into(),
+            severity, entity_type: "Subnet".into(), entity_id: Some(id),
+            message: format!(
+                "Subnet '{code}' parent_subnet_id references itself — self-loop."),
+        });
+    }
+    Ok(())
+}
+
+/// `device.rack_implies_room` — rack_id set without room_id.
+async fn run_device_rack_implies_room(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, hostname
+           FROM net.device
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND rack_id IS NOT NULL
+            AND room_id IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname) in rows {
+        out.push(Violation {
+            rule_code: "device.rack_implies_room".into(),
+            severity, entity_type: "Device".into(), entity_id: Some(id),
+            message: format!(
+                "Device '{hostname}' has rack_id but no room_id — hierarchy drill breaks at the room level."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -7398,6 +7502,9 @@ mod tests {
             "server.display_name_no_leading_trailing_whitespace",
             "link.display_name_no_leading_trailing_whitespace",
             "ip_pool.display_name_no_leading_trailing_whitespace",
+            "port.breakout_parent_not_self_loop",
+            "subnet.parent_subnet_not_self_loop",
+            "device.rack_implies_room",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
