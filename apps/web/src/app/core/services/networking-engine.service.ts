@@ -385,6 +385,15 @@ export interface AuditTrendPoint {
   count: number;
 }
 
+/// One row per distinct audit action. Matches `DistinctAction` in
+/// services/networking-engine/src/audit.rs. Drives UI action-filter
+/// dropdowns + the count badge per action.
+export interface DistinctAction {
+  action: string;
+  count: number;
+  lastSeenAt: string;
+}
+
 /// One correlation's rollup — distinct correlation_id across the
 /// tenant with summary + optional change-set metadata. Matches
 /// `RecentCorrelation` in services/networking-engine/src/audit.rs.
@@ -889,6 +898,21 @@ export class NetworkingEngineService {
     if (limit !== undefined) params = params.set('limit', limit.toString());
     return this.http.get<RecentCorrelation[]>(
       `${this.base}/api/net/audit/correlations`, { params });
+  }
+
+  /// Distinct audit actions seen in the tenant — drives the
+  /// audit-search action dropdown. Optional entityType narrows
+  /// to one entity type's actions.
+  listAuditActions(
+    organizationId: string,
+    entityType?: string,
+    limit?: number,
+  ): Observable<DistinctAction[]> {
+    let params = new HttpParams().set('organizationId', organizationId);
+    if (entityType)         params = params.set('entityType', entityType);
+    if (limit !== undefined) params = params.set('limit', limit.toString());
+    return this.http.get<DistinctAction[]>(
+      `${this.base}/api/net/audit/actions`, { params });
   }
 
   /// Per-entity-type facet counts for a search query. Returns one row

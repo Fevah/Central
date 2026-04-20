@@ -130,7 +130,11 @@ export class NetworkAuditSearchComponent implements OnInit {
     'Device', 'Server', 'Link', 'Vlan', 'Subnet',
     'DhcpRelayTarget', 'ScopeGrant', 'SavedView', 'ChangeSet',
   ];
-  knownActions = [
+  /// Seed list of "known" action strings. Replaced at ngOnInit
+  /// from /api/net/audit/actions with the live tenant set so
+  /// rarely-used actions (e.g. ItemRemoved, RolledBack) surface
+  /// in the dropdown when they've actually happened.
+  knownActions: string[] = [
     'Created', 'Updated', 'Deleted', 'Applied', 'Rendered',
     'Imported', 'Validated', 'Locked', 'Unlocked',
   ];
@@ -165,6 +169,20 @@ export class NetworkAuditSearchComponent implements OnInit {
       this.actorUserId = Number.isFinite(n) && n > 0 ? n : null;
     }
     this.correlationId = qp.get('correlationId') || '';
+
+    // Pull the live distinct-action set so the dropdown reflects
+    // what this tenant has actually emitted (not just the seeded
+    // default). Runs in parallel with reload(); order doesn't
+    // matter because the dropdown binding is observable in Angular.
+    this.engine.listAuditActions(environment.defaultTenantId, undefined, 200)
+      .subscribe({
+        next: (rows) => {
+          if (rows?.length) {
+            this.knownActions = rows.map(r => r.action);
+          }
+        },
+        error: () => { /* silent — keep the seeded defaults */ },
+      });
 
     this.reload();
   }
