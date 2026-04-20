@@ -3798,6 +3798,44 @@ enrichment + three Advisory reachability/readability rules.
 - [ ] `link.description_set_when_active` (Info, Advisory)
 - [ ] Catalog now at 164 rules; guardrail test still green.
 
+### 7.X.40 Phase 10b — twenty-third wave (commits 2026-04-20+)
+
+Change-sets status summary endpoint + banner UI. Subnet detail
+Summary enrichment. Validation batch 42 adds management_ip
+uniqueness + port admin_up sanity.
+
+**Engine /api/net/change-sets/summary endpoint** (commit `45124d186`)
+- [ ] GET /api/net/change-sets/summary?organizationId=…
+      returns 7 rows — Draft / Submitted / Approved / Rejected /
+      Applied / RolledBack / Cancelled — each with a count.
+- [ ] Zero-count statuses filled server-side; state-machine
+      ordered.
+
+**Change-sets list status banner** (commit `ee44bece7`)
+- [ ] Pill bar above the filter row, one pill per status.
+- [ ] Colours match the existing grid badges (draft gray,
+      submitted blue, approved purple, applied green, etc.).
+- [ ] Click a pill → filter grid to that status. Active pill
+      gets a ring outline. Clear pill resets filter.
+- [ ] New changeSetStatusSummary() service method.
+
+**Subnet detail Summary counts** (commit `b7a2ef908`)
+- [ ] /network/net-subnet/:id Summary tab shows IP-addresses
+      count.
+- [ ] listIpAddresses(subnetId) pre-populates this.addresses
+      so the Addresses tab doesn't re-fetch.
+- [ ] Completes the detail-Summary enrichment pass across
+      device / server / vlan / link / subnet.
+
+**Validation rule expansion — batch 42** (commit `98b18a0e0`)
+- [ ] `device.management_ip_unique_per_tenant_when_set` (Warning)
+      — flag devices sharing a management_ip.
+- [ ] `port.admin_up_false_on_active_status` (Info, Advisory)
+      — Active port with admin_up=false is suspicious.
+- [ ] `server.management_ip_unique_per_tenant_when_set` (Warning)
+      — mirror on server branch.
+- [ ] Catalog now at 167 rules; guardrail test still green.
+
 ---
 
 ## 8. Enterprise SaaS
