@@ -126,6 +126,17 @@ import { environment } from '../../../../environments/environment';
                  text="Add item" icon="add" stylingMode="outlined"
                  (onClick)="openItemDialog()" [disabled]="busy" />
     </div>
+
+    <!-- Item-action rollup: quick-glance breakdown of what this
+         set actually does (5 Creates + 2 Updates + 1 Delete). -->
+    <div *ngIf="items.length > 0" class="item-rollup">
+      <span *ngFor="let a of itemActionSummary"
+            class="rollup-pill"
+            [ngClass]="'action-' + a.action.toLowerCase()">
+        <span class="rollup-count">{{ a.count }}</span>
+        <span class="rollup-label">{{ a.action }}</span>
+      </span>
+    </div>
     <dx-data-grid [dataSource]="items" [showBorders]="true" [hoverStateEnabled]="true"
                    [columnAutoWidth]="true"
                    [filterRow]="{ visible: true }"
@@ -278,6 +289,17 @@ import { environment } from '../../../../environments/environment';
     .action-bar { display: flex; gap: 8px; margin: 10px 0; }
     .items-header { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
     .items-header .section-title { margin: 0; }
+    .item-rollup { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 10px; }
+    .rollup-pill {
+      display: inline-flex; gap: 6px; align-items: center;
+      padding: 3px 10px; border-radius: 12px; font-size: 11px;
+    }
+    .rollup-pill .rollup-count { font-weight: 700; font-size: 12px; }
+    .rollup-pill .rollup-label { text-transform: uppercase; letter-spacing: 0.4px; opacity: 0.8; }
+    .action-create  { background: rgba(34,197,94,0.2);   color: #22c55e; }
+    .action-update  { background: rgba(59,130,246,0.2);  color: #60a5fa; }
+    .action-delete  { background: rgba(239,68,68,0.2);   color: #ef4444; }
+    .action-rename  { background: rgba(168,85,247,0.2);  color: #a855f7; }
     .timeline-header { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
     .timeline-header .section-title { margin: 0; }
     .timeline { width: 100%; border-collapse: collapse; margin-top: 8px;
@@ -324,6 +346,21 @@ export class NetworkChangeSetDetailComponent implements OnInit {
   itemEntityTypes = ['Device', 'Vlan', 'Subnet', 'Server', 'Link',
                      'Port', 'DhcpRelayTarget', 'ScopeGrant'];
   itemActions = ['Create', 'Update', 'Delete', 'Rename'];
+
+  /// Item-action rollup for the pill bar — counts items grouped
+  /// by action. Recomputed from `items` on every template binding
+  /// pass; O(n) over the item list which is typically < 50 rows.
+  get itemActionSummary(): { action: string; count: number }[] {
+    const counts = new Map<string, number>();
+    for (const it of this.items) {
+      counts.set(it.action, (counts.get(it.action) ?? 0) + 1);
+    }
+    // Follow the canonical action order (Create → Update → Rename → Delete)
+    // rather than insertion order so the pill bar reads consistently.
+    return ['Create', 'Update', 'Rename', 'Delete']
+      .filter(a => counts.has(a))
+      .map(a => ({ action: a, count: counts.get(a)! }));
+  }
 
   itemDialogOpen = false;
   itemError = '';
