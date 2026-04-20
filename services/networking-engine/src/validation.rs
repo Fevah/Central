@@ -1877,6 +1877,40 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "device.last_ping_ok_when_active",
+        name: "Active device should have last_ping_ok = true",
+        description: "Active devices that have never answered a \
+                      probe (last_ping_ok != true) are either \
+                      mis-commissioned or unreachable. Advisory — \
+                      surfaces cases where the device row exists \
+                      but the physical device is dark.",
+        category: "Advisory",
+        default_severity: Severity::Info,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server.last_ping_ok_when_active",
+        name: "Active server should have last_ping_ok = true",
+        description: "Mirror of device.last_ping_ok_when_active \
+                      on the server branch.",
+        category: "Advisory",
+        default_severity: Severity::Info,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "link.description_set_when_active",
+        name: "Active link should carry a description",
+        description: "Active links without a description are hard \
+                      to audit — operators opening a legacy link \
+                      need the description to understand its \
+                      purpose. Advisory; not all link types warrant \
+                      a description but the network dashboard's \
+                      human readability degrades with empties.",
+        category: "Advisory",
+        default_severity: Severity::Info,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2220,6 +2254,9 @@ async fn dispatch(
         "device.serial_number_unique_per_tenant_when_set" => run_device_serial_unique(pool, org_id, severity, out).await,
         "server.serial_number_unique_per_tenant_when_set" => run_server_serial_unique(pool, org_id, severity, out).await,
         "module.serial_number_unique_per_tenant_when_set" => run_module_serial_unique(pool, org_id, severity, out).await,
+        "device.last_ping_ok_when_active"         => run_device_ping_ok(pool, org_id, severity, out).await,
+        "server.last_ping_ok_when_active"         => run_server_ping_ok(pool, org_id, severity, out).await,
+        "link.description_set_when_active"        => run_link_description_set(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -5912,6 +5949,78 @@ async fn run_module_serial_unique(
     Ok(())
 }
 
+/// `device.last_ping_ok_when_active` — Active device should have
+/// answered at least one probe (last_ping_ok = true).
+async fn run_device_ping_ok(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, hostname
+           FROM net.device
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND status = 'Active'::net.entity_status
+            AND (last_ping_ok IS NULL OR last_ping_ok = false)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname) in rows {
+        out.push(Violation {
+            rule_code: "device.last_ping_ok_when_active".into(),
+            severity, entity_type: "Device".into(), entity_id: Some(id),
+            message: format!(
+                "Active device '{hostname}' has not answered a probe (last_ping_ok != true)."),
+        });
+    }
+    Ok(())
+}
+
+/// `server.last_ping_ok_when_active` — mirror on server branch.
+async fn run_server_ping_ok(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, hostname
+           FROM net.server
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND status = 'Active'::net.entity_status
+            AND (last_ping_ok IS NULL OR last_ping_ok = false)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname) in rows {
+        out.push(Violation {
+            rule_code: "server.last_ping_ok_when_active".into(),
+            severity, entity_type: "Server".into(), entity_id: Some(id),
+            message: format!(
+                "Active server '{hostname}' has not answered a probe (last_ping_ok != true)."),
+        });
+    }
+    Ok(())
+}
+
+/// `link.description_set_when_active` — Active links should have
+/// a description for audit readability.
+async fn run_link_description_set(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, link_code
+           FROM net.link
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND status = 'Active'::net.entity_status
+            AND (description IS NULL OR description = '')")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, link_code) in rows {
+        out.push(Violation {
+            rule_code: "link.description_set_when_active".into(),
+            severity, entity_type: "Link".into(), entity_id: Some(id),
+            message: format!(
+                "Active link '{link_code}' has no description — audit \
+                 readers can't tell the link's purpose at a glance."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -6492,6 +6601,9 @@ mod tests {
             "device.serial_number_unique_per_tenant_when_set",
             "server.serial_number_unique_per_tenant_when_set",
             "module.serial_number_unique_per_tenant_when_set",
+            "device.last_ping_ok_when_active",
+            "server.last_ping_ok_when_active",
+            "link.description_set_when_active",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
