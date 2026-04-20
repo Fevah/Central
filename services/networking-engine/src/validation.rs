@@ -2455,6 +2455,32 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "region.display_name_no_leading_trailing_whitespace",
+        name: "Region display_name should not have leading or trailing whitespace",
+        description: "Trim-hygiene on region display_name. Companion \
+                      to the existing display_name_not_empty rule \
+                      + the region_code trim check.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "site.display_name_no_leading_trailing_whitespace",
+        name: "Site display_name should not have leading or trailing whitespace",
+        description: "Trim-hygiene mirror on site display_name.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "building.display_name_no_leading_trailing_whitespace",
+        name: "Building display_name should not have leading or trailing whitespace",
+        description: "Trim-hygiene mirror on building display_name.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2862,6 +2888,9 @@ async fn dispatch(
         "change_set.title_not_empty"              => run_change_set_title_empty(pool, org_id, severity, out).await,
         "change_set.title_no_leading_trailing_whitespace" => run_change_set_title_ws(pool, org_id, severity, out).await,
         "vlan_template.template_code_no_leading_trailing_whitespace" => run_vlan_template_code_ws(pool, org_id, severity, out).await,
+        "region.display_name_no_leading_trailing_whitespace" => run_region_name_ws(pool, org_id, severity, out).await,
+        "site.display_name_no_leading_trailing_whitespace" => run_site_name_ws(pool, org_id, severity, out).await,
+        "building.display_name_no_leading_trailing_whitespace" => run_building_name_ws(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -7796,6 +7825,72 @@ async fn run_vlan_template_code_ws(
     Ok(())
 }
 
+/// `region.display_name_no_leading_trailing_whitespace` — trim-equal.
+async fn run_region_name_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, display_name
+           FROM net.region
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (display_name <> btrim(display_name))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, name) in rows {
+        out.push(Violation {
+            rule_code: "region.display_name_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "Region".into(), entity_id: Some(id),
+            message: format!(
+                "Region display_name '{name}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
+/// `site.display_name_no_leading_trailing_whitespace` — trim-equal.
+async fn run_site_name_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, display_name
+           FROM net.site
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (display_name <> btrim(display_name))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, name) in rows {
+        out.push(Violation {
+            rule_code: "site.display_name_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "Site".into(), entity_id: Some(id),
+            message: format!(
+                "Site display_name '{name}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
+/// `building.display_name_no_leading_trailing_whitespace` — trim-equal.
+async fn run_building_name_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, display_name
+           FROM net.building
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (display_name <> btrim(display_name))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, name) in rows {
+        out.push(Violation {
+            rule_code: "building.display_name_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "Building".into(), entity_id: Some(id),
+            message: format!(
+                "Building display_name '{name}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -8430,6 +8525,9 @@ mod tests {
             "change_set.title_not_empty",
             "change_set.title_no_leading_trailing_whitespace",
             "vlan_template.template_code_no_leading_trailing_whitespace",
+            "region.display_name_no_leading_trailing_whitespace",
+            "site.display_name_no_leading_trailing_whitespace",
+            "building.display_name_no_leading_trailing_whitespace",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
