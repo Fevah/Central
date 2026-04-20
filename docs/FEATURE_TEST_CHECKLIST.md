@@ -4076,6 +4076,34 @@ validation drill workflow.
 - [ ] Catalog now at 200 rules — started at 54, shipped 146
       rules across 29 waves.
 
+### 7.X.48 Phase 10b — thirty-first wave (commits 2026-04-20+)
+
+Search min-length guard + batch 54 pool_code whitespace mirrors.
+
+**Engine search min-length guard** (commit `c6e6572b2`)
+- [ ] `/api/net/search` short-circuits to [] when trimmed
+      query is < SEARCH_MIN_QUERY_LEN (2).
+- [ ] `/api/net/search/facets` same short-circuit.
+- [ ] Public const SEARCH_MIN_QUERY_LEN for UI feedback.
+
+**Web search min-length hint** (commit `1abdd293f`)
+- [ ] Amber "type at least 2 characters" hint renders when
+      query is exactly 1 character.
+- [ ] Hidden at 0 chars + at 2+ chars.
+
+**Validation rule expansion — batch 54** (commit `2686b160d`)
+- [ ] `asn_pool.pool_code_no_leading_trailing_whitespace` (Warning)
+- [ ] `vlan_pool.pool_code_no_leading_trailing_whitespace` (Warning)
+- [ ] `ip_pool.pool_code_no_leading_trailing_whitespace` (Warning)
+- [ ] Catalog now at 203 rules.
+
+**C# ApiClient — search min-length guard** (commit `0ec91c9a4`)
+- [ ] GlobalSearchAsync short-circuits to empty list when
+      query.Trim().Length < SearchMinQueryLength (2).
+- [ ] Public const SearchMinQueryLength for UI "disable Search
+      button" feedback.
+- [ ] 0 errors on build.
+
 ---
 
 ## 8. Enterprise SaaS
