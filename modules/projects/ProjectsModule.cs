@@ -23,21 +23,30 @@ public class ProjectsModule : IModule, IModuleRibbon, IModulePanels
         {
             page.AddGroup("Actions", group =>
             {
-                group.AddButton("Add Task",    P.TasksWrite,  "AddItem_32x32", () => { });
-                group.AddButton("Add SubTask", P.TasksWrite,  "AddItem_16x16", () => { });
-                group.AddButton("Add Bug",     P.TasksWrite,  "Bug_16x16",     () => { });
-                group.AddButton("Delete",      P.TasksDelete, "DeleteItem_16x16", () => { });
+                group.AddButton("Add Task",    P.TasksWrite,  "AddItem_32x32",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("TasksPanel", "action:new")));
+                group.AddButton("Add SubTask", P.TasksWrite,  "AddItem_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("TasksPanel", "action:new-subtask")));
+                group.AddButton("Add Bug",     P.TasksWrite,  "Bug_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("QADocPanel", "action:new-bug")));
+                group.AddButton("Delete",      P.TasksDelete, "DeleteItem_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("TasksPanel", "action:delete")));
             });
             page.AddGroup("Sprint", group =>
             {
-                group.AddButton("New Sprint",   P.SprintsWrite, "Planning_16x16",   () => { });
-                group.AddButton("Close Sprint", P.SprintsWrite, "Status_16x16",     () => { });
-                group.AddButton("Snapshot Burndown", P.SprintsWrite, "ChartLine_16x16", () => { });
+                group.AddButton("New Sprint",   P.SprintsWrite, "Planning_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("SprintPlanningPanel", "action:new-sprint")));
+                group.AddButton("Close Sprint", P.SprintsWrite, "Status_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("SprintPlanningPanel", "action:close-sprint")));
+                group.AddButton("Snapshot Burndown", P.SprintsWrite, "ChartLine_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("SprintBurndownDocPanel", "action:snapshot")));
             });
             page.AddGroup("Scheduling", group =>
             {
-                group.AddButton("Save Baseline",  P.TasksWrite, "Save_16x16",   () => { });
-                group.AddButton("Zoom to Fit",    P.TasksRead,  "ZoomIn_16x16", () => { });
+                group.AddButton("Save Baseline",  P.TasksWrite, "Save_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("GanttDocPanel", "action:save-baseline")));
+                group.AddButton("Zoom to Fit",    P.TasksRead,  "ZoomIn_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("GanttDocPanel", "action:zoom-fit")));
             });
             page.AddGroup("View", group =>
             {

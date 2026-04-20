@@ -1,5 +1,6 @@
 ﻿using Central.Engine.Auth;
 using Central.Engine.Modules;
+using Central.Engine.Shell;
 
 namespace Central.Module.Audit;
 
@@ -20,22 +21,29 @@ public class AuditModule : IModule, IModuleRibbon, IModulePanels
         {
             page.AddGroup("Investigations", group =>
             {
-                group.AddButton("New Investigation", P.AdminAudit, "AddItem_32x32", () => { });
-                group.AddButton("Refresh", P.AdminAudit, "Refresh_16x16", () => { });
+                group.AddButton("New Investigation", P.AdminAudit, "AddItem_32x32",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("InvestigationsPanel", "action:new")));
+                group.AddButton("Refresh", P.AdminAudit, "Refresh_16x16",
+                    () => PanelMessageBus.Publish(new RefreshPanelMessage("*")));
             });
             page.AddGroup("GDPR", group =>
             {
-                group.AddButton("Compliance Score", P.AdminAudit, "ChartLine_16x16", () => { });
-                group.AddButton("Article Breakdown", P.AdminAudit, "ListBox_16x16", () => { });
+                group.AddButton("Compliance Score", P.AdminAudit, "ChartLine_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("GdprDashboardPanel", "action:compliance-score")));
+                group.AddButton("Article Breakdown", P.AdminAudit, "ListBox_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("GdprDashboardPanel", "action:article-breakdown")));
             });
             page.AddGroup("M365", group =>
             {
-                group.AddButton("Search Logs", P.AdminAudit, "Find_16x16", () => { });
-                group.AddButton("User Activity", P.AdminAudit, "BOUser_16x16", () => { });
+                group.AddButton("Search Logs", P.AdminAudit, "Find_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("M365LogsPanel", "action:search")));
+                group.AddButton("User Activity", P.AdminAudit, "BOUser_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("M365LogsPanel", "action:user-activity")));
             });
             page.AddGroup("Export", group =>
             {
-                group.AddButton("Export Evidence", P.AdminAudit, "ExportToXLS_16x16", () => { });
+                group.AddButton("Export Evidence", P.AdminAudit, "ExportToXLS_16x16",
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("FindingsPanel", "action:export")));
             });
             page.AddGroup("Panels", group =>
             {

@@ -54,9 +54,15 @@ public class GlobalModule : IModule, IModuleRibbon, IModulePanels
         {
             page.AddGroup("Actions", group =>
             {
-                group.AddButton("New",    P.AdminUsers, null, () => { });
-                group.AddButton("Edit",   P.AdminUsers, null, () => { });
-                group.AddButton("Delete", P.AdminUsers, null, () => { });
+                // "*" target lets the currently focused admin panel decide
+                // whether to handle the CRUD action — MainWindow's active-
+                // panel router subscribes and dispatches to the right panel.
+                group.AddButton("New",    P.AdminUsers, null,
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("*", "action:new")));
+                group.AddButton("Edit",   P.AdminUsers, null,
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("*", "action:edit")));
+                group.AddButton("Delete", P.AdminUsers, null,
+                    () => PanelMessageBus.Publish(new NavigateToPanelMessage("*", "action:delete")));
             });
             page.AddGroup("Panels", group =>
             {
@@ -93,7 +99,8 @@ public class GlobalModule : IModule, IModuleRibbon, IModulePanels
             });
             page.AddGroup("Data", group =>
             {
-                group.AddButton("Refresh", P.AdminAudit, null, () => { });
+                group.AddButton("Refresh", P.AdminAudit, null,
+                    () => PanelMessageBus.Publish(new RefreshPanelMessage("*")));
             });
         });
 
@@ -111,7 +118,8 @@ public class GlobalModule : IModule, IModuleRibbon, IModulePanels
             });
             page.AddGroup("Data", group =>
             {
-                group.AddButton("Refresh All", null, null, () => { });
+                group.AddButton("Refresh All", null, null,
+                    () => PanelMessageBus.Publish(new RefreshPanelMessage("*")));
             });
         });
     }
