@@ -1072,6 +1072,16 @@ public class NetworkingEngineClient : IDisposable
     public Task<WhoAmIDto> WhoAmIAsync(Guid organizationId, CancellationToken ct = default)
         => GetAsync<WhoAmIDto>($"/api/net/whoami?organizationId={organizationId}", ct);
 
+    /// <summary>Full scope-grant list for the current caller. Bypasses
+    /// the read:ScopeGrant gate (reading your own access is always
+    /// permitted). Service-origin calls come back with an empty list.
+    /// Rows ordered by entityType + action + scopeType — no client-
+    /// side sort needed for a clean table render.</summary>
+    public Task<List<ScopeGrantDto>> ListMyGrantsAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<List<ScopeGrantDto>>(
+            $"/api/net/whoami/grants?organizationId={organizationId}", ct);
+
     // ─── Naming overrides (Phase 10b) ────────────────────────────────────
 
     public Task<List<NamingOverrideDto>> ListNamingOverridesAsync(Guid organizationId,
