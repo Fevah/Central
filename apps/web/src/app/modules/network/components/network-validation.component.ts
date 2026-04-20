@@ -9,6 +9,8 @@ import {
 } from '../../../core/services/networking-engine.service';
 import { environment } from '../../../../environments/environment';
 
+type SeverityFilter = 'All' | 'Error' | 'Warning' | 'Info';
+
 /// Web counterpart to the WPF Validation panel (Phase 9a) — runs
 /// the Rust-owned rule catalog against the tenant's net.* data
 /// and renders per-violation rows. No rule editing yet (WPF can
@@ -33,9 +35,18 @@ import { environment } from '../../../../environments/environment';
       <span *ngIf="summary" class="summary">{{ summary }}</span>
     </div>
 
+    <div *ngIf="violations.length > 0" class="filter-bar">
+      <span class="filter-label">Severity:</span>
+      <dx-button *ngFor="let f of severityFilters"
+                 [text]="f + ' (' + severityCount(f) + ')'"
+                 [type]="severity === f ? 'default' : 'normal'"
+                 stylingMode="outlined"
+                 (onClick)="setSeverity(f)" />
+    </div>
+
     <div *ngIf="status" class="status-line">{{ status }}</div>
 
-    <dx-data-grid [dataSource]="violations" [showBorders]="true" [hoverStateEnabled]="true"
+    <dx-data-grid [dataSource]="filteredViolations" [showBorders]="true" [hoverStateEnabled]="true"
                    [columnAutoWidth]="true" [searchPanel]="{ visible: true }"
                    [filterRow]="{ visible: true }" [headerFilter]="{ visible: true }"
                    [groupPanel]="{ visible: true }"
@@ -59,6 +70,8 @@ import { environment } from '../../../../environments/environment';
     .toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 8px; }
     .summary { color: #666; font-size: 12px; }
     .status-line { margin: 6px 0 10px; color: #666; font-size: 12px; }
+    .filter-bar { display: flex; gap: 8px; align-items: center; margin: 10px 0; flex-wrap: wrap; }
+    .filter-label { color: #57606a; font-size: 12px; font-weight: 500; }
     .sev-error   { color: #ef4444; }
     .sev-warning { color: #f59e0b; }
     .sev-info    { color: #3b82f6; }
@@ -66,9 +79,13 @@ import { environment } from '../../../../environments/environment';
 })
 export class NetworkValidationComponent {
   violations: Violation[] = [];
+  filteredViolations: Violation[] = [];
   summary = '';
   status = '';
   busy = false;
+
+  severityFilters: SeverityFilter[] = ['All', 'Error', 'Warning', 'Info'];
+  severity: SeverityFilter = 'All';
 
   constructor(
     private engine: NetworkingEngineService,
@@ -82,6 +99,7 @@ export class NetworkValidationComponent {
     this.engine.runValidation(environment.defaultTenantId).subscribe({
       next: (result: ValidationRunResult) => {
         this.violations = result.violations;
+        this.applyFilter();
         this.summary = `${result.rulesRun} rule${result.rulesRun === 1 ? '' : 's'} run · ` +
                        `${result.rulesWithFindings} with findings · ` +
                        `${result.totalViolations} violation${result.totalViolations === 1 ? '' : 's'}`;
@@ -95,6 +113,24 @@ export class NetworkValidationComponent {
         this.status = `Validation failed: ${err?.message ?? err}`;
       },
     });
+  }
+
+  setSeverity(f: SeverityFilter): void {
+    this.severity = f;
+    this.applyFilter();
+  }
+
+  /// Count per severity — drives the "(N)" badges on the filter
+  /// buttons so operators see the breakdown before clicking.
+  severityCount(f: SeverityFilter): number {
+    if (f === 'All') return this.violations.length;
+    return this.violations.filter(v => v.severity === f).length;
+  }
+
+  private applyFilter(): void {
+    this.filteredViolations = this.severity === 'All'
+      ? [...this.violations]
+      : this.violations.filter(v => v.severity === this.severity);
   }
 
   /// Drill to the audit timeline for the offending entity. The
