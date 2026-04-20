@@ -1154,6 +1154,16 @@ public class NetworkingEngineClient : IDisposable
         => GetAsync<TenantSummaryDto>(
             $"/api/net/tenant/summary?organizationId={organizationId}", ct);
 
+    /// <summary>Per-status rollup across the tenant's change_sets.
+    /// Always 7 rows (Draft / Submitted / Approved / Rejected /
+    /// Applied / RolledBack / Cancelled) in state-machine order
+    /// with zero-count buckets included. Drives change-set
+    /// dashboard banners.</summary>
+    public Task<List<ChangeSetStatusCountDto>> ChangeSetStatusSummaryAsync(
+        Guid organizationId, CancellationToken ct = default)
+        => GetAsync<List<ChangeSetStatusCountDto>>(
+            $"/api/net/change-sets/summary?organizationId={organizationId}", ct);
+
     /// <summary>Full scope-grant list for the current caller. Bypasses
     /// the read:ScopeGrant gate (reading your own access is always
     /// permitted). Service-origin calls come back with an empty list.
@@ -1800,6 +1810,13 @@ public record TenantSummaryDto(long Devices, long Servers, long Vlans,
     long AsnAllocations, long MlagDomains, long MstpRules,
     long ReservationShelf, long Rooms, long Racks, long ChangeSets,
     long ScopeGrants, long Buildings, long Sites, long Regions);
+
+/// <summary>Per-status change-set count — matches
+/// `ChangeSetStatusCount` in services/networking-engine/src/
+/// change_sets.rs. Always 7 rows in state-machine order: Draft
+/// / Submitted / Approved / Rejected / Applied / RolledBack /
+/// Cancelled.</summary>
+public record ChangeSetStatusCountDto(string Status, long Count);
 
 // ─── Naming override DTOs (Phase 10b) ────────────────────────────────
 
