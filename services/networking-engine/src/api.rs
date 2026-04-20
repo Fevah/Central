@@ -95,6 +95,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/audit/trend",  get(audit_trend_handler))
         .route("/api/net/audit/top-actors", get(audit_top_actors_handler))
         .route("/api/net/audit/correlations", get(audit_correlations_handler))
+        .route("/api/net/audit/actions", get(audit_actions_handler))
         // Change Sets (Phase 8a)
         .route("/api/net/change-sets", get(list_change_sets).post(create_change_set))
         .route("/api/net/change-sets/:id", get(get_change_set))
@@ -647,6 +648,25 @@ async fn audit_correlations_handler(
 ) -> Result<impl IntoResponse, EngineError> {
     Ok(Json(audit::recent_correlations(
         &s.pool, q.organization_id, q.limit).await?))
+}
+
+/// Distinct audit actions seen in the tenant, for populating
+/// filter dropdowns. Optional entityType narrower + limit
+/// (default 100, clamped 1..=500).
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AuditActionsQuery {
+    organization_id: Uuid,
+    entity_type: Option<String>,
+    limit: Option<i64>,
+}
+
+async fn audit_actions_handler(
+    State(s): State<AppState>,
+    Query(q): Query<AuditActionsQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    Ok(Json(audit::distinct_actions(
+        &s.pool, q.organization_id, q.entity_type.as_deref(), q.limit).await?))
 }
 
 async fn export_audit(

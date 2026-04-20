@@ -796,6 +796,52 @@ pub async fn stats_by_entity_type(
     Ok(rows)
 }
 
+// ─── Distinct action catalog ────────────────────────────────────────────
+
+/// One row per distinct action_string seen in the tenant's audit
+/// log, ordered by last-seen DESC. Drives UI action-filter dropdowns
+/// so operators don't need to memorise the (entity_type, action)
+/// tuples the engine emits. <c>count</c> gives an at-a-glance hint
+/// at which actions are common vs rare. Narrowing by entity_type
+/// keeps the list short for dashboards like "what did the Device
+/// dispatcher fire lately?".
+#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct DistinctAction {
+    pub action: String,
+    pub count: i64,
+    pub last_seen_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// List distinct audit actions in the tenant. Optional
+/// `entity_type` narrows the scan to one entity_type's actions
+/// (useful for per-entity filter pickers). Limit clamped
+/// 1..=500.
+pub async fn distinct_actions(
+    pool: &PgPool,
+    org_id: Uuid,
+    entity_type: Option<&str>,
+    limit: Option<i64>,
+) -> Result<Vec<DistinctAction>, EngineError> {
+    let clamped = limit.unwrap_or(100).max(1).min(500);
+    let rows: Vec<DistinctAction> = sqlx::query_as(
+        "SELECT action,
+                COUNT(*)::bigint     AS count,
+                MAX(created_at)      AS last_seen_at
+           FROM net.audit_entry
+          WHERE organization_id = $1
+            AND ($2::text IS NULL OR entity_type = $2)
+          GROUP BY action
+          ORDER BY MAX(created_at) DESC
+          LIMIT $3")
+        .bind(org_id)
+        .bind(entity_type)
+        .bind(clamped)
+        .fetch_all(pool)
+        .await?;
+    Ok(rows)
+}
+
 // ─── Recent correlations ────────────────────────────────────────────────
 
 /// One row per distinct correlation_id — summarises the entries that
