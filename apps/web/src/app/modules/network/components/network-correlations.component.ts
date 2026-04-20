@@ -35,6 +35,11 @@ import { environment } from '../../../../environments/environment';
     </div>
 
     <div class="toolbar">
+      <label>Window:</label>
+      <dx-select-box [items]="windowPresets" displayExpr="label" valueExpr="hours"
+                     [(value)]="windowHours" width="160"
+                     (onValueChanged)="reload()" />
+
       <label>Limit:</label>
       <dx-select-box [items]="limitOptions" [(value)]="limit"
                      width="100" (onValueChanged)="reload()" />
@@ -113,6 +118,14 @@ export class NetworkCorrelationsComponent implements OnInit {
   limitOptions = [25, 50, 100, 250, 500];
   limit = 50;
 
+  windowPresets = [
+    { label: 'Last 24h',  hours: 24 },
+    { label: 'Last 7d',   hours: 24 * 7 },
+    { label: 'Last 30d',  hours: 24 * 30 },
+    { label: 'All time',  hours: 0 },
+  ];
+  windowHours = 24 * 7;
+
   constructor(
     private engine: NetworkingEngineService,
     private router: Router,
@@ -123,7 +136,10 @@ export class NetworkCorrelationsComponent implements OnInit {
   reload(): void {
     this.loading = true;
     this.status = 'Loading…';
-    this.engine.listRecentCorrelations(environment.defaultTenantId, this.limit)
+    const fromAt = this.windowHours > 0
+      ? new Date(Date.now() - this.windowHours * 3_600_000).toISOString()
+      : undefined;
+    this.engine.listRecentCorrelations(environment.defaultTenantId, this.limit, fromAt)
       .subscribe({
         next: (rs) => {
           this.rows = rs ?? [];

@@ -461,10 +461,13 @@ public class NetworkingEngineClient : IDisposable
     /// retires, bulk edits, etc.). Ordered by lastSeenAt DESC.
     /// </summary>
     public Task<List<RecentCorrelationDto>> AuditCorrelationsAsync(Guid organizationId,
-        int? limit = null, CancellationToken ct = default)
+        int? limit = null, DateTime? fromAt = null, DateTime? toAt = null,
+        CancellationToken ct = default)
     {
         var qs = BuildQuery(("organizationId", organizationId.ToString()),
-                            ("limit", limit?.ToString()));
+                            ("limit", limit?.ToString()),
+                            ("fromAt", fromAt?.ToString("o")),
+                            ("toAt", toAt?.ToString("o")));
         return GetAsync<List<RecentCorrelationDto>>($"/api/net/audit/correlations{qs}", ct);
     }
 

@@ -890,12 +890,18 @@ export class NetworkingEngineService {
   /// Recent distinct correlation ids across the tenant. "What
   /// bulk operations landed lately?" rollup — one row per
   /// correlation_id with summary + optional change-set join.
+  /// Optional fromAt / toAt ISO timestamps narrow the scan to a
+  /// time window; omit both for the all-time default.
   listRecentCorrelations(
     organizationId: string,
     limit?: number,
+    fromAt?: string,
+    toAt?: string,
   ): Observable<RecentCorrelation[]> {
     let params = new HttpParams().set('organizationId', organizationId);
     if (limit !== undefined) params = params.set('limit', limit.toString());
+    if (fromAt)              params = params.set('fromAt', fromAt);
+    if (toAt)                params = params.set('toAt', toAt);
     return this.http.get<RecentCorrelation[]>(
       `${this.base}/api/net/audit/correlations`, { params });
   }
