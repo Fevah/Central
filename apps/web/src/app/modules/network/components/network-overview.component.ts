@@ -79,6 +79,10 @@ interface StatusBreakdown {
         <span class="chip-icon">✓</span>
         <span>Data quality</span>
       </a>
+      <a class="chip" routerLink="/network/validation-rules">
+        <span class="chip-icon">📜</span>
+        <span>Rules catalog</span>
+      </a>
       <a class="chip" routerLink="/network/carver-preview">
         <span class="chip-icon">✂</span>
         <span>Carver preview</span>
