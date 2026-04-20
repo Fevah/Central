@@ -2513,6 +2513,37 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "floor_profile.display_name_no_leading_trailing_whitespace",
+        name: "Floor profile display_name should not have leading or trailing whitespace",
+        description: "Trim-hygiene mirror on floor_profile display_\
+                      name. Completes the profile-display trim \
+                      sweep across site_profile / building_profile \
+                      / floor_profile.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "vlan_template.display_name_no_leading_trailing_whitespace",
+        name: "VLAN template display_name should not have leading or trailing whitespace",
+        description: "Trim-hygiene mirror on vlan_template display_\
+                      name. Companion to the existing display_name_\
+                      not_empty + template_code trim rules.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "device.display_name_no_leading_trailing_whitespace_when_set",
+        name: "Device display_name should not have leading or trailing whitespace when set",
+        description: "Trim-hygiene on device.display_name (optional \
+                      friendlier name alongside hostname). Rule \
+                      only fires when the field is populated.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2926,6 +2957,9 @@ async fn dispatch(
         "site_profile.display_name_no_leading_trailing_whitespace" => run_site_profile_name_ws(pool, org_id, severity, out).await,
         "building_profile.display_name_no_leading_trailing_whitespace" => run_building_profile_name_ws(pool, org_id, severity, out).await,
         "floor.display_name_no_leading_trailing_whitespace_when_set" => run_floor_name_ws(pool, org_id, severity, out).await,
+        "floor_profile.display_name_no_leading_trailing_whitespace" => run_floor_profile_name_ws(pool, org_id, severity, out).await,
+        "vlan_template.display_name_no_leading_trailing_whitespace" => run_vlan_template_name_ws(pool, org_id, severity, out).await,
+        "device.display_name_no_leading_trailing_whitespace_when_set" => run_device_name_ws(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -7993,6 +8027,73 @@ async fn run_floor_name_ws(
     Ok(())
 }
 
+/// `floor_profile.display_name_no_leading_trailing_whitespace` — trim-equal.
+async fn run_floor_profile_name_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, display_name
+           FROM net.floor_profile
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (display_name <> btrim(display_name))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, name) in rows {
+        out.push(Violation {
+            rule_code: "floor_profile.display_name_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "FloorProfile".into(), entity_id: Some(id),
+            message: format!(
+                "Floor profile display_name '{name}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
+/// `vlan_template.display_name_no_leading_trailing_whitespace` — trim-equal.
+async fn run_vlan_template_name_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, display_name
+           FROM net.vlan_template
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (display_name <> btrim(display_name))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, name) in rows {
+        out.push(Violation {
+            rule_code: "vlan_template.display_name_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "VlanTemplate".into(), entity_id: Some(id),
+            message: format!(
+                "VLAN template display_name '{name}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
+/// `device.display_name_no_leading_trailing_whitespace_when_set` — optional display_name.
+async fn run_device_name_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, display_name
+           FROM net.device
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND display_name IS NOT NULL
+            AND (display_name <> btrim(display_name))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, name) in rows {
+        out.push(Violation {
+            rule_code: "device.display_name_no_leading_trailing_whitespace_when_set".into(),
+            severity, entity_type: "Device".into(), entity_id: Some(id),
+            message: format!(
+                "Device display_name '{name}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -8633,6 +8734,9 @@ mod tests {
             "site_profile.display_name_no_leading_trailing_whitespace",
             "building_profile.display_name_no_leading_trailing_whitespace",
             "floor.display_name_no_leading_trailing_whitespace_when_set",
+            "floor_profile.display_name_no_leading_trailing_whitespace",
+            "vlan_template.display_name_no_leading_trailing_whitespace",
+            "device.display_name_no_leading_trailing_whitespace_when_set",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
