@@ -18,6 +18,21 @@ public class ModuleCatalogClient
 {
     private readonly HttpClient _http;
 
+    // ── Optional in-memory catalog cache ─────────────────────────────────
+    // The desktop calls ListCatalogAsync on startup + whenever a reload
+    // banner resolves. Hitting the API every time is wasteful; the
+    // catalog barely changes. <see cref="CatalogCacheTtl"/> defaults to
+    // 30 seconds — short enough that newly-published versions surface
+    // quickly, long enough that burst queries don't fan out. SignalR's
+    // ModuleUpdated event invalidates the cache on publish so the
+    // polling path stays as a fallback for disconnected clients.
+    private readonly object _cacheLock = new();
+    private IReadOnlyList<ModuleCatalogEntryDto>? _cached;
+    private DateTimeOffset _cachedAt;
+
+    /// <summary>How long <see cref="ListCatalogAsync"/> may return cached data.</summary>
+    public TimeSpan CatalogCacheTtl { get; set; } = TimeSpan.FromSeconds(30);
+
     public ModuleCatalogClient(HttpClient http) => _http = http;
 
     /// <summary>
@@ -26,12 +41,49 @@ public class ModuleCatalogClient
     /// min_engine_contract. Empty list is possible on a fresh DB
     /// before migration 109 runs; callers should treat null/empty as
     /// "no catalog data yet, skip update check."
+    ///
+    /// <para>Results are cached in-memory for
+    /// <see cref="CatalogCacheTtl"/>. Pass
+    /// <paramref name="bypassCache"/>=true to force a refetch (or
+    /// call <see cref="InvalidateCatalogCache"/> ahead of time).</para>
     /// </summary>
-    public async Task<IReadOnlyList<ModuleCatalogEntryDto>> ListCatalogAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<ModuleCatalogEntryDto>> ListCatalogAsync(CancellationToken ct = default, bool bypassCache = false)
     {
+        if (!bypassCache)
+        {
+            lock (_cacheLock)
+            {
+                if (_cached is not null && DateTimeOffset.UtcNow - _cachedAt < CatalogCacheTtl)
+                    return _cached;
+            }
+        }
+
         var entries = await _http.GetFromJsonAsync<List<ModuleCatalogEntryDto>>(
             "api/modules/catalog", ct);
-        return entries ?? new List<ModuleCatalogEntryDto>();
+        var result = (IReadOnlyList<ModuleCatalogEntryDto>)(entries ?? new List<ModuleCatalogEntryDto>());
+
+        lock (_cacheLock)
+        {
+            _cached = result;
+            _cachedAt = DateTimeOffset.UtcNow;
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Drop the in-memory catalog cache. SignalR's <c>ModuleUpdated</c>
+    /// handler should call this on every event so the next
+    /// <see cref="ListCatalogAsync"/> refetches — otherwise the
+    /// banner could show stale data for up to
+    /// <see cref="CatalogCacheTtl"/> after a publish.
+    /// </summary>
+    public void InvalidateCatalogCache()
+    {
+        lock (_cacheLock)
+        {
+            _cached = null;
+            _cachedAt = default;
+        }
     }
 
     /// <summary>
