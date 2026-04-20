@@ -3836,6 +3836,45 @@ uniqueness + port admin_up sanity.
       — mirror on server branch.
 - [ ] Catalog now at 167 rules; guardrail test still green.
 
+### 7.X.41 Phase 10b — twenty-fourth wave (commits 2026-04-20+)
+
+Tenant-summary endpoint replaces 21-parallel overview calls.
+Validation batch 43 adds three more data-quality rules.
+
+**Engine /api/net/tenant/summary endpoint** (commit `7b3112c8a`)
+- [ ] GET /api/net/tenant/summary?organizationId=… returns
+      21 entity counts (Devices / Servers / Vlans / Links /
+      Subnets / IpAddresses / Ports / AggregateEthernet /
+      Modules / DhcpRelayTargets / AsnAllocations /
+      MlagDomains / MstpRules / ReservationShelf / Rooms /
+      Racks / ChangeSets / ScopeGrants / Buildings / Sites /
+      Regions).
+- [ ] Parallel COUNT(*) subselects in one SQL statement.
+- [ ] Scan is cheap — every target has a `deleted_at IS NULL`
+      partial index.
+
+**Overview single-call migration** (commit `2e8affda6`)
+- [ ] /network/overview no longer uses forkJoin across 21
+      listX calls.
+- [ ] Uses tenantSummary() + loadExtraCounts() (three
+      remaining tiles: VLAN blocks / ASN blocks / Locks).
+- [ ] 18 of 21 tile counts now arrive in one round-trip.
+
+**C# ApiClient — TenantSummaryAsync** (commit `ea3f9b27c`)
+- [ ] TenantSummaryAsync(organizationId, ct) →
+      TenantSummaryDto (21 bigint fields).
+- [ ] 0 errors on build.
+
+**Validation rule expansion — batch 43** (commit `47ae68a8d`)
+- [ ] `server_nic.admin_up_false_on_active_status` (Info)
+      — mirror of the port rule on the NIC branch.
+- [ ] `port.speed_mbps_reasonable_when_set` (Info) — flags
+      values outside 100-400000 Mbps range.
+- [ ] `rack.max_devices_positive_when_set` (Warning) —
+      DB has no CHECK; rule catches the <=0 case at
+      validation time.
+- [ ] Catalog now at 170 rules; guardrail test still green.
+
 ---
 
 ## 8. Enterprise SaaS
