@@ -4016,6 +4016,39 @@ Validation batch 49 adds structural-integrity self-loop guards.
       without room_id breaks hierarchy drill.
 - [ ] Catalog now at 188 rules; guardrail test still green.
 
+### 7.X.46 Phase 10b — twenty-ninth wave (commits 2026-04-20+)
+
+Validation batches 50 + 51 finish the whitespace family. Web
+gains a read-only rules catalog browser at /network/validation-
+rules. Overview quick-links pick up the new page.
+
+**Validation rule expansion — batch 50** (commit `aa5bdaa32`)
+- [ ] `server.rack_implies_room` (Warning)
+- [ ] `mlag_domain.display_name_no_leading_trailing_whitespace` (Warning)
+- [ ] `rack.rack_code_no_leading_trailing_whitespace` (Warning)
+- [ ] Catalog now at 191 rules.
+
+**/network/validation-rules catalog browser** (commit `900ee367d`)
+- [ ] New read-only grid over /api/net/validation/rules.
+- [ ] Columns: Category (group) / Code / Name / Effective
+      severity / Enabled / Override ✎ badge / Default sev /
+      Description.
+- [ ] Grouped by Category (default); sorted by Code within.
+- [ ] "Run validation →" button drills to /network/validation.
+- [ ] Writes (toggle, override) stay WPF-only for now.
+
+**Validation rule expansion — batch 51** (commit `4f9a84229`)
+- [ ] `building.building_code_no_leading_trailing_whitespace` (Warning)
+      — leaks into device naming templates otherwise.
+- [ ] `floor.floor_code_no_leading_trailing_whitespace` (Warning)
+- [ ] `room.room_code_no_leading_trailing_whitespace` (Warning)
+- [ ] Completes the hierarchy-code whitespace family.
+- [ ] Catalog now at 194 rules.
+
+**Overview Rules catalog chip** (commit `128818742`)
+- [ ] /network/overview quick-links chip bar gains a "Rules
+      catalog" entry pointing at /network/validation-rules.
+
 ---
 
 ## 8. Enterprise SaaS
