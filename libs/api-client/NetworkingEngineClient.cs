@@ -452,6 +452,22 @@ public class NetworkingEngineClient : IDisposable
     /// <summary>Top N audit actors by count in the window. Clamped
     /// 1..=100 server-side, default 20. Service-origin rows (null
     /// actor_user_id) bucket together rather than being dropped.</summary>
+    /// <summary>Recent distinct correlation ids across the tenant —
+    /// "what bulk operations happened lately?" at a glance. Pairs
+    /// with the web /network/correlations page; each row summarises
+    /// a correlation_id with entry count + distinct entity types +
+    /// first/last-seen + optional change-set metadata (null when
+    /// the correlation doesn't have a wrapper set — ad-hoc allocation
+    /// retires, bulk edits, etc.). Ordered by lastSeenAt DESC.
+    /// </summary>
+    public Task<List<RecentCorrelationDto>> AuditCorrelationsAsync(Guid organizationId,
+        int? limit = null, CancellationToken ct = default)
+    {
+        var qs = BuildQuery(("organizationId", organizationId.ToString()),
+                            ("limit", limit?.ToString()));
+        return GetAsync<List<RecentCorrelationDto>>($"/api/net/audit/correlations{qs}", ct);
+    }
+
     public Task<List<TopActorDto>> AuditTopActorsAsync(Guid organizationId,
         DateTime? fromAt = null, DateTime? toAt = null, string? entityType = null,
         int? limit = null, CancellationToken ct = default)
@@ -1640,6 +1656,14 @@ public record AuditTrendPointDto(DateTime BucketAt, long Count);
 /// + ActorDisplay are both nullable for service-origin rows.</summary>
 public record TopActorDto(int? ActorUserId, string? ActorDisplay,
     long TotalCount, long DistinctEntityTypes, DateTime? LastSeenAt);
+
+/// <summary>Recent correlation rollup — matches `RecentCorrelation`
+/// in services/networking-engine/src/audit.rs. <c>SetId</c> /
+/// <c>SetTitle</c> / <c>SetStatus</c> are non-null only when a
+/// net.change_set shares the correlation id.</summary>
+public record RecentCorrelationDto(Guid CorrelationId, long EntryCount,
+    long DistinctEntityTypes, DateTime FirstSeenAt, DateTime LastSeenAt,
+    Guid? SetId, string? SetTitle, string? SetStatus);
 
 // ─── Search facets (Phase 10b) ────────────────────────────────────────
 
