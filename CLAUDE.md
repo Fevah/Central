@@ -46,7 +46,7 @@ project structure without updating the architecture doc first.
 
 ### All 8 Phases + Task Module COMPLETE — Platform is production-ready
 
-25 projects. .NET 10 / PG 18.3 / Npgsql 10.0.2 / DX 25.2 / Svg.NET 3.4.7 / Elsa 3.5.3. 53 API endpoint files. 96 DB migrations (001-096). 0 build errors. **2,641 tests** across ~181 classes (2026-04-20 — +25 engine-level ribbon-audit tests enumerating every `IModuleRibbon`; closes the 20-stub drift across Projects/Audit/Global Admin).
+25 projects. .NET 10 / PG 18.3 / Npgsql 10.0.2 / DX 25.2 / Svg.NET 3.4.7 / Elsa 3.5.3. 53 API endpoint files. 96 DB migrations (001-096). 0 build errors. **2,681 tests** across ~184 classes (2026-04-20 — +65 engine-level audit tests enumerating every module: ribbon (25), panel-builder (16), module-contract (20), dashboard-contribution (4); one audit class per invariant, every current + future module inherits the contract for free).
 
 ### Networking Engine Buildout — Phases 1-6 COMPLETE (2026-04-18)
 

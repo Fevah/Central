@@ -15,12 +15,30 @@ unit/integration tests have the test class and method appended after a dash.
 
 Survey on 2026-04-20 found 20 placeholder-lambda (`() => { }`) ribbon handlers had silently drifted into Projects (8), Audit (7), and Global Admin (5). Fixed engine-first with a single audit test (`tests/dotnet/Engine/AllModulesRibbonAuditTests.cs`) that enumerates every `IModuleRibbon` implementation and asserts every action-style button publishes on `PanelMessageBus` — one test class covers every current + future module.
 
-### 0.1 Engine-level audit (the single guardrail)
-- [x] `AllModulesRibbonAuditTests.EveryRibbonButtonPublishesAMessage` — invokes every button's `OnClick()` and requires a `NavigateToPanelMessage` / `RefreshPanelMessage` / `DataModifiedMessage` on the bus. 25 tests across 6 modules, 0 failures.
-- [x] `AllModulesRibbonAuditTests.EveryRibbonPageHasAtLeastOneGroup` — no empty tab renders.
-- [x] `AllModulesRibbonAuditTests.EveryRibbonGroupHasAtLeastOneItem` — no dead-space groups.
-- [x] `AllModulesRibbonAuditTests.EveryRibbonButtonHasNonEmptyContent` — every button has text.
-- [x] `AllModulesRibbonAuditTests.DiscoversEveryShippingModule` — the hardcoded `typeof(...)` list is the one place engine-level audit needs a change when a new module lands; the four assertions above then flow automatically.
+### 0.1 Engine-level audits (one guardrail per invariant)
+Ribbon — `AllModulesRibbonAuditTests` (25 tests):
+- [x] `EveryRibbonButtonPublishesAMessage` — invokes `OnClick()` + requires a `NavigateToPanelMessage` / `RefreshPanelMessage` / `DataModifiedMessage` on the bus.
+- [x] `EveryRibbonPageHasAtLeastOneGroup` — no empty tab renders.
+- [x] `EveryRibbonGroupHasAtLeastOneItem` — no dead-space groups.
+- [x] `EveryRibbonButtonHasNonEmptyContent` — every button has text.
+- [x] `DiscoversEveryShippingModule` — the `typeof(...)` list is the one place the audit needs an update when a new module lands.
+
+Panels — `AllModulesPanelBuilderAuditTests` (16 tests):
+- [x] `EveryRegisteredPanelHasNonEmptyId` — blank ids crash DockLayoutManager.Restore.
+- [x] `EveryRegisteredPanelHasNonEmptyCaption` — blank captions render as a no-label tab.
+- [x] `EveryRegisteredPanelHasConcreteViewType` — `typeof(object)` fallback renders a grey square.
+- [x] `NoDuplicatePanelIdsWithinAModule` — duplicate ids silently last-wins in dock registration.
+
+Module contract — `AllModulesModuleContractAuditTests` (20 tests):
+- [x] `ModuleHasNonEmptyName` / `ModuleHasNonEmptyPermissionCategory` / `ModuleSortOrderIsNonNegative`.
+- [x] `NoTwoModulesShareASortOrder` — collisions produce non-deterministic ribbon tab order.
+- [x] `NoTwoModulesShareAPermissionCategory` — collisions make `IModuleLicenseGate` toggle two modules as one.
+
+Dashboard contributions — `AllModulesDashboardContributionAuditTests` (4 tests):
+- [x] `RegistryIsNotEmpty` — at least one contribution loaded after all modules construct.
+- [x] `EveryContributionHasNonEmptySectionTitle` — blank titles render an empty header strip.
+- [x] `EveryContributionHasNonNegativeSortOrder` — negative values sort before PlatformHealth (0).
+- [x] `NoTwoContributionsShareASortOrder` — ties make dashboard section order flip-flop across restarts.
 
 ### 0.2 Why per-module audit classes were the wrong fix
 The instinct when Networking alone had `NetworkingRibbonAuditTests` was to copy it to `CrmRibbonAuditTests` / `ProjectsRibbonAuditTests` / etc. That's exactly the drift-generating pattern — nobody remembers to write the audit when a new module lands six months out. The engine-level audit inverts it: the test exists once, every module inherits the guarantee for free. When module N+1 registers with `Central.Tests.csproj` + `DiscoveredModules()`, it gets four invariants enforced with zero new test code.
