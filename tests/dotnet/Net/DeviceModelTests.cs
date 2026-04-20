@@ -1,6 +1,11 @@
 using Central.Engine.Net;
 using Central.Engine.Net.Devices;
 
+// Type alias resolves the `Module` naming collision introduced
+// when the test project references Central.Module.* projects —
+// `Module` on its own now binds to the Central.Module namespace.
+using NetModule = Central.Engine.Net.Devices.Module;
+
 namespace Central.Tests.Net;
 
 public class DeviceModelTests
@@ -35,7 +40,7 @@ public class DeviceModelTests
     [Fact]
     public void Module_DefaultsToLinecard()
     {
-        var m = new Module();
+        var m = new NetModule();
         // Most chassis modules are linecards; PSU / transceiver are the
         // exceptions and callers set them explicitly.
         Assert.Equal(ModuleType.Linecard, m.ModuleType);

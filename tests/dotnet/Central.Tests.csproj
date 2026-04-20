@@ -1,7 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <!-- Modules target net10.0-windows (they host WPF UserControls).
+         Test project matches so it can ProjectReference every module
+         for the engine-level ribbon audit. UseWPF=false keeps the
+         test SDK as plain Sdk; WPF assemblies come transitively from
+         the module references. -->
+    <TargetFramework>net10.0-windows</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
@@ -28,6 +33,18 @@
     <ProjectReference Include="..\..\libs\observability\Central.Observability.csproj" />
     <ProjectReference Include="..\..\libs\workflows\Central.Workflows.csproj" />
     <ProjectReference Include="..\..\libs\licensing\Central.Licensing.csproj" />
+
+    <!-- Module references so the engine-level ribbon audit test
+         can enumerate every IModuleRibbon implementation at test
+         time. Without these, reflection wouldn't find non-Networking
+         modules + the audit would silently pass with zero coverage
+         on the drift surface the test is meant to guard. -->
+    <ProjectReference Include="..\..\modules\audit\Central.Module.Audit.csproj" />
+    <ProjectReference Include="..\..\modules\crm\Central.Module.CRM.csproj" />
+    <ProjectReference Include="..\..\modules\global\Central.Module.Global.csproj" />
+    <ProjectReference Include="..\..\modules\networking\Central.Module.Networking.csproj" />
+    <ProjectReference Include="..\..\modules\projects\Central.Module.Projects.csproj" />
+    <ProjectReference Include="..\..\modules\service-desk\Central.Module.ServiceDesk.csproj" />
   </ItemGroup>
 
 </Project>
