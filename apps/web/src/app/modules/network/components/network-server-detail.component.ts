@@ -46,6 +46,11 @@ import { environment } from '../../../../environments/environment';
       <div class="meta-row"><label>Status</label>       <span>{{ server.status }}</span></div>
       <div class="meta-row"><label>Version</label>      <span>{{ server.version }}</span></div>
       <div class="meta-row"><label>UUID</label>         <code>{{ server.id }}</code></div>
+
+      <div class="meta-row">
+        <label>NICs</label>
+        <span>{{ nicCount === null ? '…' : nicCount }}</span>
+      </div>
     </div>
 
     <!-- Audit tab -->
@@ -111,6 +116,9 @@ export class NetworkServerDetailComponent implements OnInit {
   audit: AuditRow[] = [];
   nics: ServerNicListRow[] = [];
   loadingNics = false;
+  /// Summary count enrichment — populated at page load so Summary
+  /// tab shows "NICs: 4" without the operator opening the NICs tab.
+  nicCount: number | null = null;
   status = '';
 
   constructor(
@@ -132,9 +140,27 @@ export class NetworkServerDetailComponent implements OnInit {
       next: (rows) => {
         this.server = rows.find(r => r.id === this.serverId) ?? null;
         this.status = this.server ? '' : 'Server not found.';
-        if (this.server) this.loadTabData();
+        if (this.server) {
+          this.loadTabData();
+          this.loadSummaryCounts();
+        }
       },
       error: (err) => { this.status = `Load failed: ${err?.message ?? err}`; },
+    });
+  }
+
+  /// Summary-tab enrichment — one parallel listServerNics call so
+  /// the NIC count surfaces alongside the basic server metadata
+  /// without waiting for the NICs tab.
+  private loadSummaryCounts(): void {
+    this.engine.listServerNics(environment.defaultTenantId, this.serverId).subscribe({
+      next: (rows) => {
+        // Cache the rows too so flipping to the NICs tab doesn't
+        // refetch — reuses the existing tab-level cache.
+        this.nics = rows ?? [];
+        this.nicCount = this.nics.length;
+      },
+      error: () => { this.nicCount = 0; },
     });
   }
 
