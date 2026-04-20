@@ -3649,6 +3649,42 @@ lifecycle resolves.
 - [ ] Catalog now at 146 rules; guardrail test
       `dispatcher_has_arm_for_every_catalog_rule` still green.
 
+### 7.X.36 Phase 10b — nineteenth wave (commits 2026-04-20+)
+
+Audit actions catalog endpoint + audit-search dropdown upgrade.
+Validation batch 36 adds three more nullable-FK resolves on
+link_endpoint + server_nic.
+
+**Engine /api/net/audit/actions endpoint** (commit `c5af966ca`)
+- [ ] GET /api/net/audit/actions?organizationId=…
+      &entityType=Device   (optional narrower)
+      &limit=100           (clamped 1..=500)
+      returns [{ action, count, lastSeenAt }] ordered by
+      lastSeenAt DESC.
+- [ ] Empty-tenant call returns [].
+
+**Audit-search live action dropdown** (commit `b49d43183`)
+- [ ] knownActions array on the audit-search component is
+      replaced at ngOnInit from /api/net/audit/actions.
+- [ ] Page still starts with the seeded default list so the
+      dropdown is populated before the network call returns.
+- [ ] Silent-fail on error — keeps seeded defaults.
+- [ ] New listAuditActions(organizationId, entityType?,
+      limit?) method + DistinctAction interface on the service.
+
+**C# ApiClient — AuditActionsAsync** (commit `f72dc4e5c`)
+- [ ] AuditActionsAsync(organizationId, entityType?, limit?, ct)
+      → List<DistinctActionDto>.
+- [ ] New DistinctActionDto(Action, Count, LastSeenAt).
+- [ ] 0 errors on build.
+
+**Validation rule expansion — batch 36** (commit `9cd7baa27`)
+- [ ] `link_endpoint.device_resolves_active_when_set` (Warning)
+- [ ] `link_endpoint.ip_address_resolves_active_when_set` (Warning)
+- [ ] `server_nic.ip_address_resolves_active_when_set` (Warning)
+- [ ] Catalog now at 149 rules; guardrail test
+      `dispatcher_has_arm_for_every_catalog_rule` still green.
+
 ---
 
 ## 8. Enterprise SaaS
