@@ -3467,6 +3467,49 @@ filter on the audit-stats rollup endpoint.
 - [ ] C# ApiClient `AuditStatsAsync` gains optional
       `entityTypes` string parameter. 0 errors on build.
 
+### 7.X.32 Phase 10b — fifteenth wave (commits 2026-04-20+)
+
+Validation batch 32 closes the last nullable-FK resolves gaps
+(device → room/rack, subnet → parent). Web UX self-serve slices
+(validation severity filter bar, my-activity page) + matching
+C# convenience helper.
+
+**Validation rule expansion — batch 32** (commit `3734df521`)
+- [ ] `device.room_resolves_active_when_set` (Warning) —
+      device's optional room_id must be Active when set.
+- [ ] `device.rack_resolves_active_when_set` (Warning) —
+      device's optional rack_id must be Active when set.
+- [ ] `subnet.parent_subnet_resolves_active_when_set` (Warning) —
+      nested subnet parent must be Active when set.
+- [ ] Catalog now at 137 rules; guardrail test
+      `dispatcher_has_arm_for_every_catalog_rule` still green.
+
+**Validation page severity filter** (commit `c0bec30f4`)
+- [ ] Filter bar above violations grid with All / Error /
+      Warning / Info buttons, each showing a live "(N)" count.
+- [ ] Default active filter is "All".
+- [ ] Filter is pure client-side — switching severity doesn't
+      re-run the catalog against the DB.
+
+**/network/my-activity page** (commit `04c19e033`)
+- [ ] New page under /network/my-activity. Resolves the
+      caller's userId via whoAmI(), then calls listAudit with
+      actorUserId = that id.
+- [ ] Window picker: Last 24h / 7d / 30d / All time (default 7d).
+- [ ] Limit picker: 25 / 50 / 100 / 250 / 500 (default 100).
+- [ ] Grid columns: seq / createdAt / entityType / entityId /
+      action / correlationId (truncated link to audit-search).
+- [ ] Double-click drills to /network/audit/:entityType/:entityId.
+- [ ] Service-origin callers (no X-User-Id header) see a
+      yellow banner + empty grid instead of a confusing no-op.
+
+**C# ApiClient — ListMyActivityAsync** (commit `3719bf53f`)
+- [ ] ListMyActivityAsync(organizationId, fromAt?, limit, ct)
+      chains WhoAmIAsync + ListAuditAsync in one call.
+- [ ] Returns empty list on service-origin callers
+      (WhoAmI.UserId == null).
+- [ ] 0 errors on build.
+
 ---
 
 ## 8. Enterprise SaaS
