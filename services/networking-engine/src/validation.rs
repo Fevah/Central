@@ -1482,6 +1482,39 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "server_nic.vlan_resolves_active_when_set",
+        name: "Server NIC vlan_id must resolve to an Active VLAN when set",
+        description: "Optional VLAN pointer on server_nic — when \
+                      set, must resolve to an Active vlan. Config-\
+                      gen just omits VLAN tagging for NICs with a \
+                      dangling vlan pointer, so Warning severity.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server_nic.subnet_resolves_active_when_set",
+        name: "Server NIC subnet_id must resolve to an Active subnet when set",
+        description: "Optional subnet pointer on server_nic — when \
+                      set, must resolve to an Active subnet. Warning \
+                      severity: NIC still ships without subnet \
+                      context, just loses the drill path.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "link_endpoint.vlan_resolves_active_when_set",
+        name: "Link endpoint vlan_id must resolve to an Active VLAN when set",
+        description: "Optional VLAN pointer on link_endpoint — when \
+                      set, must resolve to an Active vlan. Surfaces \
+                      VLAN decommissions that left endpoints \
+                      stranded on retired VLAN ids.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1792,6 +1825,9 @@ async fn dispatch(
         "asn_block.pool_resolves_active"          => run_asn_block_pool_active(pool, org_id, severity, out).await,
         "vlan_block.pool_resolves_active"         => run_vlan_block_pool_active(pool, org_id, severity, out).await,
         "vlan.template_resolves_active_when_set"  => run_vlan_template_active(pool, org_id, severity, out).await,
+        "server_nic.vlan_resolves_active_when_set" => run_server_nic_vlan_active(pool, org_id, severity, out).await,
+        "server_nic.subnet_resolves_active_when_set" => run_server_nic_subnet_active(pool, org_id, severity, out).await,
+        "link_endpoint.vlan_resolves_active_when_set" => run_link_endpoint_vlan_active(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -4611,6 +4647,84 @@ async fn run_vlan_template_active(
     Ok(())
 }
 
+/// `server_nic.vlan_resolves_active_when_set` — NIC's optional VLAN must be live.
+async fn run_server_nic_vlan_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32, String)> = sqlx::query_as(
+        "SELECT n.id, n.nic_index, COALESCE(v.status::text, '(missing)')
+           FROM net.server_nic n
+           LEFT JOIN net.vlan v ON v.id = n.vlan_id
+          WHERE n.organization_id = $1
+            AND n.deleted_at IS NULL
+            AND n.vlan_id IS NOT NULL
+            AND (v.id IS NULL
+                 OR v.deleted_at IS NOT NULL
+                 OR v.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, idx, status) in rows {
+        out.push(Violation {
+            rule_code: "server_nic.vlan_resolves_active_when_set".into(),
+            severity, entity_type: "ServerNic".into(), entity_id: Some(id),
+            message: format!(
+                "NIC {idx} references a VLAN with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `server_nic.subnet_resolves_active_when_set` — NIC's optional subnet must be live.
+async fn run_server_nic_subnet_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32, String)> = sqlx::query_as(
+        "SELECT n.id, n.nic_index, COALESCE(sn.status::text, '(missing)')
+           FROM net.server_nic n
+           LEFT JOIN net.subnet sn ON sn.id = n.subnet_id
+          WHERE n.organization_id = $1
+            AND n.deleted_at IS NULL
+            AND n.subnet_id IS NOT NULL
+            AND (sn.id IS NULL
+                 OR sn.deleted_at IS NOT NULL
+                 OR sn.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, idx, status) in rows {
+        out.push(Violation {
+            rule_code: "server_nic.subnet_resolves_active_when_set".into(),
+            severity, entity_type: "ServerNic".into(), entity_id: Some(id),
+            message: format!(
+                "NIC {idx} references a subnet with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `link_endpoint.vlan_resolves_active_when_set` — endpoint's optional VLAN must be live.
+async fn run_link_endpoint_vlan_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32, String)> = sqlx::query_as(
+        "SELECT e.id, e.endpoint_order, COALESCE(v.status::text, '(missing)')
+           FROM net.link_endpoint e
+           LEFT JOIN net.vlan v ON v.id = e.vlan_id
+          WHERE e.organization_id = $1
+            AND e.deleted_at IS NULL
+            AND e.vlan_id IS NOT NULL
+            AND (v.id IS NULL
+                 OR v.deleted_at IS NOT NULL
+                 OR v.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, order, status) in rows {
+        out.push(Violation {
+            rule_code: "link_endpoint.vlan_resolves_active_when_set".into(),
+            severity, entity_type: "LinkEndpoint".into(), entity_id: Some(id),
+            message: format!(
+                "Link endpoint #{order} references a VLAN with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -5158,6 +5272,9 @@ mod tests {
             "asn_block.pool_resolves_active",
             "vlan_block.pool_resolves_active",
             "vlan.template_resolves_active_when_set",
+            "server_nic.vlan_resolves_active_when_set",
+            "server_nic.subnet_resolves_active_when_set",
+            "link_endpoint.vlan_resolves_active_when_set",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
