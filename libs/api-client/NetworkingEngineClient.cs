@@ -1554,9 +1554,11 @@ public record ServerListRowDto(Guid Id, string Hostname, string? ProfileCode,
 
 /// <summary>Thin subnet list row — matches `SubnetListRow`. Network
 /// is pre-rendered as a CIDR string on the server so the wire shape
-/// is stable. VlanTag is null when the subnet has no linked VLAN.</summary>
+/// is stable. VlanTag is null when the subnet has no linked VLAN.
+/// <paramref name="PoolId"/> ships alongside <paramref name="PoolCode"/>
+/// so detail pages can drill to the pool without a code→id lookup.</summary>
 public record SubnetListRowDto(Guid Id, string SubnetCode, string DisplayName,
-    string Network, string ScopeLevel, string? PoolCode, int? VlanTag,
+    string Network, string ScopeLevel, Guid? PoolId, string? PoolCode, int? VlanTag,
     string Status, int Version);
 
 // ─── Audit rollups (Phase 10b) ────────────────────────────────────────

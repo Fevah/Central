@@ -326,6 +326,7 @@ export interface SubnetListRow {
   displayName: string;
   network: string;
   scopeLevel: string;
+  poolId: string | null;
   poolCode: string | null;
   vlanTag: number | null;
   status: string;

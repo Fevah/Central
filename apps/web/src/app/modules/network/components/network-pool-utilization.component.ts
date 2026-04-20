@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import {
   DxDataGridModule, DxButtonModule,
 } from 'devextreme-angular';
@@ -40,7 +40,8 @@ import { environment } from '../../../../environments/environment';
                    [columnAutoWidth]="true"
                    [searchPanel]="{ visible: true }"
                    [filterRow]="{ visible: true }"
-                   [headerFilter]="{ visible: true }">
+                   [headerFilter]="{ visible: true }"
+                   (onRowDblClick)="onRowDoubleClick($event)">
       <dxi-column dataField="poolKind"    caption="Kind"      width="130" [groupIndex]="0" />
       <dxi-column dataField="poolCode"    caption="Pool code" [fixed]="true" width="200" sortOrder="asc" />
       <dxi-column dataField="displayName" caption="Name"      width="260" />
@@ -93,9 +94,24 @@ export class NetworkPoolUtilizationComponent implements OnInit {
   loading = false;
   status = '';
 
-  constructor(private engine: NetworkingEngineService) {}
+  constructor(
+    private engine: NetworkingEngineService,
+    private router: Router,
+  ) {}
 
   ngOnInit(): void { this.reload(); }
+
+  /// IP pool rows drill to /network/ip-pool/:id. VLAN + ASN + MLAG
+  /// pools stay on this page for now — they don't have dedicated
+  /// detail pages yet. Works for both the "IP:Subnets" and
+  /// "IP:Addresses" rows (both share the same poolId).
+  onRowDoubleClick(e: { data: PoolUtilizationRow }): void {
+    const kind = e?.data?.poolKind ?? '';
+    if (!kind.startsWith('IP')) return;
+    const id = e?.data?.poolId;
+    if (!id) return;
+    this.router.navigate(['/network/ip-pool', id]);
+  }
 
   reload(): void {
     this.loading = true;

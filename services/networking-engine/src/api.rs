@@ -964,6 +964,10 @@ struct SubnetListRow {
     display_name: String,
     network: String,             // rendered via ::text for stable wire repr
     scope_level: String,
+    // poolId alongside poolCode so detail pages can drill to
+    // /network/ip-pool/:id without a second round-trip for the
+    // code → id mapping.
+    pool_id: Option<Uuid>,
     pool_code: Option<String>,
     vlan_tag: Option<i32>,       // resolved from net.vlan.vlan_id if linked
     status: String,
@@ -997,6 +1001,7 @@ async fn list_subnets(
                 sn.display_name,
                 sn.network::text AS network,
                 sn.scope_level,
+                sn.pool_id       AS pool_id,
                 p.pool_code      AS pool_code,
                 v.vlan_id        AS vlan_tag,
                 sn.status::text  AS status,

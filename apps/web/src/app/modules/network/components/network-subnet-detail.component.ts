@@ -44,7 +44,11 @@ import { environment } from '../../../../environments/environment';
       <div class="meta-row"><label>Display name</label> <span>{{ subnet.displayName }}</span></div>
       <div class="meta-row"><label>CIDR</label>         <code>{{ subnet.network }}</code></div>
       <div class="meta-row"><label>Scope level</label>  <span>{{ subnet.scopeLevel }}</span></div>
-      <div class="meta-row"><label>Pool</label>         <span>{{ subnet.poolCode ?? '—' }}</span></div>
+      <div class="meta-row"><label>Pool</label>
+        <span *ngIf="!subnet.poolId">{{ subnet.poolCode ?? '—' }}</span>
+        <a *ngIf="subnet.poolId" [routerLink]="['/network/ip-pool', subnet.poolId]"
+           class="drill">{{ subnet.poolCode ?? subnet.poolId }}</a>
+      </div>
       <div class="meta-row"><label>Linked VLAN</label>  <span>{{ subnet.vlanTag ?? '—' }}</span></div>
       <div class="meta-row"><label>Status</label>       <span>{{ subnet.status }}</span></div>
       <div class="meta-row"><label>Version</label>      <span>{{ subnet.version }}</span></div>
@@ -100,6 +104,8 @@ import { environment } from '../../../../environments/environment';
     .meta-row.full { grid-column: 1 / -1; }
     .meta-row label { color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
     .meta-row code { color: #94a3b8; font-family: ui-monospace, monospace; font-size: 12px; }
+    .meta-row .drill { color: #3b82f6; text-decoration: none; }
+    .meta-row .drill:hover { text-decoration: underline; }
     .empty-note { margin-top: 12px; padding: 10px; color: #64748b; font-size: 12px; background: #0f172a; border-radius: 4px; text-align: center; }
     @media (max-width: 1100px) { .meta-grid { grid-template-columns: 1fr 1fr; } }
   `]
