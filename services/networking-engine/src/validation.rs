@@ -1416,6 +1416,40 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "vlan.block_resolves_active",
+        name: "VLAN block_id must resolve to an Active VLAN block",
+        description: "A VLAN whose parent vlan_block is soft-deleted \
+                      or non-Active is orphaned from pool-availability \
+                      calculations. Parallels asn_allocation.block_\
+                      resolves_active one entity over.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "subnet.pool_resolves_active",
+        name: "Subnet pool_id must resolve to an Active IP pool",
+        description: "A subnet whose parent ip_pool is soft-deleted \
+                      or non-Active misreports in pool-utilization. \
+                      subnet.active_subnet_has_pool catches a NULL \
+                      pool_id; this rule catches the present-but-\
+                      decommissioned case.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "mlag_domain.pool_resolves_active",
+        name: "MLAG domain pool_id must resolve to an Active pool",
+        description: "An MLAG domain whose parent pool is soft-deleted \
+                      or non-Active loses its numbering lineage. \
+                      Parallels vlan.block_resolves_active + \
+                      subnet.pool_resolves_active.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1720,6 +1754,9 @@ async fn dispatch(
         "server_nic.server_resolves_active"       => run_server_nic_server_active(pool, org_id, severity, out).await,
         "link_endpoint.link_resolves_active"      => run_link_endpoint_link_active(pool, org_id, severity, out).await,
         "device.role_resolves_active"             => run_device_role_active(pool, org_id, severity, out).await,
+        "vlan.block_resolves_active"              => run_vlan_block_active(pool, org_id, severity, out).await,
+        "subnet.pool_resolves_active"             => run_subnet_pool_active(pool, org_id, severity, out).await,
+        "mlag_domain.pool_resolves_active"        => run_mlag_domain_pool_active(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -4385,6 +4422,81 @@ async fn run_device_role_active(
     Ok(())
 }
 
+/// `vlan.block_resolves_active` — VLAN's parent vlan_block must be live.
+async fn run_vlan_block_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32, String)> = sqlx::query_as(
+        "SELECT v.id, v.vlan_id, COALESCE(b.status::text, '(missing)')
+           FROM net.vlan v
+           LEFT JOIN net.vlan_block b ON b.id = v.block_id
+          WHERE v.organization_id = $1
+            AND v.deleted_at IS NULL
+            AND (b.id IS NULL
+                 OR b.deleted_at IS NOT NULL
+                 OR b.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, vlan_id, status) in rows {
+        out.push(Violation {
+            rule_code: "vlan.block_resolves_active".into(),
+            severity, entity_type: "Vlan".into(), entity_id: Some(id),
+            message: format!(
+                "VLAN {vlan_id} references a vlan_block with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `subnet.pool_resolves_active` — subnet's parent ip_pool must be live.
+async fn run_subnet_pool_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT sn.id, sn.subnet_code, COALESCE(p.status::text, '(missing)')
+           FROM net.subnet sn
+           LEFT JOIN net.ip_pool p ON p.id = sn.pool_id
+          WHERE sn.organization_id = $1
+            AND sn.deleted_at IS NULL
+            AND (p.id IS NULL
+                 OR p.deleted_at IS NOT NULL
+                 OR p.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, status) in rows {
+        out.push(Violation {
+            rule_code: "subnet.pool_resolves_active".into(),
+            severity, entity_type: "Subnet".into(), entity_id: Some(id),
+            message: format!(
+                "Subnet '{code}' references an ip_pool with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `mlag_domain.pool_resolves_active` — MLAG domain's parent pool must be live.
+async fn run_mlag_domain_pool_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32, String)> = sqlx::query_as(
+        "SELECT m.id, m.domain_id, COALESCE(p.status::text, '(missing)')
+           FROM net.mlag_domain m
+           LEFT JOIN net.mlag_domain_pool p ON p.id = m.pool_id
+          WHERE m.organization_id = $1
+            AND m.deleted_at IS NULL
+            AND (p.id IS NULL
+                 OR p.deleted_at IS NOT NULL
+                 OR p.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, domain_id, status) in rows {
+        out.push(Violation {
+            rule_code: "mlag_domain.pool_resolves_active".into(),
+            severity, entity_type: "MlagDomain".into(), entity_id: Some(id),
+            message: format!(
+                "MLAG domain {domain_id} references a pool with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -4926,6 +5038,9 @@ mod tests {
             "server_nic.server_resolves_active",
             "link_endpoint.link_resolves_active",
             "device.role_resolves_active",
+            "vlan.block_resolves_active",
+            "subnet.pool_resolves_active",
+            "mlag_domain.pool_resolves_active",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
