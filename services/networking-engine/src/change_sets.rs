@@ -209,6 +209,11 @@ fn default_required_approvals() -> i32 { 1 }
 pub struct ListChangeSetsQuery {
     pub organization_id: Uuid,
     pub status: Option<String>,
+    /// Optional narrower — when set, returns only sets where
+    /// requested_by matches. Backs the web /network/my-changesets
+    /// page + the WPF "my change-sets" filter without a new
+    /// endpoint.
+    pub requested_by_user_id: Option<i32>,
     #[serde(default = "default_list_limit")]
     pub limit: i64,
 }
@@ -332,11 +337,13 @@ impl ChangeSetRepo {
               WHERE cs.organization_id = $1
                 AND cs.deleted_at IS NULL
                 AND ($2::text IS NULL OR cs.status::text = $2)
+                AND ($4::int IS NULL OR cs.requested_by = $4)
               ORDER BY cs.created_at DESC
               LIMIT $3")
             .bind(q.organization_id)
             .bind(q.status.as_deref())
             .bind(limit)
+            .bind(q.requested_by_user_id)
             .fetch_all(&self.pool)
             .await?;
         // Item counts in a single batch query so the list endpoint stays O(1) round-trips.
