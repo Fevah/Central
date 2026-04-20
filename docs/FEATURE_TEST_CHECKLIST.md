@@ -3985,6 +3985,37 @@ bar. C# ApiClient status-summary wrapper.
 - [ ] New ChangeSetStatusCountDto(Status, Count).
 - [ ] 0 errors on build.
 
+### 7.X.45 Phase 10b — twenty-eighth wave (commits 2026-04-20+)
+
+Category-scoped validation runs on engine + web + C# ApiClient.
+Validation batch 49 adds structural-integrity self-loop guards.
+
+**Engine runValidation category filter** (commit `86cc9acce`)
+- [ ] POST /api/net/validation/run body accepts optional
+      `category` string (Integrity / Consistency / Safety /
+      Advisory).
+- [ ] Combines with `ruleCode` as AND — rule must match both.
+- [ ] Unknown category → zero violations (permissive).
+
+**Validation page run-by-category buttons** (commit `a55b1793d`)
+- [ ] Four "Run <category>" buttons alongside "Run all rules".
+- [ ] Clicking a category button auto-activates the matching
+      client-side Category filter.
+- [ ] runValidation() service method gains `category` param.
+
+**C# ApiClient — RunValidationAsync category param** (commit `bdfd5bd77`)
+- [ ] RunValidationAsync(organizationId, ruleCode?, category?, ct).
+- [ ] 0 errors on build.
+
+**Validation rule expansion — batch 49** (commit `701e4b16c`)
+- [ ] `port.breakout_parent_not_self_loop` (Error) — DB has no
+      CHECK; rule catches self-referential pointer.
+- [ ] `subnet.parent_subnet_not_self_loop` (Error) — same for
+      nested subnet parent chain.
+- [ ] `device.rack_implies_room` (Warning) — rack_id set
+      without room_id breaks hierarchy drill.
+- [ ] Catalog now at 188 rules; guardrail test still green.
+
 ---
 
 ## 8. Enterprise SaaS
