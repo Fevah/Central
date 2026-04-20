@@ -76,6 +76,14 @@ import { environment } from '../../../../environments/environment';
 
         <div *ngIf="status" class="status-line">{{ status }}</div>
 
+        <!-- Min-length hint. Engine short-circuits to empty for
+             queries < 2 chars; surfacing that up front avoids the
+             confusing "clicked Search, got nothing" UX. -->
+        <div *ngIf="query.trim().length === 1" class="min-len-hint">
+          Type at least 2 characters — single-char queries match too
+          broadly for the result set to be useful.
+        </div>
+
         <!-- Facet bar — per-entity-type hit counts. Click a chip to
              narrow the search to that entity type and re-run. -->
         <div *ngIf="facets.length" class="facet-bar">
@@ -120,6 +128,11 @@ import { environment } from '../../../../environments/environment';
     .search-bar .query { flex: 1; }
     .search-bar .entity-types { width: 260px; }
     .status-line { margin: 6px 0 10px; color: #666; font-size: 12px; }
+    .min-len-hint {
+      margin: 6px 0 10px; padding: 8px 12px; border-radius: 4px;
+      background: rgba(234,179,8,0.1); border: 1px solid rgba(234,179,8,0.35);
+      color: #eab308; font-size: 12px;
+    }
     .facet-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; }
     .facet-label { color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
     .facet-chip { background: rgba(59,130,246,0.1); color: #9ca3af; border: 1px solid rgba(59,130,246,0.2); border-radius: 12px; padding: 2px 10px; font-size: 12px; cursor: pointer; }
