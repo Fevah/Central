@@ -1018,10 +1018,22 @@ public class NetworkingEngineClient : IDisposable
     /// servers / links / dhcp-relay-targets. Results are ranked by
     /// Postgres `ts_rank` + filtered to what the caller has read
     /// permission on. Empty `q` returns an empty list.</summary>
+    /// <summary>Minimum trimmed query length for a search to round-trip
+    /// the server. Matches the engine's SEARCH_MIN_QUERY_LEN; below
+    /// this we short-circuit to an empty result client-side to avoid
+    /// the wasted round trip.</summary>
+    public const int SearchMinQueryLength = 2;
+
     public Task<List<SearchResultDto>> GlobalSearchAsync(Guid organizationId,
         string q, IReadOnlyList<string>? entityTypes = null, int? limit = null,
         CancellationToken ct = default)
     {
+        // Client-side short-circuit matching the engine guard — saves
+        // the round trip on 0- or 1-char queries that are guaranteed
+        // to come back empty.
+        if ((q?.Trim().Length ?? 0) < SearchMinQueryLength)
+            return Task.FromResult(new List<SearchResultDto>());
+
         var entityTypesParam = entityTypes is null or { Count: 0 }
             ? null : string.Join(",", entityTypes);
         var qs = BuildQuery(("organizationId", organizationId.ToString()),
