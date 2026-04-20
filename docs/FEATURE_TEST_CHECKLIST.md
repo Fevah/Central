@@ -4104,6 +4104,34 @@ Search min-length guard + batch 54 pool_code whitespace mirrors.
       button" feedback.
 - [ ] 0 errors on build.
 
+### 7.X.49 Phase 10b — thirty-second wave (commits 2026-04-20+)
+
+Validation batches 55-57 sweep the remaining *_code + display_
+name whitespace fields. Validation page gains Reset filters.
+
+**Validation rule expansion — batch 55** (commit `d6c1e524b`)
+- [ ] `device_role.role_code_no_leading_trailing_whitespace` (Warning)
+- [ ] `link_type.type_code_no_leading_trailing_whitespace` (Warning)
+- [ ] `server_profile.profile_code_no_leading_trailing_whitespace` (Warning)
+- [ ] Catalog at 206 rules.
+
+**Validation page Reset filters button** (commit `ae4bb62c0`)
+- [ ] Button on Category bar clears severity + category to All.
+- [ ] Renders only when at least one filter is active.
+
+**Validation rule expansion — batch 56** (commit `e0afa316f`)
+- [ ] `asn_block.block_code_no_leading_trailing_whitespace` (Warning)
+- [ ] `vlan_block.block_code_no_leading_trailing_whitespace` (Warning)
+- [ ] `reservation_shelf.resource_key_no_leading_trailing_whitespace` (Warning)
+- [ ] Catalog at 209 rules.
+
+**Validation rule expansion — batch 57** (commit `76d089cb4`)
+- [ ] `device_role.display_name_no_leading_trailing_whitespace` (Warning)
+- [ ] `link_type.display_name_no_leading_trailing_whitespace` (Warning)
+- [ ] `server_profile.display_name_no_leading_trailing_whitespace` (Warning)
+- [ ] Catalog at 212 rules — every display_name + *_code in
+      the net.* graph now has a trim check.
+
 ---
 
 ## 8. Enterprise SaaS
