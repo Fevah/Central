@@ -2544,6 +2544,103 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    // ── Batch 62 — catalog-display not_empty sweep ──────────────────────
+    RuleMeta {
+        code: "link_type.display_name_not_empty",
+        name: "Link type display_name must not be empty",
+        description: "Parallel to device_role.display_name_not_empty \
+                      — a link_type with an empty display_name shows \
+                      as a blank row in the link-type picker and is \
+                      effectively unnamed when the code column is \
+                      hidden.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server_profile.display_name_not_empty",
+        name: "Server profile display_name must not be empty",
+        description: "Parallel to device_role + link_type — completes \
+                      the not_empty sweep across the three *-type \
+                      catalog tables.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "building_profile.display_name_not_empty",
+        name: "Building profile display_name must not be empty",
+        description: "Mirror of site_profile + floor_profile \
+                      display_name_not_empty — closes the profile-\
+                      display non-empty family across the three \
+                      hierarchy profile tables.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    // ── Batch 63 — pool-display not_empty sweep ─────────────────────────
+    RuleMeta {
+        code: "asn_pool.display_name_not_empty",
+        name: "ASN pool display_name must not be empty",
+        description: "Pool display_name surfaces in allocation \
+                      dialogs; empty values show as a blank row in \
+                      the pool picker. Parallel to the existing \
+                      display_name trim rule.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "vlan_pool.display_name_not_empty",
+        name: "VLAN pool display_name must not be empty",
+        description: "Mirror of asn_pool.display_name_not_empty on \
+                      the VLAN-pool family.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "ip_pool.display_name_not_empty",
+        name: "IP pool display_name must not be empty",
+        description: "Mirror across the IP-pool family. Completes \
+                      the pool display_name not_empty sweep (ASN / \
+                      VLAN / IP).",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    // ── Batch 64 — last-pool + hierarchy code not_empty ─────────────────
+    RuleMeta {
+        code: "mlag_domain_pool.display_name_not_empty",
+        name: "MLAG domain pool display_name must not be empty",
+        description: "Closes the pool display_name not_empty family \
+                      across every pool table (ASN / VLAN / IP / \
+                      MLAG).",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "floor.floor_code_not_empty",
+        name: "Floor floor_code must not be empty",
+        description: "floor_code is the primary user-facing \
+                      identifier (display_name is nullable), so an \
+                      empty floor_code leaves the floor effectively \
+                      unlabelled everywhere it's listed.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "room.room_code_not_empty",
+        name: "Room room_code must not be empty",
+        description: "Mirror of floor.floor_code_not_empty — room \
+                      inherits the same pattern of relying on \
+                      *_code as the primary label.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2961,6 +3058,18 @@ async fn dispatch(
         "vlan_template.display_name_no_leading_trailing_whitespace" => run_vlan_template_name_ws(pool, org_id, severity, out).await,
         "device.display_name_no_leading_trailing_whitespace_when_set" => run_device_name_ws(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
+        // Batch 62 — catalog display_name not_empty sweep
+        "link_type.display_name_not_empty"        => run_link_type_display_name(pool, org_id, severity, out).await,
+        "server_profile.display_name_not_empty"   => run_server_profile_display_name(pool, org_id, severity, out).await,
+        "building_profile.display_name_not_empty" => run_building_profile_display_name(pool, org_id, severity, out).await,
+        // Batch 63 — pool display_name not_empty sweep
+        "asn_pool.display_name_not_empty"         => run_asn_pool_display_name(pool, org_id, severity, out).await,
+        "vlan_pool.display_name_not_empty"        => run_vlan_pool_display_name(pool, org_id, severity, out).await,
+        "ip_pool.display_name_not_empty"          => run_ip_pool_display_name(pool, org_id, severity, out).await,
+        // Batch 64 — last-pool display + hierarchy code not_empty
+        "mlag_domain_pool.display_name_not_empty" => run_mlag_pool_display_name(pool, org_id, severity, out).await,
+        "floor.floor_code_not_empty"              => run_floor_code_not_empty(pool, org_id, severity, out).await,
+        "room.room_code_not_empty"                => run_room_code_not_empty(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
     }
@@ -8418,6 +8527,186 @@ async fn run_floor_profile_display_name(
     Ok(())
 }
 
+/// Batch 62 — `link_type.display_name_not_empty`.
+async fn run_link_type_display_name(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, type_code FROM net.link_type
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND btrim(display_name) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "link_type.display_name_not_empty".into(),
+            severity, entity_type: "LinkType".into(), entity_id: Some(id),
+            message: format!("Link type '{code}' has an empty display_name."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 62 — `server_profile.display_name_not_empty`.
+async fn run_server_profile_display_name(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, profile_code FROM net.server_profile
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND btrim(display_name) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "server_profile.display_name_not_empty".into(),
+            severity, entity_type: "ServerProfile".into(), entity_id: Some(id),
+            message: format!("Server profile '{code}' has an empty display_name."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 62 — `building_profile.display_name_not_empty`.
+async fn run_building_profile_display_name(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid,)> = sqlx::query_as(
+        "SELECT id FROM net.building_profile
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND btrim(display_name) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id,) in rows {
+        out.push(Violation {
+            rule_code: "building_profile.display_name_not_empty".into(),
+            severity, entity_type: "BuildingProfile".into(), entity_id: Some(id),
+            message: format!("Building profile {id} has an empty display_name."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 63 — `asn_pool.display_name_not_empty`.
+async fn run_asn_pool_display_name(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, pool_code FROM net.asn_pool
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND btrim(display_name) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "asn_pool.display_name_not_empty".into(),
+            severity, entity_type: "AsnPool".into(), entity_id: Some(id),
+            message: format!("ASN pool '{code}' has an empty display_name."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 63 — `vlan_pool.display_name_not_empty`.
+async fn run_vlan_pool_display_name(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, pool_code FROM net.vlan_pool
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND btrim(display_name) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "vlan_pool.display_name_not_empty".into(),
+            severity, entity_type: "VlanPool".into(), entity_id: Some(id),
+            message: format!("VLAN pool '{code}' has an empty display_name."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 63 — `ip_pool.display_name_not_empty`.
+async fn run_ip_pool_display_name(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, pool_code FROM net.ip_pool
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND btrim(display_name) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "ip_pool.display_name_not_empty".into(),
+            severity, entity_type: "IpPool".into(), entity_id: Some(id),
+            message: format!("IP pool '{code}' has an empty display_name."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 64 — `mlag_domain_pool.display_name_not_empty`.
+async fn run_mlag_pool_display_name(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, pool_code FROM net.mlag_domain_pool
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND btrim(display_name) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "mlag_domain_pool.display_name_not_empty".into(),
+            severity, entity_type: "MlagDomainPool".into(), entity_id: Some(id),
+            message: format!("MLAG domain pool '{code}' has an empty display_name."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 64 — `floor.floor_code_not_empty`.
+async fn run_floor_code_not_empty(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid,)> = sqlx::query_as(
+        "SELECT id FROM net.floor
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND btrim(floor_code) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id,) in rows {
+        out.push(Violation {
+            rule_code: "floor.floor_code_not_empty".into(),
+            severity, entity_type: "Floor".into(), entity_id: Some(id),
+            message: format!("Floor {id} has an empty floor_code."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 64 — `room.room_code_not_empty`.
+async fn run_room_code_not_empty(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid,)> = sqlx::query_as(
+        "SELECT id FROM net.room
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND btrim(room_code) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id,) in rows {
+        out.push(Violation {
+            rule_code: "room.room_code_not_empty".into(),
+            severity, entity_type: "Room".into(), entity_id: Some(id),
+            message: format!("Room {id} has an empty room_code."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.rack_code_unique_per_room` — parallel to floor/room rules.
 async fn run_rack_code_unique(
     pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
@@ -8737,6 +9026,15 @@ mod tests {
             "floor_profile.display_name_no_leading_trailing_whitespace",
             "vlan_template.display_name_no_leading_trailing_whitespace",
             "device.display_name_no_leading_trailing_whitespace_when_set",
+            "link_type.display_name_not_empty",
+            "server_profile.display_name_not_empty",
+            "building_profile.display_name_not_empty",
+            "asn_pool.display_name_not_empty",
+            "vlan_pool.display_name_not_empty",
+            "ip_pool.display_name_not_empty",
+            "mlag_domain_pool.display_name_not_empty",
+            "floor.floor_code_not_empty",
+            "room.room_code_not_empty",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
