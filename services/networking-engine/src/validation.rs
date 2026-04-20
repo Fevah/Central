@@ -1732,6 +1732,42 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "device.asn_allocation_resolves_active_when_set",
+        name: "Device asn_allocation_id must resolve to an Active allocation when set",
+        description: "Device's optional asn_allocation_id pointer, \
+                      when set, must resolve to an Active net.asn_\
+                      allocation row. An orphaned pointer would let \
+                      config-gen emit a BGP local-as against a \
+                      decommissioned ASN.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server.asn_allocation_resolves_active_when_set",
+        name: "Server asn_allocation_id must resolve to an Active allocation when set",
+        description: "Mirror of device.asn_allocation_resolves_\
+                      active_when_set on the server branch. Servers \
+                      that run BGP-to-ToR carry an ASN allocation; \
+                      this rule catches stale pointers.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server.server_profile_resolves_active_when_set",
+        name: "Server server_profile_id must resolve to an Active profile when set",
+        description: "Server's optional server_profile_id pointer, \
+                      when set, must resolve to an Active net.server_\
+                      profile. The profile drives NIC fan-out + \
+                      naming template defaults — a decommissioned \
+                      profile leaves the server's provisioning \
+                      context stale.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2063,6 +2099,9 @@ async fn dispatch(
         "link_endpoint.device_resolves_active_when_set" => run_link_endpoint_device_active(pool, org_id, severity, out).await,
         "link_endpoint.ip_address_resolves_active_when_set" => run_link_endpoint_ip_active(pool, org_id, severity, out).await,
         "server_nic.ip_address_resolves_active_when_set" => run_server_nic_ip_active(pool, org_id, severity, out).await,
+        "device.asn_allocation_resolves_active_when_set" => run_device_asn_alloc_active(pool, org_id, severity, out).await,
+        "server.asn_allocation_resolves_active_when_set" => run_server_asn_alloc_active(pool, org_id, severity, out).await,
+        "server.server_profile_resolves_active_when_set" => run_server_profile_active(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -5431,6 +5470,87 @@ async fn run_server_nic_ip_active(
     Ok(())
 }
 
+/// `device.asn_allocation_resolves_active_when_set` — device's
+/// optional ASN allocation must be live when set.
+async fn run_device_asn_alloc_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT d.id, d.hostname, COALESCE(a.status::text, '(missing)')
+           FROM net.device d
+           LEFT JOIN net.asn_allocation a ON a.id = d.asn_allocation_id
+          WHERE d.organization_id = $1
+            AND d.deleted_at IS NULL
+            AND d.asn_allocation_id IS NOT NULL
+            AND (a.id IS NULL
+                 OR a.deleted_at IS NOT NULL
+                 OR a.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname, status) in rows {
+        out.push(Violation {
+            rule_code: "device.asn_allocation_resolves_active_when_set".into(),
+            severity, entity_type: "Device".into(), entity_id: Some(id),
+            message: format!(
+                "Device '{hostname}' references an ASN allocation with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `server.asn_allocation_resolves_active_when_set` — server's
+/// optional ASN allocation must be live when set.
+async fn run_server_asn_alloc_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT s.id, s.hostname, COALESCE(a.status::text, '(missing)')
+           FROM net.server s
+           LEFT JOIN net.asn_allocation a ON a.id = s.asn_allocation_id
+          WHERE s.organization_id = $1
+            AND s.deleted_at IS NULL
+            AND s.asn_allocation_id IS NOT NULL
+            AND (a.id IS NULL
+                 OR a.deleted_at IS NOT NULL
+                 OR a.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname, status) in rows {
+        out.push(Violation {
+            rule_code: "server.asn_allocation_resolves_active_when_set".into(),
+            severity, entity_type: "Server".into(), entity_id: Some(id),
+            message: format!(
+                "Server '{hostname}' references an ASN allocation with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `server.server_profile_resolves_active_when_set` — server's
+/// optional server_profile must be live when set.
+async fn run_server_profile_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT s.id, s.hostname, COALESCE(p.status::text, '(missing)')
+           FROM net.server s
+           LEFT JOIN net.server_profile p ON p.id = s.server_profile_id
+          WHERE s.organization_id = $1
+            AND s.deleted_at IS NULL
+            AND s.server_profile_id IS NOT NULL
+            AND (p.id IS NULL
+                 OR p.deleted_at IS NOT NULL
+                 OR p.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname, status) in rows {
+        out.push(Violation {
+            rule_code: "server.server_profile_resolves_active_when_set".into(),
+            severity, entity_type: "Server".into(), entity_id: Some(id),
+            message: format!(
+                "Server '{hostname}' references a server_profile with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -5999,6 +6119,9 @@ mod tests {
             "link_endpoint.device_resolves_active_when_set",
             "link_endpoint.ip_address_resolves_active_when_set",
             "server_nic.ip_address_resolves_active_when_set",
+            "device.asn_allocation_resolves_active_when_set",
+            "server.asn_allocation_resolves_active_when_set",
+            "server.server_profile_resolves_active_when_set",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
