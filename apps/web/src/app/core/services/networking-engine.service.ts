@@ -385,6 +385,16 @@ export interface AuditTrendPoint {
   count: number;
 }
 
+/// One row per change-set status with a count. Matches
+/// `ChangeSetStatusCount` in services/networking-engine/src/
+/// change_sets.rs. Always seven rows in state-machine order —
+/// Draft → Submitted → Approved → Rejected → Applied →
+/// RolledBack → Cancelled — with count=0 for unused buckets.
+export interface ChangeSetStatusCount {
+  status: string;
+  count: number;
+}
+
 /// One row per distinct audit action. Matches `DistinctAction` in
 /// services/networking-engine/src/audit.rs. Drives UI action-filter
 /// dropdowns + the count badge per action.
@@ -1486,6 +1496,15 @@ export class NetworkingEngineService {
         notes:            body.notes ?? null,
       },
       { params });
+  }
+
+  /// Status rollup for the tenant's change-sets. Returns all 7
+  /// status buckets (zero counts included) in state-machine
+  /// order — Draft → Submitted → … → Cancelled.
+  changeSetStatusSummary(organizationId: string): Observable<ChangeSetStatusCount[]> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.get<ChangeSetStatusCount[]>(
+      `${this.base}/api/net/change-sets/summary`, { params });
   }
 
   /// Soft-delete an item from a Draft change-set. Parent-status

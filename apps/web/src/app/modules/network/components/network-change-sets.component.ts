@@ -7,7 +7,7 @@ import {
   DxPopupModule, DxTextBoxModule, DxTextAreaModule,
 } from 'devextreme-angular';
 import {
-  NetworkingEngineService, ChangeSet,
+  NetworkingEngineService, ChangeSet, ChangeSetStatusCount,
 } from '../../../core/services/networking-engine.service';
 import { environment } from '../../../../environments/environment';
 
@@ -30,6 +30,27 @@ import { environment } from '../../../../environments/environment';
     <div class="page-header">
       <h2>Change sets</h2>
       <small class="subtitle">Lifecycle-managed batches of edits. Read-only on the web today; submit / approve / apply run through the WPF client until the web approval chrome lands.</small>
+    </div>
+
+    <!-- Status summary banner — one pill per status with its count.
+         Click a pill to filter the grid to just that status. Always
+         renders all seven state-machine positions in order so
+         operators can spot empty buckets (no Approved waiting to
+         apply / no Draft queue / etc.) instantly. -->
+    <div class="status-banner" *ngIf="summary.length">
+      <a *ngFor="let s of summary"
+         class="status-pill"
+         [class.active]="statusFilter === s.status"
+         [ngClass]="'pill-' + s.status.toLowerCase()"
+         href="javascript:void(0)"
+         (click)="filterByStatus(s.status)">
+        <span class="pill-label">{{ s.status }}</span>
+        <span class="pill-count">{{ s.count }}</span>
+      </a>
+      <a class="status-pill pill-clear" *ngIf="statusFilter"
+         href="javascript:void(0)" (click)="filterByStatus(null)">
+        Clear filter ×
+      </a>
     </div>
 
     <div class="filter-bar">
@@ -144,6 +165,30 @@ import { environment } from '../../../../environments/environment';
     .title-link { color: #60a5fa; text-decoration: none; font-weight: 600; }
     .title-link:hover { text-decoration: underline; }
     .filter-bar .spacer { flex: 1; min-width: 12px; }
+
+    .status-banner {
+      display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 14px;
+    }
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 14px; font-size: 11px; font-weight: 600;
+      text-decoration: none; cursor: pointer; color: inherit;
+      border: 1px solid transparent; transition: filter 0.15s;
+    }
+    .status-pill:hover  { filter: brightness(1.15); }
+    .status-pill.active { border-color: currentColor; box-shadow: 0 0 0 1px currentColor; }
+    .status-pill .pill-count {
+      background: rgba(0,0,0,0.25); padding: 0 6px; border-radius: 8px;
+      font-size: 10px;
+    }
+    .pill-draft      { background: rgba(148,163,184,0.2); color: #cbd5e1; }
+    .pill-submitted  { background: rgba(59,130,246,0.2);  color: #60a5fa; }
+    .pill-approved   { background: rgba(168,85,247,0.2);  color: #a855f7; }
+    .pill-rejected   { background: rgba(239,68,68,0.2);   color: #ef4444; }
+    .pill-applied    { background: rgba(34,197,94,0.2);   color: #22c55e; }
+    .pill-rolledback { background: rgba(234,179,8,0.2);   color: #eab308; }
+    .pill-cancelled  { background: rgba(107,114,128,0.2); color: #9ca3af; }
+    .pill-clear      { background: transparent; color: #64748b; font-weight: 400; }
     .form { display: flex; flex-direction: column; gap: 14px; padding: 4px 2px; }
     .form-row { display: flex; flex-direction: column; gap: 4px; }
     .form-row label { color: #9ca3af; font-size: 12px; }
@@ -159,6 +204,12 @@ export class NetworkChangeSetsComponent implements OnInit {
               'Applied', 'RolledBack', 'Cancelled'];
 
   statusFilter: string | null = null;
+
+  /// Per-status rollup from /api/net/change-sets/summary — drives
+  /// the top-of-page status banner. Always 7 rows in state-machine
+  /// order, zero-count buckets included so the banner layout is
+  /// consistent regardless of activity.
+  summary: ChangeSetStatusCount[] = [];
 
   createDialogOpen = false;
   busy = false;
@@ -177,7 +228,26 @@ export class NetworkChangeSetsComponent implements OnInit {
     private router: Router,
   ) {}
 
-  ngOnInit(): void { this.reload(); }
+  ngOnInit(): void {
+    this.reload();
+    this.loadSummary();
+  }
+
+  /// Summary rollup — independent of the grid reload so switching
+  /// filters doesn't re-fetch the counts.
+  private loadSummary(): void {
+    this.engine.changeSetStatusSummary(environment.defaultTenantId).subscribe({
+      next: (rows) => { this.summary = rows ?? []; },
+      error: () => { /* silent — banner just won't render */ },
+    });
+  }
+
+  /// Click a status pill → apply as filter + reload grid. Passing
+  /// null clears the filter (same behaviour as the Clear pill).
+  filterByStatus(s: string | null): void {
+    this.statusFilter = s;
+    this.reload();
+  }
 
   reload(): void {
     this.loading = true;
