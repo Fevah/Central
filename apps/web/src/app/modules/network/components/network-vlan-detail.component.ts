@@ -47,6 +47,15 @@ import { environment } from '../../../../environments/environment';
       <div class="meta-row"><label>Status</label>      <span>{{ vlan.status }}</span></div>
       <div class="meta-row"><label>Version</label>     <span>{{ vlan.version }}</span></div>
       <div class="meta-row"><label>UUID</label>        <code>{{ vlan.id }}</code></div>
+
+      <div class="meta-row">
+        <label>DHCP relays</label>
+        <span>{{ relayCount === null ? '…' : relayCount }}</span>
+      </div>
+      <div class="meta-row">
+        <label>Linked subnets</label>
+        <span>{{ subnetCount === null ? '…' : subnetCount }}</span>
+      </div>
     </div>
 
     <!-- Audit tab -->
@@ -111,6 +120,11 @@ export class NetworkVlanDetailComponent implements OnInit {
   audit: AuditRow[] = [];
   relays: DhcpRelayTargetRow[] = [];
   loadingRelays = false;
+  /// Summary count enrichment — populated on page load via the
+  /// listDhcpRelayTargets(vlanId) narrower + client-side filter of
+  /// listSubnets for vlanTag match. Null = still loading.
+  relayCount: number | null = null;
+  subnetCount: number | null = null;
   status = '';
 
   constructor(
@@ -129,7 +143,10 @@ export class NetworkVlanDetailComponent implements OnInit {
       next: (rows) => {
         this.vlan = rows.find(r => r.id === this.vlanId) ?? null;
         this.status = this.vlan ? '' : 'VLAN not found.';
-        if (this.vlan) this.loadTabData();
+        if (this.vlan) {
+          this.loadTabData();
+          this.loadSummaryCounts();
+        }
       },
       error: (err) => { this.status = `Load failed: ${err?.message ?? err}`; },
     });
@@ -151,4 +168,28 @@ export class NetworkVlanDetailComponent implements OnInit {
   }
 
   onTabChanged(_e: unknown): void { this.loadTabData(); }
+
+  /// Summary-tab enrichment — fires two parallel calls on page
+  /// load so operators see "DHCP relays: 2 · Linked subnets: 1"
+  /// without opening the DHCP tab. listDhcpRelayTargets takes a
+  /// vlanId narrower; subnet count uses client-side vlanTag
+  /// filter because listSubnets lacks a direct vlan-id narrower.
+  private loadSummaryCounts(): void {
+    if (!this.vlan) { return; }
+    // Pre-populate this.relays so the DHCP tab doesn't re-fetch.
+    this.engine.listDhcpRelayTargets(environment.defaultTenantId, this.vlanId).subscribe({
+      next: (rows) => {
+        this.relays = rows ?? [];
+        this.relayCount = this.relays.length;
+      },
+      error: () => { this.relayCount = 0; },
+    });
+    const tag = this.vlan.vlanId;
+    this.engine.listSubnets(environment.defaultTenantId).subscribe({
+      next: (rows) => {
+        this.subnetCount = (rows ?? []).filter(r => r.vlanTag === tag).length;
+      },
+      error: () => { this.subnetCount = 0; },
+    });
+  }
 }
