@@ -96,3 +96,41 @@ public record LinkSelectionMessage(string SourcePanel, string Field, object? Val
 /// NetworkingRibbonRegistrar (e.g. "audit", "search", "bulk").
 /// </summary>
 public record OpenPanelMessage(string TargetPanel) : IPanelMessage;
+
+// ─── Module lifecycle messages ─────────────────────────────────────────────
+// Phase 3 of the module-update system (docs/MODULE_UPDATE_SYSTEM.md).
+// ModuleHost raises these as a module transitions Loaded → Reloading →
+// Reloaded; MainWindow + open panels subscribe to close/reopen themselves
+// cleanly around the AssemblyLoadContext swap. Additive messages —
+// handlers that don't care about hot-swap simply don't subscribe.
+
+/// <summary>
+/// Raised by <c>ModuleHost.Reload()</c> before the current
+/// AssemblyLoadContext is unloaded. Panels owned by this module should
+/// unsubscribe from the bus + close themselves + release all strong
+/// refs to types from the module's assembly before the host tries to
+/// unload. MainWindow remembers which panels were open so it can
+/// reopen them once <see cref="ModuleReloadedMessage"/> fires.
+/// </summary>
+public record ModuleReloadingMessage(string ModuleCode, string FromVersion, string ToVersion) : IPanelMessage;
+
+/// <summary>
+/// Raised by <c>ModuleHost.Reload()</c> after the new DLL has loaded
+/// successfully into a fresh <c>AssemblyLoadContext</c> + the module's
+/// <c>RegisterRibbon</c>/<c>RegisterPanels</c> have re-run. MainWindow
+/// reopens any panels that were open before the reload. If a re-open
+/// fails (e.g. missing panel type in the new version), the panel
+/// stays closed and the user sees a toast; no crash.
+/// </summary>
+public record ModuleReloadedMessage(string ModuleCode, string FromVersion, string ToVersion) : IPanelMessage;
+
+/// <summary>
+/// Raised when <c>ModuleHost.Reload()</c> or <c>ModuleHost.Load()</c>
+/// fails (bad DLL, SHA-256 mismatch, incompatible
+/// <see cref="IModule.EngineContractVersion"/>, exception in
+/// <c>RegisterRibbon</c>). The host falls back to the previous
+/// version (if any) and emits this message so MainWindow can surface
+/// a toast. <see cref="Reason"/> is user-facing; <see cref="Exception"/>
+/// is the raw throwable for logs.
+/// </summary>
+public record ModuleLoadFailedMessage(string ModuleCode, string AttemptedVersion, string Reason, Exception? Exception = null) : IPanelMessage;
