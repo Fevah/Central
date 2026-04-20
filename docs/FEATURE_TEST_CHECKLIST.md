@@ -3685,6 +3685,45 @@ link_endpoint + server_nic.
 - [ ] Catalog now at 149 rules; guardrail test
       `dispatcher_has_arm_for_every_catalog_rule` still green.
 
+### 7.X.37 Phase 10b — twentieth wave (commits 2026-04-20+)
+
+Correlations-window filter on engine + web; overview quick-link
+chip bar; validation batch 37 covers BGP + provisioning
+pointer resolves.
+
+**Audit correlations window filter** (commit `9418c37d1`)
+- [ ] GET /api/net/audit/correlations accepts optional fromAt /
+      toAt ISO-8601 bounds. A correlation is in-scope if any of
+      its entries lands inside the window.
+- [ ] recent_correlations() signature: limit + from_at + to_at.
+- [ ] Backward-compat: omitting both bounds preserves all-time.
+
+**Correlations page window picker** (commit `02cd7575a`)
+- [ ] New Window select on /network/correlations (24h / 7d /
+      30d / All, default 7d).
+- [ ] reload() computes fromAt from the window preset.
+- [ ] NetworkingEngineService.listRecentCorrelations gains
+      optional fromAt + toAt strings.
+- [ ] C# AuditCorrelationsAsync gains optional DateTime? fromAt
+      + toAt. 0 errors on build.
+
+**Overview quick-link chip bar** (commit `83a30e1bf`)
+- [ ] New chip bar below the toolbar on /network/overview.
+- [ ] Chips drill to /network/my-activity, /network/my-grants,
+      /network/correlations, /network/audit-search,
+      /network/data-quality, /network/carver-preview.
+- [ ] Visual: pill chips with emoji icons + hover highlight.
+
+**Validation rule expansion — batch 37** (commit `6343bec52`)
+- [ ] `device.asn_allocation_resolves_active_when_set` (Warning)
+      — prevents BGP local-as emission against a decommissioned
+      allocation.
+- [ ] `server.asn_allocation_resolves_active_when_set` (Warning)
+      — mirror on the server branch.
+- [ ] `server.server_profile_resolves_active_when_set` (Warning)
+      — catches stale profile pointers that break NIC fan-out.
+- [ ] Catalog now at 152 rules; guardrail test still green.
+
 ---
 
 ## 8. Enterprise SaaS
