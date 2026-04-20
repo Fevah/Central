@@ -218,6 +218,13 @@ public class ConnectivityManager : INotifyPropertyChanged, IDisposable
         // /api/modules/catalog poll.
         _signalR.ModuleUpdated += payload =>
         {
+            // Drop the catalog cache so the banner / UI query path
+            // reflects the new current_version immediately rather than
+            // waiting up to CatalogCacheTtl. Safe if the startup helper
+            // hasn't run yet (e.g. cold-start SignalR race) — the
+            // property is null-aware.
+            Central.Desktop.Services.ModuleUpdateStartup.CatalogClientOrNull?.InvalidateCatalogCache();
+
             var mgr = Central.Desktop.Services.ModuleUpdateStartup.ManagerOrNull;
             if (mgr is null) return;
             var n = Central.Desktop.Services.ModuleUpdateStartup.ToEngineNotification(payload);

@@ -32,10 +32,20 @@ public static class ModuleUpdateStartup
 {
     private static readonly object _lock = new();
     private static ModuleHostManager? _manager;
+    private static ModuleCatalogClient? _catalog;
     private static string? _apiBaseUrl;
 
     /// <summary>The shared manager, or null if <see cref="Initialize"/> hasn't run yet.</summary>
     public static ModuleHostManager? ManagerOrNull => _manager;
+
+    /// <summary>
+    /// The shared catalog client, or null if <see cref="Initialize"/>
+    /// hasn't run yet. Useful so callers can call
+    /// <see cref="ModuleCatalogClient.InvalidateCatalogCache"/> on
+    /// SignalR <c>ModuleUpdated</c> events + force the next banner
+    /// query to refetch.
+    /// </summary>
+    public static ModuleCatalogClient? CatalogClientOrNull => _catalog;
 
     /// <summary>
     /// The shared manager. Throws <see cref="InvalidOperationException"/>
@@ -81,6 +91,7 @@ public static class ModuleUpdateStartup
                 _manager = new ModuleHostManager(downloader, new WpfModuleUpdatePolicy());
             }
 
+            _catalog    = catalog;
             _apiBaseUrl = apiBaseUrl;
         }
     }
