@@ -1171,6 +1171,15 @@ public class NetworkingEngineClient : IDisposable
         => GetAsync<TenantSummaryDto>(
             $"/api/net/tenant/summary?organizationId={organizationId}", ct);
 
+    /// <summary>Per-entity-type × per-status lifecycle rollup.
+    /// Returns one row per (entityType, status) combination that
+    /// has matching rows — zero counts are absent. Covers Device /
+    /// Server / Vlan / Subnet / Link.</summary>
+    public Task<List<LifecycleBucketDto>> TenantLifecycleSummaryAsync(
+        Guid organizationId, CancellationToken ct = default)
+        => GetAsync<List<LifecycleBucketDto>>(
+            $"/api/net/tenant/lifecycle-summary?organizationId={organizationId}", ct);
+
     /// <summary>Per-status rollup across the tenant's change_sets.
     /// Always 7 rows (Draft / Submitted / Approved / Rejected /
     /// Applied / RolledBack / Cancelled) in state-machine order
@@ -1834,6 +1843,12 @@ public record TenantSummaryDto(long Devices, long Servers, long Vlans,
 /// / Submitted / Approved / Rejected / Applied / RolledBack /
 /// Cancelled.</summary>
 public record ChangeSetStatusCountDto(string Status, long Count);
+
+/// <summary>One bucket of a per-entity-type × per-status
+/// lifecycle rollup — matches `LifecycleBucket` in
+/// services/networking-engine/src/api.rs. Only buckets with at
+/// least one row appear in the response.</summary>
+public record LifecycleBucketDto(string EntityType, string Status, long Count);
 
 // ─── Naming override DTOs (Phase 10b) ────────────────────────────────
 
