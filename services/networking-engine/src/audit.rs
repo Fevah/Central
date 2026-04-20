@@ -796,6 +796,67 @@ pub async fn stats_by_entity_type(
     Ok(rows)
 }
 
+// ─── Recent correlations ────────────────────────────────────────────────
+
+/// One row per distinct correlation_id — summarises the entries that
+/// share a correlation. Lets operators scan "what bulk operations
+/// landed recently?" without paging through the full audit list.
+/// <c>firstSeenAt</c>/<c>lastSeenAt</c> bracket the correlation's
+/// lifespan; <c>distinctEntityTypes</c> hints at scope ("this
+/// correlation touched Device + Vlan + Subnet"). <c>setId</c> is
+/// non-null when a net.change_set row shares this correlation.
+#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct RecentCorrelation {
+    pub correlation_id: Uuid,
+    pub entry_count: i64,
+    pub distinct_entity_types: i64,
+    pub first_seen_at: chrono::DateTime<chrono::Utc>,
+    pub last_seen_at: chrono::DateTime<chrono::Utc>,
+    pub set_id: Option<Uuid>,
+    pub set_title: Option<String>,
+    pub set_status: Option<String>,
+}
+
+/// Recent distinct correlations across the tenant, ORDER BY
+/// last_seen_at DESC. Left-joins net.change_set by correlation_id
+/// so the UI can show the set title + status inline when one exists
+/// (not every correlation maps to a change-set — ad-hoc allocation
+/// retires, bulk edits without a wrapper, etc. stamp correlations too).
+pub async fn recent_correlations(
+    pool: &PgPool,
+    org_id: Uuid,
+    limit: Option<i64>,
+) -> Result<Vec<RecentCorrelation>, EngineError> {
+    // Clamp limit to a reasonable range so pathological callers
+    // don't DoS the query with 100k rows.
+    let clamped = limit.unwrap_or(50).max(1).min(500);
+    let rows: Vec<RecentCorrelation> = sqlx::query_as(
+        "SELECT e.correlation_id                     AS correlation_id,
+                COUNT(*)::bigint                     AS entry_count,
+                COUNT(DISTINCT e.entity_type)::bigint AS distinct_entity_types,
+                MIN(e.created_at)                    AS first_seen_at,
+                MAX(e.created_at)                    AS last_seen_at,
+                cs.id                                AS set_id,
+                cs.title                             AS set_title,
+                cs.status::text                      AS set_status
+           FROM net.audit_entry e
+           LEFT JOIN net.change_set cs
+             ON cs.correlation_id = e.correlation_id
+            AND cs.organization_id = $1
+            AND cs.deleted_at IS NULL
+          WHERE e.organization_id = $1
+            AND e.correlation_id IS NOT NULL
+          GROUP BY e.correlation_id, cs.id, cs.title, cs.status
+          ORDER BY MAX(e.created_at) DESC
+          LIMIT $2")
+        .bind(org_id)
+        .bind(clamped)
+        .fetch_all(pool)
+        .await?;
+    Ok(rows)
+}
+
 // ─── Unit tests ──────────────────────────────────────────────────────────
 
 #[cfg(test)]

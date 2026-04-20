@@ -94,6 +94,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/audit/stats",  get(audit_stats_by_entity_type))
         .route("/api/net/audit/trend",  get(audit_trend_handler))
         .route("/api/net/audit/top-actors", get(audit_top_actors_handler))
+        .route("/api/net/audit/correlations", get(audit_correlations_handler))
         // Change Sets (Phase 8a)
         .route("/api/net/change-sets", get(list_change_sets).post(create_change_set))
         .route("/api/net/change-sets/:id", get(get_change_set))
@@ -624,6 +625,28 @@ async fn audit_top_actors_handler(
     Query(q): Query<audit::TopActorsQuery>,
 ) -> Result<impl IntoResponse, EngineError> {
     Ok(Json(audit::top_actors(&s.pool, &q).await?))
+}
+
+/// Recent distinct correlation ids — "what bulk operations happened
+/// lately?" at a glance. One row per correlation_id with entry count
+/// + distinct entity types + first/last-seen + change-set metadata
+/// (when a net.change_set shares the correlation).
+///
+/// Query params: organizationId (required), limit (default 50,
+/// clamped to 1..=500).
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AuditCorrelationsQuery {
+    organization_id: Uuid,
+    limit: Option<i64>,
+}
+
+async fn audit_correlations_handler(
+    State(s): State<AppState>,
+    Query(q): Query<AuditCorrelationsQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    Ok(Json(audit::recent_correlations(
+        &s.pool, q.organization_id, q.limit).await?))
 }
 
 async fn export_audit(
