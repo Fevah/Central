@@ -1841,6 +1841,42 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Info,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "device.serial_number_unique_per_tenant_when_set",
+        name: "Device serial_number should be unique per tenant when set",
+        description: "Two devices with the same serial_number in \
+                      the same tenant almost always indicate a \
+                      duplicate-import or copy-paste data-entry \
+                      mistake. Warning-severity: the rows are \
+                      still valid, but inventory sync to upstream \
+                      systems (Zabbix, CMDB) breaks on the \
+                      collision.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server.serial_number_unique_per_tenant_when_set",
+        name: "Server serial_number should be unique per tenant when set",
+        description: "Mirror of device.serial_number_unique_per_\
+                      tenant_when_set on the server branch. Same \
+                      inventory-sync concern applies.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "module.serial_number_unique_per_tenant_when_set",
+        name: "Module serial_number should be unique per tenant when set",
+        description: "Linecards + transceivers carry unique serial \
+                      numbers from the factory. Duplicates within \
+                      a tenant point at bad data entry — the \
+                      module inventory + RMA workflow needs one-\
+                      to-one serial mapping.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2181,6 +2217,9 @@ async fn dispatch(
         "server_nic.target_port_resolves_active_when_set" => run_server_nic_target_port_active(pool, org_id, severity, out).await,
         "rack.uheight_within_reason"              => run_rack_uheight_reason(pool, org_id, severity, out).await,
         "device.firmware_version_set_when_active" => run_device_firmware_set(pool, org_id, severity, out).await,
+        "device.serial_number_unique_per_tenant_when_set" => run_device_serial_unique(pool, org_id, severity, out).await,
+        "server.serial_number_unique_per_tenant_when_set" => run_server_serial_unique(pool, org_id, severity, out).await,
+        "module.serial_number_unique_per_tenant_when_set" => run_module_serial_unique(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -5783,6 +5822,96 @@ async fn run_device_firmware_set(
     Ok(())
 }
 
+/// `device.serial_number_unique_per_tenant_when_set` — flag any
+/// device with a serial_number that collides with another device
+/// in the same tenant. Every colliding row emits a violation so
+/// UI filters surface the whole collision group.
+async fn run_device_serial_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT d.id, d.hostname, d.serial_number
+           FROM net.device d
+          WHERE d.organization_id = $1
+            AND d.deleted_at IS NULL
+            AND d.serial_number IS NOT NULL
+            AND d.serial_number <> ''
+            AND EXISTS (
+                SELECT 1 FROM net.device d2
+                 WHERE d2.organization_id = d.organization_id
+                   AND d2.deleted_at IS NULL
+                   AND d2.serial_number = d.serial_number
+                   AND d2.id <> d.id)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname, serial) in rows {
+        out.push(Violation {
+            rule_code: "device.serial_number_unique_per_tenant_when_set".into(),
+            severity, entity_type: "Device".into(), entity_id: Some(id),
+            message: format!(
+                "Device '{hostname}' has serial_number '{serial}' which is not unique in the tenant."),
+        });
+    }
+    Ok(())
+}
+
+/// `server.serial_number_unique_per_tenant_when_set` — mirror on server branch.
+async fn run_server_serial_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT s.id, s.hostname, s.serial_number
+           FROM net.server s
+          WHERE s.organization_id = $1
+            AND s.deleted_at IS NULL
+            AND s.serial_number IS NOT NULL
+            AND s.serial_number <> ''
+            AND EXISTS (
+                SELECT 1 FROM net.server s2
+                 WHERE s2.organization_id = s.organization_id
+                   AND s2.deleted_at IS NULL
+                   AND s2.serial_number = s.serial_number
+                   AND s2.id <> s.id)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname, serial) in rows {
+        out.push(Violation {
+            rule_code: "server.serial_number_unique_per_tenant_when_set".into(),
+            severity, entity_type: "Server".into(), entity_id: Some(id),
+            message: format!(
+                "Server '{hostname}' has serial_number '{serial}' which is not unique in the tenant."),
+        });
+    }
+    Ok(())
+}
+
+/// `module.serial_number_unique_per_tenant_when_set` — mirror on module branch.
+async fn run_module_serial_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT m.id, m.slot, m.serial_number
+           FROM net.module m
+          WHERE m.organization_id = $1
+            AND m.deleted_at IS NULL
+            AND m.serial_number IS NOT NULL
+            AND m.serial_number <> ''
+            AND EXISTS (
+                SELECT 1 FROM net.module m2
+                 WHERE m2.organization_id = m.organization_id
+                   AND m2.deleted_at IS NULL
+                   AND m2.serial_number = m.serial_number
+                   AND m2.id <> m.id)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, slot, serial) in rows {
+        out.push(Violation {
+            rule_code: "module.serial_number_unique_per_tenant_when_set".into(),
+            severity, entity_type: "Module".into(), entity_id: Some(id),
+            message: format!(
+                "Module in slot '{slot}' has serial_number '{serial}' which is not unique in the tenant."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -6360,6 +6489,9 @@ mod tests {
             "server_nic.target_port_resolves_active_when_set",
             "rack.uheight_within_reason",
             "device.firmware_version_set_when_active",
+            "device.serial_number_unique_per_tenant_when_set",
+            "server.serial_number_unique_per_tenant_when_set",
+            "module.serial_number_unique_per_tenant_when_set",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
