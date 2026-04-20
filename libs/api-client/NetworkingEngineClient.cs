@@ -326,6 +326,27 @@ public class NetworkingEngineClient : IDisposable
 
     // ─── Audit (Phase 9) ─────────────────────────────────────────────────
 
+    /// <summary>Convenience: fetch the current caller's recent audit
+    /// activity. Chains <see cref="WhoAmIAsync"/> (to resolve the
+    /// user id from the X-User-Id header) with
+    /// <see cref="ListAuditAsync"/>. Returns an empty list when the
+    /// caller is service-origin (no X-User-Id header). Pass
+    /// <paramref name="fromAt"/> as an ISO-8601 datetime to window
+    /// the result.</summary>
+    public async Task<List<AuditRowDto>> ListMyActivityAsync(Guid organizationId,
+        DateTime? fromAt = null, int limit = 100, CancellationToken ct = default)
+    {
+        var me = await WhoAmIAsync(organizationId, ct);
+        if (me.UserId is null) return new List<AuditRowDto>();
+        return await ListAuditAsync(new ListAuditRequest
+        {
+            OrganizationId = organizationId,
+            ActorUserId    = me.UserId.Value,
+            FromAt         = fromAt,
+            Limit          = limit,
+        }, ct);
+    }
+
     public Task<List<AuditRowDto>> ListAuditAsync(ListAuditRequest request,
         CancellationToken ct = default)
     {
