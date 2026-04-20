@@ -3370,6 +3370,49 @@ batch 27 rounds out the lifecycle-resolves family on the server
 - [ ] Catalog now at 122 rules; guardrail test
       `dispatcher_has_arm_for_every_catalog_rule` still green.
 
+### 7.X.30 Phase 10b — thirteenth wave (commits 2026-04-20+)
+
+Numbering-lifecycle parent resolves completing the chain on
+pool/block side. Cross-drill polish wires the new IP-pool
+detail page into the places operators land. ApiClient catchup
+adds the missing change-set delete wrapper.
+
+**Validation rule expansion — batch 28** (commit `280cb52bc`)
+- [ ] `vlan.block_resolves_active` (Error) — VLAN's parent
+      vlan_block must be Active.
+- [ ] `subnet.pool_resolves_active` (Error) — Subnet's parent
+      ip_pool must be Active (vs. the NULL case
+      subnet.active_subnet_has_pool already covers).
+- [ ] `mlag_domain.pool_resolves_active` (Error) — MLAG
+      domain's parent mlag_domain_pool must be Active.
+
+**Cross-drill polish — pool-util + subnet-detail → ip-pool**
+(commit `d909a5463`)
+- [ ] `/network/pool-utilization` IP pool rows double-click
+      drill to `/network/ip-pool/:id`. ASN/VLAN/MLAG rows
+      stay on the page (no dedicated detail page yet).
+- [ ] `/network/net-subnet/:id` Pool field renders as a
+      clickable link when poolId is present.
+- [ ] SubnetListRow now ships `poolId` alongside `poolCode`
+      on the wire (engine + web TS + C# DTO all updated).
+      Backward-compat: existing consumers ignore the new field.
+
+**C# ApiClient — DeleteChangeSetItemAsync** (commit `a0a52c419`)
+- [ ] DeleteChangeSetItemAsync(setId, itemId, organizationId)
+      maps DELETE /api/net/change-sets/:id/items/:item_id.
+      400 on non-Draft parent; 404 on unknown set/item.
+- [ ] Central.ApiClient builds with 0 errors.
+
+**Validation rule expansion — batch 29** (commit `8e3c6100b`)
+- [ ] `asn_block.pool_resolves_active` (Error) — ASN block's
+      parent asn_pool must be Active.
+- [ ] `vlan_block.pool_resolves_active` (Error) — VLAN block's
+      parent vlan_pool must be Active.
+- [ ] `vlan.template_resolves_active_when_set` (Warning) — VLAN's
+      optional template_id must be Active when set. Soft-severity.
+- [ ] Catalog now at 128 rules; guardrail test
+      `dispatcher_has_arm_for_every_catalog_rule` still green.
+
 ---
 
 ## 8. Enterprise SaaS
