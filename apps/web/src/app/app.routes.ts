@@ -44,6 +44,7 @@ export const routes: Routes = [
             loadComponent: () => import('./modules/network/components/bgp-peers.component').then(m => m.BgpPeersComponent) },
           { path: 'search',          loadComponent: () => import('./modules/network/components/network-search.component').then(m => m.NetworkSearchComponent) },
           { path: 'validation',      loadComponent: () => import('./modules/network/components/network-validation.component').then(m => m.NetworkValidationComponent) },
+          { path: 'validation-rules', loadComponent: () => import('./modules/network/components/network-validation-rules.component').then(m => m.NetworkValidationRulesComponent) },
           { path: 'scope-grants',    loadComponent: () => import('./modules/network/components/network-scope-grants.component').then(m => m.NetworkScopeGrantsComponent) },
           { path: 'hierarchy',       loadComponent: () => import('./modules/network/components/network-hierarchy.component').then(m => m.NetworkHierarchyComponent) },
           { path: 'pools',           loadComponent: () => import('./modules/network/components/network-pools.component').then(m => m.NetworkPoolsComponent) },
