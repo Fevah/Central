@@ -1768,6 +1768,41 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "server.loopback_ip_address_resolves_active_when_set",
+        name: "Server loopback_ip_address_id must resolve to an Active IP when set",
+        description: "Server's optional loopback_ip_address_id pointer, \
+                      when set, must resolve to an Active net.ip_\
+                      address row. An orphan pointer surfaces as a \
+                      dangling /32 reservation in pool-utilization.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "link_endpoint.port_resolves_active_when_set",
+        name: "Link endpoint port_id must resolve to an Active port when set",
+        description: "Endpoint's optional port_id, when set, must \
+                      resolve to an Active net.port. A dangling port \
+                      pointer breaks the config-gen interface-\
+                      binding step silently.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server.building_resolves_active_when_set",
+        name: "Server building_id must resolve to an Active building when set",
+        description: "Sibling to server.active_has_building (which \
+                      catches the NULL case on Active servers) — \
+                      this rule catches the present-but-non-Active \
+                      case. Decommissioned-building hierarchy \
+                      resolves silently exclude the server from \
+                      building-scoped scope-grants otherwise.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2102,6 +2137,9 @@ async fn dispatch(
         "device.asn_allocation_resolves_active_when_set" => run_device_asn_alloc_active(pool, org_id, severity, out).await,
         "server.asn_allocation_resolves_active_when_set" => run_server_asn_alloc_active(pool, org_id, severity, out).await,
         "server.server_profile_resolves_active_when_set" => run_server_profile_active(pool, org_id, severity, out).await,
+        "server.loopback_ip_address_resolves_active_when_set" => run_server_loopback_ip_active(pool, org_id, severity, out).await,
+        "link_endpoint.port_resolves_active_when_set" => run_link_endpoint_port_active(pool, org_id, severity, out).await,
+        "server.building_resolves_active_when_set" => run_server_building_active(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -5551,6 +5589,86 @@ async fn run_server_profile_active(
     Ok(())
 }
 
+/// `server.loopback_ip_address_resolves_active_when_set` — server's
+/// optional loopback IP must be live when set.
+async fn run_server_loopback_ip_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT s.id, s.hostname, COALESCE(ip.status::text, '(missing)')
+           FROM net.server s
+           LEFT JOIN net.ip_address ip ON ip.id = s.loopback_ip_address_id
+          WHERE s.organization_id = $1
+            AND s.deleted_at IS NULL
+            AND s.loopback_ip_address_id IS NOT NULL
+            AND (ip.id IS NULL
+                 OR ip.deleted_at IS NOT NULL
+                 OR ip.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname, status) in rows {
+        out.push(Violation {
+            rule_code: "server.loopback_ip_address_resolves_active_when_set".into(),
+            severity, entity_type: "Server".into(), entity_id: Some(id),
+            message: format!(
+                "Server '{hostname}' references a loopback IP with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `link_endpoint.port_resolves_active_when_set` — endpoint's optional port must be live.
+async fn run_link_endpoint_port_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32, String)> = sqlx::query_as(
+        "SELECT e.id, e.endpoint_order, COALESCE(p.status::text, '(missing)')
+           FROM net.link_endpoint e
+           LEFT JOIN net.port p ON p.id = e.port_id
+          WHERE e.organization_id = $1
+            AND e.deleted_at IS NULL
+            AND e.port_id IS NOT NULL
+            AND (p.id IS NULL
+                 OR p.deleted_at IS NOT NULL
+                 OR p.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, order, status) in rows {
+        out.push(Violation {
+            rule_code: "link_endpoint.port_resolves_active_when_set".into(),
+            severity, entity_type: "LinkEndpoint".into(), entity_id: Some(id),
+            message: format!(
+                "Link endpoint #{order} references a port with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `server.building_resolves_active_when_set` — server's optional
+/// building must be live when set. Sibling to server.active_has_building.
+async fn run_server_building_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT s.id, s.hostname, COALESCE(b.status::text, '(missing)')
+           FROM net.server s
+           LEFT JOIN net.building b ON b.id = s.building_id
+          WHERE s.organization_id = $1
+            AND s.deleted_at IS NULL
+            AND s.building_id IS NOT NULL
+            AND (b.id IS NULL
+                 OR b.deleted_at IS NOT NULL
+                 OR b.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname, status) in rows {
+        out.push(Violation {
+            rule_code: "server.building_resolves_active_when_set".into(),
+            severity, entity_type: "Server".into(), entity_id: Some(id),
+            message: format!(
+                "Server '{hostname}' references a building with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -6122,6 +6240,9 @@ mod tests {
             "device.asn_allocation_resolves_active_when_set",
             "server.asn_allocation_resolves_active_when_set",
             "server.server_profile_resolves_active_when_set",
+            "server.loopback_ip_address_resolves_active_when_set",
+            "link_endpoint.port_resolves_active_when_set",
+            "server.building_resolves_active_when_set",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
