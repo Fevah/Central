@@ -970,6 +970,17 @@ struct SubnetListRow {
     version: i32,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SubnetListQuery {
+    organization_id: Uuid,
+    /// Optional narrower — when set, the grid returns only subnets in
+    /// the given IP pool. Lets the pool-utilization page drill into
+    /// "what subnets are carved out of this /16?" without a new
+    /// endpoint.
+    pool_id: Option<Uuid>,
+}
+
 /// Thin list of subnets — mirrors list_vlans (5000 row cap, ORDER BY
 /// subnet_code). Resolves the parent pool code + optional VLAN tag so
 /// pickers + grid rows render without extra joins client-side. network
@@ -978,7 +989,7 @@ struct SubnetListRow {
 /// flags to deserialise in consumers.
 async fn list_subnets(
     State(s): State<AppState>,
-    Query(q): Query<OrgQuery>,
+    Query(q): Query<SubnetListQuery>,
 ) -> Result<impl IntoResponse, EngineError> {
     let rows: Vec<SubnetListRow> = sqlx::query_as(
         "SELECT sn.id,
@@ -994,9 +1005,11 @@ async fn list_subnets(
            LEFT JOIN net.ip_pool p ON p.id = sn.pool_id
            LEFT JOIN net.vlan    v ON v.id = sn.vlan_id
           WHERE sn.organization_id = $1 AND sn.deleted_at IS NULL
+            AND ($2::uuid IS NULL OR sn.pool_id = $2)
           ORDER BY sn.subnet_code
           LIMIT 5000")
         .bind(q.organization_id)
+        .bind(q.pool_id)
         .fetch_all(&s.pool)
         .await?;
     Ok(Json(rows))
