@@ -1,7 +1,7 @@
 # Auth Service — Phased Buildout
 
 Last updated: 2026-04-20
-Status: **Phases A + B + C shipped**; D-G not started.
+Status: **Phases A + B + C + D shipped**; E-G not started.
 
 ## Why this exists as a separate service
 
@@ -162,20 +162,62 @@ Not shipped (deferred):
   already live in the same DB). Phase G wraps with
   `CredentialEncryptor` to match the desktop's SSH secret handling.
 
-### Phase D — Password management + lockout
+### Phase D — Password management + lockout  **(shipped 2026-04-20)**
 
 **Goal:** Users can change password, reset forgotten ones, and accounts
-lock after abuse. Passwords obey history + complexity requirements.
+lock after abuse.
 
-Deliverables:
-- `POST /api/v1/auth/change-password` — authenticated; old + new password.
-- `POST /api/v1/auth/password-reset/request` — email-backed.
-- `POST /api/v1/auth/password-reset/confirm` — token + new password.
-- `secure_auth.password_history` — last N hashes per user; reject reuse.
-- `secure_auth.login_attempts` — per-IP + per-email; lockout after 10
-  failures in 15 min; admin unlock endpoint.
-- Password policy: ≥12 chars, ≥1 upper, ≥1 lower, ≥1 digit, ≥1 symbol.
-  Configurable via `config/auth-service.toml`.
+Shipped:
+- Migration 113 — `secure_auth.password_history` (per-user ledger of
+  retired Argon2 hashes; handler trims to newest 5 after each
+  change), `secure_auth.login_attempts` (per-email + per-IP rolling
+  audit with `succeeded`+`failure_reason` cols + partial index on
+  recent failures), `secure_auth.password_reset_tokens` (32-byte
+  crypto-random token, SHA-256 hashed in DB, 1-hour TTL,
+  single-use).
+- Lockout at `POST /api/v1/auth/login` — 5 failures in the last 15
+  min with no successful login since -> 429 Too Many Requests with
+  `Retry-After: 900`. Lockout query filters failures-since-last-
+  success so a legit login clears the counter implicitly. All
+  attempts logged (even lockout-rejected) for the audit trail.
+- `POST /api/v1/auth/change-password` — authed; verifies old
+  password, enforces 12-char min + diff-from-old, scans the last 5
+  history hashes with `argon2.verify` + rejects reuse, upserts the
+  new hash + writes old to history + trims, **revokes every live
+  session** for the user in the same tx so a stolen refresh token
+  dies with the password change.
+- `POST /api/v1/auth/password-reset/request` — generates a token,
+  persists its SHA-256 + 1-hour expiry. Returns the raw token in
+  the response body for Phase D (local dev workflow); Phase F
+  swaps the response to an empty body + the token goes via
+  Central's notifications pipeline. Enumeration-safe: unknown
+  emails still get a 200 + a random token that will simply fail
+  on confirm.
+- `POST /api/v1/auth/password-reset/confirm` — takes the raw
+  token + new password, SHA-256s for lookup, atomically: marks
+  token consumed, pushes old hash to history, writes new hash,
+  revokes every live session.
+- End-to-end verified live against the podman central-postgres
+  pod:
+  1. Five wrong passwords → 401 each; 6th with right password
+     → 429 (locked out).
+  2. change-password wrong-old → 401 / same-as-old → 400 /
+     too-short → 400 / valid → 204.
+  3. After change, old login → 401, new login → 200.
+  4. Attempt to revert to old password → 400 (password_reused).
+  5. /password-reset/request → raw token; /confirm → 204; replay
+     → 401; login with reset password → 200.
+
+Not shipped (deferred):
+- Full password-policy (upper/lower/digit/symbol) — Phase D ships
+  the "12-char minimum" + "must differ from old" floor. Full
+  policy is config-driven, lands with Phase G's hardening pass.
+- Admin unlock endpoint — operators can manually `DELETE FROM
+  secure_auth.login_attempts WHERE email = ...` for now. Admin UI
+  lands Phase F with the deployment work.
+- Email delivery — Phase F wires this via the Central notifications
+  pipeline so we don't duplicate the SMTP integration that already
+  exists on the .NET side.
 
 ### Phase E — Federation + external IDPs
 

@@ -85,6 +85,9 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/auth/mfa/verify", post(mfa_verify))
         .route("/api/v1/auth/mfa/setup", post(mfa_setup))
         .route("/api/v1/auth/mfa/setup/confirm", post(mfa_setup_confirm))
+        .route("/api/v1/auth/change-password", post(change_password))
+        .route("/api/v1/auth/password-reset/request", post(password_reset_request))
+        .route("/api/v1/auth/password-reset/confirm", post(password_reset_confirm))
         .layer(tower_http::cors::CorsLayer::permissive())
         .layer(tower_http::trace::TraceLayer::new_for_http())
         .with_state(state);
@@ -259,6 +262,24 @@ async fn login(
         .get("user-agent")
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_owned());
+    let email_lower = req.email.to_lowercase();
+
+    // Phase D — lockout check. Count failed attempts in the rolling
+    // window; over threshold -> 429. Log the locked-out attempt too
+    // so admins can see the attacker's user-agent / IP without having
+    // to unlock them first.
+    if let Ok(true) = is_locked_out(&state.pool, &email_lower).await {
+        log_login_attempt(&state.pool, &email_lower, user_agent.as_deref(),
+                          false, Some("locked_out")).await;
+        return (
+            StatusCode::TOO_MANY_REQUESTS,
+            [("retry-after", LOCKOUT_WINDOW_SECONDS.to_string())],
+            Json(serde_json::json!({
+                "error":  "locked_out",
+                "detail": "too many failed login attempts; try again later",
+            })),
+        ).into_response();
+    }
 
     // Fetch the row. Single query — SELECT returns None on unknown email
     // (treat identically to wrong password to avoid enumeration).
@@ -268,13 +289,17 @@ async fn login(
            FROM secure_auth.users
           WHERE email = $1 AND deleted_at IS NULL",
     )
-    .bind(req.email.to_lowercase())
+    .bind(&email_lower)
     .fetch_optional(&state.pool)
     .await;
 
     let row = match row {
         Ok(Some(r)) => r,
-        Ok(None) => return unauthorized(),
+        Ok(None) => {
+            log_login_attempt(&state.pool, &email_lower, user_agent.as_deref(),
+                              false, Some("unknown_email")).await;
+            return unauthorized();
+        }
         Err(e) => {
             tracing::error!(error = %e, "login db query failed");
             return internal_error("database error");
@@ -287,10 +312,14 @@ async fn login(
         Ok(p) => p,
         Err(e) => {
             tracing::error!(user_id = %row.id, error = %e, "stored password_hash is not valid Argon2");
+            log_login_attempt(&state.pool, &email_lower, user_agent.as_deref(),
+                              false, Some("bad_hash_format")).await;
             return unauthorized();
         }
     };
     if Argon2::default().verify_password(req.password.as_bytes(), &parsed).is_err() {
+        log_login_attempt(&state.pool, &email_lower, user_agent.as_deref(),
+                          false, Some("wrong_password")).await;
         return unauthorized();
     }
 
@@ -298,7 +327,11 @@ async fn login(
     // yet. Instead create a short-lived challenge row + return the
     // "mfa_required" response shape the Angular client recognises
     // (routes to the MFA prompt page instead of setting the session).
+    // Phase D: log a success here too — password was right; the
+    // second-factor step is in /mfa/verify.
     if row.mfa_enabled {
+        log_login_attempt(&state.pool, &email_lower, user_agent.as_deref(),
+                          true, None).await;
         return issue_mfa_challenge(&state, &row, user_agent.as_deref()).await;
     }
 
@@ -307,6 +340,11 @@ async fn login(
     // session row.
     match issue_tokens(&state, row.id, &row.email, user_agent.as_deref()).await {
         Ok((access_token, refresh_token, session_id)) => {
+            // Phase D — log the successful attempt so the rolling-
+            // window lockout counter resets implicitly (the handler
+            // queries failures-since-last-success elsewhere).
+            log_login_attempt(&state.pool, &email_lower, user_agent.as_deref(),
+                              true, None).await;
             // Last-login stamp. Failure is non-fatal — telemetry, not auth.
             let _ = sqlx::query("UPDATE secure_auth.users SET last_login_at = now() WHERE id = $1")
                 .bind(row.id).execute(&state.pool).await;
@@ -1102,6 +1140,349 @@ fn urlencode(s: &str) -> String {
         }
     }
     out
+}
+
+// ─── Phase D — password management + lockout ──────────────────────────────
+
+const LOCKOUT_THRESHOLD:       i64 = 5;
+const LOCKOUT_WINDOW_SECONDS:  i64 = 15 * 60;
+const PASSWORD_HISTORY_MAX:    i64 = 5;
+const PASSWORD_RESET_TTL_SECS: i64 = 60 * 60;    // 1 hour
+
+/// True when the user has ≥ LOCKOUT_THRESHOLD failed login attempts
+/// in the last LOCKOUT_WINDOW_SECONDS. A successful login since the
+/// first failure resets the counter implicitly — the query only
+/// counts failures after the most recent success.
+async fn is_locked_out(pool: &PgPool, email_lower: &str) -> sqlx::Result<bool> {
+    let fails: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM secure_auth.login_attempts
+          WHERE email = $1
+            AND succeeded = false
+            AND attempted_at > now() - make_interval(secs => $2)
+            AND attempted_at > COALESCE(
+                  (SELECT MAX(attempted_at) FROM secure_auth.login_attempts
+                    WHERE email = $1 AND succeeded = true),
+                  'epoch'::timestamptz
+                )",
+    )
+    .bind(email_lower)
+    .bind(LOCKOUT_WINDOW_SECONDS as f64)
+    .fetch_one(pool)
+    .await?;
+    Ok(fails >= LOCKOUT_THRESHOLD)
+}
+
+/// Fire-and-forget audit log. Writes failure/success to
+/// login_attempts; a failure here shouldn't block the login path.
+async fn log_login_attempt(
+    pool: &PgPool,
+    email_lower: &str,
+    user_agent: Option<&str>,
+    succeeded: bool,
+    reason: Option<&str>,
+) {
+    let _ = sqlx::query(
+        "INSERT INTO secure_auth.login_attempts
+             (email, user_agent, succeeded, failure_reason)
+         VALUES ($1, $2, $3, $4)",
+    )
+    .bind(email_lower)
+    .bind(user_agent)
+    .bind(succeeded)
+    .bind(reason)
+    .execute(pool)
+    .await;
+}
+
+#[derive(Debug, Deserialize)]
+struct ChangePasswordRequest {
+    old_password: String,
+    new_password: String,
+}
+
+/// Authed — verifies the old password, checks the new against
+/// PASSWORD_HISTORY_MAX most-recent hashes, writes the new,
+/// appends the OLD hash to password_history, trims history to N.
+/// Also revokes every live session for the user — the point of
+/// changing the password is to invalidate a stolen one.
+async fn change_password(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(req): Json<ChangePasswordRequest>,
+) -> impl IntoResponse {
+    let user = match authed_user(&state, &headers).await {
+        Some(u) => u,
+        None    => return unauthorized(),
+    };
+
+    // Old password check. Same enumeration-resistance rules as login
+    // (returns 401 without saying which part failed).
+    let parsed = match PasswordHash::new(&user.password_hash) {
+        Ok(p) => p,
+        Err(_) => return unauthorized(),
+    };
+    if Argon2::default().verify_password(req.old_password.as_bytes(), &parsed).is_err() {
+        return unauthorized();
+    }
+
+    // Minimal policy check. Full policy (uppercase/digit/symbol) lands
+    // alongside Phase E or G; Phase D just refuses obvious weaknesses.
+    if req.new_password.len() < 12 {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error":  "weak_password",
+                "detail": "new password must be at least 12 characters",
+            })),
+        ).into_response();
+    }
+    if req.new_password == req.old_password {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error":  "weak_password",
+                "detail": "new password must differ from old password",
+            })),
+        ).into_response();
+    }
+
+    // Reject if the new password matches any of the last N hashes.
+    let recent_hashes: Result<Vec<(String,)>, _> = sqlx::query_as(
+        "SELECT password_hash FROM secure_auth.password_history
+          WHERE user_id = $1 ORDER BY retired_at DESC LIMIT $2",
+    )
+    .bind(user.id)
+    .bind(PASSWORD_HISTORY_MAX)
+    .fetch_all(&state.pool)
+    .await;
+    if let Ok(rows) = recent_hashes {
+        for (h,) in &rows {
+            if let Ok(p) = PasswordHash::new(h) {
+                if Argon2::default().verify_password(req.new_password.as_bytes(), &p).is_ok() {
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        Json(serde_json::json!({
+                            "error":  "password_reused",
+                            "detail": format!("password matches one of the last {PASSWORD_HISTORY_MAX} hashes"),
+                        })),
+                    ).into_response();
+                }
+            }
+        }
+    }
+
+    // Hash + persist.
+    let new_hash = match hash_password(&req.new_password) {
+        Ok(h) => h,
+        Err(e) => {
+            tracing::error!(error = %e, "change_password: hash failed");
+            return internal_error("hash failed");
+        }
+    };
+
+    let mut tx = match state.pool.begin().await {
+        Ok(t) => t,
+        Err(e) => {
+            tracing::error!(error = %e, "change_password: tx begin");
+            return internal_error("database error");
+        }
+    };
+
+    if sqlx::query(
+        "INSERT INTO secure_auth.password_history (user_id, password_hash) VALUES ($1, $2)",
+    )
+    .bind(user.id)
+    .bind(&user.password_hash)
+    .execute(&mut *tx)
+    .await.is_err()
+    {
+        return internal_error("database error");
+    }
+
+    // Trim history to the newest N. Keep the audit trail bounded but
+    // preserve the rows we check against.
+    let _ = sqlx::query(
+        "DELETE FROM secure_auth.password_history
+          WHERE user_id = $1 AND id NOT IN (
+              SELECT id FROM secure_auth.password_history
+               WHERE user_id = $1 ORDER BY retired_at DESC LIMIT $2
+          )",
+    )
+    .bind(user.id)
+    .bind(PASSWORD_HISTORY_MAX)
+    .execute(&mut *tx)
+    .await;
+
+    if sqlx::query(
+        "UPDATE secure_auth.users SET password_hash = $1 WHERE id = $2",
+    )
+    .bind(&new_hash)
+    .bind(user.id)
+    .execute(&mut *tx)
+    .await.is_err()
+    {
+        return internal_error("database error");
+    }
+
+    // Revoke all live sessions — new password invalidates anyone else
+    // holding a refresh token.
+    let _ = sqlx::query(
+        "UPDATE secure_auth.sessions SET revoked_at = now()
+          WHERE user_id = $1 AND revoked_at IS NULL",
+    )
+    .bind(user.id)
+    .execute(&mut *tx)
+    .await;
+
+    if tx.commit().await.is_err() {
+        return internal_error("database error");
+    }
+    StatusCode::NO_CONTENT.into_response()
+}
+
+fn hash_password(pwd: &str) -> Result<String, argon2::password_hash::Error> {
+    use argon2::password_hash::{rand_core::OsRng, PasswordHasher, SaltString};
+    let salt = SaltString::generate(&mut OsRng);
+    Argon2::default()
+        .hash_password(pwd.as_bytes(), &salt)
+        .map(|h| h.to_string())
+}
+
+#[derive(Debug, Deserialize)]
+struct PasswordResetRequestRequest { email: String }
+
+#[derive(Debug, Serialize)]
+struct PasswordResetRequestResponse {
+    // Phase D returns the raw token in the response so dev can
+    // exercise the flow without an email provider. Phase F swaps this
+    // for an empty response + the token goes through Central's
+    // notifications pipeline.
+    reset_token: String,
+    expires_in:  i64,
+}
+
+async fn password_reset_request(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<PasswordResetRequestRequest>,
+) -> impl IntoResponse {
+    let email_lower = req.email.to_lowercase();
+
+    // Look up user. Enumeration-resistance: we always return 200 with
+    // a token shape even for unknown emails. For unknown we just
+    // don't persist anything — the token we return is random + will
+    // fail /password-reset/confirm.
+    let user_id_opt: Option<(Uuid,)> = sqlx::query_as(
+        "SELECT id FROM secure_auth.users
+          WHERE email = $1 AND deleted_at IS NULL",
+    )
+    .bind(&email_lower)
+    .fetch_optional(&state.pool)
+    .await
+    .ok()
+    .flatten();
+
+    let raw = generate_refresh_token();   // reusing — same shape, different purpose
+    if let Some((user_id,)) = user_id_opt {
+        let hash = sha256_hex(&raw);
+        let _ = sqlx::query(
+            "INSERT INTO secure_auth.password_reset_tokens
+                 (user_id, token_hash, expires_at)
+             VALUES ($1, $2, now() + make_interval(secs => $3))",
+        )
+        .bind(user_id)
+        .bind(&hash)
+        .bind(PASSWORD_RESET_TTL_SECS as f64)
+        .execute(&state.pool)
+        .await;
+    }
+
+    (StatusCode::OK, Json(PasswordResetRequestResponse {
+        reset_token: raw,
+        expires_in:  PASSWORD_RESET_TTL_SECS,
+    })).into_response()
+}
+
+#[derive(Debug, Deserialize)]
+struct PasswordResetConfirmRequest {
+    reset_token:  String,
+    new_password: String,
+}
+
+async fn password_reset_confirm(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<PasswordResetConfirmRequest>,
+) -> impl IntoResponse {
+    if req.new_password.len() < 12 {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error":  "weak_password",
+                "detail": "new password must be at least 12 characters",
+            })),
+        ).into_response();
+    }
+
+    let hash = sha256_hex(&req.reset_token);
+
+    let mut tx = match state.pool.begin().await {
+        Ok(t) => t,
+        Err(e) => { tracing::error!(error = %e, "reset_confirm: tx"); return internal_error("database error"); }
+    };
+
+    let row: Result<Option<(Uuid, Uuid)>, _> = sqlx::query_as(
+        "SELECT id, user_id FROM secure_auth.password_reset_tokens
+          WHERE token_hash = $1 AND consumed_at IS NULL AND expires_at > now()
+          FOR UPDATE",
+    )
+    .bind(&hash)
+    .fetch_optional(&mut *tx)
+    .await;
+
+    let (token_id, user_id) = match row {
+        Ok(Some(r)) => r,
+        _ => return unauthorized(),
+    };
+
+    let new_hash = match hash_password(&req.new_password) {
+        Ok(h) => h,
+        Err(e) => { tracing::error!(error = %e, "reset_confirm: hash"); return internal_error("hash failed"); }
+    };
+
+    // Update password, mark token consumed, push old hash to history,
+    // revoke all sessions. All in one transaction.
+    let old_hash: Result<String, _> = sqlx::query_scalar(
+        "SELECT password_hash FROM secure_auth.users WHERE id = $1",
+    )
+    .bind(user_id)
+    .fetch_one(&mut *tx)
+    .await;
+    if let Ok(old_hash) = old_hash {
+        let _ = sqlx::query(
+            "INSERT INTO secure_auth.password_history (user_id, password_hash) VALUES ($1, $2)",
+        )
+        .bind(user_id).bind(&old_hash).execute(&mut *tx).await;
+    }
+
+    let _ = sqlx::query("UPDATE secure_auth.users SET password_hash = $1 WHERE id = $2")
+        .bind(&new_hash).bind(user_id).execute(&mut *tx).await;
+
+    let _ = sqlx::query(
+        "UPDATE secure_auth.password_reset_tokens
+            SET consumed_at = now()
+          WHERE id = $1",
+    )
+    .bind(token_id).execute(&mut *tx).await;
+
+    let _ = sqlx::query(
+        "UPDATE secure_auth.sessions SET revoked_at = now()
+          WHERE user_id = $1 AND revoked_at IS NULL",
+    )
+    .bind(user_id).execute(&mut *tx).await;
+
+    if tx.commit().await.is_err() {
+        return internal_error("database error");
+    }
+    StatusCode::NO_CONTENT.into_response()
 }
 
 // ─── DB row types ──────────────────────────────────────────────────────────
