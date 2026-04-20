@@ -1698,6 +1698,40 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "link_endpoint.device_resolves_active_when_set",
+        name: "Link endpoint device_id must resolve to an Active device when set",
+        description: "Endpoints that don't yet have port_id populated \
+                      still carry a device_id pointer for quick \
+                      hierarchy drills. When that pointer is set, \
+                      it must resolve to an Active device — otherwise \
+                      the endpoint appears to belong to a retired box.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "link_endpoint.ip_address_resolves_active_when_set",
+        name: "Link endpoint ip_address_id must resolve to an Active address when set",
+        description: "Endpoint's optional ip_address_id pointer, \
+                      when set, must resolve to an Active net.ip_\
+                      address row. An orphaned IP pointer leaks \
+                      into config-gen's address binding.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server_nic.ip_address_resolves_active_when_set",
+        name: "Server NIC ip_address_id must resolve to an Active address when set",
+        description: "NIC's optional ip_address_id pointer, when \
+                      set, must resolve to an Active net.ip_address \
+                      row. Mirrors link_endpoint.ip_address_resolves_\
+                      active_when_set on the server branch.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2026,6 +2060,9 @@ async fn dispatch(
         "port.module_resolves_active_when_set"    => run_port_module_active(pool, org_id, severity, out).await,
         "port.breakout_parent_resolves_active_when_set" => run_port_breakout_active(pool, org_id, severity, out).await,
         "port.aggregate_ethernet_resolves_active_when_set" => run_port_ae_active(pool, org_id, severity, out).await,
+        "link_endpoint.device_resolves_active_when_set" => run_link_endpoint_device_active(pool, org_id, severity, out).await,
+        "link_endpoint.ip_address_resolves_active_when_set" => run_link_endpoint_ip_active(pool, org_id, severity, out).await,
+        "server_nic.ip_address_resolves_active_when_set" => run_server_nic_ip_active(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -5316,6 +5353,84 @@ async fn run_port_ae_active(
     Ok(())
 }
 
+/// `link_endpoint.device_resolves_active_when_set` — endpoint's optional device must be live.
+async fn run_link_endpoint_device_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32, String)> = sqlx::query_as(
+        "SELECT e.id, e.endpoint_order, COALESCE(d.status::text, '(missing)')
+           FROM net.link_endpoint e
+           LEFT JOIN net.device d ON d.id = e.device_id
+          WHERE e.organization_id = $1
+            AND e.deleted_at IS NULL
+            AND e.device_id IS NOT NULL
+            AND (d.id IS NULL
+                 OR d.deleted_at IS NOT NULL
+                 OR d.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, order, status) in rows {
+        out.push(Violation {
+            rule_code: "link_endpoint.device_resolves_active_when_set".into(),
+            severity, entity_type: "LinkEndpoint".into(), entity_id: Some(id),
+            message: format!(
+                "Link endpoint #{order} references a device with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `link_endpoint.ip_address_resolves_active_when_set` — endpoint's optional IP must be live.
+async fn run_link_endpoint_ip_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32, String)> = sqlx::query_as(
+        "SELECT e.id, e.endpoint_order, COALESCE(ip.status::text, '(missing)')
+           FROM net.link_endpoint e
+           LEFT JOIN net.ip_address ip ON ip.id = e.ip_address_id
+          WHERE e.organization_id = $1
+            AND e.deleted_at IS NULL
+            AND e.ip_address_id IS NOT NULL
+            AND (ip.id IS NULL
+                 OR ip.deleted_at IS NOT NULL
+                 OR ip.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, order, status) in rows {
+        out.push(Violation {
+            rule_code: "link_endpoint.ip_address_resolves_active_when_set".into(),
+            severity, entity_type: "LinkEndpoint".into(), entity_id: Some(id),
+            message: format!(
+                "Link endpoint #{order} references an IP address with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `server_nic.ip_address_resolves_active_when_set` — NIC's optional IP must be live.
+async fn run_server_nic_ip_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32, String)> = sqlx::query_as(
+        "SELECT n.id, n.nic_index, COALESCE(ip.status::text, '(missing)')
+           FROM net.server_nic n
+           LEFT JOIN net.ip_address ip ON ip.id = n.ip_address_id
+          WHERE n.organization_id = $1
+            AND n.deleted_at IS NULL
+            AND n.ip_address_id IS NOT NULL
+            AND (ip.id IS NULL
+                 OR ip.deleted_at IS NOT NULL
+                 OR ip.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, idx, status) in rows {
+        out.push(Violation {
+            rule_code: "server_nic.ip_address_resolves_active_when_set".into(),
+            severity, entity_type: "ServerNic".into(), entity_id: Some(id),
+            message: format!(
+                "NIC {idx} references an IP address with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -5881,6 +5996,9 @@ mod tests {
             "port.module_resolves_active_when_set",
             "port.breakout_parent_resolves_active_when_set",
             "port.aggregate_ethernet_resolves_active_when_set",
+            "link_endpoint.device_resolves_active_when_set",
+            "link_endpoint.ip_address_resolves_active_when_set",
+            "server_nic.ip_address_resolves_active_when_set",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
