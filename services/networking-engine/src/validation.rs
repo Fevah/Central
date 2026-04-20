@@ -2363,6 +2363,36 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "asn_block.block_code_no_leading_trailing_whitespace",
+        name: "ASN block block_code should not have leading or trailing whitespace",
+        description: "Trim-hygiene on asn_block.block_code. \
+                      block_code is UNIQUE per tenant + referenced \
+                      by imports + allocation flows so stray \
+                      whitespace breaks exact-match lookups.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "vlan_block.block_code_no_leading_trailing_whitespace",
+        name: "VLAN block block_code should not have leading or trailing whitespace",
+        description: "Trim-hygiene mirror on vlan_block.block_code.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "reservation_shelf.resource_key_no_leading_trailing_whitespace",
+        name: "Reservation shelf resource_key should not have leading or trailing whitespace",
+        description: "Trim-hygiene on reservation_shelf.resource_key. \
+                      Resource keys are looked up by exact match \
+                      when checking shelf cooldown — stray \
+                      whitespace creates phantom duplicates.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2761,6 +2791,9 @@ async fn dispatch(
         "device_role.role_code_no_leading_trailing_whitespace" => run_device_role_code_ws(pool, org_id, severity, out).await,
         "link_type.type_code_no_leading_trailing_whitespace" => run_link_type_code_ws(pool, org_id, severity, out).await,
         "server_profile.profile_code_no_leading_trailing_whitespace" => run_server_profile_code_ws(pool, org_id, severity, out).await,
+        "asn_block.block_code_no_leading_trailing_whitespace" => run_asn_block_code_ws(pool, org_id, severity, out).await,
+        "vlan_block.block_code_no_leading_trailing_whitespace" => run_vlan_block_code_ws(pool, org_id, severity, out).await,
+        "reservation_shelf.resource_key_no_leading_trailing_whitespace" => run_shelf_key_ws(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -7495,6 +7528,72 @@ async fn run_server_profile_code_ws(
     Ok(())
 }
 
+/// `asn_block.block_code_no_leading_trailing_whitespace` — trim-equal.
+async fn run_asn_block_code_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, block_code
+           FROM net.asn_block
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (block_code <> btrim(block_code))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "asn_block.block_code_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "AsnBlock".into(), entity_id: Some(id),
+            message: format!(
+                "ASN block block_code '{code}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
+/// `vlan_block.block_code_no_leading_trailing_whitespace` — trim-equal.
+async fn run_vlan_block_code_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, block_code
+           FROM net.vlan_block
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (block_code <> btrim(block_code))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "vlan_block.block_code_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "VlanBlock".into(), entity_id: Some(id),
+            message: format!(
+                "VLAN block block_code '{code}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
+/// `reservation_shelf.resource_key_no_leading_trailing_whitespace` — trim-equal.
+async fn run_shelf_key_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, resource_key
+           FROM net.reservation_shelf
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (resource_key <> btrim(resource_key))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, key) in rows {
+        out.push(Violation {
+            rule_code: "reservation_shelf.resource_key_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "ReservationShelf".into(), entity_id: Some(id),
+            message: format!(
+                "Shelf resource_key '{key}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -8120,6 +8219,9 @@ mod tests {
             "device_role.role_code_no_leading_trailing_whitespace",
             "link_type.type_code_no_leading_trailing_whitespace",
             "server_profile.profile_code_no_leading_trailing_whitespace",
+            "asn_block.block_code_no_leading_trailing_whitespace",
+            "vlan_block.block_code_no_leading_trailing_whitespace",
+            "reservation_shelf.resource_key_no_leading_trailing_whitespace",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
