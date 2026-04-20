@@ -97,6 +97,7 @@ export const routes: Routes = [
           { path: 'cli-flavors',     loadComponent: () => import('./modules/network/components/network-cli-flavors.component').then(m => m.NetworkCliFlavorsComponent) },
           { path: 'audit-stats',     loadComponent: () => import('./modules/network/components/network-audit-stats.component').then(m => m.NetworkAuditStatsComponent) },
           { path: 'audit-search',    loadComponent: () => import('./modules/network/components/network-audit-search.component').then(m => m.NetworkAuditSearchComponent) },
+          { path: 'my-activity',     loadComponent: () => import('./modules/network/components/network-my-activity.component').then(m => m.NetworkMyActivityComponent) },
           { path: 'audit/:entityType/:entityId',
             loadComponent: () => import('./modules/network/components/network-audit-timeline.component').then(m => m.NetworkAuditTimelineComponent) },
         ]
