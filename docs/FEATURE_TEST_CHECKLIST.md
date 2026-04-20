@@ -4168,6 +4168,41 @@ table. Validation batch 58 covers change-set title hygiene.
 - [ ] `vlan_template.template_code_no_leading_trailing_whitespace` (Warning)
 - [ ] Catalog now at 215 rules.
 
+### 7.X.51 Phase 10b — thirty-fourth wave (commits 2026-04-20+)
+
+Validation batches 59-61 finish the display_name trim sweep.
+Rules-catalog page gains a category summary pill bar.
+
+**Validation rule expansion — batch 59** (commit `fcd1abb67`)
+- [ ] `region.display_name_no_leading_trailing_whitespace` (Warning)
+- [ ] `site.display_name_no_leading_trailing_whitespace` (Warning)
+- [ ] `building.display_name_no_leading_trailing_whitespace` (Warning)
+- [ ] Catalog at 218 rules.
+
+**Rules-catalog category summary bar** (commit `8a6e56e94`)
+- [ ] Colour-coded pill bar above the grid with count + override
+      count per category (Integrity red, Consistency blue,
+      Safety green, Advisory gray).
+- [ ] ✎ override badge per pill when tenant has customised any
+      rule in that category.
+- [ ] Computed getter in fixed category order for stable display.
+
+**Validation rule expansion — batch 60** (commit `e5df126c5`)
+- [ ] `site_profile.display_name_no_leading_trailing_whitespace` (Warning)
+- [ ] `building_profile.display_name_no_leading_trailing_whitespace` (Warning)
+- [ ] `floor.display_name_no_leading_trailing_whitespace_when_set` (Warning)
+      — nullable, only fires when set.
+- [ ] Catalog at 221 rules.
+
+**Validation rule expansion — batch 61** (commit `f04958452`)
+- [ ] `floor_profile.display_name_no_leading_trailing_whitespace` (Warning)
+- [ ] `vlan_template.display_name_no_leading_trailing_whitespace` (Warning)
+- [ ] `device.display_name_no_leading_trailing_whitespace_when_set` (Warning)
+      — nullable, only fires when set.
+- [ ] Catalog at 224 rules. Every display_name + *_code in the
+      net.* graph now has a trim check (50+ whitespace hygiene
+      rules total).
+
 ---
 
 ## 8. Enterprise SaaS
