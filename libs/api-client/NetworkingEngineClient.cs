@@ -94,6 +94,17 @@ public class NetworkingEngineClient : IDisposable
         => PostAsync<IpAddressDto>("/api/net/allocate/ip",
             new { subnetId, organizationId, assignedToType, assignedToId }, ct);
 
+    /// <summary>Read-only dry-run of the subnet carver. Shows the
+    /// CIDR that <see cref="AllocateSubnetAsync"/> would produce
+    /// next for <paramref name="poolId"/> at the given prefix
+    /// length, without inserting a row or taking the pool lock.
+    /// 404 → pool not found; 409 → prefix out of range or pool
+    /// exhausted (caller should inspect the message).</summary>
+    public Task<CarvePreviewDto> PreviewSubnetCarveAsync(Guid poolId,
+        Guid organizationId, int prefixLength, CancellationToken ct = default)
+        => PostAsync<CarvePreviewDto>("/api/net/allocate/subnet/preview",
+            new { poolId, organizationId, prefixLength }, ct);
+
     public Task<SubnetDto> AllocateSubnetAsync(Guid poolId, Guid organizationId,
         int prefixLength, string subnetCode, string displayName,
         string scopeLevel, Guid? scopeEntityId = null, Guid? parentSubnetId = null,
@@ -248,11 +259,17 @@ public class NetworkingEngineClient : IDisposable
 
     /// <summary>Thin subnet list — subnet_code + CIDR + pool_code +
     /// linked vlan tag. network rendered as a CIDR string on the
-    /// server so the wire shape is stable across sqlx feature flags.</summary>
+    /// server so the wire shape is stable across sqlx feature flags.
+    /// Optional <paramref name="poolId"/> narrows the result to one
+    /// IP pool (backs the pool-detail Subnets tab).</summary>
     public Task<List<SubnetListRowDto>> ListSubnetsAsync(Guid organizationId,
-        CancellationToken ct = default)
-        => GetAsync<List<SubnetListRowDto>>(
-            $"/api/net/subnets?organizationId={organizationId}", ct);
+        Guid? poolId = null, CancellationToken ct = default)
+    {
+        var qs = BuildQuery(
+            ("organizationId", organizationId.ToString()),
+            ("poolId",         poolId?.ToString()));
+        return GetAsync<List<SubnetListRowDto>>($"/api/net/subnets{qs}", ct);
+    }
 
     /// <summary>List VLAN blocks + per-block availability. Powers the
     /// WPF Create VLAN picker so admins see "VLAN 100-199 · 12 free"
@@ -1655,3 +1672,12 @@ public record ResolveNamingRequest(Guid OrganizationId, string EntityType,
 /// GlobalSpecificSubtype / GlobalAnySubtype / Default. <c>OverrideId</c>
 /// is null for the Default case.</summary>
 public record NamingResolveResponseDto(string Template, string Source, Guid? OverrideId);
+
+/// <summary>Subnet carver preview — matches `CarvePreview` in
+/// services/networking-engine/src/ip_allocation.rs. Read-only
+/// dry-run: no net.subnet row is inserted. Carries pool metadata
+/// alongside the candidate so UIs can render "next /24 in
+/// 10.0.0.0/16 → 10.0.4.0/24".</summary>
+public record CarvePreviewDto(Guid PoolId, string PoolCidr,
+    int PoolPrefixLength, int RequestedPrefixLength,
+    string CandidateCidr, bool IsIpv6);
