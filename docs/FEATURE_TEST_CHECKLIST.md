@@ -3763,6 +3763,41 @@ three Advisory data-quality rules.
       for upgrade-planning + CVE-scan reports.
 - [ ] Catalog now at 158 rules; guardrail test still green.
 
+### 7.X.39 Phase 10b — twenty-second wave (commits 2026-04-20+)
+
+Serial-number uniqueness rules + VLAN/Link detail Summary
+enrichment + three Advisory reachability/readability rules.
+
+**Validation rule expansion — batch 40** (commit `13c4466bd`)
+- [ ] `device.serial_number_unique_per_tenant_when_set` (Warning)
+- [ ] `server.serial_number_unique_per_tenant_when_set` (Warning)
+- [ ] `module.serial_number_unique_per_tenant_when_set` (Warning)
+- [ ] EXISTS-subquery emits every colliding row so UI filters
+      surface the whole collision group in one click.
+- [ ] Catalog now at 161 rules.
+
+**VLAN detail Summary counts** (commit `bfea36df0`)
+- [ ] /network/net-vlan/:id Summary tab shows DHCP relays +
+      Linked subnets counts.
+- [ ] DHCP count uses listDhcpRelayTargets(vlanId) narrower
+      + pre-populates this.relays for the tab cache.
+- [ ] Subnet count uses client-side vlanTag filter on
+      listSubnets (thin list already LEFT JOINs vlan_id).
+
+**Link detail Summary counts** (commit `28e7f9322`)
+- [ ] /network/net-link/:id Summary tab shows Endpoints +
+      Distinct-devices counts.
+- [ ] Distinct-devices derived from Set of deviceHostname
+      across endpoints (captures topology shape).
+- [ ] listLinkEndpoints(linkId) populates this.endpoints so
+      the Endpoints tab doesn't re-fetch.
+
+**Validation rule expansion — batch 41** (commit `da876f26a`)
+- [ ] `device.last_ping_ok_when_active` (Info, Advisory)
+- [ ] `server.last_ping_ok_when_active` (Info, Advisory)
+- [ ] `link.description_set_when_active` (Info, Advisory)
+- [ ] Catalog now at 164 rules; guardrail test still green.
+
 ---
 
 ## 8. Enterprise SaaS
