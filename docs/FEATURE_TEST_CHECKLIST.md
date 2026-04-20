@@ -3952,6 +3952,39 @@ mini-panel.
 - [ ] Inline "see all →" link to /network/change-sets?status=Submitted.
 - [ ] Section hidden when zero Submitted sets exist.
 
+### 7.X.44 Phase 10b — twenty-seventh wave (commits 2026-04-20+)
+
+Validation batches 47 + 48. Change-set item-action rollup pill
+bar. C# ApiClient status-summary wrapper.
+
+**Validation rule expansion — batch 47** (commit `946c3321e`)
+- [ ] `ip_address.gateway_unique_per_subnet` (Warning) — one
+      Gateway per subnet; EXISTS-subquery emits every colliding
+      row.
+- [ ] `subnet.display_name_no_leading_trailing_whitespace` (Warning)
+- [ ] `vlan.display_name_no_leading_trailing_whitespace` (Warning)
+- [ ] Catalog now at 182 rules.
+
+**Change-set detail item-action rollup** (commit `6e8ab4fbe`)
+- [ ] Pill bar above Items grid: "5 Create · 2 Update · 1 Delete".
+- [ ] Colour-coded by action (Create green / Update blue /
+      Rename purple / Delete red).
+- [ ] Canonical order regardless of item appearance order.
+- [ ] Hidden when items list is empty.
+- [ ] Computed getter; no new API surface.
+
+**Validation rule expansion — batch 48** (commit `8c2ac5c61`)
+- [ ] `server.display_name_no_leading_trailing_whitespace` (Warning)
+- [ ] `link.display_name_no_leading_trailing_whitespace` (Warning)
+- [ ] `ip_pool.display_name_no_leading_trailing_whitespace` (Warning)
+- [ ] Catalog now at 185 rules; guardrail test still green.
+
+**C# ApiClient — ChangeSetStatusSummaryAsync** (commit `7fa23983f`)
+- [ ] ChangeSetStatusSummaryAsync(organizationId, ct) →
+      List<ChangeSetStatusCountDto>. Always 7 rows.
+- [ ] New ChangeSetStatusCountDto(Status, Count).
+- [ ] 0 errors on build.
+
 ---
 
 ## 8. Enterprise SaaS
