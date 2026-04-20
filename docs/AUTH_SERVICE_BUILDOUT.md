@@ -1,7 +1,7 @@
 # Auth Service — Phased Buildout
 
 Last updated: 2026-04-20
-Status: **Phases A + B shipped**; C-G not started.
+Status: **Phases A + B + C shipped**; D-G not started.
 
 ## Why this exists as a separate service
 
@@ -112,21 +112,55 @@ Not shipped (deferred):
 - IP-address-based session metadata — the column exists; Phase D's
   lockout flow needs it filled in from the request.
 
-### Phase C — MFA
+### Phase C — MFA  **(shipped 2026-04-20)**
 
 **Goal:** Users with MFA enabled complete a second factor before the final
 access token issues.
 
-Deliverables:
-- `POST /api/v1/auth/login` returns `{ mfa_required: true, session_id,
-  mfa_methods }` when the user has MFA enabled, without an access_token.
-- `POST /api/v1/auth/mfa/verify` — accepts `{ session_id, code, method }`,
-  validates TOTP against `secure_auth.mfa_secrets`, issues real access +
-  refresh on success.
-- `POST /api/v1/auth/mfa/setup` — generates TOTP secret, returns otpauth
-  URI + QR-code-ready.
-- `secure_auth.mfa_recovery_codes` table — one-shot backup codes.
-- Rate limit: 5 wrong codes per session, then abort.
+Shipped:
+- Migration 112 — three tables: `secure_auth.mfa_secrets` (TOTP
+  secret per user, base32, algorithm/digits/period config,
+  verified_at for setup-confirm gating), `secure_auth.mfa_login_challenges`
+  (5-min-TTL row created at login when mfa_enabled; consumed_at +
+  failed_attempts for one-shot replay protection + 5-attempt lockout),
+  `secure_auth.mfa_recovery_codes` (10 per user, Argon2-hashed so
+  lookup is a bounded iterate + argon2.verify scan).
+- `POST /api/v1/auth/login` branches on `users.mfa_enabled=true` —
+  returns the mfa_required payload the Angular client already knows
+  how to render (empty access_token + challenge id in session_id +
+  mfa_methods listing "totp" and "recovery" when codes remain).
+- `POST /api/v1/auth/mfa/verify` — method="totp" verifies current
+  TOTP (±30s skew via totp-rs `check_current`), method="recovery"
+  iterates live recovery codes + argon2-verifies each. Wrong code
+  increments `failed_attempts`; 5th wrong aborts the challenge. On
+  success consumes the challenge + recovery code (if used) + issues
+  a full access + refresh pair (same shape as normal login — Phase
+  B session rotation continues to work).
+- `POST /api/v1/auth/mfa/setup` (authenticated) — generates a new
+  160-bit TOTP secret, 10 random recovery codes (`xxxx-xxxxxx`
+  hex), argon2-hashes the recovery codes server-side, upserts the
+  user's secret, deletes any previous recovery codes. Returns the
+  otpauth URI + raw recovery codes (shown once — client must store).
+- `POST /api/v1/auth/mfa/setup/confirm` (authenticated) — takes a
+  TOTP code, verifies it, flips `verified_at` + `users.mfa_enabled=true`
+  atomically. Next login now requires MFA.
+- End-to-end verified live against the podman central-postgres pod:
+  plain login → /mfa/setup → /mfa/setup/confirm → fresh login
+  returns challenge → wrong TOTP 401 → right TOTP 349-char access
+  token → challenge replay 401 → new login → recovery code 349-char
+  access token → recovery replay 401.
+
+Not shipped (deferred):
+- `POST /api/v1/auth/mfa/disable` — no endpoint yet to turn MFA off
+  for a user. Admin can do it via `UPDATE secure_auth.users SET
+  mfa_enabled=false` for now. Phase D bundles this with the
+  password-management endpoints.
+- Recovery-code regeneration — setup overwrites; no endpoint to
+  request a fresh batch without re-generating the secret. Phase D.
+- TOTP secret encryption at rest — currently plaintext base32
+  (honest — same blast radius as password hashes + API keys that
+  already live in the same DB). Phase G wraps with
+  `CredentialEncryptor` to match the desktop's SSH secret handling.
 
 ### Phase D — Password management + lockout
 

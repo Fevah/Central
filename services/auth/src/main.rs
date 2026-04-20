@@ -82,7 +82,9 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/auth/login", post(login))
         .route("/api/v1/auth/refresh", post(refresh))
         .route("/api/v1/auth/logout", post(logout))
-        .route("/api/v1/auth/mfa/verify", post(mfa_not_implemented))
+        .route("/api/v1/auth/mfa/verify", post(mfa_verify))
+        .route("/api/v1/auth/mfa/setup", post(mfa_setup))
+        .route("/api/v1/auth/mfa/setup/confirm", post(mfa_setup_confirm))
         .layer(tower_http::cors::CorsLayer::permissive())
         .layer(tower_http::trace::TraceLayer::new_for_http())
         .with_state(state);
@@ -290,6 +292,14 @@ async fn login(
     };
     if Argon2::default().verify_password(req.password.as_bytes(), &parsed).is_err() {
         return unauthorized();
+    }
+
+    // Phase C: if MFA is enabled for this user, don't issue tokens
+    // yet. Instead create a short-lived challenge row + return the
+    // "mfa_required" response shape the Angular client recognises
+    // (routes to the MFA prompt page instead of setting the session).
+    if row.mfa_enabled {
+        return issue_mfa_challenge(&state, &row, user_agent.as_deref()).await;
     }
 
     // Issue tokens + persist session. Any failure here fails the whole
@@ -556,11 +566,542 @@ fn internal_error(detail: &'static str) -> axum::response::Response {
     }))).into_response()
 }
 
-async fn mfa_not_implemented() -> impl IntoResponse {
-    (StatusCode::NOT_IMPLEMENTED, Json(serde_json::json!({
-        "error":"not_implemented",
-        "detail":"mfa lands in Phase C of the auth-service buildout"
-    })))
+
+// ─── Phase C — MFA ─────────────────────────────────────────────────────────
+
+const MFA_CHALLENGE_TTL_SECONDS: i64 = 5 * 60;      // 5 minutes
+const MFA_MAX_ATTEMPTS_PER_CHALLENGE: i32 = 5;
+const MFA_RECOVERY_CODE_COUNT: usize = 10;
+
+/// Insert an `mfa_login_challenges` row + return the "mfa_required"
+/// LoginResponse the Angular client recognises. Used by the login
+/// handler when the user has MFA enabled.
+async fn issue_mfa_challenge(
+    state: &AppState,
+    user: &UserRow,
+    user_agent: Option<&str>,
+) -> axum::response::Response {
+    let challenge_id: Result<Uuid, _> = sqlx::query_scalar(
+        "INSERT INTO secure_auth.mfa_login_challenges
+             (user_id, expires_at, user_agent)
+         VALUES ($1, now() + make_interval(secs => $2), $3)
+         RETURNING id",
+    )
+    .bind(user.id)
+    .bind(MFA_CHALLENGE_TTL_SECONDS as f64)
+    .bind(user_agent)
+    .fetch_one(&state.pool)
+    .await;
+
+    let challenge_id = match challenge_id {
+        Ok(id) => id,
+        Err(e) => {
+            tracing::error!(error = %e, "issue_mfa_challenge insert failed");
+            return internal_error("could not create mfa challenge");
+        }
+    };
+
+    // Check if any recovery codes remain — lets the client show/hide
+    // the "use a recovery code instead" link.
+    let methods = mfa_methods_for(user.id, &state.pool).await;
+
+    let resp = LoginResponse {
+        access_token:  String::new(),           // gated by mfa/verify
+        refresh_token: String::new(),
+        session_id:    challenge_id.to_string(),
+        expires_in:    0,
+        token_type:    String::new(),
+        mfa_required:  true,
+        mfa_methods:   methods,
+        user: AuthUser {
+            // Phase C: return minimal user info on the challenge
+            // response. Full profile lands after verify.
+            id:           user.id.to_string(),
+            email:        user.email.clone(),
+            display_name: user.display_name.clone().unwrap_or_default(),
+            first_name:   user.first_name.clone(),
+            last_name:    user.last_name.clone(),
+            roles:        Vec::new(),
+            permissions:  Vec::new(),
+            mfa_enabled:  true,
+        },
+    };
+    (StatusCode::OK, Json(resp)).into_response()
+}
+
+/// Return the list of MFA methods this user has. Always includes "totp"
+/// if mfa_enabled is true + a secret exists; adds "recovery" when at
+/// least one unconsumed recovery code exists.
+async fn mfa_methods_for(user_id: Uuid, pool: &PgPool) -> Vec<String> {
+    let mut methods = vec!["totp".to_string()];
+    let has_recovery: Option<i64> = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM secure_auth.mfa_recovery_codes
+          WHERE user_id = $1 AND consumed_at IS NULL",
+    )
+    .bind(user_id)
+    .fetch_one(pool)
+    .await
+    .ok();
+    if has_recovery.unwrap_or(0) > 0 {
+        methods.push("recovery".to_string());
+    }
+    methods
+}
+
+#[derive(Debug, Deserialize)]
+struct MfaVerifyRequest {
+    session_id: String,                      // == mfa_login_challenges.id
+    code:       String,
+    #[serde(default = "default_method")]
+    method:     String,                      // "totp" | "recovery"
+}
+fn default_method() -> String { "totp".into() }
+
+async fn mfa_verify(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(req): Json<MfaVerifyRequest>,
+) -> impl IntoResponse {
+    let challenge_id = match Uuid::parse_str(&req.session_id) {
+        Ok(u) => u,
+        Err(_) => return unauthorized(),
+    };
+    let user_agent = headers
+        .get("user-agent")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_owned());
+
+    // Transaction — challenge consumption + recovery-code consumption
+    // + session issue all land together or not at all. Fail-closed:
+    // any partial failure leaves the challenge still alive so the
+    // user can retry, rather than a half-consumed state.
+    let mut tx = match state.pool.begin().await {
+        Ok(t) => t,
+        Err(e) => {
+            tracing::error!(error = %e, "mfa_verify: begin tx failed");
+            return internal_error("database error");
+        }
+    };
+
+    let challenge = sqlx::query_as::<_, ChallengeRow>(
+        "SELECT id, user_id, expires_at, consumed_at, failed_attempts
+           FROM secure_auth.mfa_login_challenges
+          WHERE id = $1
+          FOR UPDATE",
+    )
+    .bind(challenge_id)
+    .fetch_optional(&mut *tx)
+    .await;
+
+    let challenge = match challenge {
+        Ok(Some(c)) => c,
+        Ok(None) => return unauthorized(),
+        Err(e) => {
+            tracing::error!(error = %e, "mfa_verify: challenge lookup");
+            return internal_error("database error");
+        }
+    };
+
+    if challenge.consumed_at.is_some()
+        || challenge.expires_at < chrono::Utc::now()
+        || challenge.failed_attempts >= MFA_MAX_ATTEMPTS_PER_CHALLENGE
+    {
+        return unauthorized();
+    }
+
+    // Verify the code — method-specific paths. `consumed_recovery_id`
+    // tracks which recovery code the match hit so we can mark it
+    // consumed after the challenge succeeds.
+    let (ok, consumed_recovery_id) = match req.method.as_str() {
+        "totp"     => (verify_totp(&mut tx, challenge.user_id, &req.code).await, None),
+        "recovery" => verify_recovery_code(&mut tx, challenge.user_id, &req.code).await,
+        other => {
+            tracing::warn!(method = %other, "mfa_verify: unknown method");
+            (false, None)
+        }
+    };
+
+    if !ok {
+        let _ = sqlx::query(
+            "UPDATE secure_auth.mfa_login_challenges
+                SET failed_attempts = failed_attempts + 1
+              WHERE id = $1",
+        )
+        .bind(challenge_id)
+        .execute(&mut *tx)
+        .await;
+        let _ = tx.commit().await;
+        return unauthorized();
+    }
+
+    // Code verified. Mark challenge consumed + recovery code (if used)
+    // + issue tokens in the same transaction.
+    if let Err(e) = sqlx::query(
+        "UPDATE secure_auth.mfa_login_challenges
+            SET consumed_at = now()
+          WHERE id = $1",
+    )
+    .bind(challenge_id)
+    .execute(&mut *tx)
+    .await
+    {
+        tracing::error!(error = %e, "mfa_verify: mark challenge consumed failed");
+        return internal_error("database error");
+    }
+
+    if let Some(rid) = consumed_recovery_id {
+        let _ = sqlx::query(
+            "UPDATE secure_auth.mfa_recovery_codes
+                SET consumed_at = now()
+              WHERE id = $1",
+        )
+        .bind(rid)
+        .execute(&mut *tx)
+        .await;
+    }
+
+    // Fetch user for the response payload.
+    let user = sqlx::query_as::<_, UserRow>(
+        "SELECT id, email, password_hash, display_name, first_name, last_name,
+                is_global_admin, mfa_enabled
+           FROM secure_auth.users
+          WHERE id = $1 AND deleted_at IS NULL",
+    )
+    .bind(challenge.user_id)
+    .fetch_optional(&mut *tx)
+    .await;
+
+    let user = match user {
+        Ok(Some(u)) => u,
+        Ok(None) => return unauthorized(),
+        Err(e) => {
+            tracing::error!(error = %e, "mfa_verify: user lookup");
+            return internal_error("database error");
+        }
+    };
+
+    let issued = match insert_session_row(&mut *tx, user.id, user_agent.as_deref(),
+                                          state.refresh_ttl_seconds).await {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::error!(error = %e, "mfa_verify: session insert");
+            return internal_error("session store failed");
+        }
+    };
+    let access_token = match sign_access_token(&state, user.id, &user.email, issued.session_id) {
+        Ok(t) => t,
+        Err(e) => {
+            tracing::error!(error = %e, "mfa_verify: jwt sign");
+            return internal_error("token encode failed");
+        }
+    };
+
+    if let Err(e) = tx.commit().await {
+        tracing::error!(error = %e, "mfa_verify: commit failed");
+        return internal_error("database error");
+    }
+    let _ = sqlx::query("UPDATE secure_auth.users SET last_login_at = now() WHERE id = $1")
+        .bind(user.id).execute(&state.pool).await;
+
+    let roles = if user.is_global_admin { vec!["global_admin".into()] } else { vec!["user".into()] };
+    let resp = LoginResponse {
+        access_token,
+        refresh_token: issued.raw_refresh_token,
+        session_id:    issued.session_id.to_string(),
+        expires_in:    state.access_ttl_seconds,
+        token_type:    "Bearer".into(),
+        mfa_required:  false,
+        mfa_methods:   Vec::new(),
+        user: AuthUser {
+            id:           user.id.to_string(),
+            email:        user.email,
+            display_name: user.display_name.unwrap_or_default(),
+            first_name:   user.first_name,
+            last_name:    user.last_name,
+            roles,
+            permissions:  Vec::new(),
+            mfa_enabled:  user.mfa_enabled,
+        },
+    };
+    (StatusCode::OK, Json(resp)).into_response()
+}
+
+/// TOTP verify against `secure_auth.mfa_secrets`. The totp-rs crate's
+/// `check_current` accepts the previous + current + next period
+/// (±30s) automatically, which is what we want for clock skew.
+async fn verify_totp(
+    tx: &mut sqlx::PgConnection,
+    user_id: Uuid,
+    code: &str,
+) -> bool {
+    use totp_rs::{Algorithm, TOTP};
+
+    let row: Result<Option<(String, String, i32, i32)>, _> = sqlx::query_as(
+        "SELECT secret_base32, algorithm, digits, period_seconds
+           FROM secure_auth.mfa_secrets
+          WHERE user_id = $1",
+    )
+    .bind(user_id)
+    .fetch_optional(&mut *tx)
+    .await;
+
+    let Ok(Some((secret_b32, algo, digits, period))) = row else {
+        return false;
+    };
+
+    let alg = match algo.as_str() {
+        "SHA256" => Algorithm::SHA256,
+        "SHA512" => Algorithm::SHA512,
+        _        => Algorithm::SHA1,
+    };
+    let secret = match totp_rs::Secret::Encoded(secret_b32).to_bytes() {
+        Ok(b) => b,
+        Err(_) => return false,
+    };
+    // totp-rs 5.x with the `otpauth` feature takes 7 args: algorithm,
+    // digits, skew window, step, secret, issuer (Option), account_name.
+    // We only use check_current here so the issuer/account are
+    // placeholders — /mfa/setup builds the user-facing otpauth URI
+    // separately.
+    let totp = match TOTP::new(alg, digits as usize, 1, period as u64,
+                               secret, None, String::new()) {
+        Ok(t) => t,
+        Err(_) => return false,
+    };
+    totp.check_current(code).unwrap_or(false)
+}
+
+/// Iterate active recovery codes + Argon2-verify each. Returns
+/// `(matched, id_of_consumed_row)`. Scan is O(N) where N ≤ 10
+/// per user.
+async fn verify_recovery_code(
+    tx: &mut sqlx::PgConnection,
+    user_id: Uuid,
+    code: &str,
+) -> (bool, Option<Uuid>) {
+    // Normalise user input — accept "abcd-efgh" or "abcdefgh".
+    let normalised = code.replace('-', "").to_lowercase();
+
+    let rows: Result<Vec<(Uuid, String)>, _> = sqlx::query_as(
+        "SELECT id, code_hash FROM secure_auth.mfa_recovery_codes
+          WHERE user_id = $1 AND consumed_at IS NULL",
+    )
+    .bind(user_id)
+    .fetch_all(&mut *tx)
+    .await;
+
+    let Ok(rows) = rows else { return (false, None); };
+
+    let argon = Argon2::default();
+    for (id, hash) in rows {
+        let Ok(parsed) = PasswordHash::new(&hash) else { continue; };
+        if argon.verify_password(normalised.as_bytes(), &parsed).is_ok() {
+            return (true, Some(id));
+        }
+    }
+    (false, None)
+}
+
+// ─── /mfa/setup + /mfa/setup/confirm ───────────────────────────────────────
+
+#[derive(Debug, Serialize)]
+struct MfaSetupResponse {
+    otpauth_uri:    String,
+    secret_base32:  String,
+    recovery_codes: Vec<String>,   // raw; shown once, client must store
+}
+
+/// Generate a fresh TOTP secret + 10 recovery codes. Overwrites any
+/// previous setup (upsert on user_id). Does NOT flip
+/// users.mfa_enabled — the user must prove they have the
+/// authenticator by calling /mfa/setup/confirm with a code first.
+///
+/// Requires a valid access token (Bearer auth).
+async fn mfa_setup(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+) -> impl IntoResponse {
+    let user = match authed_user(&state, &headers).await {
+        Some(u) => u,
+        None    => return unauthorized(),
+    };
+
+    // Generate secret (160-bit, 32 base32 chars) + 10 recovery codes.
+    use argon2::password_hash::rand_core::{OsRng, RngCore};
+    let mut secret_raw = [0u8; 20];
+    OsRng.fill_bytes(&mut secret_raw);
+    let secret_base32 = totp_rs::Secret::Raw(secret_raw.to_vec()).to_encoded().to_string();
+
+    let mut recovery_raw = Vec::with_capacity(MFA_RECOVERY_CODE_COUNT);
+    for _ in 0..MFA_RECOVERY_CODE_COUNT {
+        let mut b = [0u8; 5];   // 40 bits -> 8 hex chars "xxxxyyyy"
+        OsRng.fill_bytes(&mut b);
+        let hex = hex::encode(b);
+        recovery_raw.push(format!("{}-{}", &hex[..4], &hex[4..]));
+    }
+
+    // Argon2-hash each recovery code in memory before the DB round-
+    // trip. Salts are per-code (SaltString::generate).
+    use argon2::password_hash::{PasswordHasher, SaltString};
+    let argon = Argon2::default();
+    let mut recovery_hashes = Vec::with_capacity(MFA_RECOVERY_CODE_COUNT);
+    for raw in &recovery_raw {
+        let salt = SaltString::generate(&mut OsRng);
+        let normalised = raw.replace('-', "").to_lowercase();
+        let hash = match argon.hash_password(normalised.as_bytes(), &salt) {
+            Ok(h) => h.to_string(),
+            Err(e) => {
+                tracing::error!(error = %e, "mfa_setup: recovery hash failed");
+                return internal_error("hash failed");
+            }
+        };
+        recovery_hashes.push(hash);
+    }
+
+    // Persist. Transaction so we never leave a half-setup state
+    // (secret but no recovery codes, or vice versa).
+    let mut tx = match state.pool.begin().await {
+        Ok(t) => t,
+        Err(e) => {
+            tracing::error!(error = %e, "mfa_setup: begin tx");
+            return internal_error("database error");
+        }
+    };
+
+    // Upsert — re-enrolling overwrites the previous secret. Old
+    // recovery codes are deleted so they can't be used to sidestep
+    // the new TOTP.
+    if let Err(e) = sqlx::query(
+        "INSERT INTO secure_auth.mfa_secrets (user_id, secret_base32)
+         VALUES ($1, $2)
+         ON CONFLICT (user_id) DO UPDATE
+         SET secret_base32 = EXCLUDED.secret_base32,
+             verified_at   = NULL,
+             created_at    = now()",
+    )
+    .bind(user.id)
+    .bind(&secret_base32)
+    .execute(&mut *tx)
+    .await
+    {
+        tracing::error!(error = %e, "mfa_setup: insert secret");
+        return internal_error("database error");
+    }
+
+    let _ = sqlx::query("DELETE FROM secure_auth.mfa_recovery_codes WHERE user_id = $1")
+        .bind(user.id).execute(&mut *tx).await;
+
+    for hash in &recovery_hashes {
+        if let Err(e) = sqlx::query(
+            "INSERT INTO secure_auth.mfa_recovery_codes (user_id, code_hash) VALUES ($1, $2)",
+        )
+        .bind(user.id)
+        .bind(hash)
+        .execute(&mut *tx)
+        .await
+        {
+            tracing::error!(error = %e, "mfa_setup: insert recovery code");
+            return internal_error("database error");
+        }
+    }
+
+    if let Err(e) = tx.commit().await {
+        tracing::error!(error = %e, "mfa_setup: commit");
+        return internal_error("database error");
+    }
+
+    let otpauth_uri = format!(
+        "otpauth://totp/Central:{email}?secret={secret}&issuer=Central&digits=6&period=30",
+        email  = urlencode(&user.email),
+        secret = secret_base32,
+    );
+
+    let resp = MfaSetupResponse {
+        otpauth_uri,
+        secret_base32,
+        recovery_codes: recovery_raw,
+    };
+    (StatusCode::OK, Json(resp)).into_response()
+}
+
+#[derive(Debug, Deserialize)]
+struct MfaSetupConfirmRequest { code: String }
+
+/// Confirms /mfa/setup by verifying a TOTP code. On success flips
+/// users.mfa_enabled=true + mfa_secrets.verified_at=now. Idempotent
+/// if already enabled (returns 204 without re-verifying).
+async fn mfa_setup_confirm(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(req): Json<MfaSetupConfirmRequest>,
+) -> impl IntoResponse {
+    let user = match authed_user(&state, &headers).await {
+        Some(u) => u,
+        None    => return unauthorized(),
+    };
+
+    let mut tx = match state.pool.begin().await {
+        Ok(t) => t,
+        Err(e) => { tracing::error!(error = %e, "setup_confirm: begin tx"); return internal_error("database error"); }
+    };
+
+    if !verify_totp(&mut *tx, user.id, &req.code).await {
+        return unauthorized();
+    }
+
+    let _ = sqlx::query("UPDATE secure_auth.mfa_secrets SET verified_at = now() WHERE user_id = $1")
+        .bind(user.id).execute(&mut *tx).await;
+    let _ = sqlx::query("UPDATE secure_auth.users SET mfa_enabled = true WHERE id = $1")
+        .bind(user.id).execute(&mut *tx).await;
+
+    if let Err(e) = tx.commit().await {
+        tracing::error!(error = %e, "setup_confirm: commit");
+        return internal_error("database error");
+    }
+    StatusCode::NO_CONTENT.into_response()
+}
+
+/// Decode + verify a Bearer JWT from the Authorization header, then
+/// look up the user. Returns None on any failure (expired, bad
+/// signature, unknown sid, deleted user). Callers render 401.
+async fn authed_user(state: &AppState, headers: &HeaderMap) -> Option<UserRow> {
+    let token = headers.get("authorization")?
+        .to_str().ok()?
+        .strip_prefix("Bearer ")?;
+
+    let mut v = Validation::default();
+    v.validate_aud = false;
+    v.leeway = 30;
+    let data = decode::<Claims>(token,
+        &DecodingKey::from_secret(state.jwt_secret.as_bytes()), &v).ok()?;
+    let user_id = Uuid::parse_str(&data.claims.sub).ok()?;
+
+    sqlx::query_as::<_, UserRow>(
+        "SELECT id, email, password_hash, display_name, first_name, last_name,
+                is_global_admin, mfa_enabled
+           FROM secure_auth.users
+          WHERE id = $1 AND deleted_at IS NULL",
+    )
+    .bind(user_id)
+    .fetch_optional(&state.pool)
+    .await
+    .ok()
+    .flatten()
+}
+
+/// Minimal URL-percent-encoder — `totp-rs` provides otpauth builders,
+/// but we need the email to go in the path segment safely. Only the
+/// handful of chars that matter for an email in an otpauth URI.
+fn urlencode(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        match c {
+            'A'..='Z' | 'a'..='z' | '0'..='9' | '-' | '_' | '.' | '~' => out.push(c),
+            '@' => out.push_str("%40"),
+            _   => out.push_str(&format!("%{:02X}", c as u32)),
+        }
+    }
+    out
 }
 
 // ─── DB row types ──────────────────────────────────────────────────────────
@@ -583,6 +1124,16 @@ struct SessionRow {
     user_id:    Uuid,
     #[allow(dead_code)]   // we check expiry in-SQL; kept for logs in Phase G
     expires_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, sqlx::FromRow)]
+struct ChallengeRow {
+    #[allow(dead_code)]   // id is echoed into structured logs in Phase G
+    id:               Uuid,
+    user_id:          Uuid,
+    expires_at:       chrono::DateTime<chrono::Utc>,
+    consumed_at:      Option<chrono::DateTime<chrono::Utc>>,
+    failed_attempts:  i32,
 }
 
 // ─── Phase B token + session helpers ───────────────────────────────────────
