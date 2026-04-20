@@ -48,14 +48,14 @@ import { environment } from '../../../../environments/environment';
       <label>Prefix length</label>
       <dx-number-box
         [(value)]="prefixLength"
-        [min]="1"
-        [max]="128"
+        [min]="poolMinPrefix"
+        [max]="currentPool?.AddressFamily === 'v6' ? 128 : 32"
         [step]="1"
         [showSpinButtons]="true"
         width="120" />
 
       <dx-button text="Preview" type="default"
-                 [disabled]="!selectedPoolId || loading"
+                 [disabled]="!selectedPoolId || loading || !prefixLengthValid()"
                  (onClick)="preview()" />
       <dx-button text="Clear" stylingMode="text"
                  [disabled]="loading"
@@ -70,6 +70,9 @@ import { environment } from '../../../../environments/environment';
       <span class="label">Pool CIDR:</span>
       <span class="mono">{{ currentPool.PoolCidr }}</span>
       <span class="family">{{ currentPool.AddressFamily }}</span>
+      <span *ngIf="poolMinPrefix > 1" class="pool-prefix-hint">
+        Requested prefix must be /{{ poolMinPrefix }} or narrower
+      </span>
     </div>
 
     <div *ngIf="result" class="result-card">
@@ -115,6 +118,9 @@ import { environment } from '../../../../environments/environment';
       padding: 2px 8px; border-radius: 10px;
       background: #ddf4ff; color: #0969da; font-size: 11px;
     }
+    .pool-prefix-hint {
+      color: #57606a; font-size: 11px; font-style: italic;
+    }
 
     .result-card {
       background: #ffffff; border: 1px solid #d0d7de;
@@ -135,6 +141,7 @@ export class NetworkCarverPreviewComponent implements OnInit {
   pools: IpPoolRow[] = [];
   selectedPoolId: string | null = null;
   prefixLength = 24;
+  poolMinPrefix = 1;   // parsed from currentPool.PoolCidr (the pool's own prefix)
 
   loading = false;
   status = '';
@@ -171,11 +178,36 @@ export class NetworkCarverPreviewComponent implements OnInit {
     this.status = '';
     this.error = false;
     const p = this.currentPool;
+    this.poolMinPrefix = this.parsePoolPrefix(p?.PoolCidr) ?? 1;
     if (p?.AddressFamily === 'v6' && this.prefixLength < 48) {
       this.prefixLength = 64;
     } else if (p?.AddressFamily === 'v4' && this.prefixLength > 32) {
       this.prefixLength = 24;
     }
+    // Clamp prefix to at least the pool's own prefix length — the
+    // engine would reject a smaller prefix anyway with a 409.
+    if (this.prefixLength < this.poolMinPrefix) {
+      this.prefixLength = this.poolMinPrefix;
+    }
+  }
+
+  /// Client-side validity check — mirrors the engine's range_violation
+  /// so operators don't even try invalid prefixes.
+  prefixLengthValid(): boolean {
+    const max = this.currentPool?.AddressFamily === 'v6' ? 128 : 32;
+    return this.prefixLength >= this.poolMinPrefix
+        && this.prefixLength <= max;
+  }
+
+  /// Parse the trailing "/N" off a CIDR string. Returns null on
+  /// malformed input — the UI falls back to /1 so the min-clamp is
+  /// permissive rather than restrictive.
+  private parsePoolPrefix(cidr: string | null | undefined): number | null {
+    if (!cidr) return null;
+    const slash = cidr.lastIndexOf('/');
+    if (slash < 0) return null;
+    const n = parseInt(cidr.substring(slash + 1), 10);
+    return Number.isFinite(n) ? n : null;
   }
 
   preview(): void {
