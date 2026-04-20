@@ -1554,6 +1554,40 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "device.room_resolves_active_when_set",
+        name: "Device room_id must resolve to an Active room when set",
+        description: "Device's optional room_id, when set, must \
+                      resolve to an Active room. Hierarchy-scoped \
+                      scope-grants expand through the room row; a \
+                      decommissioned room hides the device from \
+                      room-scoped grants unexpectedly.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "device.rack_resolves_active_when_set",
+        name: "Device rack_id must resolve to an Active rack when set",
+        description: "Device's optional rack_id, when set, must \
+                      resolve to an Active rack. Mirror of \
+                      device.room_resolves_active_when_set one \
+                      hierarchy step lower.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "subnet.parent_subnet_resolves_active_when_set",
+        name: "Subnet parent_subnet_id must resolve to an Active subnet when set",
+        description: "Nested subnet chains (/16 → /24 → /30) \
+                      depend on every ancestor being live for \
+                      rollup counts. An orphaned parent breaks \
+                      pool-utilization hierarchy views.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1870,6 +1904,9 @@ async fn dispatch(
         "vlan_template.default_unique_per_tenant" => run_vlan_template_default_unique(pool, org_id, severity, out).await,
         "port.interface_name_starts_with_prefix"  => run_port_name_prefix(pool, org_id, severity, out).await,
         "device.hardware_model_set_when_active"   => run_device_model_set(pool, org_id, severity, out).await,
+        "device.room_resolves_active_when_set"    => run_device_room_active(pool, org_id, severity, out).await,
+        "device.rack_resolves_active_when_set"    => run_device_rack_active(pool, org_id, severity, out).await,
+        "subnet.parent_subnet_resolves_active_when_set" => run_subnet_parent_active(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -4849,6 +4886,85 @@ async fn run_device_model_set(
     Ok(())
 }
 
+/// `device.room_resolves_active_when_set` — device's optional room must be live.
+async fn run_device_room_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT d.id, d.hostname, COALESCE(r.status::text, '(missing)')
+           FROM net.device d
+           LEFT JOIN net.room r ON r.id = d.room_id
+          WHERE d.organization_id = $1
+            AND d.deleted_at IS NULL
+            AND d.room_id IS NOT NULL
+            AND (r.id IS NULL
+                 OR r.deleted_at IS NOT NULL
+                 OR r.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname, status) in rows {
+        out.push(Violation {
+            rule_code: "device.room_resolves_active_when_set".into(),
+            severity, entity_type: "Device".into(), entity_id: Some(id),
+            message: format!(
+                "Device '{hostname}' references a room with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `device.rack_resolves_active_when_set` — device's optional rack must be live.
+async fn run_device_rack_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT d.id, d.hostname, COALESCE(rk.status::text, '(missing)')
+           FROM net.device d
+           LEFT JOIN net.rack rk ON rk.id = d.rack_id
+          WHERE d.organization_id = $1
+            AND d.deleted_at IS NULL
+            AND d.rack_id IS NOT NULL
+            AND (rk.id IS NULL
+                 OR rk.deleted_at IS NOT NULL
+                 OR rk.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname, status) in rows {
+        out.push(Violation {
+            rule_code: "device.rack_resolves_active_when_set".into(),
+            severity, entity_type: "Device".into(), entity_id: Some(id),
+            message: format!(
+                "Device '{hostname}' references a rack with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `subnet.parent_subnet_resolves_active_when_set` — subnet's
+/// optional parent_subnet_id must resolve to an Active subnet.
+async fn run_subnet_parent_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT c.id, c.subnet_code, COALESCE(p.status::text, '(missing)')
+           FROM net.subnet c
+           LEFT JOIN net.subnet p ON p.id = c.parent_subnet_id
+          WHERE c.organization_id = $1
+            AND c.deleted_at IS NULL
+            AND c.parent_subnet_id IS NOT NULL
+            AND (p.id IS NULL
+                 OR p.deleted_at IS NOT NULL
+                 OR p.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, status) in rows {
+        out.push(Violation {
+            rule_code: "subnet.parent_subnet_resolves_active_when_set".into(),
+            severity, entity_type: "Subnet".into(), entity_id: Some(id),
+            message: format!(
+                "Subnet '{code}' references a parent subnet with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -5402,6 +5518,9 @@ mod tests {
             "vlan_template.default_unique_per_tenant",
             "port.interface_name_starts_with_prefix",
             "device.hardware_model_set_when_active",
+            "device.room_resolves_active_when_set",
+            "device.rack_resolves_active_when_set",
+            "subnet.parent_subnet_resolves_active_when_set",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
