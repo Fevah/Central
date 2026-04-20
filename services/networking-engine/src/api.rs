@@ -184,6 +184,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/search",                           get(global_search_handler))
         .route("/api/net/search/facets",                    get(search_facets_handler))
         .route("/api/net/whoami",                           get(whoami_handler))
+        .route("/api/net/whoami/grants",                    get(whoami_grants_handler))
         // Saved views (Phase 10) — per-user named search queries,
         // managed personally not through scope_grants. Ownership
         // check is baked into every handler via user_id from the
@@ -2573,6 +2574,39 @@ async fn whoami_handler(
     Ok(Json(WhoAmIResponse {
         user_id: Some(uid), grant_count, actions, entity_types,
     }))
+}
+
+/// Full grant list for the current caller. Unlike
+/// `list_scope_grants` which is gated on `read:ScopeGrant` (a meta-
+/// permission for admins reviewing other users' access), this
+/// endpoint always returns the CALLER's own grants — reading your
+/// own access is always permitted. Service-origin callers (no
+/// X-User-Id header) get an empty list. Ordered by entity_type +
+/// action so the UI can show a clean table without client-side
+/// sort tricks.
+async fn whoami_grants_handler(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+    headers: HeaderMap,
+) -> Result<impl IntoResponse, EngineError> {
+    let user_id = header_user_id(&headers);
+    let Some(uid) = user_id else {
+        return Ok(Json(Vec::<scope_grants::ScopeGrant>::new()));
+    };
+    let rows: Vec<scope_grants::ScopeGrant> = sqlx::query_as(
+        "SELECT id, organization_id, user_id, action, entity_type,
+                scope_type, scope_entity_id, status::text AS status,
+                version, created_at, updated_at, notes
+           FROM net.scope_grant
+          WHERE organization_id = $1
+            AND user_id = $2
+            AND deleted_at IS NULL
+          ORDER BY entity_type ASC, action ASC, scope_type ASC")
+        .bind(q.organization_id)
+        .bind(uid)
+        .fetch_all(&s.pool)
+        .await?;
+    Ok(Json(rows))
 }
 
 /// Facet counts — one row per entity type that matches the query.
