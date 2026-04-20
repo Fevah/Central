@@ -1,7 +1,9 @@
 using System.Security.Cryptography;
+using Microsoft.AspNetCore.SignalR;
 using Npgsql;
 using Central.Persistence;
 using Central.Api.Services;
+using Central.Api.Hubs;
 
 namespace Central.Api.Endpoints;
 
@@ -136,7 +138,7 @@ public static class ModuleCatalogEndpoints
         // client). UNIQUE (module_code, version) guards against
         // re-publishing an existing version without going through yank
         // first.
-        group.MapPost("/publish", async (HttpContext http, DbConnectionFactory db, IModuleBlobStorage blobs) =>
+        group.MapPost("/publish", async (HttpContext http, DbConnectionFactory db, IModuleBlobStorage blobs, IHubContext<NotificationHub> hub) =>
         {
             if (!http.Request.HasFormContentType)
                 return Results.BadRequest(new { error = "multipart/form-data required." });
@@ -213,8 +215,18 @@ public static class ModuleCatalogEndpoints
                 var publishedAt = reader.GetDateTime(1);
                 await reader.CloseAsync();
 
+                // Read the previous current_version before the bump so the
+                // Phase 4 SignalR broadcast can include fromVersion — the
+                // client side needs both to know whether it's a rollback,
+                // a skip-over, or a normal linear upgrade.
+                string? fromVersion = null;
                 if (setAsCurrent)
                 {
+                    await using var readCurrent = new NpgsqlCommand(
+                        "SELECT current_version FROM central_platform.module_catalog WHERE code = @c", conn, tx);
+                    readCurrent.Parameters.AddWithValue("c", moduleCode);
+                    fromVersion = (await readCurrent.ExecuteScalarAsync()) as string;
+
                     await using var bump = new NpgsqlCommand(
                         @"UPDATE central_platform.module_catalog
                              SET current_version = @v,
@@ -234,12 +246,50 @@ public static class ModuleCatalogEndpoints
                 }
 
                 await tx.CommitAsync();
+
+                // Phase 4 — fan out the module-updated event to every
+                // connected client. Broadcast to Clients.All rather than a
+                // tenant group: module updates are platform-wide (the
+                // catalog is global, not per-tenant). Clients filter via
+                // their IModuleUpdatePolicy based on whether they have the
+                // module licensed + on which channel — that's the right
+                // place to make the tenant/policy decision.
+                //
+                // Only broadcast when setAsCurrent=true (otherwise the new
+                // version exists in module_versions but isn't promoted,
+                // and clients shouldn't react).
+                if (setAsCurrent)
+                {
+                    try
+                    {
+                        await hub.Clients.All.SendAsync("ModuleUpdated", new
+                        {
+                            moduleCode,
+                            fromVersion,
+                            toVersion = version,
+                            changeKind,
+                            minEngineContract = minEngine,
+                            sha256,
+                            sizeBytes = size,
+                            publishedAt,
+                        });
+                    }
+                    catch
+                    {
+                        // SignalR fan-out failure doesn't roll back the
+                        // publish — the catalog is the source of truth;
+                        // clients will discover the new version on next
+                        // /api/modules/catalog poll. Log + continue.
+                    }
+                }
+
                 return Results.Ok(new
                 {
                     id, moduleCode, version, changeKind,
                     minEngineContract = minEngine,
                     sha256, sizeBytes = size, publishedAt,
-                    setAsCurrent
+                    setAsCurrent,
+                    fromVersion
                 });
             }
             catch (PostgresException pg) when (pg.SqlState == "23505")
