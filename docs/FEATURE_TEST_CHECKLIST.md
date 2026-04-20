@@ -3875,6 +3875,46 @@ Validation batch 43 adds three more data-quality rules.
       validation time.
 - [ ] Catalog now at 170 rules; guardrail test still green.
 
+### 7.X.42 Phase 10b — twenty-fifth wave (commits 2026-04-20+)
+
+Change-sets requestedByUserId narrower + /network/my-changesets
+self-serve page completes the self-serve trio. Validation batch
+44 adds three config-correctness rules.
+
+**Engine listChangeSets requestedByUserId narrower** (commit `0a026d28e`)
+- [ ] GET /api/net/change-sets?requestedByUserId=… narrows the
+      list to sets where requested_by matches.
+- [ ] ListChangeSetsQuery + SQL predicate + backward-compat
+      omit-for-all behaviour.
+
+**/network/my-changesets page** (commit `fc47805e5`)
+- [ ] New route /network/my-changesets. Third leg of the self-
+      serve trio (my-activity + my-grants + my-changesets).
+- [ ] Resolves caller via whoami + narrows listChangeSets by
+      requestedByUserId.
+- [ ] Status + Limit filters; grid columns: createdAt / title /
+      status (coloured pill) / itemCount / submittedAt /
+      appliedAt; double-click drills to detail.
+- [ ] Service-origin callers see the yellow hint banner.
+- [ ] Overview quick-link chip bar gains "My change sets".
+
+**C# ApiClient — ListMyChangeSetsAsync** (commit `d2558a639`)
+- [ ] ListChangeSetsAsync gains optional int? requestedByUserId.
+- [ ] New ListMyChangeSetsAsync(organizationId, status?, limit?,
+      ct) chains WhoAmIAsync + narrows by requestedByUserId.
+- [ ] Service-origin callers get empty list.
+- [ ] 0 errors on build.
+
+**Validation rule expansion — batch 44** (commit `8f1d7f2e1`)
+- [ ] `port.native_vlan_requires_access_or_trunk` (Warning) —
+      flags native_vlan_id on routed/unset ports.
+- [ ] `aggregate_ethernet.member_count_meets_min_links` (Warning)
+      — LAG won't come up if member count < min_links.
+- [ ] `change_set_item.expected_version_set_for_update` (Info,
+      Advisory) — Update items without expected_version disable
+      the stale-write guard.
+- [ ] Catalog now at 173 rules; guardrail test still green.
+
 ---
 
 ## 8. Enterprise SaaS
