@@ -54,11 +54,45 @@ public sealed class ModuleHost : IDisposable
     private CollectibleModuleLoadContext? _context;
     private Assembly? _loadedAssembly;
 
+    /// <summary>
+    /// True when this host wraps a module that was loaded into the
+    /// default <see cref="AssemblyLoadContext"/> via project reference
+    /// (pre-Phase 5b). Static hosts are visible to the
+    /// <see cref="ModuleHostManager"/> so notifications route to them,
+    /// but they can't be unloaded — updates force a full restart
+    /// regardless of the notification's <c>changeKind</c>.
+    /// </summary>
+    public bool IsStatic { get; }
+
+    /// <summary>Construct a dynamic host — load DLL bytes via
+    /// <see cref="Load"/> / <see cref="Reload"/>.</summary>
     public ModuleHost(string moduleCode)
     {
         if (string.IsNullOrWhiteSpace(moduleCode))
             throw new ArgumentException("Module code must be non-empty.", nameof(moduleCode));
         ModuleCode = moduleCode;
+    }
+
+    /// <summary>
+    /// Construct a static host wrapping an already-loaded module
+    /// instance. Used by the desktop shell to register project-
+    /// referenced modules with the <see cref="ModuleHostManager"/>
+    /// so they participate in the update notification flow. Attempts
+    /// to <see cref="Load"/> / <see cref="Reload"/> throw; update
+    /// notifications get routed to <c>HandleFullRestartAsync</c> in
+    /// the policy since the default ALC can't be unloaded.
+    /// </summary>
+    public ModuleHost(string moduleCode, IModule staticModule, string version)
+    {
+        if (string.IsNullOrWhiteSpace(moduleCode))
+            throw new ArgumentException("Module code must be non-empty.", nameof(moduleCode));
+        ArgumentNullException.ThrowIfNull(staticModule);
+        ArgumentException.ThrowIfNullOrWhiteSpace(version);
+
+        ModuleCode    = moduleCode;
+        LiveModule    = staticModule;
+        LoadedVersion = version;
+        IsStatic      = true;
     }
 
     /// <summary>True between a successful <see cref="Load"/> and the next <see cref="Unload"/>.</summary>
@@ -80,6 +114,12 @@ public sealed class ModuleHost : IDisposable
     /// </summary>
     public void Load(byte[] dllBytes, string version, string? expectedSha256 = null)
     {
+        if (IsStatic)
+            throw new InvalidOperationException(
+                $"ModuleHost '{ModuleCode}' is static (project-referenced). " +
+                "Dynamic Load/Unload/Reload are not supported — the module must be " +
+                "migrated to the ALC path or the host replaced with a dynamic one first.");
+
         if (IsLoaded)
             throw new InvalidOperationException(
                 $"ModuleHost '{ModuleCode}' is already loaded at version '{LoadedVersion}'. " +
@@ -146,6 +186,7 @@ public sealed class ModuleHost : IDisposable
     /// </summary>
     public void Unload()
     {
+        if (IsStatic) return;    // default-ALC modules can't unload
         if (!IsLoaded) return;
 
         var ctx = _context!;

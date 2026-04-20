@@ -82,6 +82,17 @@ public static class Bootstrapper
     // Preserved for ordering / iteration.
     private static readonly Type[] _moduleTypes = _moduleCodes.Keys.ToArray();
 
+    /// <summary>
+    /// Map a live <see cref="IModule"/> instance back to the module
+    /// code the license gate + <c>central_platform.module_catalog</c>
+    /// + <c>ModuleHostManager</c> all key on. Returns null for
+    /// unknown types (shouldn't happen in practice — every module
+    /// registered in <see cref="_moduleCodes"/> is accounted for
+    /// at startup).
+    /// </summary>
+    public static string? GetModuleCode(IModule module)
+        => _moduleCodes.TryGetValue(module.GetType(), out var code) ? code : null;
+
     private static void ForceLoadModuleAssemblies()
     {
         foreach (var type in _moduleTypes)

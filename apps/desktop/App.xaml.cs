@@ -409,6 +409,14 @@ public partial class App : System.Windows.Application
                             try
                             {
                                 Central.Desktop.Services.ModuleUpdateStartup.Initialize(apiUrl);
+                                // Phase 5b: once the manager exists,
+                                // register a static host per already-
+                                // loaded module so update notifications
+                                // route through HandleFullRestartAsync
+                                // ("restart to apply") instead of being
+                                // silently dropped.
+                                var hostCount = Central.Desktop.Services.StaticModuleHostRegistrar.RegisterAll();
+                                Log($"ModuleHostManager: {hostCount} static hosts registered");
                             }
                             catch (Exception mex)
                             {

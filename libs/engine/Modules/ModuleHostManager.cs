@@ -100,6 +100,19 @@ public sealed class ModuleHostManager : IDisposable
             if (string.Equals(host.LoadedVersion, notification.ToVersion, StringComparison.Ordinal))
                 return;
 
+            // Static hosts (project-referenced modules in the default
+            // ALC) can't hot-swap regardless of the notification's
+            // changeKind — the default ALC isn't collectible. Route
+            // every update through HandleFullRestartAsync so the
+            // policy surfaces a "restart to apply" prompt. Phase 5b
+            // stops here; future refactor migrates modules to the
+            // dynamic ALC path so the switch below can take over.
+            if (host.IsStatic)
+            {
+                await _policy.HandleFullRestartAsync(notification, ct);
+                return;
+            }
+
             switch (notification.ChangeKind)
             {
                 case "HotSwap":
