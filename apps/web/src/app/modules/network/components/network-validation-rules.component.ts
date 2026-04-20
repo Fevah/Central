@@ -37,6 +37,21 @@ import { environment } from '../../../../environments/environment';
       <span *ngIf="status" class="status-line">{{ status }}</span>
     </div>
 
+    <!-- Category summary bar — counts rules per category +
+         enabled-vs-override quick-glance. Hides when the rule
+         list hasn't loaded yet. -->
+    <div *ngIf="categorySummary.length" class="cat-bar">
+      <span *ngFor="let c of categorySummary"
+            class="cat-pill"
+            [ngClass]="'cat-' + c.category.toLowerCase()">
+        <span class="cat-count">{{ c.total }}</span>
+        <span class="cat-label">{{ c.category }}</span>
+        <span *ngIf="c.overrides > 0" class="cat-override">
+          ✎ {{ c.overrides }}
+        </span>
+      </span>
+    </div>
+
     <dx-data-grid [dataSource]="rules" [showBorders]="true" [hoverStateEnabled]="true"
                    [columnAutoWidth]="true"
                    [searchPanel]="{ visible: true }"
@@ -79,6 +94,22 @@ import { environment } from '../../../../environments/environment';
       background: rgba(234,179,8,0.2); color: #eab308;
       font-size: 11px; font-weight: 600;
     }
+
+    .cat-bar { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 14px; }
+    .cat-pill {
+      display: inline-flex; gap: 6px; align-items: center;
+      padding: 4px 10px; border-radius: 14px; font-size: 11px; font-weight: 600;
+    }
+    .cat-pill .cat-count { font-size: 13px; }
+    .cat-pill .cat-label { text-transform: uppercase; letter-spacing: 0.4px; opacity: 0.85; }
+    .cat-pill .cat-override {
+      background: rgba(234,179,8,0.25); color: #eab308;
+      padding: 0 6px; border-radius: 6px; font-size: 10px;
+    }
+    .cat-integrity   { background: rgba(239,68,68,0.18);  color: #ef4444; }
+    .cat-consistency { background: rgba(59,130,246,0.18); color: #60a5fa; }
+    .cat-safety      { background: rgba(34,197,94,0.18);  color: #22c55e; }
+    .cat-advisory    { background: rgba(148,163,184,0.2); color: #94a3b8; }
   `],
 })
 export class NetworkValidationRulesComponent implements OnInit {
@@ -118,5 +149,23 @@ export class NetworkValidationRulesComponent implements OnInit {
         this.rules = [];
       },
     });
+  }
+
+  /// Rollup of rules per category + how many have a tenant
+  /// override. Returns empty until the catalog has loaded. Fixed
+  /// order matches the severity badge colouring (Integrity /
+  /// Consistency / Safety / Advisory).
+  get categorySummary(): { category: string; total: number; overrides: number }[] {
+    if (!this.rules.length) return [];
+    const counts = new Map<string, { total: number; overrides: number }>();
+    for (const r of this.rules) {
+      const row = counts.get(r.category) ?? { total: 0, overrides: 0 };
+      row.total += 1;
+      if (r.hasTenantOverride) row.overrides += 1;
+      counts.set(r.category, row);
+    }
+    return ['Integrity', 'Consistency', 'Safety', 'Advisory']
+      .filter(c => counts.has(c))
+      .map(c => ({ category: c, ...counts.get(c)! }));
   }
 }
