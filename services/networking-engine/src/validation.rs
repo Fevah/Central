@@ -1450,6 +1450,38 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Error,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "asn_block.pool_resolves_active",
+        name: "ASN block pool_id must resolve to an Active ASN pool",
+        description: "An ASN block whose parent asn_pool is soft-deleted \
+                      or non-Active misreports in pool-utilization. \
+                      Parallels subnet.pool_resolves_active / \
+                      vlan.block_resolves_active on the ASN tree.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "vlan_block.pool_resolves_active",
+        name: "VLAN block pool_id must resolve to an Active VLAN pool",
+        description: "A VLAN block whose parent vlan_pool is soft-deleted \
+                      or non-Active breaks pool-aware allocation + \
+                      availability counts.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "vlan.template_resolves_active_when_set",
+        name: "VLAN template_id must resolve to an Active template when set",
+        description: "Optional template pointer — when set, must resolve \
+                      to an Active vlan_template. Warning-severity \
+                      because a missing template falls back to the \
+                      catalog default rather than failing config-gen.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1757,6 +1789,9 @@ async fn dispatch(
         "vlan.block_resolves_active"              => run_vlan_block_active(pool, org_id, severity, out).await,
         "subnet.pool_resolves_active"             => run_subnet_pool_active(pool, org_id, severity, out).await,
         "mlag_domain.pool_resolves_active"        => run_mlag_domain_pool_active(pool, org_id, severity, out).await,
+        "asn_block.pool_resolves_active"          => run_asn_block_pool_active(pool, org_id, severity, out).await,
+        "vlan_block.pool_resolves_active"         => run_vlan_block_pool_active(pool, org_id, severity, out).await,
+        "vlan.template_resolves_active_when_set"  => run_vlan_template_active(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -4497,6 +4532,85 @@ async fn run_mlag_domain_pool_active(
     Ok(())
 }
 
+/// `asn_block.pool_resolves_active` — ASN block's parent asn_pool must be live.
+async fn run_asn_block_pool_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT b.id, b.block_code, COALESCE(p.status::text, '(missing)')
+           FROM net.asn_block b
+           LEFT JOIN net.asn_pool p ON p.id = b.pool_id
+          WHERE b.organization_id = $1
+            AND b.deleted_at IS NULL
+            AND (p.id IS NULL
+                 OR p.deleted_at IS NOT NULL
+                 OR p.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, status) in rows {
+        out.push(Violation {
+            rule_code: "asn_block.pool_resolves_active".into(),
+            severity, entity_type: "AsnBlock".into(), entity_id: Some(id),
+            message: format!(
+                "ASN block '{code}' references an asn_pool with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `vlan_block.pool_resolves_active` — VLAN block's parent vlan_pool must be live.
+async fn run_vlan_block_pool_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT b.id, b.block_code, COALESCE(p.status::text, '(missing)')
+           FROM net.vlan_block b
+           LEFT JOIN net.vlan_pool p ON p.id = b.pool_id
+          WHERE b.organization_id = $1
+            AND b.deleted_at IS NULL
+            AND (p.id IS NULL
+                 OR p.deleted_at IS NOT NULL
+                 OR p.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, status) in rows {
+        out.push(Violation {
+            rule_code: "vlan_block.pool_resolves_active".into(),
+            severity, entity_type: "VlanBlock".into(), entity_id: Some(id),
+            message: format!(
+                "VLAN block '{code}' references a vlan_pool with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `vlan.template_resolves_active_when_set` — VLAN's optional template_id,
+/// when set, must resolve to an Active vlan_template. Warning severity
+/// because config-gen falls back to the catalog default on a missing
+/// template rather than failing outright.
+async fn run_vlan_template_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32, String)> = sqlx::query_as(
+        "SELECT v.id, v.vlan_id, COALESCE(t.status::text, '(missing)')
+           FROM net.vlan v
+           LEFT JOIN net.vlan_template t ON t.id = v.template_id
+          WHERE v.organization_id = $1
+            AND v.deleted_at IS NULL
+            AND v.template_id IS NOT NULL
+            AND (t.id IS NULL
+                 OR t.deleted_at IS NOT NULL
+                 OR t.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, vlan_id, status) in rows {
+        out.push(Violation {
+            rule_code: "vlan.template_resolves_active_when_set".into(),
+            severity, entity_type: "Vlan".into(), entity_id: Some(id),
+            message: format!(
+                "VLAN {vlan_id} references a vlan_template with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -5041,6 +5155,9 @@ mod tests {
             "vlan.block_resolves_active",
             "subnet.pool_resolves_active",
             "mlag_domain.pool_resolves_active",
+            "asn_block.pool_resolves_active",
+            "vlan_block.pool_resolves_active",
+            "vlan.template_resolves_active_when_set",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
