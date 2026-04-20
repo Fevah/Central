@@ -1,13 +1,82 @@
 ﻿# Central Platform — Feature Test Checklist
 
-Last updated: 2026-04-18
+Last updated: 2026-04-20
 Test suite: 2,616 tests across ~180 test classes on the .NET side. 0 failures (unit + live-DB integration against the podman `central-postgres` container).
-Rust networking-engine (`services/networking-engine/`): 229 unit tests, 0 failures.
+Rust networking-engine (`services/networking-engine/`): 298 unit tests, 0 failures.
 Build: 0 errors.
 
 Comprehensive test checklist for the Central desktop + API platform, organised by surface
 area (not build phase). Every `- [ ]` is a manually testable item. Items with matching
 unit/integration tests have the test class and method appended after a dash.
+
+---
+
+## 0. Known Drift — Ribbon CRUD (WPF)
+
+Survey on 2026-04-20 found that ribbon CRUD wiring has drifted outside the Networking module. Networking alone has comprehensive test coverage (`NetworkingRibbonAuditTests` — 57 tests, all pass). Other modules have STUB handlers (`() => { }`) or publish `NavigateToPanelMessage` / `RefreshPanelMessage` commands that panels don't subscribe to.
+
+### 0.1 Projects module — all 9 ribbon CRUD actions are STUB
+Every CRUD-style button on the Projects ribbon tab has `() => { }` as its handler:
+- [ ] **Add Task** button fires real handler (currently no-op)
+- [ ] **Add SubTask** button fires real handler (currently no-op)
+- [ ] **Add Bug** button fires real handler (currently no-op)
+- [ ] **Delete** button fires real handler (currently no-op)
+- [ ] **New Sprint** button fires real handler (currently no-op)
+- [ ] **Close Sprint** button fires real handler (currently no-op)
+- [ ] **Snapshot Burndown** button fires real handler (currently no-op)
+- [ ] **Save Baseline** button fires real handler (currently no-op)
+- [ ] **Zoom to Fit** button fires real handler (currently no-op)
+
+**Fix pattern**: replace empty lambdas with `PanelMessageBus.Publish(new NavigateToPanelMessage("TaskTreePanel", "action:new"))` + subscribe on TaskTreePanel / BacklogPanel code-behind.
+
+### 0.2 Audit module — all 7 ribbon actions are STUB
+- [ ] **New Investigation** (no-op)
+- [ ] **Refresh** (no-op)
+- [ ] **Compliance Score** (no-op)
+- [ ] **Article Breakdown** (no-op)
+- [ ] **Search Logs** (no-op)
+- [ ] **User Activity** (no-op)
+- [ ] **Export Evidence** (no-op)
+
+**Fix**: panels (FindingsPanel, InvestigationsPanel) are mostly placeholder views — need both handler implementation + panel-side receive logic.
+
+### 0.3 CRM module — handlers publish but panels don't subscribe
+Ribbon buttons `New Account` / `New Contact` / `New Deal` / `New Lead` / `Export` call `PanelMessageBus.Publish(new NavigateToPanelMessage(...))` correctly, but the receiving panels (CrmAccountsPanel / CrmDealsPanel / CrmLeadsPanel / CrmContactsPanel) have no `PanelMessageBus.Subscribe<NavigateToPanelMessage>()` — messages are silently dropped.
+- [ ] **New Account** triggers AddNewRow on CrmAccountsPanel
+- [ ] **New Contact** triggers AddNewRow on CrmContactsPanel
+- [ ] **New Deal** triggers AddNewRow on CrmDealsPanel
+- [ ] **New Lead** triggers AddNewRow on CrmLeadsPanel
+- [ ] **Export** triggers XLSX/CSV export on the active CRM grid
+
+**Fix**: add `PanelMessageBus.Subscribe<NavigateToPanelMessage>()` + `switch on msg.Action` handler in each CRM panel's code-behind.
+
+### 0.4 Service-Desk module — panels miss message-bus subscriptions
+Ribbon publishes `NavigateToPanelMessage("servicedesk", "sync")` + similar; RequestGridPanel.xaml.cs / SdGroupsPanel.xaml.cs don't subscribe.
+- [ ] **Sync from ManageEngine** fires real handler
+- [ ] **Refresh** fires real handler on active SD panel
+- [ ] **Export** fires real handler on active SD grid
+
+**Fix**: same pattern — subscribe + dispatch by `msg.Action`.
+
+### 0.5 Global Admin — New/Edit/Delete buttons empty on Admin tab
+On `apps/desktop/MainWindow.xaml` the Admin tab's New / Edit / Delete / Refresh Data / Refresh All buttons all have `() => { }`. These were meant to route by active panel (Users / Roles / Lookups / Ribbon Config / Ribbon Admin) but never got their dispatcher filled in.
+- [ ] **Admin ▸ New** adds row to active admin panel
+- [ ] **Admin ▸ Edit** opens edit dialog for selected row
+- [ ] **Admin ▸ Delete** deletes selected row
+- [ ] **Admin ▸ Refresh Data** reloads active panel
+- [ ] **Global Admin ▸ Refresh All** reloads every global-admin panel
+
+**Fix**: port `AdminNewButton_ItemClick` / similar handlers from older commits + wire active-panel dispatch based on `DockController.SelectedPanel`.
+
+### 0.6 Prevention — add ribbon audit tests for every module
+
+Networking module already has `NetworkingRibbonAuditTests` which scans the ribbon registry and asserts every button has a non-placeholder handler. Other modules lack this test coverage — drift slid in silently.
+- [ ] Copy the test pattern into `CrmRibbonAuditTests`
+- [ ] Copy into `ProjectsRibbonAuditTests`
+- [ ] Copy into `AuditRibbonAuditTests`
+- [ ] Copy into `ServiceDeskRibbonAuditTests`
+- [ ] Copy into `AdminRibbonAuditTests`
+- [ ] All five new test classes should fail the guardrail that the stub-lambda `() => { }` pattern isn't present in ribbon handler wiring.
 
 ---
 
