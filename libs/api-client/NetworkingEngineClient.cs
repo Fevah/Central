@@ -1126,6 +1126,15 @@ public class NetworkingEngineClient : IDisposable
     public Task<WhoAmIDto> WhoAmIAsync(Guid organizationId, CancellationToken ct = default)
         => GetAsync<WhoAmIDto>($"/api/net/whoami?organizationId={organizationId}", ct);
 
+    /// <summary>Compound tenant summary — every entity count in
+    /// the net.* schema in one round-trip. Replaces the N-parallel
+    /// listX pattern for dashboards that just want .Count of each
+    /// thin list.</summary>
+    public Task<TenantSummaryDto> TenantSummaryAsync(Guid organizationId,
+        CancellationToken ct = default)
+        => GetAsync<TenantSummaryDto>(
+            $"/api/net/tenant/summary?organizationId={organizationId}", ct);
+
     /// <summary>Full scope-grant list for the current caller. Bypasses
     /// the read:ScopeGrant gate (reading your own access is always
     /// permitted). Service-origin calls come back with an empty list.
@@ -1761,6 +1770,17 @@ public record ServerNicListRowDto(Guid Id, Guid ServerId, string? ServerHostname
 /// Service-origin calls come back with userId=null + grantCount=0.</summary>
 public record WhoAmIDto(int? UserId, int GrantCount,
     List<string> Actions, List<string> EntityTypes);
+
+/// <summary>Compound tenant-wide entity counts — matches
+/// `TenantSummary` in services/networking-engine/src/api.rs. Every
+/// field is a bigint COUNT(*) over the relevant net.* table with
+/// deleted_at IS NULL.</summary>
+public record TenantSummaryDto(long Devices, long Servers, long Vlans,
+    long Links, long Subnets, long IpAddresses, long Ports,
+    long AggregateEthernet, long Modules, long DhcpRelayTargets,
+    long AsnAllocations, long MlagDomains, long MstpRules,
+    long ReservationShelf, long Rooms, long Racks, long ChangeSets,
+    long ScopeGrants, long Buildings, long Sites, long Regions);
 
 // ─── Naming override DTOs (Phase 10b) ────────────────────────────────
 
