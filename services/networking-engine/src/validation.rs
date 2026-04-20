@@ -2271,6 +2271,11 @@ pub struct RunValidationBody {
     /// Optional — run one specific rule. Useful for "fix it, re-run that
     /// rule to confirm" UX without the overhead of every rule.
     pub rule_code: Option<String>,
+    /// Optional — run only rules matching this category string
+    /// ("Integrity" / "Consistency" / "Safety" / "Advisory"). Lets
+    /// dashboards drive a "run only integrity rules" workflow
+    /// without materialising the per-code list client-side.
+    pub category: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -2305,10 +2310,15 @@ pub async fn run_validation(
     let mut rules_run = 0usize;
     let mut rules_with_findings = 0usize;
 
+    let category: Option<&str> = body.category.as_deref();
+
     for r in resolved {
         if !r.effective_enabled { continue; }
         if let Some(code) = target {
             if r.meta.code != code { continue; }
+        }
+        if let Some(cat) = category {
+            if r.meta.category != cat { continue; }
         }
         rules_run += 1;
         let before_len = violations.len();
