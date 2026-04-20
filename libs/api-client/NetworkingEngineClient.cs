@@ -216,6 +216,26 @@ public class NetworkingEngineClient : IDisposable
         await EnsureSuccessAsync(resp, ct);
     }
 
+    /// <summary>Convenience: full audit timeline for a change-set.
+    /// Chains <see cref="GetChangeSetAsync"/> (to resolve the set's
+    /// correlation_id) with <see cref="ListAuditAsync"/> narrowed
+    /// to that correlation id. Captures both the set's own
+    /// lifecycle events AND any child-entity audits stamped during
+    /// apply time (rename / carve / grant-change) that share the
+    /// same correlation id. Mirrors the web change-set detail
+    /// Timeline section.</summary>
+    public async Task<List<AuditRowDto>> ListChangeSetTimelineAsync(Guid setId,
+        Guid organizationId, int limit = 500, CancellationToken ct = default)
+    {
+        var detail = await GetChangeSetAsync(setId, organizationId, ct);
+        return await ListAuditAsync(new ListAuditRequest
+        {
+            OrganizationId = organizationId,
+            CorrelationId  = detail.CorrelationId,
+            Limit          = limit,
+        }, ct);
+    }
+
     public Task<ChangeSetDto> SubmitChangeSetAsync(Guid setId, Guid organizationId,
         int requiredApprovals = 1, CancellationToken ct = default)
         => PostAsync<ChangeSetDto>(
