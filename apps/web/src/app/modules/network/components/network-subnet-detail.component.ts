@@ -52,6 +52,10 @@ import { environment } from '../../../../environments/environment';
       <div class="meta-row"><label>Linked VLAN</label>  <span>{{ subnet.vlanTag ?? '—' }}</span></div>
       <div class="meta-row"><label>Status</label>       <span>{{ subnet.status }}</span></div>
       <div class="meta-row"><label>Version</label>      <span>{{ subnet.version }}</span></div>
+      <div class="meta-row">
+        <label>IP addresses</label>
+        <span>{{ addressCount === null ? '…' : addressCount }}</span>
+      </div>
       <div class="meta-row full"><label>UUID</label>    <code>{{ subnet.id }}</code></div>
     </div>
 
@@ -119,6 +123,10 @@ export class NetworkSubnetDetailComponent implements OnInit {
   audit: AuditRow[] = [];
   addresses: IpAddressListRow[] = [];
   loadingAddresses = false;
+  /// Summary count enrichment — populated on page load via
+  /// listIpAddresses(subnetId) narrower; pre-populates
+  /// this.addresses so the Addresses tab doesn't re-fetch.
+  addressCount: number | null = null;
   status = '';
 
   constructor(
@@ -137,9 +145,26 @@ export class NetworkSubnetDetailComponent implements OnInit {
       next: (rows) => {
         this.subnet = rows.find(r => r.id === this.subnetId) ?? null;
         this.status = this.subnet ? '' : 'Subnet not found.';
-        if (this.subnet) this.loadTabData();
+        if (this.subnet) {
+          this.loadTabData();
+          this.loadSummaryCounts();
+        }
       },
       error: (err) => { this.status = `Load failed: ${err?.message ?? err}`; },
+    });
+  }
+
+  /// Summary-tab enrichment — one listIpAddresses call on page
+  /// load so the address count surfaces alongside the basic
+  /// subnet metadata. Pre-populates this.addresses to avoid
+  /// re-fetching when the Addresses tab opens.
+  private loadSummaryCounts(): void {
+    this.engine.listIpAddresses(environment.defaultTenantId, this.subnetId).subscribe({
+      next: (rows) => {
+        this.addresses = rows ?? [];
+        this.addressCount = this.addresses.length;
+      },
+      error: () => { this.addressCount = 0; },
     });
   }
 
