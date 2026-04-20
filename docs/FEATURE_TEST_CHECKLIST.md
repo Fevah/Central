@@ -3724,6 +3724,45 @@ pointer resolves.
       — catches stale profile pointers that break NIC fan-out.
 - [ ] Catalog now at 152 rules; guardrail test still green.
 
+### 7.X.38 Phase 10b — twenty-first wave (commits 2026-04-20+)
+
+Device + server detail Summary count enrichment. Validation
+batches 38 + 39 close the remaining nullable-FK gaps and add
+three Advisory data-quality rules.
+
+**Validation rule expansion — batch 38** (commit `c181fdc80`)
+- [ ] `server.loopback_ip_address_resolves_active_when_set` (Warning)
+- [ ] `link_endpoint.port_resolves_active_when_set` (Warning)
+- [ ] `server.building_resolves_active_when_set` (Warning) —
+      sibling to server.active_has_building (NULL case).
+- [ ] Catalog now at 155 rules.
+
+**Device detail Summary counts** (commit `943983388`)
+- [ ] /network/net-device/:id Summary tab shows Ports /
+      Modules / Aggregate-ethernet counts.
+- [ ] loadSummaryCounts() fires three parallel thin-list calls
+      on page load.
+- [ ] "…" placeholder while loading, silent-fall-back-to-0 on
+      individual call errors.
+- [ ] Counts cached on the component; no re-fetch on tab switch.
+
+**Server detail Summary counts** (commit `3e4cc972b`)
+- [ ] /network/net-server/:id Summary tab shows NIC count.
+- [ ] Pre-populates this.nics from the summary call so flipping
+      to the NICs tab doesn't refetch.
+
+**Validation rule expansion — batch 39** (commit `fabff188e`)
+- [ ] `server_nic.target_port_resolves_active_when_set` (Warning)
+      — sibling to link_endpoint.port_resolves_active_when_set.
+      Complements the existing server_nic.target_port_resolves
+      (existence check) with a lifecycle-state check.
+- [ ] `rack.uheight_within_reason` (Info, Advisory) — flags
+      u_height > 60 (most racks 42U, enterprise cap 48U).
+- [ ] `device.firmware_version_set_when_active` (Info,
+      Advisory) — Active device should record firmware_version
+      for upgrade-planning + CVE-scan reports.
+- [ ] Catalog now at 158 rules; guardrail test still green.
+
 ---
 
 ## 8. Enterprise SaaS
