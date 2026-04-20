@@ -1659,6 +1659,45 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "port.module_resolves_active_when_set",
+        name: "Port module_id must resolve to an Active module when set",
+        description: "Optional module pointer — when set, must \
+                      resolve to an Active net.module. Port cleanly \
+                      ships without a module (software-only / \
+                      virtual / logical ports), so Warning rather \
+                      than Error.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "port.breakout_parent_resolves_active_when_set",
+        name: "Port breakout_parent_id must resolve to an Active port when set",
+        description: "Breakout child ports reference their physical \
+                      parent via breakout_parent_id. If the parent \
+                      goes non-Active the child is stranded without \
+                      a backing connector. Companion to \
+                      port.breakout_parent_on_same_device which \
+                      cross-checks that the parent lives on the \
+                      same device.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "port.aggregate_ethernet_resolves_active_when_set",
+        name: "Port aggregate_ethernet_id must resolve to an Active AE when set",
+        description: "A port's membership in an AE bundle uses \
+                      aggregate_ethernet_id. If the bundle goes \
+                      non-Active the port's membership is a dangling \
+                      pointer — config-gen would still render the \
+                      port but omit the LAG config, which surprises \
+                      operators.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1984,6 +2023,9 @@ async fn dispatch(
         "link.link_type_resolves_active"          => run_link_type_active(pool, org_id, severity, out).await,
         "link.building_resolves_active_when_set"  => run_link_building_active(pool, org_id, severity, out).await,
         "server.management_ip_set_when_active"    => run_server_management_ip(pool, org_id, severity, out).await,
+        "port.module_resolves_active_when_set"    => run_port_module_active(pool, org_id, severity, out).await,
+        "port.breakout_parent_resolves_active_when_set" => run_port_breakout_active(pool, org_id, severity, out).await,
+        "port.aggregate_ethernet_resolves_active_when_set" => run_port_ae_active(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -5196,6 +5238,84 @@ async fn run_server_management_ip(
     Ok(())
 }
 
+/// `port.module_resolves_active_when_set` — port's optional module must be live.
+async fn run_port_module_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT p.id, p.interface_name, COALESCE(m.status::text, '(missing)')
+           FROM net.port p
+           LEFT JOIN net.module m ON m.id = p.module_id
+          WHERE p.organization_id = $1
+            AND p.deleted_at IS NULL
+            AND p.module_id IS NOT NULL
+            AND (m.id IS NULL
+                 OR m.deleted_at IS NOT NULL
+                 OR m.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, iface, status) in rows {
+        out.push(Violation {
+            rule_code: "port.module_resolves_active_when_set".into(),
+            severity, entity_type: "Port".into(), entity_id: Some(id),
+            message: format!(
+                "Port '{iface}' references a module with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `port.breakout_parent_resolves_active_when_set` — parent port must be live.
+async fn run_port_breakout_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT c.id, c.interface_name, COALESCE(p.status::text, '(missing)')
+           FROM net.port c
+           LEFT JOIN net.port p ON p.id = c.breakout_parent_id
+          WHERE c.organization_id = $1
+            AND c.deleted_at IS NULL
+            AND c.breakout_parent_id IS NOT NULL
+            AND (p.id IS NULL
+                 OR p.deleted_at IS NOT NULL
+                 OR p.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, iface, status) in rows {
+        out.push(Violation {
+            rule_code: "port.breakout_parent_resolves_active_when_set".into(),
+            severity, entity_type: "Port".into(), entity_id: Some(id),
+            message: format!(
+                "Breakout child port '{iface}' references a parent port with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `port.aggregate_ethernet_resolves_active_when_set` — AE bundle must be live.
+async fn run_port_ae_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT p.id, p.interface_name, COALESCE(a.status::text, '(missing)')
+           FROM net.port p
+           LEFT JOIN net.aggregate_ethernet a ON a.id = p.aggregate_ethernet_id
+          WHERE p.organization_id = $1
+            AND p.deleted_at IS NULL
+            AND p.aggregate_ethernet_id IS NOT NULL
+            AND (a.id IS NULL
+                 OR a.deleted_at IS NOT NULL
+                 OR a.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, iface, status) in rows {
+        out.push(Violation {
+            rule_code: "port.aggregate_ethernet_resolves_active_when_set".into(),
+            severity, entity_type: "Port".into(), entity_id: Some(id),
+            message: format!(
+                "Port '{iface}' references an aggregate-ethernet bundle with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -5758,6 +5878,9 @@ mod tests {
             "link.link_type_resolves_active",
             "link.building_resolves_active_when_set",
             "server.management_ip_set_when_active",
+            "port.module_resolves_active_when_set",
+            "port.breakout_parent_resolves_active_when_set",
+            "port.aggregate_ethernet_resolves_active_when_set",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
