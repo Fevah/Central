@@ -3557,6 +3557,49 @@ batch 33 closes the location-FK hierarchy on device + server.
 - [ ] Note: commit message said "141" — off by one, actual
       catalog count is 137 + 3 = 140.
 
+### 7.X.34 Phase 10b — seventeenth wave (commits 2026-04-20+)
+
+Recent-activity widgets on the overview + change-set detail
+pages. Validation batch 34 finishes the link lifecycle resolves
++ adds a server management-IP advisory. ApiClient convenience
+for change-set timelines.
+
+**Overview — Recent activity section** (commit `4feec7222`)
+- [ ] New "Recent activity" section on /network/overview below
+      the validation top-rules table.
+- [ ] Renders last 10 audit entries via listAudit({ limit: 10 }).
+- [ ] Four-column table: At / Actor / Entity / Action.
+- [ ] Click row drills to /network/audit/:entityType/:entityId
+      (no-op when entityId is null).
+- [ ] Inline "see all →" link to /network/audit-search.
+
+**Change-set detail — Timeline section** (commit `21f2db745`)
+- [ ] New Timeline section below the Items grid on the change-
+      set detail page.
+- [ ] Fetches audit entries by correlation_id via listAudit({
+      correlationId, limit: 500 }).
+- [ ] Covers ChangeSet lifecycle events AND child-entity
+      audits stamped during apply time.
+- [ ] Auto-loads on page load; Refresh button re-queries.
+
+**Validation rule expansion — batch 34** (commit `6ea7a8639`)
+- [ ] `link.link_type_resolves_active` (Error) — link's parent
+      link_type catalog row must be Active.
+- [ ] `link.building_resolves_active_when_set` (Warning) —
+      link's optional building_id must be Active when set.
+- [ ] `server.management_ip_set_when_active` (Warning,
+      Advisory) — Active servers should carry a management_ip.
+      Parallel to device.management_ip_for_active.
+- [ ] Catalog now at 143 rules; guardrail test
+      `dispatcher_has_arm_for_every_catalog_rule` still green.
+
+**C# ApiClient — ListChangeSetTimelineAsync** (commit `88d82810b`)
+- [ ] ListChangeSetTimelineAsync(setId, organizationId,
+      limit=500, ct) chains GetChangeSetAsync + ListAuditAsync
+      to return the set's full timeline.
+- [ ] Reuses existing DTOs — no new types added.
+- [ ] 0 errors on build.
+
 ---
 
 ## 8. Enterprise SaaS
