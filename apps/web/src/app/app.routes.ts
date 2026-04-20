@@ -99,6 +99,7 @@ export const routes: Routes = [
           { path: 'audit-search',    loadComponent: () => import('./modules/network/components/network-audit-search.component').then(m => m.NetworkAuditSearchComponent) },
           { path: 'my-activity',     loadComponent: () => import('./modules/network/components/network-my-activity.component').then(m => m.NetworkMyActivityComponent) },
           { path: 'my-grants',       loadComponent: () => import('./modules/network/components/network-my-grants.component').then(m => m.NetworkMyGrantsComponent) },
+          { path: 'correlations',    loadComponent: () => import('./modules/network/components/network-correlations.component').then(m => m.NetworkCorrelationsComponent) },
           { path: 'audit/:entityType/:entityId',
             loadComponent: () => import('./modules/network/components/network-audit-timeline.component').then(m => m.NetworkAuditTimelineComponent) },
         ]

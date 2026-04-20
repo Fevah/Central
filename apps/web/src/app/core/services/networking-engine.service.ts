@@ -385,6 +385,23 @@ export interface AuditTrendPoint {
   count: number;
 }
 
+/// One correlation's rollup — distinct correlation_id across the
+/// tenant with summary + optional change-set metadata. Matches
+/// `RecentCorrelation` in services/networking-engine/src/audit.rs.
+/// setId/setTitle/setStatus are null when no net.change_set shares
+/// the correlation (ad-hoc allocation retires, bulk edits without
+/// a wrapper set).
+export interface RecentCorrelation {
+  correlationId: string;
+  entryCount: number;
+  distinctEntityTypes: number;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  setId: string | null;
+  setTitle: string | null;
+  setStatus: string | null;
+}
+
 /// One actor's audit activity rollup. Matches `TopActor` in
 /// services/networking-engine/src/audit.rs. `actorUserId` +
 /// `actorDisplay` are both nullable for service-origin rows.
@@ -859,6 +876,19 @@ export class NetworkingEngineService {
   listMyGrants(organizationId: string): Observable<ScopeGrant[]> {
     const params = new HttpParams().set('organizationId', organizationId);
     return this.http.get<ScopeGrant[]>(`${this.base}/api/net/whoami/grants`, { params });
+  }
+
+  /// Recent distinct correlation ids across the tenant. "What
+  /// bulk operations landed lately?" rollup — one row per
+  /// correlation_id with summary + optional change-set join.
+  listRecentCorrelations(
+    organizationId: string,
+    limit?: number,
+  ): Observable<RecentCorrelation[]> {
+    let params = new HttpParams().set('organizationId', organizationId);
+    if (limit !== undefined) params = params.set('limit', limit.toString());
+    return this.http.get<RecentCorrelation[]>(
+      `${this.base}/api/net/audit/correlations`, { params });
   }
 
   /// Per-entity-type facet counts for a search query. Returns one row
