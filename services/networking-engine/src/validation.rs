@@ -1911,6 +1911,40 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Info,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "device.management_ip_unique_per_tenant_when_set",
+        name: "Device management_ip should be unique per tenant when set",
+        description: "Two devices sharing a management_ip in the \
+                      same tenant collide on SSH / probe / SNMP \
+                      automation. Warning severity — the rows \
+                      remain valid but the probe subsystem will \
+                      double-ping or target the wrong box.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "port.admin_up_false_on_active_status",
+        name: "Active port with admin_up=false is suspicious",
+        description: "A port in entity status='Active' but with \
+                      admin_up=false signals an in-progress planned \
+                      downtime, a stale import, or a misconfiguration. \
+                      Advisory — surfaces the condition for operator \
+                      review without blocking config-gen.",
+        category: "Advisory",
+        default_severity: Severity::Info,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server.management_ip_unique_per_tenant_when_set",
+        name: "Server management_ip should be unique per tenant when set",
+        description: "Mirror of device.management_ip_unique_per_\
+                      tenant_when_set on the server branch. Same \
+                      probe / SSH / SNMP collision risk.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2257,6 +2291,9 @@ async fn dispatch(
         "device.last_ping_ok_when_active"         => run_device_ping_ok(pool, org_id, severity, out).await,
         "server.last_ping_ok_when_active"         => run_server_ping_ok(pool, org_id, severity, out).await,
         "link.description_set_when_active"        => run_link_description_set(pool, org_id, severity, out).await,
+        "device.management_ip_unique_per_tenant_when_set" => run_device_mgmt_ip_unique(pool, org_id, severity, out).await,
+        "port.admin_up_false_on_active_status"    => run_port_admin_up_active(pool, org_id, severity, out).await,
+        "server.management_ip_unique_per_tenant_when_set" => run_server_mgmt_ip_unique(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -6021,6 +6058,87 @@ async fn run_link_description_set(
     Ok(())
 }
 
+/// `device.management_ip_unique_per_tenant_when_set` — flag
+/// devices sharing a management_ip. Every colliding row emits.
+async fn run_device_mgmt_ip_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT d.id, d.hostname, host(d.management_ip)
+           FROM net.device d
+          WHERE d.organization_id = $1
+            AND d.deleted_at IS NULL
+            AND d.management_ip IS NOT NULL
+            AND EXISTS (
+                SELECT 1 FROM net.device d2
+                 WHERE d2.organization_id = d.organization_id
+                   AND d2.deleted_at IS NULL
+                   AND d2.management_ip = d.management_ip
+                   AND d2.id <> d.id)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname, ip) in rows {
+        out.push(Violation {
+            rule_code: "device.management_ip_unique_per_tenant_when_set".into(),
+            severity, entity_type: "Device".into(), entity_id: Some(id),
+            message: format!(
+                "Device '{hostname}' management_ip {ip} collides with another device in the tenant."),
+        });
+    }
+    Ok(())
+}
+
+/// `server.management_ip_unique_per_tenant_when_set` — mirror on server.
+async fn run_server_mgmt_ip_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT s.id, s.hostname, host(s.management_ip)
+           FROM net.server s
+          WHERE s.organization_id = $1
+            AND s.deleted_at IS NULL
+            AND s.management_ip IS NOT NULL
+            AND EXISTS (
+                SELECT 1 FROM net.server s2
+                 WHERE s2.organization_id = s.organization_id
+                   AND s2.deleted_at IS NULL
+                   AND s2.management_ip = s.management_ip
+                   AND s2.id <> s.id)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname, ip) in rows {
+        out.push(Violation {
+            rule_code: "server.management_ip_unique_per_tenant_when_set".into(),
+            severity, entity_type: "Server".into(), entity_id: Some(id),
+            message: format!(
+                "Server '{hostname}' management_ip {ip} collides with another server in the tenant."),
+        });
+    }
+    Ok(())
+}
+
+/// `port.admin_up_false_on_active_status` — Active port should
+/// have admin_up=true.
+async fn run_port_admin_up_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, interface_name
+           FROM net.port
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND status = 'Active'::net.entity_status
+            AND admin_up = false")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, iface) in rows {
+        out.push(Violation {
+            rule_code: "port.admin_up_false_on_active_status".into(),
+            severity, entity_type: "Port".into(), entity_id: Some(id),
+            message: format!(
+                "Port '{iface}' is Active but admin_up=false — planned downtime or stale import."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -6604,6 +6722,9 @@ mod tests {
             "device.last_ping_ok_when_active",
             "server.last_ping_ok_when_active",
             "link.description_set_when_active",
+            "device.management_ip_unique_per_tenant_when_set",
+            "port.admin_up_false_on_active_status",
+            "server.management_ip_unique_per_tenant_when_set",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
