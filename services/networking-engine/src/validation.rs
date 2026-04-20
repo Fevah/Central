@@ -1623,6 +1623,42 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "link.link_type_resolves_active",
+        name: "Link link_type_id must resolve to an Active link_type",
+        description: "A link whose parent link_type is soft-deleted \
+                      or non-Active loses its naming template + \
+                      config-gen hints. Error severity because the \
+                      link won't render correctly if the type row \
+                      is gone.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "link.building_resolves_active_when_set",
+        name: "Link building_id must resolve to an Active building when set",
+        description: "Links with an optional building_id pointer \
+                      for location scoping — when set, it must \
+                      resolve to an Active building. Warning: \
+                      config-gen still renders, but building-scoped \
+                      scope-grants can't reach the link.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server.management_ip_set_when_active",
+        name: "Active server should carry management_ip",
+        description: "Servers in status='Active' are expected to \
+                      be reachable, which requires a management_ip. \
+                      Advisory — a server without one still ships, \
+                      but probe / SSH automation can't exercise it. \
+                      Parallels device.management_ip_for_active.",
+        category: "Advisory",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1945,6 +1981,9 @@ async fn dispatch(
         "device.building_resolves_active_when_set" => run_device_building_active(pool, org_id, severity, out).await,
         "server.room_resolves_active_when_set"    => run_server_room_active(pool, org_id, severity, out).await,
         "server.rack_resolves_active_when_set"    => run_server_rack_active(pool, org_id, severity, out).await,
+        "link.link_type_resolves_active"          => run_link_type_active(pool, org_id, severity, out).await,
+        "link.building_resolves_active_when_set"  => run_link_building_active(pool, org_id, severity, out).await,
+        "server.management_ip_set_when_active"    => run_server_management_ip(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -5082,6 +5121,81 @@ async fn run_server_rack_active(
     Ok(())
 }
 
+/// `link.link_type_resolves_active` — link's parent link_type must be live.
+async fn run_link_type_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT l.id, l.link_code, COALESCE(t.status::text, '(missing)')
+           FROM net.link l
+           LEFT JOIN net.link_type t ON t.id = l.link_type_id
+          WHERE l.organization_id = $1
+            AND l.deleted_at IS NULL
+            AND (t.id IS NULL
+                 OR t.deleted_at IS NOT NULL
+                 OR t.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, status) in rows {
+        out.push(Violation {
+            rule_code: "link.link_type_resolves_active".into(),
+            severity, entity_type: "Link".into(), entity_id: Some(id),
+            message: format!(
+                "Link '{code}' references a link_type with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `link.building_resolves_active_when_set` — link's optional building must be live.
+async fn run_link_building_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT l.id, l.link_code, COALESCE(b.status::text, '(missing)')
+           FROM net.link l
+           LEFT JOIN net.building b ON b.id = l.building_id
+          WHERE l.organization_id = $1
+            AND l.deleted_at IS NULL
+            AND l.building_id IS NOT NULL
+            AND (b.id IS NULL
+                 OR b.deleted_at IS NOT NULL
+                 OR b.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, status) in rows {
+        out.push(Violation {
+            rule_code: "link.building_resolves_active_when_set".into(),
+            severity, entity_type: "Link".into(), entity_id: Some(id),
+            message: format!(
+                "Link '{code}' references a building with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `server.management_ip_set_when_active` — active server should have management_ip.
+async fn run_server_management_ip(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, hostname
+           FROM net.server
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND status = 'Active'::net.entity_status
+            AND management_ip IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname) in rows {
+        out.push(Violation {
+            rule_code: "server.management_ip_set_when_active".into(),
+            severity, entity_type: "Server".into(), entity_id: Some(id),
+            message: format!(
+                "Active server '{hostname}' has no management_ip — \
+                 probe + SSH automation can't reach it."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -5641,6 +5755,9 @@ mod tests {
             "device.building_resolves_active_when_set",
             "server.room_resolves_active_when_set",
             "server.rack_resolves_active_when_set",
+            "link.link_type_resolves_active",
+            "link.building_resolves_active_when_set",
+            "server.management_ip_set_when_active",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
