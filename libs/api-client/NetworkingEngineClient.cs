@@ -174,11 +174,30 @@ public class NetworkingEngineClient : IDisposable
         => PostAsync<ChangeSetDto>("/api/net/change-sets", request, ct);
 
     public Task<List<ChangeSetDto>> ListChangeSetsAsync(Guid organizationId,
-        string? status = null, int? limit = null, CancellationToken ct = default)
+        string? status = null, int? limit = null, int? requestedByUserId = null,
+        CancellationToken ct = default)
     {
         var qs = BuildQuery(("organizationId", organizationId.ToString()),
-                            ("status", status), ("limit", limit?.ToString()));
+                            ("status", status),
+                            ("limit", limit?.ToString()),
+                            ("requestedByUserId", requestedByUserId?.ToString()));
         return GetAsync<List<ChangeSetDto>>($"/api/net/change-sets{qs}", ct);
+    }
+
+    /// <summary>Convenience: list change-sets the current caller
+    /// authored. Chains <see cref="WhoAmIAsync"/> to resolve the
+    /// user id from the X-User-Id header, then forwards to
+    /// <see cref="ListChangeSetsAsync"/> narrowed by
+    /// <c>requestedByUserId</c>. Service-origin callers get an
+    /// empty list (no user id, no ownership).</summary>
+    public async Task<List<ChangeSetDto>> ListMyChangeSetsAsync(Guid organizationId,
+        string? status = null, int? limit = null, CancellationToken ct = default)
+    {
+        var me = await WhoAmIAsync(organizationId, ct);
+        if (me.UserId is null) return new List<ChangeSetDto>();
+        return await ListChangeSetsAsync(organizationId,
+            status: status, limit: limit,
+            requestedByUserId: me.UserId.Value, ct: ct);
     }
 
     public Task<ChangeSetDetailDto> GetChangeSetAsync(Guid id, Guid organizationId,
