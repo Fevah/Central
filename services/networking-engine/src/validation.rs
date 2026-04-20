@@ -1945,6 +1945,42 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "server_nic.admin_up_false_on_active_status",
+        name: "Active NIC with admin_up=false is suspicious",
+        description: "A NIC in entity status='Active' but with \
+                      admin_up=false signals a planned downtime, \
+                      a stale import, or a misconfiguration. Mirror \
+                      of port.admin_up_false_on_active_status on \
+                      the server-NIC branch.",
+        category: "Advisory",
+        default_severity: Severity::Info,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "port.speed_mbps_reasonable_when_set",
+        name: "Port speed_mbps should be within realistic range when set",
+        description: "Port speed_mbps outside 100-400000 Mbps is \
+                      almost always a typo — 100 Mbps is the low \
+                      end of modern gear, 400 Gbps is the current \
+                      high-end cap. Advisory — the row remains \
+                      valid, but surfaces data-entry anomalies.",
+        category: "Advisory",
+        default_severity: Severity::Info,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "rack.max_devices_positive_when_set",
+        name: "Rack max_devices should be positive when set",
+        description: "A non-null max_devices <= 0 is a data-entry \
+                      mistake — you can't plan any devices into a \
+                      rack whose max is zero or negative. DB has no \
+                      CHECK on this column so the rule catches it \
+                      at validation time.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2294,6 +2330,9 @@ async fn dispatch(
         "device.management_ip_unique_per_tenant_when_set" => run_device_mgmt_ip_unique(pool, org_id, severity, out).await,
         "port.admin_up_false_on_active_status"    => run_port_admin_up_active(pool, org_id, severity, out).await,
         "server.management_ip_unique_per_tenant_when_set" => run_server_mgmt_ip_unique(pool, org_id, severity, out).await,
+        "server_nic.admin_up_false_on_active_status" => run_nic_admin_up_active(pool, org_id, severity, out).await,
+        "port.speed_mbps_reasonable_when_set"     => run_port_speed_reasonable(pool, org_id, severity, out).await,
+        "rack.max_devices_positive_when_set"      => run_rack_max_devices_positive(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -6139,6 +6178,76 @@ async fn run_port_admin_up_active(
     Ok(())
 }
 
+/// `server_nic.admin_up_false_on_active_status` — Active NIC with admin_up=false.
+async fn run_nic_admin_up_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32)> = sqlx::query_as(
+        "SELECT id, nic_index
+           FROM net.server_nic
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND status = 'Active'::net.entity_status
+            AND admin_up = false")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, idx) in rows {
+        out.push(Violation {
+            rule_code: "server_nic.admin_up_false_on_active_status".into(),
+            severity, entity_type: "ServerNic".into(), entity_id: Some(id),
+            message: format!(
+                "NIC {idx} is Active but admin_up=false — planned downtime or stale import."),
+        });
+    }
+    Ok(())
+}
+
+/// `port.speed_mbps_reasonable_when_set` — flag speed_mbps
+/// outside 100..=400000 Mbps when set.
+async fn run_port_speed_reasonable(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i64)> = sqlx::query_as(
+        "SELECT id, interface_name, speed_mbps
+           FROM net.port
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND speed_mbps IS NOT NULL
+            AND (speed_mbps < 100 OR speed_mbps > 400000)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, iface, speed) in rows {
+        out.push(Violation {
+            rule_code: "port.speed_mbps_reasonable_when_set".into(),
+            severity, entity_type: "Port".into(), entity_id: Some(id),
+            message: format!(
+                "Port '{iface}' speed_mbps={speed} is outside the realistic 100-400000 Mbps range."),
+        });
+    }
+    Ok(())
+}
+
+/// `rack.max_devices_positive_when_set` — flag max_devices <= 0.
+async fn run_rack_max_devices_positive(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i32)> = sqlx::query_as(
+        "SELECT id, rack_code, max_devices
+           FROM net.rack
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND max_devices IS NOT NULL
+            AND max_devices <= 0")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code, max_devices) in rows {
+        out.push(Violation {
+            rule_code: "rack.max_devices_positive_when_set".into(),
+            severity, entity_type: "Rack".into(), entity_id: Some(id),
+            message: format!(
+                "Rack '{code}' has max_devices={max_devices} — must be > 0 to plan devices into it."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -6725,6 +6834,9 @@ mod tests {
             "device.management_ip_unique_per_tenant_when_set",
             "port.admin_up_false_on_active_status",
             "server.management_ip_unique_per_tenant_when_set",
+            "server_nic.admin_up_false_on_active_status",
+            "port.speed_mbps_reasonable_when_set",
+            "rack.max_devices_positive_when_set",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
