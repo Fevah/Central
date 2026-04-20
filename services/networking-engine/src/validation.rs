@@ -2182,6 +2182,38 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "server.rack_implies_room",
+        name: "Server with rack_id should also carry room_id",
+        description: "Mirror of device.rack_implies_room on the \
+                      server branch. Same hierarchy-drill + scope-\
+                      grant-expansion concern.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "mlag_domain.display_name_no_leading_trailing_whitespace",
+        name: "MLAG domain display_name should not have leading or trailing whitespace",
+        description: "Trim-hygiene mirror on mlag_domain display_\
+                      name. Domain names drive config-gen's LAG \
+                      labels — stray whitespace makes the rendered \
+                      output differ from what operators expect.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "rack.rack_code_no_leading_trailing_whitespace",
+        name: "Rack rack_code should not have leading or trailing whitespace",
+        description: "Trim-hygiene mirror on rack rack_code. \
+                      rack_code is UNIQUE per room + referenced \
+                      from imports by exact-string match so \
+                      whitespace would break lookups silently.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2562,6 +2594,9 @@ async fn dispatch(
         "port.breakout_parent_not_self_loop"      => run_port_breakout_self_loop(pool, org_id, severity, out).await,
         "subnet.parent_subnet_not_self_loop"      => run_subnet_parent_self_loop(pool, org_id, severity, out).await,
         "device.rack_implies_room"                => run_device_rack_implies_room(pool, org_id, severity, out).await,
+        "server.rack_implies_room"                => run_server_rack_implies_room(pool, org_id, severity, out).await,
+        "mlag_domain.display_name_no_leading_trailing_whitespace" => run_mlag_domain_name_ws(pool, org_id, severity, out).await,
+        "rack.rack_code_no_leading_trailing_whitespace" => run_rack_code_ws(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -6898,6 +6933,73 @@ async fn run_device_rack_implies_room(
     Ok(())
 }
 
+/// `server.rack_implies_room` — mirror on server branch.
+async fn run_server_rack_implies_room(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, hostname
+           FROM net.server
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND rack_id IS NOT NULL
+            AND room_id IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname) in rows {
+        out.push(Violation {
+            rule_code: "server.rack_implies_room".into(),
+            severity, entity_type: "Server".into(), entity_id: Some(id),
+            message: format!(
+                "Server '{hostname}' has rack_id but no room_id — hierarchy drill breaks at the room level."),
+        });
+    }
+    Ok(())
+}
+
+/// `mlag_domain.display_name_no_leading_trailing_whitespace` — trim-equal.
+async fn run_mlag_domain_name_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, display_name
+           FROM net.mlag_domain
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (display_name <> btrim(display_name))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, name) in rows {
+        out.push(Violation {
+            rule_code: "mlag_domain.display_name_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "MlagDomain".into(), entity_id: Some(id),
+            message: format!(
+                "MLAG domain display_name '{name}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
+/// `rack.rack_code_no_leading_trailing_whitespace` — trim-equal on rack_code.
+async fn run_rack_code_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, rack_code
+           FROM net.rack
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (rack_code <> btrim(rack_code))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "rack.rack_code_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "Rack".into(), entity_id: Some(id),
+            message: format!(
+                "Rack rack_code '{code}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -7505,6 +7607,9 @@ mod tests {
             "port.breakout_parent_not_self_loop",
             "subnet.parent_subnet_not_self_loop",
             "device.rack_implies_room",
+            "server.rack_implies_room",
+            "mlag_domain.display_name_no_leading_trailing_whitespace",
+            "rack.rack_code_no_leading_trailing_whitespace",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
