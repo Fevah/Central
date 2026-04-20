@@ -400,6 +400,21 @@ public partial class App : System.Windows.Application
                         var loginResult = await apiClient.LoginAsync(AuthContext.Instance.CurrentUser?.Username ?? Environment.UserName);
                         if (loginResult != null)
                         {
+                            // Phase 5 of the module-update system: construct
+                            // the ModuleHostManager now we know the API
+                            // base URL, so SignalR ModuleUpdated events
+                            // have somewhere to land. Hosts register in
+                            // Phase 5b when loaded modules migrate to the
+                            // ALC path.
+                            try
+                            {
+                                Central.Desktop.Services.ModuleUpdateStartup.Initialize(apiUrl);
+                            }
+                            catch (Exception mex)
+                            {
+                                Log($"ModuleUpdateStartup failed: {mex.Message}");
+                            }
+
                             // Connect SignalR for real-time updates
                             await Connectivity.ConnectSignalRAsync($"{apiUrl.TrimEnd('/')}/hubs/notify", loginResult.Token);
                             Log($"API connected: {apiUrl}, SignalR: {Connectivity.Mode}");

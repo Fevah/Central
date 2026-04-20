@@ -2388,6 +2388,10 @@ public partial class MainWindow
                 App.Connectivity.SwitchMode(Central.Engine.Data.DataServiceMode.Api);
                 App.Connectivity.ApiUrl = apiUrl;
 
+                // Phase 5: ensure the ModuleHostManager is wired for the
+                // API URL we're about to connect SignalR against.
+                try { Central.Desktop.Services.ModuleUpdateStartup.Initialize(apiUrl); } catch { /* non-fatal */ }
+
                 await App.Connectivity.ConnectSignalRAsync($"{apiUrl.TrimEnd('/')}/hubs/notify", login.Token);
                 VM.StatusText = $"API connected ({login.Role}) + SignalR active";
                 NotificationService.Instance.Success("API connected", $"Multi-user mode active via {apiUrl}");
@@ -5978,6 +5982,8 @@ public partial class MainWindow
                         // Register API data service and switch mode
                         App.Connectivity.RegisterApi(new Central.ApiClient.ApiDataService(apiClient));
                         App.Connectivity.SwitchMode(Central.Engine.Data.DataServiceMode.Api);
+
+                        try { Central.Desktop.Services.ModuleUpdateStartup.Initialize(url); } catch { /* non-fatal */ }
 
                         await App.Connectivity.ConnectSignalRAsync($"{url.TrimEnd('/')}/hubs/notify", login.Token);
                         BackstageModeStatus.Text = $"API mode active + SignalR connected ({login.Role})";

@@ -208,6 +208,25 @@ public class ConnectivityManager : INotifyPropertyChanged, IDisposable
     {
         _signalR = new Central.ApiClient.SignalRClient();
         _signalR.DataChanged += (table, op, id) => DataChanged?.Invoke(table, op, id);
+
+        // Phase 5 of the module-update system: route server-pushed
+        // ModuleUpdated events to the ModuleHostManager. Guarded on
+        // ManagerOrNull because SignalR can fire before App.xaml.cs
+        // calls ModuleUpdateStartup.Initialize on the cold-start path
+        // (rare but possible under race conditions). Lost events
+        // during the gap are recoverable via the next
+        // /api/modules/catalog poll.
+        _signalR.ModuleUpdated += payload =>
+        {
+            var mgr = Central.Desktop.Services.ModuleUpdateStartup.ManagerOrNull;
+            if (mgr is null) return;
+            var n = Central.Desktop.Services.ModuleUpdateStartup.ToEngineNotification(payload);
+            // Fire-and-forget — the manager handles its own failures
+            // through IModuleUpdatePolicy.HandleFailureAsync + never
+            // throws out of HandleNotificationAsync.
+            _ = mgr.HandleNotificationAsync(n);
+        };
+
         try
         {
             await _signalR.ConnectAsync(hubUrl, jwtToken);
