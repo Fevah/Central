@@ -634,12 +634,16 @@ async fn audit_top_actors_handler(
 /// (when a net.change_set shares the correlation).
 ///
 /// Query params: organizationId (required), limit (default 50,
-/// clamped to 1..=500).
+/// clamped to 1..=500), fromAt + toAt (optional ISO timestamps
+/// bounding the activity window — correlation in-scope if any of
+/// its entries land inside).
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AuditCorrelationsQuery {
     organization_id: Uuid,
     limit: Option<i64>,
+    from_at: Option<chrono::DateTime<chrono::Utc>>,
+    to_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 async fn audit_correlations_handler(
@@ -647,7 +651,7 @@ async fn audit_correlations_handler(
     Query(q): Query<AuditCorrelationsQuery>,
 ) -> Result<impl IntoResponse, EngineError> {
     Ok(Json(audit::recent_correlations(
-        &s.pool, q.organization_id, q.limit).await?))
+        &s.pool, q.organization_id, q.limit, q.from_at, q.to_at).await?))
 }
 
 /// Distinct audit actions seen in the tenant, for populating

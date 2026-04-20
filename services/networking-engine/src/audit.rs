@@ -869,10 +869,15 @@ pub struct RecentCorrelation {
 /// so the UI can show the set title + status inline when one exists
 /// (not every correlation maps to a change-set — ad-hoc allocation
 /// retires, bulk edits without a wrapper, etc. stamp correlations too).
+/// Optional `from_at` / `to_at` narrow the audit_entry scan to a
+/// time window — the correlation is in-scope only if at least one
+/// of its entries lands inside the window.
 pub async fn recent_correlations(
     pool: &PgPool,
     org_id: Uuid,
     limit: Option<i64>,
+    from_at: Option<chrono::DateTime<chrono::Utc>>,
+    to_at: Option<chrono::DateTime<chrono::Utc>>,
 ) -> Result<Vec<RecentCorrelation>, EngineError> {
     // Clamp limit to a reasonable range so pathological callers
     // don't DoS the query with 100k rows.
@@ -893,11 +898,15 @@ pub async fn recent_correlations(
             AND cs.deleted_at IS NULL
           WHERE e.organization_id = $1
             AND e.correlation_id IS NOT NULL
+            AND ($3::timestamptz IS NULL OR e.created_at >= $3)
+            AND ($4::timestamptz IS NULL OR e.created_at <= $4)
           GROUP BY e.correlation_id, cs.id, cs.title, cs.status
           ORDER BY MAX(e.created_at) DESC
           LIMIT $2")
         .bind(org_id)
         .bind(clamped)
+        .bind(from_at)
+        .bind(to_at)
         .fetch_all(pool)
         .await?;
     Ok(rows)
