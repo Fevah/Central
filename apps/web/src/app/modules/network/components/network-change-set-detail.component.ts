@@ -7,7 +7,7 @@ import {
   DxNumberBoxModule, DxFormModule,
 } from 'devextreme-angular';
 import {
-  NetworkingEngineService, ChangeSet, ChangeSetItem,
+  NetworkingEngineService, ChangeSet, ChangeSetItem, AuditRow,
 } from '../../../core/services/networking-engine.service';
 import { environment } from '../../../../environments/environment';
 
@@ -170,6 +170,35 @@ import { environment } from '../../../../environments/environment';
       </div>
     </dx-data-grid>
 
+    <!-- Timeline: audit entries for this set's correlationId. One
+         SQL pass via listAudit({ correlationId }) renders the full
+         change-set lifecycle — every ItemAdded / ItemRemoved /
+         StatusChange audit entry in order. -->
+    <div class="timeline-header">
+      <h3 class="section-title">Timeline</h3>
+      <dx-button text="Refresh" icon="refresh" stylingMode="text"
+                 (onClick)="loadTimeline()" [disabled]="timelineLoading" />
+    </div>
+    <div *ngIf="timelineLoading" class="empty-note">Loading timeline…</div>
+    <div *ngIf="!timelineLoading && !timeline.length" class="empty-note">
+      No audit entries for this correlation id yet.
+    </div>
+    <table class="timeline" *ngIf="timeline.length">
+      <thead>
+        <tr>
+          <th>At</th><th>Actor</th><th>Entity type</th><th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let e of timeline">
+          <td>{{ e.createdAt | date:'yyyy-MM-dd HH:mm:ss' }}</td>
+          <td>{{ e.actorDisplay ?? (e.actorUserId ?? '(service)') }}</td>
+          <td>{{ e.entityType }}</td>
+          <td><code>{{ e.action }}</code></td>
+        </tr>
+      </tbody>
+    </table>
+
     <!-- Add-item dialog — only reachable when the Set is Draft.
          Captures one item + appends to the Set; operator runs it
          again for each item. beforeJson + afterJson are free-form
@@ -249,6 +278,21 @@ import { environment } from '../../../../environments/environment';
     .action-bar { display: flex; gap: 8px; margin: 10px 0; }
     .items-header { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
     .items-header .section-title { margin: 0; }
+    .timeline-header { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+    .timeline-header .section-title { margin: 0; }
+    .timeline { width: 100%; border-collapse: collapse; margin-top: 8px;
+                background: #1e293b; border-radius: 4px; }
+    .timeline th, .timeline td { text-align: left; padding: 6px 12px;
+                                 border-bottom: 1px solid rgba(148,163,184,0.12);
+                                 font-size: 12px; }
+    .timeline tr:last-child td { border-bottom: none; }
+    .timeline code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px;
+                     background: rgba(148,163,184,0.1); padding: 1px 6px; border-radius: 3px;
+                     color: #e2e8f0; }
+    .empty-note { padding: 12px; color: #64748b; font-size: 12px; font-style: italic;
+                  text-align: center;
+                  background: #0f172a; border: 1px solid #1e293b; border-radius: 4px;
+                  margin-top: 8px; }
     .form { display: flex; flex-direction: column; gap: 14px; padding: 4px 2px; }
     .form-row { display: flex; flex-direction: column; gap: 4px; }
     .form-row label { color: #9ca3af; font-size: 12px; }
@@ -269,6 +313,8 @@ import { environment } from '../../../../environments/environment';
 export class NetworkChangeSetDetailComponent implements OnInit {
   set: ChangeSet | null = null;
   items: ChangeSetItem[] = [];
+  timeline: AuditRow[] = [];
+  timelineLoading = false;
   status = '';
   busy = false;
 
@@ -309,6 +355,7 @@ export class NetworkChangeSetDetailComponent implements OnInit {
         this.set = envelope.set;
         this.items = envelope.items;
         this.status = '';
+        this.loadTimeline();
       },
       error: (err) => {
         this.status = err?.status === 404
@@ -317,6 +364,26 @@ export class NetworkChangeSetDetailComponent implements OnInit {
         this.set = null;
         this.items = [];
       },
+    });
+  }
+
+  /// Audit timeline for this change-set's correlation id. Shows
+  /// every audit entry stamped with the same correlation id — so
+  /// the view covers not just ChangeSet lifecycle events but any
+  /// Item-Added / Item-Removed / apply-result audits stamped
+  /// against the children during apply.
+  loadTimeline(): void {
+    if (!this.set?.correlationId) { this.timeline = []; return; }
+    this.timelineLoading = true;
+    this.engine.listAudit(environment.defaultTenantId, {
+      correlationId: this.set.correlationId,
+      limit: 500,
+    }).subscribe({
+      next: (rs) => {
+        this.timeline = rs ?? [];
+        this.timelineLoading = false;
+      },
+      error: () => { this.timelineLoading = false; },
     });
   }
 
