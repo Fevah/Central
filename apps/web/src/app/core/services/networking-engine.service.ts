@@ -1179,10 +1179,12 @@ export class NetworkingEngineService {
     organizationId: string,
     status?: string,
     limit?: number,
+    requestedByUserId?: number,
   ): Observable<ChangeSet[]> {
     let params = new HttpParams().set('organizationId', organizationId);
-    if (status)                   params = params.set('status', status);
-    if (limit !== undefined)      params = params.set('limit',  limit.toString());
+    if (status)                         params = params.set('status', status);
+    if (limit !== undefined)            params = params.set('limit',  limit.toString());
+    if (requestedByUserId !== undefined) params = params.set('requestedByUserId', requestedByUserId.toString());
     return this.http.get<ChangeSet[]>(`${this.base}/api/net/change-sets`, { params });
   }
 

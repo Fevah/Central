@@ -63,6 +63,10 @@ interface StatusBreakdown {
         <span class="chip-icon">🔑</span>
         <span>My grants</span>
       </a>
+      <a class="chip" routerLink="/network/my-changesets">
+        <span class="chip-icon">📋</span>
+        <span>My change sets</span>
+      </a>
       <a class="chip" routerLink="/network/correlations">
         <span class="chip-icon">🔗</span>
         <span>Correlations</span>
