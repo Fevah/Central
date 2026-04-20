@@ -2641,6 +2641,40 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    // ── Batch 65 — pool_code uniqueness per tenant ───────────────────────
+    RuleMeta {
+        code: "asn_pool.pool_code_unique_per_tenant",
+        name: "ASN pool pool_code must be unique per tenant",
+        description: "Collisions on pool_code break the pool picker \
+                      — two rows with the same code render \
+                      indistinguishably, and lookups by code return \
+                      the wrong pool. The DB typically enforces this \
+                      with a UNIQUE index; the rule exists as a \
+                      sanity check that fires loudly if the index \
+                      is ever dropped.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "vlan_pool.pool_code_unique_per_tenant",
+        name: "VLAN pool pool_code must be unique per tenant",
+        description: "Mirror of asn_pool.pool_code_unique_per_tenant \
+                      on the VLAN-pool family.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "ip_pool.pool_code_unique_per_tenant",
+        name: "IP pool pool_code must be unique per tenant",
+        description: "Completes the pool_code uniqueness sweep \
+                      across the three primary pool families (ASN, \
+                      VLAN, IP).",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -3070,6 +3104,10 @@ async fn dispatch(
         "mlag_domain_pool.display_name_not_empty" => run_mlag_pool_display_name(pool, org_id, severity, out).await,
         "floor.floor_code_not_empty"              => run_floor_code_not_empty(pool, org_id, severity, out).await,
         "room.room_code_not_empty"                => run_room_code_not_empty(pool, org_id, severity, out).await,
+        // Batch 65 — pool_code uniqueness per tenant
+        "asn_pool.pool_code_unique_per_tenant"    => run_asn_pool_code_unique(pool, org_id, severity, out).await,
+        "vlan_pool.pool_code_unique_per_tenant"   => run_vlan_pool_code_unique(pool, org_id, severity, out).await,
+        "ip_pool.pool_code_unique_per_tenant"     => run_ip_pool_code_unique(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
     }
@@ -8707,6 +8745,81 @@ async fn run_room_code_not_empty(
     Ok(())
 }
 
+/// Batch 65 — `asn_pool.pool_code_unique_per_tenant` — GROUP BY pool_code.
+async fn run_asn_pool_code_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(String, i64, Vec<Uuid>)> = sqlx::query_as(
+        "SELECT pool_code, COUNT(*) AS n, array_agg(id) AS ids
+           FROM net.asn_pool
+          WHERE organization_id = $1
+       GROUP BY pool_code
+         HAVING COUNT(*) > 1")
+        .bind(org_id).fetch_all(pool).await?;
+    for (code, n, ids) in rows {
+        let primary = ids.first().copied();
+        let id_list = ids.iter().map(|id| id.to_string())
+            .collect::<Vec<_>>().join(", ");
+        out.push(Violation {
+            rule_code: "asn_pool.pool_code_unique_per_tenant".into(),
+            severity, entity_type: "AsnPool".into(), entity_id: primary,
+            message: format!(
+                "ASN pool code '{code}' is shared by {n} asn_pool rows: {id_list}."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 65 — `vlan_pool.pool_code_unique_per_tenant` — mirror on vlan_pool.
+async fn run_vlan_pool_code_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(String, i64, Vec<Uuid>)> = sqlx::query_as(
+        "SELECT pool_code, COUNT(*) AS n, array_agg(id) AS ids
+           FROM net.vlan_pool
+          WHERE organization_id = $1
+       GROUP BY pool_code
+         HAVING COUNT(*) > 1")
+        .bind(org_id).fetch_all(pool).await?;
+    for (code, n, ids) in rows {
+        let primary = ids.first().copied();
+        let id_list = ids.iter().map(|id| id.to_string())
+            .collect::<Vec<_>>().join(", ");
+        out.push(Violation {
+            rule_code: "vlan_pool.pool_code_unique_per_tenant".into(),
+            severity, entity_type: "VlanPool".into(), entity_id: primary,
+            message: format!(
+                "VLAN pool code '{code}' is shared by {n} vlan_pool rows: {id_list}."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 65 — `ip_pool.pool_code_unique_per_tenant` — mirror on ip_pool.
+async fn run_ip_pool_code_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(String, i64, Vec<Uuid>)> = sqlx::query_as(
+        "SELECT pool_code, COUNT(*) AS n, array_agg(id) AS ids
+           FROM net.ip_pool
+          WHERE organization_id = $1
+       GROUP BY pool_code
+         HAVING COUNT(*) > 1")
+        .bind(org_id).fetch_all(pool).await?;
+    for (code, n, ids) in rows {
+        let primary = ids.first().copied();
+        let id_list = ids.iter().map(|id| id.to_string())
+            .collect::<Vec<_>>().join(", ");
+        out.push(Violation {
+            rule_code: "ip_pool.pool_code_unique_per_tenant".into(),
+            severity, entity_type: "IpPool".into(), entity_id: primary,
+            message: format!(
+                "IP pool code '{code}' is shared by {n} ip_pool rows: {id_list}."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.rack_code_unique_per_room` — parallel to floor/room rules.
 async fn run_rack_code_unique(
     pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
@@ -9035,6 +9148,9 @@ mod tests {
             "mlag_domain_pool.display_name_not_empty",
             "floor.floor_code_not_empty",
             "room.room_code_not_empty",
+            "asn_pool.pool_code_unique_per_tenant",
+            "vlan_pool.pool_code_unique_per_tenant",
+            "ip_pool.pool_code_unique_per_tenant",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
