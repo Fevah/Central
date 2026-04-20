@@ -2214,6 +2214,36 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "room.room_code_no_leading_trailing_whitespace",
+        name: "Room room_code should not have leading or trailing whitespace",
+        description: "Trim-hygiene on room_code. UNIQUE per floor; \
+                      whitespace breaks lookups + hierarchy drills \
+                      that match by code.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "floor.floor_code_no_leading_trailing_whitespace",
+        name: "Floor floor_code should not have leading or trailing whitespace",
+        description: "Trim-hygiene on floor_code. UNIQUE per \
+                      building; same concern as room + rack codes.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "building.building_code_no_leading_trailing_whitespace",
+        name: "Building building_code should not have leading or trailing whitespace",
+        description: "Trim-hygiene on building_code. UNIQUE per \
+                      site; device naming templates interpolate \
+                      building_code so whitespace leaks into the \
+                      rendered hostname.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2597,6 +2627,9 @@ async fn dispatch(
         "server.rack_implies_room"                => run_server_rack_implies_room(pool, org_id, severity, out).await,
         "mlag_domain.display_name_no_leading_trailing_whitespace" => run_mlag_domain_name_ws(pool, org_id, severity, out).await,
         "rack.rack_code_no_leading_trailing_whitespace" => run_rack_code_ws(pool, org_id, severity, out).await,
+        "room.room_code_no_leading_trailing_whitespace" => run_room_code_ws(pool, org_id, severity, out).await,
+        "floor.floor_code_no_leading_trailing_whitespace" => run_floor_code_ws(pool, org_id, severity, out).await,
+        "building.building_code_no_leading_trailing_whitespace" => run_building_code_ws(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -7000,6 +7033,72 @@ async fn run_rack_code_ws(
     Ok(())
 }
 
+/// `room.room_code_no_leading_trailing_whitespace` — trim-equal on room_code.
+async fn run_room_code_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, room_code
+           FROM net.room
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (room_code <> btrim(room_code))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "room.room_code_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "Room".into(), entity_id: Some(id),
+            message: format!(
+                "Room room_code '{code}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
+/// `floor.floor_code_no_leading_trailing_whitespace` — trim-equal on floor_code.
+async fn run_floor_code_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, floor_code
+           FROM net.floor
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (floor_code <> btrim(floor_code))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "floor.floor_code_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "Floor".into(), entity_id: Some(id),
+            message: format!(
+                "Floor floor_code '{code}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
+/// `building.building_code_no_leading_trailing_whitespace` — trim-equal on building_code.
+async fn run_building_code_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, building_code
+           FROM net.building
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (building_code <> btrim(building_code))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "building.building_code_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "Building".into(), entity_id: Some(id),
+            message: format!(
+                "Building building_code '{code}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -7610,6 +7709,9 @@ mod tests {
             "server.rack_implies_room",
             "mlag_domain.display_name_no_leading_trailing_whitespace",
             "rack.rack_code_no_leading_trailing_whitespace",
+            "room.room_code_no_leading_trailing_whitespace",
+            "floor.floor_code_no_leading_trailing_whitespace",
+            "building.building_code_no_leading_trailing_whitespace",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
