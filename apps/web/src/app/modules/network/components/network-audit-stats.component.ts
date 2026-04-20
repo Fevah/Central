@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
@@ -105,7 +105,12 @@ import { environment } from '../../../../environments/environment';
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .section-title { color: #9ca3af; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; margin: 0 0 6px; font-weight: 600; }
     @media (max-width: 1100px) { .two-col { grid-template-columns: 1fr; } }
-  `]
+  `],
+  // DxChart's nested configuration elements (dxo-series, dxo-value-axis
+  // etc.) aren't exported as standalone components by DevExtreme's
+  // DxChartModule — they're transcluded into dx-chart at runtime. Use
+  // the custom-elements schema so Angular stops complaining about them.
+  schemas: [CUSTOM_ELEMENTS_SCHEMA],
 })
 export class NetworkAuditStatsComponent implements OnInit {
   fromAt: Date | null = null;

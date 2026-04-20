@@ -37,11 +37,11 @@ import { environment } from '../../../../environments/environment';
 
       <label>Action</label>
       <dx-select-box class="md" [items]="knownActions" [(value)]="actionFilter"
-                     [showClearButton]="true" placeholder="(any)" acceptCustomValue="true" />
+                     [showClearButton]="true" placeholder="(any)" [acceptCustomValue]="true" />
 
       <label>Entity type</label>
       <dx-select-box class="md" [items]="knownEntityTypes" [(value)]="entityTypeFilter"
-                     [showClearButton]="true" placeholder="(any)" acceptCustomValue="true" />
+                     [showClearButton]="true" placeholder="(any)" [acceptCustomValue]="true" />
 
       <dx-button text="Filter" type="default" (onClick)="reload()" />
       <dx-button text="Clear" (onClick)="clear()" />
@@ -73,13 +73,13 @@ import { environment } from '../../../../environments/environment';
         <div class="form-row">
           <label>Action *</label>
           <dx-select-box [items]="createActions" [(value)]="draft.action"
-                         placeholder="Pick action" acceptCustomValue="true" />
+                         placeholder="Pick action" [acceptCustomValue]="true" />
         </div>
 
         <div class="form-row">
           <label>Entity type *</label>
           <dx-select-box [items]="knownEntityTypes" [(value)]="draft.entityType"
-                         placeholder="Pick entity type" acceptCustomValue="true" />
+                         placeholder="Pick entity type" [acceptCustomValue]="true" />
         </div>
 
         <div class="form-row">
@@ -129,12 +129,12 @@ import { environment } from '../../../../environments/environment';
         <div class="form-row">
           <label>Action *</label>
           <dx-select-box [items]="createActions" [(value)]="checkDraft.action"
-                         placeholder="Pick action" acceptCustomValue="true" />
+                         placeholder="Pick action" [acceptCustomValue]="true" />
         </div>
         <div class="form-row">
           <label>Entity type *</label>
           <dx-select-box [items]="knownEntityTypes" [(value)]="checkDraft.entityType"
-                         placeholder="Pick entity type" acceptCustomValue="true" />
+                         placeholder="Pick entity type" [acceptCustomValue]="true" />
         </div>
         <div class="form-row">
           <label>Entity id (optional)</label>
@@ -243,7 +243,7 @@ export class NetworkScopeGrantsComponent implements OnInit {
   creating = false;
   createError = '';
   draft: {
-    userId: number | null;
+    userId: number;
     action: string | null;
     entityType: string | null;
     scopeType: string;
@@ -256,7 +256,7 @@ export class NetworkScopeGrantsComponent implements OnInit {
   checkError = '';
   checkDecision: PermissionDecision | null = null;
   checkDraft: {
-    userId: number | null;
+    userId: number;
     action: string | null;
     entityType: string | null;
     entityId: string;
@@ -333,7 +333,7 @@ export class NetworkScopeGrantsComponent implements OnInit {
 
   private emptyDraft() {
     return {
-      userId:        null,
+      userId:        0,
       action:        null,
       entityType:    null,
       scopeType:     'Global',
@@ -344,7 +344,7 @@ export class NetworkScopeGrantsComponent implements OnInit {
 
   private emptyCheckDraft() {
     return {
-      userId:     null,
+      userId:     0,
       action:     null,
       entityType: null,
       entityId:   '',

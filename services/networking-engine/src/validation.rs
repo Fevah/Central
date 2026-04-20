@@ -2877,6 +2877,74 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    // ── Batch 72 — audit_entry shape hygiene ─────────────────────────────
+    RuleMeta {
+        code: "audit_entry.action_not_empty",
+        name: "Audit entry action must not be empty",
+        description: "action is VARCHAR(32) NOT NULL but the DB \
+                      doesn't exclude empty strings. Empty action \
+                      values sneak in from malformed ingest paths + \
+                      render as blank rows in the audit timeline.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "audit_entry.entity_type_not_empty",
+        name: "Audit entry entity_type must not be empty",
+        description: "entity_type is free-text (intentional — new \
+                      entity kinds don't force a migration). Empty \
+                      values still slip through + break the \
+                      per-entity-type audit-stats rollup.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "audit_entry.source_service_not_empty",
+        name: "Audit entry source_service must not be empty",
+        description: "source_service identifies which service wrote \
+                      the row (networking-engine vs future services). \
+                      Empty values break the 'slice by origin' \
+                      queries operators rely on for incident triage.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    // ── Batch 73 — audit sequence + naming_template_override ─────────────
+    RuleMeta {
+        code: "audit_entry.sequence_id_non_negative",
+        name: "Audit entry sequence_id must be >= 0",
+        description: "sequence_id is the monotonic per-tenant \
+                      sequence the hash chain follows. Negative \
+                      values break chain ordering + integrity checks.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "naming_template_override.scope_level_in_allowed_set",
+        name: "Naming template override scope_level must be Global/Region/Site/Building",
+        description: "scope_level drives the resolver's tier match. \
+                      An unknown value falls through to the default \
+                      template silently, defeating the override. \
+                      Allowed set matches the Rust resolver's match \
+                      arms.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "tenant_cli_flavor.flavor_code_not_empty",
+        name: "Tenant CLI flavor flavor_code must not be empty",
+        description: "tenant_cli_flavor.flavor_code keys the \
+                      resolver's lookup. Empty values clutter the \
+                      DB without matching any live flavor in the \
+                      Rust catalog. Usually indicates a bad import.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -3334,6 +3402,14 @@ async fn dispatch(
         "rendered_config.line_count_non_negative" => run_rendered_config_line_count_non_negative(pool, org_id, severity, out).await,
         "rendered_config.body_sha256_length_64"   => run_rendered_config_sha_length(pool, org_id, severity, out).await,
         "saved_view.name_not_empty"               => run_saved_view_name_not_empty(pool, org_id, severity, out).await,
+        // Batch 72 — audit_entry shape hygiene
+        "audit_entry.action_not_empty"            => run_audit_action_not_empty(pool, org_id, severity, out).await,
+        "audit_entry.entity_type_not_empty"       => run_audit_entity_type_not_empty(pool, org_id, severity, out).await,
+        "audit_entry.source_service_not_empty"    => run_audit_source_service_not_empty(pool, org_id, severity, out).await,
+        // Batch 73 — audit sequence + naming_template_override + cli_flavor
+        "audit_entry.sequence_id_non_negative"    => run_audit_sequence_non_negative(pool, org_id, severity, out).await,
+        "naming_template_override.scope_level_in_allowed_set" => run_naming_override_scope_level_allowed(pool, org_id, severity, out).await,
+        "tenant_cli_flavor.flavor_code_not_empty" => run_tenant_cli_flavor_code_not_empty(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
     }
@@ -9408,6 +9484,118 @@ async fn run_saved_view_name_not_empty(
     Ok(())
 }
 
+/// Batch 72 — `audit_entry.action_not_empty`.
+async fn run_audit_action_not_empty(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid,)> = sqlx::query_as(
+        "SELECT id FROM net.audit_entry
+          WHERE organization_id = $1 AND btrim(action) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id,) in rows {
+        out.push(Violation {
+            rule_code: "audit_entry.action_not_empty".into(),
+            severity, entity_type: "AuditEntry".into(), entity_id: Some(id),
+            message: format!("Audit entry {id} has an empty action."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 72 — `audit_entry.entity_type_not_empty`.
+async fn run_audit_entity_type_not_empty(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid,)> = sqlx::query_as(
+        "SELECT id FROM net.audit_entry
+          WHERE organization_id = $1 AND btrim(entity_type) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id,) in rows {
+        out.push(Violation {
+            rule_code: "audit_entry.entity_type_not_empty".into(),
+            severity, entity_type: "AuditEntry".into(), entity_id: Some(id),
+            message: format!("Audit entry {id} has an empty entity_type."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 72 — `audit_entry.source_service_not_empty`.
+async fn run_audit_source_service_not_empty(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid,)> = sqlx::query_as(
+        "SELECT id FROM net.audit_entry
+          WHERE organization_id = $1 AND btrim(source_service) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id,) in rows {
+        out.push(Violation {
+            rule_code: "audit_entry.source_service_not_empty".into(),
+            severity, entity_type: "AuditEntry".into(), entity_id: Some(id),
+            message: format!("Audit entry {id} has an empty source_service."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 73 — `audit_entry.sequence_id_non_negative`.
+async fn run_audit_sequence_non_negative(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i64)> = sqlx::query_as(
+        "SELECT id, sequence_id FROM net.audit_entry
+          WHERE organization_id = $1 AND sequence_id < 0")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, seq) in rows {
+        out.push(Violation {
+            rule_code: "audit_entry.sequence_id_non_negative".into(),
+            severity, entity_type: "AuditEntry".into(), entity_id: Some(id),
+            message: format!("Audit entry {id} has sequence_id={seq} — must be >= 0."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 73 — `naming_template_override.scope_level_in_allowed_set`.
+async fn run_naming_override_scope_level_allowed(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, scope_level FROM net.naming_template_override
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND scope_level NOT IN ('Global', 'Region', 'Site', 'Building')")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, lvl) in rows {
+        out.push(Violation {
+            rule_code: "naming_template_override.scope_level_in_allowed_set".into(),
+            severity, entity_type: "NamingTemplateOverride".into(), entity_id: Some(id),
+            message: format!("Naming template override {id} has scope_level='{lvl}' — must be Global/Region/Site/Building."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 73 — `tenant_cli_flavor.flavor_code_not_empty`.
+async fn run_tenant_cli_flavor_code_not_empty(
+    pool: &PgPool, _org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    // tenant_cli_flavor is keyed by (organization_id, flavor_code)
+    // with no surrogate id — emit a tenant-scoped violation without
+    // a specific entity_id.
+    let rows: Vec<(String,)> = sqlx::query_as(
+        "SELECT flavor_code FROM net.tenant_cli_flavor
+          WHERE organization_id = $1 AND btrim(flavor_code) = ''")
+        .bind(_org_id).fetch_all(pool).await?;
+    for (code,) in rows {
+        out.push(Violation {
+            rule_code: "tenant_cli_flavor.flavor_code_not_empty".into(),
+            severity, entity_type: "TenantCliFlavor".into(), entity_id: None,
+            message: format!("Tenant CLI flavor row has an empty flavor_code (value '{code}')."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.rack_code_unique_per_room` — parallel to floor/room rules.
 async fn run_rack_code_unique(
     pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
@@ -9757,6 +9945,12 @@ mod tests {
             "rendered_config.line_count_non_negative",
             "rendered_config.body_sha256_length_64",
             "saved_view.name_not_empty",
+            "audit_entry.action_not_empty",
+            "audit_entry.entity_type_not_empty",
+            "audit_entry.source_service_not_empty",
+            "audit_entry.sequence_id_non_negative",
+            "naming_template_override.scope_level_in_allowed_set",
+            "tenant_cli_flavor.flavor_code_not_empty",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {

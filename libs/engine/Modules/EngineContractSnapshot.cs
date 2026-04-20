@@ -39,6 +39,11 @@ public static class EngineContractSnapshot
     /// short — the broader the contract, the more accidental diffs
     /// the test catches, which is useful up to a point but becomes
     /// noisy if every internal refactor trips it.
+    ///
+    /// <para>Exposed via <see cref="GetContractTypes"/> so the
+    /// coverage test (<c>EngineContractCoverageTests</c>) can assert
+    /// every public <see cref="Shell.IPanelMessage"/> is represented
+    /// here — the list can't silently miss a new message type.</para>
     /// </summary>
     private static readonly Type[] ContractTypes = new[]
     {
@@ -60,7 +65,11 @@ public static class EngineContractSnapshot
         typeof(Shell.ModuleReloadingMessage),
         typeof(Shell.ModuleReloadedMessage),
         typeof(Shell.ModuleLoadFailedMessage),
+        typeof(Shell.ApplyFilterMessage),
     };
+
+    /// <summary>Exposes the contract-type list read-only for coverage tests.</summary>
+    public static IReadOnlyList<Type> GetContractTypes() => ContractTypes;
 
     /// <summary>Compute the canonical snapshot string.</summary>
     public static string Compute()

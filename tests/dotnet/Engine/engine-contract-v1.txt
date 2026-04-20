@@ -43,6 +43,19 @@ method: System.Void AddToggleButton(System.String content, System.String permiss
 kind: interface
 method: Central.Engine.Modules.IRibbonGroupBuilder AddGroup(System.String header, System.Action<Central.Engine.Modules.IRibbonGroupBuilder> configure)
 
+== Central.Engine.Shell.ApplyFilterMessage ==
+kind: record
+prop: System.String Operator { get/set }
+prop: System.String TargetField { get/set }
+prop: System.String TargetPanel { get/set }
+prop: System.Object Value { get/set }
+method: Central.Engine.Shell.ApplyFilterMessage <Clone>$()
+method: System.Void Deconstruct(System.String& TargetPanel, System.String& TargetField, System.String& Operator, System.Object& Value)
+method: System.Boolean Equals(System.Object obj)
+method: System.Boolean Equals(Central.Engine.Shell.ApplyFilterMessage other)
+method: System.Int32 GetHashCode()
+method: System.String ToString()
+
 == Central.Engine.Shell.DataModifiedMessage ==
 kind: record
 prop: System.String EntityType { get/set }

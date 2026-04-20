@@ -35,7 +35,7 @@ import { environment } from '../../../../environments/environment';
                    [headerFilter]="{ visible: true }"
                    [groupPanel]="{ visible: true }"
                    (onRowDblClick)="onRowDoubleClick($event)"
-                   [onCellPrepared]="onCellPrepared">
+                   (onCellPrepared)="onCellPrepared($event)">
       <dxi-column dataField="deviceHostname" caption="Device"   [fixed]="true" width="180"
                   [groupIndex]="0" />
       <dxi-column dataField="aeName"         caption="AE name"  width="100" sortOrder="asc" [sortIndex]="0" />

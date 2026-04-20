@@ -223,7 +223,7 @@ import { environment } from '../../../../environments/environment';
         <div class="form-row">
           <label>Entity type *</label>
           <dx-select-box [items]="itemEntityTypes" [(value)]="itemDraft.entityType"
-                         acceptCustomValue="true" placeholder="Device / Vlan / Subnet / ..." />
+                         [acceptCustomValue]="true" placeholder="Device / Vlan / Subnet / ..." />
         </div>
         <div class="form-row">
           <label>Action *</label>
@@ -368,7 +368,7 @@ export class NetworkChangeSetDetailComponent implements OnInit {
     entityType: string | null;
     action: string;
     entityId: string;
-    expectedVersion: number | null;
+    expectedVersion: number;
     beforeJsonText: string;
     afterJsonText: string;
     notes: string;
@@ -566,7 +566,7 @@ export class NetworkChangeSetDetailComponent implements OnInit {
       entityType:      null,
       action:          'Create',
       entityId:        '',
-      expectedVersion: null,
+      expectedVersion: 0,
       beforeJsonText:  '',
       afterJsonText:   '',
       notes:           '',
@@ -695,7 +695,7 @@ export class NetworkChangeSetDetailComponent implements OnInit {
         if (status === 403) {
           this.status = 'Forbidden — your user lacks the required permission on ChangeSet.';
         } else if (status === 409) {
-          this.status = `Illegal state transition: ${err?.error?.detail ?? 'current status doesn\\'t allow that action'}.`;
+          this.status = `Illegal state transition: ${err?.error?.detail ?? "current status doesn't allow that action"}.`;
         } else {
           this.status = `Failed: ${err?.error?.detail ?? err?.message ?? err}`;
         }

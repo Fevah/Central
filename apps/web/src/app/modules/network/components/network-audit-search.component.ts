@@ -43,14 +43,14 @@ type ExportFormat = 'csv' | 'ndjson';
     <div class="filter-bar">
       <label>Entity type</label>
       <dx-select-box class="md" [items]="knownEntityTypes" [(value)]="entityType"
-                     [showClearButton]="true" placeholder="(any)" acceptCustomValue="true" />
+                     [showClearButton]="true" placeholder="(any)" [acceptCustomValue]="true" />
 
       <label>Entity id</label>
       <dx-text-box class="lg" [(value)]="entityId" placeholder="(any)" />
 
       <label>Action</label>
       <dx-select-box class="md" [items]="knownActions" [(value)]="action"
-                     [showClearButton]="true" placeholder="(any)" acceptCustomValue="true" />
+                     [showClearButton]="true" placeholder="(any)" [acceptCustomValue]="true" />
 
       <label>Actor</label>
       <dx-number-box class="sm" [(value)]="actorUserId" [showClearButton]="true"
@@ -142,7 +142,7 @@ export class NetworkAuditSearchComponent implements OnInit {
   entityType: string | null = null;
   entityId = '';
   action: string | null = null;
-  actorUserId: number | null = null;
+  actorUserId: number = 0;
   correlationId = '';
   fromAt: Date | null = null;
   toAt: Date | null = null;
@@ -166,7 +166,7 @@ export class NetworkAuditSearchComponent implements OnInit {
     const actorRaw  = qp.get('actorUserId');
     if (actorRaw) {
       const n = Number(actorRaw);
-      this.actorUserId = Number.isFinite(n) && n > 0 ? n : null;
+      this.actorUserId = Number.isFinite(n) && n > 0 ? n : 0;
     }
     this.correlationId = qp.get('correlationId') || '';
 
@@ -193,7 +193,7 @@ export class NetworkAuditSearchComponent implements OnInit {
       entityType:    this.entityType ?? undefined,
       entityId:      this.entityId.trim() || undefined,
       action:        this.action ?? undefined,
-      actorUserId:   this.actorUserId ?? undefined,
+      actorUserId:   this.actorUserId > 0 ? this.actorUserId : undefined,
       correlationId: this.correlationId.trim() || undefined,
       fromAt:        this.fromAt ? this.fromAt.toISOString() : undefined,
       toAt:          this.toAt   ? this.toAt.toISOString()   : undefined,
@@ -226,7 +226,7 @@ export class NetworkAuditSearchComponent implements OnInit {
     this.entityType = null;
     this.entityId = '';
     this.action = null;
-    this.actorUserId = null;
+    this.actorUserId = 0;
     this.correlationId = '';
     this.fromAt = null;
     this.toAt = null;

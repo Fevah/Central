@@ -109,7 +109,8 @@ export class NetworkCliFlavorsComponent implements OnInit {
 
   /// Flip the effective-enabled switch. `value` on the DxSwitch
   /// event is the new value the user just toggled to.
-  saveEnabled(row: ResolvedCliFlavor, e: { value: boolean; previousValue?: boolean }): void {
+  saveEnabled(row: ResolvedCliFlavor, e: { value?: boolean; previousValue?: boolean }): void {
+    if (e.value == null) return;
     if (e.value === e.previousValue) return;
     this.saveConfig(row, { enabled: e.value });
   }
@@ -118,7 +119,8 @@ export class NetworkCliFlavorsComponent implements OnInit {
   /// default, so the template disables the switch in that case;
   /// this handler still guards server-side in case the UI state
   /// is stale.
-  saveDefault(row: ResolvedCliFlavor, e: { value: boolean; previousValue?: boolean }): void {
+  saveDefault(row: ResolvedCliFlavor, e: { value?: boolean; previousValue?: boolean }): void {
+    if (e.value == null) return;
     if (e.value === e.previousValue) return;
     if (e.value && !row.effectiveEnabled) {
       this.status = `Can't make ${row.code} default while it's disabled.`;

@@ -32,7 +32,7 @@ import { environment } from '../../../../environments/environment';
                    [searchPanel]="{ visible: true }"
                    [filterRow]="{ visible: true }"
                    [headerFilter]="{ visible: true }"
-                   [onCellPrepared]="onCellPrepared">
+                   (onCellPrepared)="onCellPrepared($event)">
       <dxi-column dataField="blockCode"   caption="Block code"   [fixed]="true" width="160"
                   sortOrder="asc" [sortIndex]="0" />
       <dxi-column dataField="displayName" caption="Display name" width="260" />

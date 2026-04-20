@@ -34,7 +34,7 @@ import { environment } from '../../../../environments/environment';
                    [filterRow]="{ visible: true }"
                    [headerFilter]="{ visible: true }"
                    [groupPanel]="{ visible: true }"
-                   [onCellPrepared]="onCellPrepared">
+                   (onCellPrepared)="onCellPrepared($event)">
       <dxi-column dataField="resourceType"   caption="Type"         width="120" [groupIndex]="0" />
       <dxi-column dataField="resourceKey"    caption="Resource key" width="200" sortOrder="asc" [sortIndex]="0" />
       <dxi-column dataField="retiredAt"      caption="Retired at"   width="170" dataType="datetime"
