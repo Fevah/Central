@@ -1378,6 +1378,44 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Error,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "server_nic.server_resolves_active",
+        name: "Server NIC server_id must resolve to an Active server",
+        description: "A NIC whose server is soft-deleted or \
+                      Decommissioned is an orphan — the NIC row \
+                      leaks into reports even though its host is \
+                      gone. Parallel to the device-child lifecycle \
+                      resolves family, on the server branch.",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "link_endpoint.link_resolves_active",
+        name: "Link endpoint link_id must resolve to an Active link",
+        description: "An endpoint whose parent link is soft-deleted \
+                      or non-Active is an orphan — the endpoint \
+                      survives if the link was soft-deleted without \
+                      cascade (ON DELETE CASCADE guards the hard-\
+                      delete path, but status changes don't cascade \
+                      by design so this rule catches the gap).",
+        category: "Integrity",
+        default_severity: Severity::Error,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "device.role_resolves_active",
+        name: "Device device_role_id must resolve to an Active role",
+        description: "Devices whose device_role is soft-deleted or \
+                      non-Active lose their naming template + \
+                      default ASN kind — config-gen falls back to \
+                      'Unknown' prefixes. Surfaces role-deprecation \
+                      migrations that left devices stranded on the \
+                      retired role.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -1679,6 +1717,9 @@ async fn dispatch(
         "module.device_resolves_active"           => run_module_device_active(pool, org_id, severity, out).await,
         "loopback.device_resolves_active"         => run_loopback_device_active(pool, org_id, severity, out).await,
         "aggregate_ethernet.device_resolves_active" => run_ae_device_active(pool, org_id, severity, out).await,
+        "server_nic.server_resolves_active"       => run_server_nic_server_active(pool, org_id, severity, out).await,
+        "link_endpoint.link_resolves_active"      => run_link_endpoint_link_active(pool, org_id, severity, out).await,
+        "device.role_resolves_active"             => run_device_role_active(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -4266,6 +4307,84 @@ async fn run_ae_device_active(
     Ok(())
 }
 
+/// `server_nic.server_resolves_active` — NIC's server must be live.
+async fn run_server_nic_server_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32, String)> = sqlx::query_as(
+        "SELECT n.id, n.nic_index, COALESCE(s.status::text, '(missing)')
+           FROM net.server_nic n
+           LEFT JOIN net.server s ON s.id = n.server_id
+          WHERE n.organization_id = $1
+            AND n.deleted_at IS NULL
+            AND (s.id IS NULL
+                 OR s.deleted_at IS NOT NULL
+                 OR s.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, idx, status) in rows {
+        out.push(Violation {
+            rule_code: "server_nic.server_resolves_active".into(),
+            severity, entity_type: "ServerNic".into(), entity_id: Some(id),
+            message: format!(
+                "NIC {idx} references a server with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `link_endpoint.link_resolves_active` — endpoint's parent link must be live.
+async fn run_link_endpoint_link_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32, String)> = sqlx::query_as(
+        "SELECT e.id, e.endpoint_order, COALESCE(l.status::text, '(missing)')
+           FROM net.link_endpoint e
+           LEFT JOIN net.link l ON l.id = e.link_id
+          WHERE e.organization_id = $1
+            AND e.deleted_at IS NULL
+            AND (l.id IS NULL
+                 OR l.deleted_at IS NOT NULL
+                 OR l.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, order, status) in rows {
+        out.push(Violation {
+            rule_code: "link_endpoint.link_resolves_active".into(),
+            severity, entity_type: "LinkEndpoint".into(), entity_id: Some(id),
+            message: format!(
+                "Link endpoint #{order} references a link with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
+/// `device.role_resolves_active` — device's role, when set, must be live.
+/// Warning-severity: a device with a decommissioned role still renders
+/// config, it just falls back to the catalog defaults.
+async fn run_device_role_active(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT d.id, d.hostname, COALESCE(r.status::text, '(missing)')
+           FROM net.device d
+           LEFT JOIN net.device_role r ON r.id = d.device_role_id
+          WHERE d.organization_id = $1
+            AND d.deleted_at IS NULL
+            AND d.device_role_id IS NOT NULL
+            AND (r.id IS NULL
+                 OR r.deleted_at IS NOT NULL
+                 OR r.status != 'Active'::net.entity_status)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname, status) in rows {
+        out.push(Violation {
+            rule_code: "device.role_resolves_active".into(),
+            severity, entity_type: "Device".into(), entity_id: Some(id),
+            message: format!(
+                "Device '{hostname}' references a device role with status '{status}'."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -4804,6 +4923,9 @@ mod tests {
             "module.device_resolves_active",
             "loopback.device_resolves_active",
             "aggregate_ethernet.device_resolves_active",
+            "server_nic.server_resolves_active",
+            "link_endpoint.link_resolves_active",
+            "device.role_resolves_active",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
