@@ -2085,6 +2085,38 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "ip_address.gateway_unique_per_subnet",
+        name: "At most one Gateway IP per subnet",
+        description: "Two net.ip_address rows in the same subnet \
+                      both marked `assigned_to_type='Gateway'` is \
+                      almost always a data-entry mistake — a subnet \
+                      only has one default gateway. Config-gen picks \
+                      whichever the resolver finds first, which is \
+                      insertion-order and not deterministic.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "subnet.display_name_no_leading_trailing_whitespace",
+        name: "Subnet display_name should not have leading or trailing whitespace",
+        description: "Mirror of device.hostname_no_leading_trailing_\
+                      whitespace / link.link_code_no_leading_\
+                      trailing_whitespace on subnet display_name.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "vlan.display_name_no_leading_trailing_whitespace",
+        name: "VLAN display_name should not have leading or trailing whitespace",
+        description: "Mirror on VLAN display_name. Trim hygiene \
+                      matters for search + sort + cross-referencing.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2446,6 +2478,9 @@ async fn dispatch(
         "server.hostname_no_leading_trailing_whitespace" => run_server_hostname_ws(pool, org_id, severity, out).await,
         "port.description_set_when_active"        => run_port_description_set(pool, org_id, severity, out).await,
         "link.link_code_no_leading_trailing_whitespace" => run_link_code_ws(pool, org_id, severity, out).await,
+        "ip_address.gateway_unique_per_subnet"    => run_ip_gateway_unique(pool, org_id, severity, out).await,
+        "subnet.display_name_no_leading_trailing_whitespace" => run_subnet_name_ws(pool, org_id, severity, out).await,
+        "vlan.display_name_no_leading_trailing_whitespace" => run_vlan_name_ws(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -6573,6 +6608,80 @@ async fn run_link_code_ws(
     Ok(())
 }
 
+/// `ip_address.gateway_unique_per_subnet` — one Gateway per subnet.
+/// Every colliding row emits so UI filters show the whole group.
+async fn run_ip_gateway_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT ip.id, host(ip.address)
+           FROM net.ip_address ip
+          WHERE ip.organization_id = $1
+            AND ip.deleted_at IS NULL
+            AND ip.assigned_to_type = 'Gateway'
+            AND EXISTS (
+                SELECT 1 FROM net.ip_address ip2
+                 WHERE ip2.organization_id = ip.organization_id
+                   AND ip2.deleted_at IS NULL
+                   AND ip2.assigned_to_type = 'Gateway'
+                   AND ip2.subnet_id = ip.subnet_id
+                   AND ip2.id <> ip.id)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, addr) in rows {
+        out.push(Violation {
+            rule_code: "ip_address.gateway_unique_per_subnet".into(),
+            severity, entity_type: "IpAddress".into(), entity_id: Some(id),
+            message: format!(
+                "Gateway IP {addr} shares its subnet with another Gateway — non-deterministic pick."),
+        });
+    }
+    Ok(())
+}
+
+/// `subnet.display_name_no_leading_trailing_whitespace` — trim-equal.
+async fn run_subnet_name_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, display_name
+           FROM net.subnet
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (display_name <> btrim(display_name))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, name) in rows {
+        out.push(Violation {
+            rule_code: "subnet.display_name_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "Subnet".into(), entity_id: Some(id),
+            message: format!(
+                "Subnet display_name '{name}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
+/// `vlan.display_name_no_leading_trailing_whitespace` — trim-equal.
+async fn run_vlan_name_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, display_name
+           FROM net.vlan
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (display_name <> btrim(display_name))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, name) in rows {
+        out.push(Violation {
+            rule_code: "vlan.display_name_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "Vlan".into(), entity_id: Some(id),
+            message: format!(
+                "VLAN display_name '{name}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -7171,6 +7280,9 @@ mod tests {
             "server.hostname_no_leading_trailing_whitespace",
             "port.description_set_when_active",
             "link.link_code_no_leading_trailing_whitespace",
+            "ip_address.gateway_unique_per_subnet",
+            "subnet.display_name_no_leading_trailing_whitespace",
+            "vlan.display_name_no_leading_trailing_whitespace",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
