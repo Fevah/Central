@@ -3600,6 +3600,55 @@ for change-set timelines.
 - [ ] Reuses existing DTOs — no new types added.
 - [ ] 0 errors on build.
 
+### 7.X.35 Phase 10b — eighteenth wave (commits 2026-04-20+)
+
+New correlations rollup endpoint + `/network/correlations`
+page. Validation batch 35 adds three net.port internal-pointer
+lifecycle resolves.
+
+**Engine /api/net/audit/correlations endpoint** (commit `1ff5f7b31`)
+- [ ] GET /api/net/audit/correlations?organizationId=…&limit=50
+      returns recent distinct correlation ids ordered by
+      lastSeenAt DESC.
+- [ ] Response row shape: correlationId + entryCount +
+      distinctEntityTypes + firstSeenAt + lastSeenAt +
+      setId? + setTitle? + setStatus?.
+- [ ] LEFT JOIN net.change_set on correlation_id populates
+      set fields when a wrapper set exists; null otherwise.
+- [ ] Limit clamped 1..=500 (default 50).
+
+**/network/correlations page** (commit `e252d38fb`)
+- [ ] New route /network/correlations.
+- [ ] Grid with lastSeenAt (default sort DESC) + setTitle +
+      setStatus (coloured pill) + entryCount + distinct types
+      + firstSeenAt + truncated correlationId.
+- [ ] "(ad-hoc)" placeholder for correlations without a set.
+- [ ] Double-click drills to:
+      - /network/change-sets/:id when setId is present
+      - /network/audit-search?correlationId=… otherwise
+- [ ] Limit picker (25/50/100/250/500).
+
+**C# ApiClient — AuditCorrelationsAsync** (commit `a2bc4a8a2`)
+- [ ] AuditCorrelationsAsync(organizationId, limit?, ct) →
+      List<RecentCorrelationDto>.
+- [ ] Named with Audit* prefix to group with other audit
+      rollup wrappers in IntelliSense.
+- [ ] New RecentCorrelationDto with Guid? SetId + string?
+      SetTitle + string? SetStatus for the LEFT JOIN fields.
+- [ ] 0 errors on build.
+
+**Validation rule expansion — batch 35** (commit `f6463b1dd`)
+- [ ] `port.module_resolves_active_when_set` (Warning) —
+      port's optional module_id must be Active.
+- [ ] `port.breakout_parent_resolves_active_when_set`
+      (Warning) — breakout child port's parent must be Active.
+      Companion to port.breakout_parent_on_same_device
+      (cross-device check).
+- [ ] `port.aggregate_ethernet_resolves_active_when_set`
+      (Warning) — port's optional AE bundle must be Active.
+- [ ] Catalog now at 146 rules; guardrail test
+      `dispatcher_has_arm_for_every_catalog_rule` still green.
+
 ---
 
 ## 8. Enterprise SaaS
