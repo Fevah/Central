@@ -2018,6 +2018,40 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Info,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "port.speed_mbps_set_when_active",
+        name: "Active port should have speed_mbps populated",
+        description: "Active ports without speed_mbps leave capacity \
+                      planning incomplete — LACP load-balancing + \
+                      link-aggregation reporting rely on the field. \
+                      Advisory: config-gen still works but the \
+                      capacity pipeline needs this value.",
+        category: "Advisory",
+        default_severity: Severity::Info,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server_nic.nic_index_in_range",
+        name: "Server NIC index should be within a realistic range",
+        description: "nic_index outside 0..=63 is almost always a \
+                      data-entry typo — 64 NICs per server is an \
+                      extreme upper bound for current hardware. \
+                      Warning — flags the value for operator review.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "device.hostname_no_leading_trailing_whitespace",
+        name: "Device hostname should not have leading or trailing whitespace",
+        description: "Whitespace in hostnames breaks SSH + DNS \
+                      lookups in subtle ways. Trimmed vs untrimmed \
+                      values compare unequal everywhere. Warning — \
+                      trim the value to fix.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2373,6 +2407,9 @@ async fn dispatch(
         "port.native_vlan_requires_access_or_trunk" => run_port_native_vlan_mode(pool, org_id, severity, out).await,
         "aggregate_ethernet.member_count_meets_min_links" => run_ae_member_count(pool, org_id, severity, out).await,
         "change_set_item.expected_version_set_for_update" => run_change_set_item_expected_version(pool, org_id, severity, out).await,
+        "port.speed_mbps_set_when_active"         => run_port_speed_set(pool, org_id, severity, out).await,
+        "server_nic.nic_index_in_range"           => run_nic_index_range(pool, org_id, severity, out).await,
+        "device.hostname_no_leading_trailing_whitespace" => run_device_hostname_ws(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -6365,6 +6402,74 @@ async fn run_change_set_item_expected_version(
     Ok(())
 }
 
+/// `port.speed_mbps_set_when_active` — Active port should have
+/// speed_mbps populated for capacity planning.
+async fn run_port_speed_set(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, interface_name
+           FROM net.port
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND status = 'Active'::net.entity_status
+            AND speed_mbps IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, iface) in rows {
+        out.push(Violation {
+            rule_code: "port.speed_mbps_set_when_active".into(),
+            severity, entity_type: "Port".into(), entity_id: Some(id),
+            message: format!(
+                "Active port '{iface}' has no speed_mbps — capacity-planning reports miss it."),
+        });
+    }
+    Ok(())
+}
+
+/// `server_nic.nic_index_in_range` — flag NICs with index > 63.
+async fn run_nic_index_range(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32)> = sqlx::query_as(
+        "SELECT id, nic_index
+           FROM net.server_nic
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (nic_index < 0 OR nic_index > 63)")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, idx) in rows {
+        out.push(Violation {
+            rule_code: "server_nic.nic_index_in_range".into(),
+            severity, entity_type: "ServerNic".into(), entity_id: Some(id),
+            message: format!(
+                "NIC nic_index={idx} is outside the realistic 0..=63 range."),
+        });
+    }
+    Ok(())
+}
+
+/// `device.hostname_no_leading_trailing_whitespace` — trim-equal check.
+async fn run_device_hostname_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, hostname
+           FROM net.device
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (hostname <> btrim(hostname))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname) in rows {
+        out.push(Violation {
+            rule_code: "device.hostname_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "Device".into(), entity_id: Some(id),
+            message: format!(
+                "Device hostname '{hostname}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -6957,6 +7062,9 @@ mod tests {
             "port.native_vlan_requires_access_or_trunk",
             "aggregate_ethernet.member_count_meets_min_links",
             "change_set_item.expected_version_set_for_update",
+            "port.speed_mbps_set_when_active",
+            "server_nic.nic_index_in_range",
+            "device.hostname_no_leading_trailing_whitespace",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
