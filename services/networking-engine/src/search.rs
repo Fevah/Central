@@ -68,6 +68,12 @@ pub struct SearchResult {
 pub const SEARCH_LIMIT_DEFAULT: i64 = 50;
 pub const SEARCH_LIMIT_MAX: i64 = 500;
 
+/// Minimum query length for a search to actually run. Below this
+/// the query would match so broadly (any word starting with "e"
+/// would hit half the catalog) that the result set is useless +
+/// expensive. Returning [] is the contract.
+pub const SEARCH_MIN_QUERY_LEN: usize = 2;
+
 pub fn clamp_search_limit(requested: Option<i64>) -> i64 {
     let n = requested.unwrap_or(SEARCH_LIMIT_DEFAULT);
     n.clamp(1, SEARCH_LIMIT_MAX)
@@ -104,9 +110,11 @@ pub async fn global_search(
     entity_types: Option<&std::collections::HashSet<String>>,
     limit: i64,
 ) -> Result<Vec<SearchResult>, EngineError> {
-    // Empty query → empty result set. Saves a full table scan and
-    // avoids tsquery's "unrecognisable token" noise.
-    if q.trim().is_empty() { return Ok(vec![]); }
+    // Short-circuit queries below the minimum length. Empty returns
+    // [] unconditionally; 1-char queries would match too broadly
+    // (any word starting with "e" would flood the result set + waste
+    // scan cycles), so we also treat those as no-ops.
+    if q.trim().chars().count() < SEARCH_MIN_QUERY_LEN { return Ok(vec![]); }
 
     let wants = |name: &str| -> bool {
         match entity_types {
@@ -303,7 +311,9 @@ pub async fn search_facets(
     q: &str,
     entity_types: Option<&std::collections::HashSet<String>>,
 ) -> Result<Vec<SearchFacet>, EngineError> {
-    if q.trim().is_empty() {
+    // Same min-length guard as global_search so the two endpoints
+    // agree on when a query is too short to produce useful results.
+    if q.trim().chars().count() < SEARCH_MIN_QUERY_LEN {
         return Ok(vec![]);
     }
 
