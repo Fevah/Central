@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { DxDataGridModule, DxButtonModule } from 'devextreme-angular';
 import {
   NetworkingEngineService, ResolvedRule,
@@ -42,7 +42,8 @@ import { environment } from '../../../../environments/environment';
                    [searchPanel]="{ visible: true }"
                    [filterRow]="{ visible: true }"
                    [headerFilter]="{ visible: true }"
-                   [groupPanel]="{ visible: true }">
+                   [groupPanel]="{ visible: true }"
+                   (onRowDblClick)="onRowDoubleClick($event)">
       <dxi-column dataField="category"          caption="Category"    [groupIndex]="0" width="130" />
       <dxi-column dataField="code"              caption="Code"        [fixed]="true" width="320"
                   sortOrder="asc" [sortIndex]="0" />
@@ -85,9 +86,22 @@ export class NetworkValidationRulesComponent implements OnInit {
   loading = false;
   status = '';
 
-  constructor(private engine: NetworkingEngineService) {}
+  constructor(
+    private engine: NetworkingEngineService,
+    private router: Router,
+  ) {}
 
   ngOnInit(): void { this.reload(); }
+
+  /// Double-click a rule row → run just that rule on
+  /// /network/validation via the ruleCode query param.
+  onRowDoubleClick(e: { data: ResolvedRule }): void {
+    const code = e?.data?.code;
+    if (!code) return;
+    this.router.navigate(['/network/validation'], {
+      queryParams: { ruleCode: code },
+    });
+  }
 
   reload(): void {
     this.loading = true;

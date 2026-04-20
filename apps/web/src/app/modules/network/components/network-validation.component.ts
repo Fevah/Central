@@ -1,6 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { DxDataGridModule, DxButtonModule, DxLoadIndicatorModule } from 'devextreme-angular';
 import {
   NetworkingEngineService,
@@ -118,6 +118,7 @@ export class NetworkValidationComponent implements OnInit {
   constructor(
     private engine: NetworkingEngineService,
     private router: Router,
+    private route: ActivatedRoute,
   ) {}
 
   ngOnInit(): void {
@@ -132,6 +133,40 @@ export class NetworkValidationComponent implements OnInit {
         }
       },
       error: () => { /* silent */ },
+    });
+
+    // Optional deep-link: /network/validation?ruleCode=foo.bar runs
+    // just that rule on landing. Drives the rules-catalog page's
+    // double-click drill + the "run one rule" WPF handoff flow.
+    const qp = this.route.snapshot.queryParamMap;
+    const ruleCode = qp.get('ruleCode');
+    if (ruleCode) {
+      this.runSingle(ruleCode);
+    }
+  }
+
+  /// Run one specific rule by code. Used by the ruleCode query
+  /// param drill; sets the summary line explicitly so operators
+  /// see which rule ran rather than a generic message.
+  private runSingle(ruleCode: string): void {
+    this.busy = true;
+    this.status = `Running rule ${ruleCode}…`;
+    this.summary = '';
+    this.engine.runValidation(environment.defaultTenantId, ruleCode).subscribe({
+      next: (result: ValidationRunResult) => {
+        this.violations = result.violations;
+        this.applyFilter();
+        this.summary = `${result.rulesRun} rule run · ` +
+                       `${result.totalViolations} violation${result.totalViolations === 1 ? '' : 's'}`;
+        this.status = result.totalViolations === 0
+          ? `${ruleCode} — clean.`
+          : '';
+        this.busy = false;
+      },
+      error: (err) => {
+        this.busy = false;
+        this.status = `Validation failed: ${err?.message ?? err}`;
+      },
     });
   }
 
