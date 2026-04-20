@@ -6,10 +6,12 @@ import {
   NetworkingEngineService,
   ValidationRunResult,
   Violation,
+  ResolvedRule,
 } from '../../../core/services/networking-engine.service';
 import { environment } from '../../../../environments/environment';
 
 type SeverityFilter = 'All' | 'Error' | 'Warning' | 'Info';
+type CategoryFilter = 'All' | 'Integrity' | 'Consistency' | 'Safety' | 'Advisory';
 
 /// Web counterpart to the WPF Validation panel (Phase 9a) — runs
 /// the Rust-owned rule catalog against the tenant's net.* data
@@ -42,6 +44,15 @@ type SeverityFilter = 'All' | 'Error' | 'Warning' | 'Info';
                  [type]="severity === f ? 'default' : 'normal'"
                  stylingMode="outlined"
                  (onClick)="setSeverity(f)" />
+    </div>
+
+    <div *ngIf="violations.length > 0 && categoryMap.size > 0" class="filter-bar">
+      <span class="filter-label">Category:</span>
+      <dx-button *ngFor="let f of categoryFilters"
+                 [text]="f + ' (' + categoryCount(f) + ')'"
+                 [type]="category === f ? 'default' : 'normal'"
+                 stylingMode="outlined"
+                 (onClick)="setCategory(f)" />
     </div>
 
     <div *ngIf="status" class="status-line">{{ status }}</div>
@@ -77,7 +88,7 @@ type SeverityFilter = 'All' | 'Error' | 'Warning' | 'Info';
     .sev-info    { color: #3b82f6; }
   `]
 })
-export class NetworkValidationComponent {
+export class NetworkValidationComponent implements OnInit {
   violations: Violation[] = [];
   filteredViolations: Violation[] = [];
   summary = '';
@@ -87,10 +98,33 @@ export class NetworkValidationComponent {
   severityFilters: SeverityFilter[] = ['All', 'Error', 'Warning', 'Info'];
   severity: SeverityFilter = 'All';
 
+  categoryFilters: CategoryFilter[] = ['All', 'Integrity', 'Consistency', 'Safety', 'Advisory'];
+  category: CategoryFilter = 'All';
+
+  /// ruleCode → category map built from /api/net/validation/rules.
+  /// Used to derive a Violation's category at filter time since
+  /// the Violation shape doesn't carry it.
+  categoryMap = new Map<string, string>();
+
   constructor(
     private engine: NetworkingEngineService,
     private router: Router,
   ) {}
+
+  ngOnInit(): void {
+    // Load the rule catalog once so category filtering works from
+    // the first violation the operator sees. Silent-fail: if the
+    // catalog call errors, the Category filter bar just doesn't
+    // render (categoryMap stays empty).
+    this.engine.listValidationRules(environment.defaultTenantId).subscribe({
+      next: (rules) => {
+        for (const r of rules ?? []) {
+          this.categoryMap.set(r.code, r.category);
+        }
+      },
+      error: () => { /* silent */ },
+    });
+  }
 
   run(): void {
     this.busy = true;
@@ -120,6 +154,11 @@ export class NetworkValidationComponent {
     this.applyFilter();
   }
 
+  setCategory(f: CategoryFilter): void {
+    this.category = f;
+    this.applyFilter();
+  }
+
   /// Count per severity — drives the "(N)" badges on the filter
   /// buttons so operators see the breakdown before clicking.
   severityCount(f: SeverityFilter): number {
@@ -127,10 +166,22 @@ export class NetworkValidationComponent {
     return this.violations.filter(v => v.severity === f).length;
   }
 
+  /// Count per category — derived via categoryMap (ruleCode →
+  /// category). Falls back to 0 when the map hasn't loaded yet.
+  categoryCount(f: CategoryFilter): number {
+    if (f === 'All') return this.violations.length;
+    return this.violations.filter(v => this.categoryMap.get(v.ruleCode) === f).length;
+  }
+
   private applyFilter(): void {
-    this.filteredViolations = this.severity === 'All'
-      ? [...this.violations]
-      : this.violations.filter(v => v.severity === this.severity);
+    let rows = this.violations;
+    if (this.severity !== 'All') {
+      rows = rows.filter(v => v.severity === this.severity);
+    }
+    if (this.category !== 'All') {
+      rows = rows.filter(v => this.categoryMap.get(v.ruleCode) === this.category);
+    }
+    this.filteredViolations = rows;
   }
 
   /// Drill to the audit timeline for the offending entity. The

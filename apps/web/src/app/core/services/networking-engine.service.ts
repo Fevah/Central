@@ -385,6 +385,23 @@ export interface AuditTrendPoint {
   count: number;
 }
 
+/// One row per validation rule — includes the tenant-effective
+/// severity + enabled state after applying any override. Matches
+/// `ResolvedRule` in services/networking-engine/src/validation.rs.
+/// Flattened RuleMeta fields (code, name, description, category,
+/// defaultSeverity, defaultEnabled) appear at the top level.
+export interface ResolvedRule {
+  code: string;
+  name: string;
+  description: string;
+  category: string;
+  defaultSeverity: string;
+  defaultEnabled: boolean;
+  effectiveSeverity: string;
+  effectiveEnabled: boolean;
+  hasTenantOverride: boolean;
+}
+
 /// One row per change-set status with a count. Matches
 /// `ChangeSetStatusCount` in services/networking-engine/src/
 /// change_sets.rs. Always seven rows in state-machine order —
@@ -1800,6 +1817,14 @@ export class NetworkingEngineService {
     const body: Record<string, unknown> = { organizationId };
     if (ruleCode) body['ruleCode'] = ruleCode;
     return this.http.post<ValidationRunResult>(`${this.base}/api/net/validation/run`, body);
+  }
+
+  /// List the validation rule catalog with tenant-effective
+  /// severity + enabled resolution. Drives rule admin UIs +
+  /// client-side category filtering on the violations page.
+  listValidationRules(organizationId: string): Observable<ResolvedRule[]> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.get<ResolvedRule[]>(`${this.base}/api/net/validation/rules`, { params });
   }
 
   /// Top N audit actors by count in the window. Clamped server-side
