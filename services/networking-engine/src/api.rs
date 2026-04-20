@@ -36,7 +36,7 @@ use crate::scope_grants::{
 };
 use crate::search;
 use crate::change_sets::{
-    AddItemBody, CancelBody, ChangeSetRepo, CreateChangeSetBody, DecisionBody,
+    self, AddItemBody, CancelBody, ChangeSetRepo, CreateChangeSetBody, DecisionBody,
     GetChangeSetQuery, ListChangeSetsQuery, SubmitBody,
 };
 use crate::error::EngineError;
@@ -98,6 +98,7 @@ pub fn build_router(state: AppState) -> Router {
         .route("/api/net/audit/actions", get(audit_actions_handler))
         // Change Sets (Phase 8a)
         .route("/api/net/change-sets", get(list_change_sets).post(create_change_set))
+        .route("/api/net/change-sets/summary", get(change_set_summary_handler))
         .route("/api/net/change-sets/:id", get(get_change_set))
         .route("/api/net/change-sets/by-correlation/:correlation_id", get(get_change_set_by_correlation))
         .route("/api/net/change-sets/:id/items", post(add_change_set_item))
@@ -1710,6 +1711,17 @@ async fn regenerate_apply(
 }
 
 // ─── Change Sets (Phase 8a) ──────────────────────────────────────────────
+
+async fn change_set_summary_handler(
+    State(s): State<AppState>,
+    Query(q): Query<OrgQuery>,
+) -> Result<impl IntoResponse, EngineError> {
+    // Status-rollup for change-set dashboards — one SQL pass +
+    // fixed 7-row output (includes zero-count statuses). No RBAC
+    // gate beyond tenant scoping since the counts alone don't
+    // leak set content.
+    Ok(Json(change_sets::status_summary(&s.pool, q.organization_id).await?))
+}
 
 async fn list_change_sets(
     State(s): State<AppState>,

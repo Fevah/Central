@@ -66,6 +66,44 @@ impl ChangeSetStatus {
     }
 }
 
+/// One row per status bucket. Drives the change-set dashboard
+/// summary banner. <c>count</c> is the number of non-deleted
+/// change_sets in that status. All seven statuses always appear
+/// in the output (0 count for unused ones) so UIs don't need to
+/// reshape the response into a fixed-structure object.
+#[derive(Debug, Clone, Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct ChangeSetStatusCount {
+    pub status: String,
+    pub count: i64,
+}
+
+/// Status-rollup across the tenant's change_sets. One SQL pass
+/// with COUNT(*) ... GROUP BY status; zero-count statuses filled
+/// in on the Rust side so the wire shape is always 7 rows.
+/// Ordered following the state-machine — Draft → ... → RolledBack
+/// — so UIs render a predictable banner.
+pub async fn status_summary(
+    pool: &sqlx::PgPool,
+    org_id: uuid::Uuid,
+) -> Result<Vec<ChangeSetStatusCount>, EngineError> {
+    let raw: Vec<(String, i64)> = sqlx::query_as(
+        "SELECT status::text, COUNT(*)::bigint
+           FROM net.change_set
+          WHERE organization_id = $1 AND deleted_at IS NULL
+          GROUP BY status")
+        .bind(org_id)
+        .fetch_all(pool)
+        .await?;
+    let mut map: std::collections::HashMap<String, i64> = raw.into_iter().collect();
+    let ordered = ["Draft", "Submitted", "Approved", "Rejected",
+                   "Applied", "RolledBack", "Cancelled"];
+    Ok(ordered.iter().map(|s| ChangeSetStatusCount {
+        status: (*s).to_string(),
+        count:  map.remove(*s).unwrap_or(0),
+    }).collect())
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub enum ChangeSetAction { Create, Update, Delete, Rename }
