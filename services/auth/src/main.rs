@@ -40,7 +40,15 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let cfg = load_config()?;
-    let bind: SocketAddr = format!("{}:{}", cfg.server.host, cfg.server.port)
+    // AUTH_SERVICE_PORT env override so local dev can run on an
+    // alternate port when the default 8081 is already bound by
+    // something else (e.g. the `central-postgres` podman pod which
+    // happens to expose 8081 too). K8s / prod use the config value.
+    let port: u16 = std::env::var("AUTH_SERVICE_PORT")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(cfg.server.port);
+    let bind: SocketAddr = format!("{}:{}", cfg.server.host, port)
         .parse()
         .context("invalid server.host/port in auth-service.toml")?;
 

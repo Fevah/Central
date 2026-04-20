@@ -11,7 +11,11 @@ host = "localhost"
 port = 5432
 username = "central"
 password = "central"
-database = "secure_auth"
+# `secure_auth` is a SCHEMA inside the `central` database (see
+# migration 110's rationale: one migration history, shared pgBouncer
+# pool, FKs to central_platform.*). Connection targets `central`;
+# queries are qualified `secure_auth.users` etc.
+database = "central"
 ssl_mode = "disable"
 pool_size = 10
 pool_timeout_seconds = 30
