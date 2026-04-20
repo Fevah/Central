@@ -412,6 +412,16 @@ export interface ChangeSetStatusCount {
   count: number;
 }
 
+/// One bucket of a per-entity-type × per-status lifecycle
+/// rollup. Matches `LifecycleBucket` in services/networking-
+/// engine/src/api.rs. Covers Device / Server / Vlan / Subnet /
+/// Link — the five main entities with a status lifecycle.
+export interface LifecycleBucket {
+  entityType: string;
+  status: string;
+  count: number;
+}
+
 /// Compound tenant summary — one call returns every entity
 /// count in the net.* schema. Matches `TenantSummary` in
 /// services/networking-engine/src/api.rs. Replaces the 21
@@ -1553,6 +1563,15 @@ export class NetworkingEngineService {
     const params = new HttpParams().set('organizationId', organizationId);
     return this.http.get<TenantSummary>(
       `${this.base}/api/net/tenant/summary`, { params });
+  }
+
+  /// Per-entity-type × per-status lifecycle rollup. One UNION
+  /// ALL across 5 tables (Device / Server / Vlan / Subnet / Link).
+  /// Only buckets with a row appear — zero counts are absent.
+  tenantLifecycleSummary(organizationId: string): Observable<LifecycleBucket[]> {
+    const params = new HttpParams().set('organizationId', organizationId);
+    return this.http.get<LifecycleBucket[]>(
+      `${this.base}/api/net/tenant/lifecycle-summary`, { params });
   }
 
   /// Status rollup for the tenant's change-sets. Returns all 7

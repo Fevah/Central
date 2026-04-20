@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { DxButtonModule } from 'devextreme-angular';
-import { NetworkingEngineService, AuditRow, ChangeSet } from '../../../core/services/networking-engine.service';
+import { NetworkingEngineService, AuditRow, ChangeSet, LifecycleBucket } from '../../../core/services/networking-engine.service';
 import { environment } from '../../../../environments/environment';
 
 interface CountTile {
@@ -146,6 +146,28 @@ interface StatusBreakdown {
           <td>{{ r.ruleCode }}</td>
           <td [ngClass]="'sev-' + r.severity.toLowerCase()">{{ r.severity }}</td>
           <td class="num">{{ r.count }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3 class="section-header" *ngIf="lifecycleRows.length > 0">Lifecycle state</h3>
+    <table class="lifecycle" *ngIf="lifecycleRows.length > 0">
+      <thead>
+        <tr>
+          <th>Entity</th>
+          <th class="num">Planned</th>
+          <th class="num">Active</th>
+          <th class="num">Decommissioned</th>
+          <th class="num">Other</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let r of lifecycleRows">
+          <td>{{ r.entityType }}</td>
+          <td class="num">{{ r.planned }}</td>
+          <td class="num active">{{ r.active }}</td>
+          <td class="num muted">{{ r.decommissioned }}</td>
+          <td class="num muted">{{ r.other }}</td>
         </tr>
       </tbody>
     </table>
@@ -298,6 +320,19 @@ interface StatusBreakdown {
     .recent-row:hover { background: #f6f8fa; }
     .recent code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px;
                    background: rgba(148,163,184,0.1); padding: 1px 6px; border-radius: 3px; }
+
+    .lifecycle {
+      width: 100%; border-collapse: collapse; margin-top: 8px;
+      background: #ffffff; border: 1px solid #e1e4e8; border-radius: 6px;
+    }
+    .lifecycle th, .lifecycle td {
+      text-align: left; padding: 6px 12px; border-bottom: 1px solid #e1e4e8;
+      font-size: 12px;
+    }
+    .lifecycle th.num, .lifecycle td.num { text-align: right; }
+    .lifecycle tr:last-child td { border-bottom: none; }
+    .lifecycle td.num.active { color: #1a7f37; font-weight: 600; }
+    .lifecycle td.num.muted  { color: #8b949e; }
   `],
 })
 export class NetworkOverviewComponent implements OnInit {
@@ -321,6 +356,17 @@ export class NetworkOverviewComponent implements OnInit {
   /// overview widget stays compact.
   pendingApprovals: ChangeSet[] = [];
 
+  /// Per-entity-type lifecycle buckets, pivoted into row-per-
+  /// entity. Populated by loadLifecycle(); empty when the call
+  /// fails or the tenant has no entities yet (hides the table).
+  lifecycleRows: Array<{
+    entityType: string;
+    planned: number;
+    active: number;
+    decommissioned: number;
+    other: number;
+  }> = [];
+
   private tenantId = environment.defaultTenantId;
 
   constructor(
@@ -335,6 +381,36 @@ export class NetworkOverviewComponent implements OnInit {
     this.runValidation();
     this.loadRecentActivity();
     this.loadPendingApprovals();
+    this.loadLifecycle();
+  }
+
+  /// Per-entity-type × per-status lifecycle rollup. Pivots the
+  /// engine's { entityType, status, count } rows into one row
+  /// per entity type with columns for Planned / Active /
+  /// Decommissioned / Other (catch-all for any other status).
+  private loadLifecycle(): void {
+    this.engine.tenantLifecycleSummary(this.tenantId).subscribe({
+      next: (buckets) => {
+        const byEntity = new Map<string, { planned: number; active: number;
+                                           decommissioned: number; other: number }>();
+        for (const b of buckets ?? []) {
+          const row = byEntity.get(b.entityType)
+            ?? { planned: 0, active: 0, decommissioned: 0, other: 0 };
+          switch (b.status) {
+            case 'Planned':        row.planned        = b.count; break;
+            case 'Active':         row.active         = b.count; break;
+            case 'Decommissioned': row.decommissioned = b.count; break;
+            default:               row.other         += b.count; break;
+          }
+          byEntity.set(b.entityType, row);
+        }
+        const order = ['Device', 'Server', 'Vlan', 'Subnet', 'Link'];
+        this.lifecycleRows = order
+          .filter(e => byEntity.has(e))
+          .map(e => ({ entityType: e, ...byEntity.get(e)! }));
+      },
+      error: () => { /* silent — widget just won't render */ },
+    });
   }
 
   /// Submitted change-sets awaiting approval, ordered by
