@@ -1981,6 +1981,43 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "port.native_vlan_requires_access_or_trunk",
+        name: "Port native_vlan_id is only valid on access or trunk mode",
+        description: "native_vlan_id set on a port_mode='routed' or \
+                      'unset' port misconfigures the L2 posture — \
+                      config-gen would emit a VLAN assignment on an \
+                      L3 interface. Warning: surfaces the mismatch \
+                      without blocking the render.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "aggregate_ethernet.member_count_meets_min_links",
+        name: "Aggregate-ethernet member port count should meet min_links",
+        description: "An AE bundle whose member-port count is less \
+                      than min_links will never come up — the LAG \
+                      requires at least `min_links` active members \
+                      to enter forwarding. Counts only non-deleted \
+                      ports pointing at the bundle.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "change_set_item.expected_version_set_for_update",
+        name: "Change-set Update items should carry expected_version",
+        description: "An Update action without expected_version \
+                      can't guard against stale writes — the apply \
+                      step silently overwrites any concurrent \
+                      changes. Advisory: some update flows don't \
+                      need the guard, but explicit stale-version \
+                      detection is strongly recommended.",
+        category: "Advisory",
+        default_severity: Severity::Info,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2333,6 +2370,9 @@ async fn dispatch(
         "server_nic.admin_up_false_on_active_status" => run_nic_admin_up_active(pool, org_id, severity, out).await,
         "port.speed_mbps_reasonable_when_set"     => run_port_speed_reasonable(pool, org_id, severity, out).await,
         "rack.max_devices_positive_when_set"      => run_rack_max_devices_positive(pool, org_id, severity, out).await,
+        "port.native_vlan_requires_access_or_trunk" => run_port_native_vlan_mode(pool, org_id, severity, out).await,
+        "aggregate_ethernet.member_count_meets_min_links" => run_ae_member_count(pool, org_id, severity, out).await,
+        "change_set_item.expected_version_set_for_update" => run_change_set_item_expected_version(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -6248,6 +6288,83 @@ async fn run_rack_max_devices_positive(
     Ok(())
 }
 
+/// `port.native_vlan_requires_access_or_trunk` — flag ports with
+/// native_vlan_id set but port_mode='routed'|'unset'.
+async fn run_port_native_vlan_mode(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, String)> = sqlx::query_as(
+        "SELECT id, interface_name, port_mode
+           FROM net.port
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND native_vlan_id IS NOT NULL
+            AND port_mode NOT IN ('access', 'trunk')")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, iface, mode) in rows {
+        out.push(Violation {
+            rule_code: "port.native_vlan_requires_access_or_trunk".into(),
+            severity, entity_type: "Port".into(), entity_id: Some(id),
+            message: format!(
+                "Port '{iface}' has native_vlan_id set but port_mode='{mode}' — VLAN tag won't take effect."),
+        });
+    }
+    Ok(())
+}
+
+/// `aggregate_ethernet.member_count_meets_min_links` — AE bundle
+/// whose current member count < min_links.
+async fn run_ae_member_count(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i32, i64)> = sqlx::query_as(
+        "SELECT a.id, a.ae_name, a.min_links,
+                (SELECT COUNT(*)::bigint FROM net.port p
+                  WHERE p.aggregate_ethernet_id = a.id
+                    AND p.deleted_at IS NULL) AS member_count
+           FROM net.aggregate_ethernet a
+          WHERE a.organization_id = $1
+            AND a.deleted_at IS NULL
+            AND (SELECT COUNT(*) FROM net.port p
+                  WHERE p.aggregate_ethernet_id = a.id
+                    AND p.deleted_at IS NULL) < a.min_links")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, name, min_links, members) in rows {
+        out.push(Violation {
+            rule_code: "aggregate_ethernet.member_count_meets_min_links".into(),
+            severity, entity_type: "AggregateEthernet".into(), entity_id: Some(id),
+            message: format!(
+                "AE '{name}' has {members} member port(s) but min_links={min_links} — bundle won't come up."),
+        });
+    }
+    Ok(())
+}
+
+/// `change_set_item.expected_version_set_for_update` — flag
+/// Update items that don't carry expected_version.
+async fn run_change_set_item_expected_version(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, i32, String)> = sqlx::query_as(
+        "SELECT item.id, item.item_order, item.entity_type
+           FROM net.change_set_item item
+          WHERE item.organization_id = $1
+            AND item.deleted_at IS NULL
+            AND item.action = 'Update'::net.change_set_action
+            AND item.expected_version IS NULL")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, order, entity_type) in rows {
+        out.push(Violation {
+            rule_code: "change_set_item.expected_version_set_for_update".into(),
+            severity, entity_type: "ChangeSetItem".into(), entity_id: Some(id),
+            message: format!(
+                "Change-set item #{order} on {entity_type} is an Update but has no expected_version — \
+                 stale-write guard is disabled."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -6837,6 +6954,9 @@ mod tests {
             "server_nic.admin_up_false_on_active_status",
             "port.speed_mbps_reasonable_when_set",
             "rack.max_devices_positive_when_set",
+            "port.native_vlan_requires_access_or_trunk",
+            "aggregate_ethernet.member_count_meets_min_links",
+            "change_set_item.expected_version_set_for_update",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
