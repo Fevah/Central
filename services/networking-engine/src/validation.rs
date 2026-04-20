@@ -2331,6 +2331,38 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "device_role.role_code_no_leading_trailing_whitespace",
+        name: "Device role role_code should not have leading or trailing whitespace",
+        description: "Trim-hygiene on device_role.role_code. \
+                      role_code is UNIQUE per tenant + interpolated \
+                      into hostname naming templates so whitespace \
+                      leaks into rendered device names.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "link_type.type_code_no_leading_trailing_whitespace",
+        name: "Link type type_code should not have leading or trailing whitespace",
+        description: "Trim-hygiene on link_type.type_code. UNIQUE \
+                      per tenant; referenced from imports by exact \
+                      match so whitespace breaks lookups silently.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "server_profile.profile_code_no_leading_trailing_whitespace",
+        name: "Server profile profile_code should not have leading or trailing whitespace",
+        description: "Trim-hygiene on server_profile.profile_code. \
+                      profile_code interpolates into hostname \
+                      naming templates (e.g. {profile_code}-srv-01) \
+                      so whitespace leaks into rendered names.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2726,6 +2758,9 @@ async fn dispatch(
         "asn_pool.pool_code_no_leading_trailing_whitespace" => run_asn_pool_code_ws(pool, org_id, severity, out).await,
         "vlan_pool.pool_code_no_leading_trailing_whitespace" => run_vlan_pool_code_ws(pool, org_id, severity, out).await,
         "ip_pool.pool_code_no_leading_trailing_whitespace" => run_ip_pool_code_ws(pool, org_id, severity, out).await,
+        "device_role.role_code_no_leading_trailing_whitespace" => run_device_role_code_ws(pool, org_id, severity, out).await,
+        "link_type.type_code_no_leading_trailing_whitespace" => run_link_type_code_ws(pool, org_id, severity, out).await,
+        "server_profile.profile_code_no_leading_trailing_whitespace" => run_server_profile_code_ws(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -7394,6 +7429,72 @@ async fn run_ip_pool_code_ws(
     Ok(())
 }
 
+/// `device_role.role_code_no_leading_trailing_whitespace` — trim-equal.
+async fn run_device_role_code_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, role_code
+           FROM net.device_role
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (role_code <> btrim(role_code))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "device_role.role_code_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "DeviceRole".into(), entity_id: Some(id),
+            message: format!(
+                "Device role role_code '{code}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
+/// `link_type.type_code_no_leading_trailing_whitespace` — trim-equal.
+async fn run_link_type_code_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, type_code
+           FROM net.link_type
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (type_code <> btrim(type_code))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "link_type.type_code_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "LinkType".into(), entity_id: Some(id),
+            message: format!(
+                "Link type type_code '{code}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
+/// `server_profile.profile_code_no_leading_trailing_whitespace` — trim-equal.
+async fn run_server_profile_code_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, profile_code
+           FROM net.server_profile
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (profile_code <> btrim(profile_code))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "server_profile.profile_code_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "ServerProfile".into(), entity_id: Some(id),
+            message: format!(
+                "Server profile profile_code '{code}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -8016,6 +8117,9 @@ mod tests {
             "asn_pool.pool_code_no_leading_trailing_whitespace",
             "vlan_pool.pool_code_no_leading_trailing_whitespace",
             "ip_pool.pool_code_no_leading_trailing_whitespace",
+            "device_role.role_code_no_leading_trailing_whitespace",
+            "link_type.type_code_no_leading_trailing_whitespace",
+            "server_profile.profile_code_no_leading_trailing_whitespace",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
