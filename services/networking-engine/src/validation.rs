@@ -2052,6 +2052,39 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    RuleMeta {
+        code: "server.hostname_no_leading_trailing_whitespace",
+        name: "Server hostname should not have leading or trailing whitespace",
+        description: "Mirror of device.hostname_no_leading_trailing_\
+                      whitespace on the server branch. Same trim-\
+                      equal compare-unequal concern.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "port.description_set_when_active",
+        name: "Active port should carry a description",
+        description: "Active ports without a description are harder \
+                      to audit — operators debugging a link trace \
+                      through the port description to identify the \
+                      remote end. Advisory; config-gen still works \
+                      but reports degrade.",
+        category: "Advisory",
+        default_severity: Severity::Info,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "link.link_code_no_leading_trailing_whitespace",
+        name: "Link link_code should not have leading or trailing whitespace",
+        description: "link_code is referenced from legacy tables + \
+                      imports by exact-string match; whitespace in \
+                      the value breaks the lookup silently. \
+                      Warning — trim the value to fix.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -2410,6 +2443,9 @@ async fn dispatch(
         "port.speed_mbps_set_when_active"         => run_port_speed_set(pool, org_id, severity, out).await,
         "server_nic.nic_index_in_range"           => run_nic_index_range(pool, org_id, severity, out).await,
         "device.hostname_no_leading_trailing_whitespace" => run_device_hostname_ws(pool, org_id, severity, out).await,
+        "server.hostname_no_leading_trailing_whitespace" => run_server_hostname_ws(pool, org_id, severity, out).await,
+        "port.description_set_when_active"        => run_port_description_set(pool, org_id, severity, out).await,
+        "link.link_code_no_leading_trailing_whitespace" => run_link_code_ws(pool, org_id, severity, out).await,
         "server_profile.naming_template_not_empty" => run_server_profile_template_set(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
@@ -6470,6 +6506,73 @@ async fn run_device_hostname_ws(
     Ok(())
 }
 
+/// `server.hostname_no_leading_trailing_whitespace` — mirror on server.
+async fn run_server_hostname_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, hostname
+           FROM net.server
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (hostname <> btrim(hostname))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, hostname) in rows {
+        out.push(Violation {
+            rule_code: "server.hostname_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "Server".into(), entity_id: Some(id),
+            message: format!(
+                "Server hostname '{hostname}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
+/// `port.description_set_when_active` — Active ports should have a description.
+async fn run_port_description_set(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, interface_name
+           FROM net.port
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND status = 'Active'::net.entity_status
+            AND (description IS NULL OR description = '')")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, iface) in rows {
+        out.push(Violation {
+            rule_code: "port.description_set_when_active".into(),
+            severity, entity_type: "Port".into(), entity_id: Some(id),
+            message: format!(
+                "Active port '{iface}' has no description — link-trace reports lose the remote-end hint."),
+        });
+    }
+    Ok(())
+}
+
+/// `link.link_code_no_leading_trailing_whitespace` — trim-equal.
+async fn run_link_code_ws(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String)> = sqlx::query_as(
+        "SELECT id, link_code
+           FROM net.link
+          WHERE organization_id = $1
+            AND deleted_at IS NULL
+            AND (link_code <> btrim(link_code))")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id, code) in rows {
+        out.push(Violation {
+            rule_code: "link.link_code_no_leading_trailing_whitespace".into(),
+            severity, entity_type: "Link".into(), entity_id: Some(id),
+            message: format!(
+                "Link link_code '{code}' has leading/trailing whitespace — trim before saving."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.uheight_positive` — flag rack rows with non-positive
 /// u_height (can't place any device).
 async fn run_rack_uheight_positive(
@@ -7065,6 +7168,9 @@ mod tests {
             "port.speed_mbps_set_when_active",
             "server_nic.nic_index_in_range",
             "device.hostname_no_leading_trailing_whitespace",
+            "server.hostname_no_leading_trailing_whitespace",
+            "port.description_set_when_active",
+            "link.link_code_no_leading_trailing_whitespace",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
