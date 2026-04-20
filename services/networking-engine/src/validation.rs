@@ -2675,6 +2675,71 @@ pub const RULES: &[RuleMeta] = &[
         default_severity: Severity::Warning,
         default_enabled: true,
     },
+    // ── Batch 66 — hierarchy code uniqueness within parent scope ─────────
+    RuleMeta {
+        code: "region.region_code_unique_per_tenant",
+        name: "Region region_code must be unique per tenant",
+        description: "Regions are the top of the hierarchy; code \
+                      collisions break every lookup by code. DB \
+                      typically enforces via UNIQUE index — rule \
+                      fires loudly if that constraint is ever \
+                      dropped.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "site.site_code_unique_per_region",
+        name: "Site site_code must be unique within its region",
+        description: "Scoped uniqueness: two sites in the same \
+                      region can't share a code, but sites in \
+                      different regions legitimately may.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "building.building_code_unique_per_site",
+        name: "Building building_code must be unique within its site",
+        description: "Mirror of site.site_code_unique_per_region \
+                      one level deeper. Buildings in the same site \
+                      can't share a code.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    // ── Batch 67 — block + template uniqueness + vlan_template not_empty ─
+    RuleMeta {
+        code: "asn_block.block_code_unique_per_pool",
+        name: "ASN block block_code must be unique within its pool",
+        description: "Two blocks in the same asn_pool can't share a \
+                      code (pool picker row resolution breaks). \
+                      Scoped rather than per-tenant so the same \
+                      block_code can appear across different pools.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "vlan_block.block_code_unique_per_pool",
+        name: "VLAN block block_code must be unique within its pool",
+        description: "Mirror of asn_block.block_code_unique_per_pool \
+                      on the VLAN-block family.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
+    RuleMeta {
+        code: "vlan_template.template_code_not_empty",
+        name: "VLAN template template_code must not be empty",
+        description: "Templates are selected by code in the VLAN \
+                      provisioning dialog; empty codes leave a blank \
+                      row in the picker. Companion to the existing \
+                      uniqueness + trim rules.",
+        category: "Integrity",
+        default_severity: Severity::Warning,
+        default_enabled: true,
+    },
 ];
 
 /// Find a rule by code. Returns `None` for unknown codes — callers surface
@@ -3108,6 +3173,14 @@ async fn dispatch(
         "asn_pool.pool_code_unique_per_tenant"    => run_asn_pool_code_unique(pool, org_id, severity, out).await,
         "vlan_pool.pool_code_unique_per_tenant"   => run_vlan_pool_code_unique(pool, org_id, severity, out).await,
         "ip_pool.pool_code_unique_per_tenant"     => run_ip_pool_code_unique(pool, org_id, severity, out).await,
+        // Batch 66 — hierarchy code uniqueness within parent scope
+        "region.region_code_unique_per_tenant"    => run_region_code_unique(pool, org_id, severity, out).await,
+        "site.site_code_unique_per_region"        => run_site_code_unique_per_region(pool, org_id, severity, out).await,
+        "building.building_code_unique_per_site"  => run_building_code_unique_per_site(pool, org_id, severity, out).await,
+        // Batch 67 — block + template uniqueness + vlan_template not_empty
+        "asn_block.block_code_unique_per_pool"    => run_asn_block_code_unique(pool, org_id, severity, out).await,
+        "vlan_block.block_code_unique_per_pool"   => run_vlan_block_code_unique(pool, org_id, severity, out).await,
+        "vlan_template.template_code_not_empty"   => run_vlan_template_code_not_empty(pool, org_id, severity, out).await,
         other => Err(EngineError::bad_request(format!(
             "Rule '{other}' in catalog but dispatcher has no executor — codebase bug."))),
     }
@@ -8820,6 +8893,135 @@ async fn run_ip_pool_code_unique(
     Ok(())
 }
 
+/// Batch 66 — `region.region_code_unique_per_tenant`.
+async fn run_region_code_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(String, i64, Vec<Uuid>)> = sqlx::query_as(
+        "SELECT region_code, COUNT(*) AS n, array_agg(id) AS ids
+           FROM net.region
+          WHERE organization_id = $1 AND deleted_at IS NULL
+       GROUP BY region_code HAVING COUNT(*) > 1")
+        .bind(org_id).fetch_all(pool).await?;
+    for (code, n, ids) in rows {
+        let primary = ids.first().copied();
+        let id_list = ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", ");
+        out.push(Violation {
+            rule_code: "region.region_code_unique_per_tenant".into(),
+            severity, entity_type: "Region".into(), entity_id: primary,
+            message: format!("Region code '{code}' is shared by {n} region rows: {id_list}."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 66 — `site.site_code_unique_per_region`.
+async fn run_site_code_unique_per_region(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i64, Vec<Uuid>)> = sqlx::query_as(
+        "SELECT region_id, site_code, COUNT(*) AS n, array_agg(id) AS ids
+           FROM net.site
+          WHERE organization_id = $1 AND deleted_at IS NULL
+       GROUP BY region_id, site_code HAVING COUNT(*) > 1")
+        .bind(org_id).fetch_all(pool).await?;
+    for (region_id, code, n, ids) in rows {
+        let primary = ids.first().copied();
+        let id_list = ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", ");
+        out.push(Violation {
+            rule_code: "site.site_code_unique_per_region".into(),
+            severity, entity_type: "Site".into(), entity_id: primary,
+            message: format!("{n} sites in region {region_id} share site_code '{code}': {id_list}."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 66 — `building.building_code_unique_per_site`.
+async fn run_building_code_unique_per_site(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i64, Vec<Uuid>)> = sqlx::query_as(
+        "SELECT site_id, building_code, COUNT(*) AS n, array_agg(id) AS ids
+           FROM net.building
+          WHERE organization_id = $1 AND deleted_at IS NULL
+       GROUP BY site_id, building_code HAVING COUNT(*) > 1")
+        .bind(org_id).fetch_all(pool).await?;
+    for (site_id, code, n, ids) in rows {
+        let primary = ids.first().copied();
+        let id_list = ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", ");
+        out.push(Violation {
+            rule_code: "building.building_code_unique_per_site".into(),
+            severity, entity_type: "Building".into(), entity_id: primary,
+            message: format!("{n} buildings in site {site_id} share building_code '{code}': {id_list}."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 67 — `asn_block.block_code_unique_per_pool`.
+async fn run_asn_block_code_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i64, Vec<Uuid>)> = sqlx::query_as(
+        "SELECT pool_id, block_code, COUNT(*) AS n, array_agg(id) AS ids
+           FROM net.asn_block
+          WHERE organization_id = $1 AND deleted_at IS NULL
+       GROUP BY pool_id, block_code HAVING COUNT(*) > 1")
+        .bind(org_id).fetch_all(pool).await?;
+    for (pool_id, code, n, ids) in rows {
+        let primary = ids.first().copied();
+        let id_list = ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", ");
+        out.push(Violation {
+            rule_code: "asn_block.block_code_unique_per_pool".into(),
+            severity, entity_type: "AsnBlock".into(), entity_id: primary,
+            message: format!("{n} asn_block rows in pool {pool_id} share block_code '{code}': {id_list}."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 67 — `vlan_block.block_code_unique_per_pool`.
+async fn run_vlan_block_code_unique(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid, String, i64, Vec<Uuid>)> = sqlx::query_as(
+        "SELECT pool_id, block_code, COUNT(*) AS n, array_agg(id) AS ids
+           FROM net.vlan_block
+          WHERE organization_id = $1 AND deleted_at IS NULL
+       GROUP BY pool_id, block_code HAVING COUNT(*) > 1")
+        .bind(org_id).fetch_all(pool).await?;
+    for (pool_id, code, n, ids) in rows {
+        let primary = ids.first().copied();
+        let id_list = ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", ");
+        out.push(Violation {
+            rule_code: "vlan_block.block_code_unique_per_pool".into(),
+            severity, entity_type: "VlanBlock".into(), entity_id: primary,
+            message: format!("{n} vlan_block rows in pool {pool_id} share block_code '{code}': {id_list}."),
+        });
+    }
+    Ok(())
+}
+
+/// Batch 67 — `vlan_template.template_code_not_empty`.
+async fn run_vlan_template_code_not_empty(
+    pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
+) -> Result<(), EngineError> {
+    let rows: Vec<(Uuid,)> = sqlx::query_as(
+        "SELECT id FROM net.vlan_template
+          WHERE organization_id = $1 AND deleted_at IS NULL
+            AND btrim(template_code) = ''")
+        .bind(org_id).fetch_all(pool).await?;
+    for (id,) in rows {
+        out.push(Violation {
+            rule_code: "vlan_template.template_code_not_empty".into(),
+            severity, entity_type: "VlanTemplate".into(), entity_id: Some(id),
+            message: format!("VLAN template {id} has an empty template_code."),
+        });
+    }
+    Ok(())
+}
+
 /// `rack.rack_code_unique_per_room` — parallel to floor/room rules.
 async fn run_rack_code_unique(
     pool: &PgPool, org_id: Uuid, severity: Severity, out: &mut Vec<Violation>,
@@ -9151,6 +9353,12 @@ mod tests {
             "asn_pool.pool_code_unique_per_tenant",
             "vlan_pool.pool_code_unique_per_tenant",
             "ip_pool.pool_code_unique_per_tenant",
+            "region.region_code_unique_per_tenant",
+            "site.site_code_unique_per_region",
+            "building.building_code_unique_per_site",
+            "asn_block.block_code_unique_per_pool",
+            "vlan_block.block_code_unique_per_pool",
+            "vlan_template.template_code_not_empty",
         ];
         // Every catalog entry must be in the dispatcher list.
         for r in RULES {
