@@ -3510,6 +3510,53 @@ C# convenience helper.
       (WhoAmI.UserId == null).
 - [ ] 0 errors on build.
 
+### 7.X.33 Phase 10b — sixteenth wave (commits 2026-04-20+)
+
+Self-serve "my grants" inspection page, completing the self-
+serve trio (whoami banner + my-activity + my-grants). Validation
+batch 33 closes the location-FK hierarchy on device + server.
+
+**Engine /api/net/whoami/grants endpoint** (commit `c9887a2ef`)
+- [ ] GET /api/net/whoami/grants?organizationId=… returns the
+      caller's own scope_grant rows.
+- [ ] Bypasses the read:ScopeGrant RBAC gate (reading own
+      access is always permitted).
+- [ ] Service-origin callers (no X-User-Id header) get [].
+- [ ] Rows ordered by entity_type + action + scope_type so
+      the UI table renders without client-side sort.
+
+**/network/my-grants page** (commit `91729fb84`)
+- [ ] Grid grouped by entity_type (default), sorted by action
+      within each group.
+- [ ] Columns: entity_type / action / scope_type / scope_entity_id
+      / status / created_at / notes.
+- [ ] Colour-coded action pills: read (blue) / write (amber) /
+      delete (red) / approve (purple) / apply (green).
+- [ ] Header strip shows userId + total grants + distinct
+      action set (from whoami).
+- [ ] Service-origin callers see a yellow banner + empty grid.
+- [ ] New listMyGrants(organizationId) method on
+      NetworkingEngineService.
+
+**C# ApiClient — ListMyGrantsAsync** (commit `3e87c533c`)
+- [ ] ListMyGrantsAsync(organizationId, ct) → List<ScopeGrantDto>
+- [ ] Reuses the existing ScopeGrantDto (no new DTO added).
+- [ ] Service-origin callers get empty list.
+- [ ] 0 errors on build.
+
+**Validation rule expansion — batch 33** (commit `418ff2793`)
+- [ ] `device.building_resolves_active_when_set` (Warning) —
+      closes device's location triple (room + rack + building);
+      sibling to device.active_requires_building (NULL case).
+- [ ] `server.room_resolves_active_when_set` (Warning) —
+      server's optional room_id must be Active when set.
+- [ ] `server.rack_resolves_active_when_set` (Warning) —
+      server's optional rack_id must be Active when set.
+- [ ] Catalog now at 140 rules; guardrail test
+      `dispatcher_has_arm_for_every_catalog_rule` still green.
+- [ ] Note: commit message said "141" — off by one, actual
+      catalog count is 137 + 3 = 140.
+
 ---
 
 ## 8. Enterprise SaaS
