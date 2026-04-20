@@ -96,10 +96,49 @@ cd web-client && npx ng serve --open
 ```
 
 **Login credentials:**
-- Email: `centraladmin@central.local`
-- Password: `Central-Adm1n-2026!`
 
-**Auth flow:** Calls auth-service (Rust) at `192.168.56.10:30081`, returns JWT.
+The web client logs in via the Rust **auth-service** (Phase A as of 2026-04-20 — see
+[docs/AUTH_SERVICE_BUILDOUT.md](AUTH_SERVICE_BUILDOUT.md) for the phased plan).
+Seeded accounts in `secure_auth.users`:
+
+| Account | Password | Role |
+|---------|----------|------|
+| `corys@central.local` | `corys-dev-pass!` | global_admin |
+
+The password hash is stored as Argon2id in `secure_auth.users.password_hash`;
+to seed an additional account, run:
+
+```bash
+cargo run -p auth-service --example hash_password -- 'your-password'
+# Copy the printed hash into a follow-up migration INSERT.
+```
+
+**NOTE:** The older `centraladmin@central.local` / `Central-Adm1n-2026!` row
+referenced here historically never existed in any migration. `admin@central.local`
+with password `admin` is seeded in `central_platform.global_users` by
+[migration 027](../db/migrations/027_global_admin.sql) but that is a different
+table used by the **desktop** global-admin flow, not the web login.
+
+**Auth flow:**
+
+1. Web client POSTs `{email, password}` with `X-Tenant-ID` header to
+   `${authServiceUrl}/api/v1/auth/login`.
+2. `authServiceUrl` resolves to `http://192.168.56.10:30081` in prod / K8s
+   (NodePort) and `http://localhost:8081` for local dev (see
+   [config/auth-service.toml](../config/auth-service.toml)).
+3. auth-service Argon2-verifies against `secure_auth.users`, signs a JWT,
+   returns the `LoginResponse` shape the Angular client expects.
+
+**Running auth-service locally:**
+
+```bash
+# From repo root. Reads config/auth-service.toml.
+export AUTH_SERVICE_JWT_SECRET='dev-only-change-me'   # required for real use
+cargo run -p auth-service
+```
+
+Phase A only implements `/api/v1/auth/login` + `/health`. Refresh / logout /
+MFA return 501/204 placeholders until Phases B + C ship.
 
 ---
 
