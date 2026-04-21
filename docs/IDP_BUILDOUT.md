@@ -1,8 +1,7 @@
 # Identity Provider (IDP) Module — Full Buildout
 
 Last updated: 2026-04-21
-Status: **Phase 1 done** (auth-service A-E.1 foundation shipped).
-All other phases pending.
+Status: **Phases 1 + 2 done**. Phases 3-10 pending.
 
 ## Why this document exists
 
@@ -27,7 +26,7 @@ point is the desktop non-functional.
 | # | Phase | Goal | Shipped |
 |---|-------|------|---------|
 | 1 | Foundation | auth-service with login / refresh / logout / MFA / password-mgmt / SSO-consumer scaffold | ✅ (A-E.1) |
-| 2 | Unify stores | One user table; `app_users` becomes a view; Windows-SSO bridge endpoint | ⏳ next |
+| 2 | Unify stores (dual-write bridge, not view — FK reality) | Cross-reference columns + triggers; Windows-SSO bridge endpoint | ✅ |
 | 3 | Restructure into `services/identity/` | Workspace with `core` lib + `auth-service` bin; foundation for Phase 4+ | ⏳ |
 | 4 | Admin API | User CRUD + tenant mgmt + audit reader + session/device mgmt + SSO config CRUD | ⏳ |
 | 5 | Real Duo + real OIDC | Finish Phase C.1 (Duo) + Phase E.2 (OIDC providers) + Phase E.3 (SAML2) against the unified store | ⏳ |
@@ -63,7 +62,89 @@ Seed: `corys@central.local` / `corys-dev-pass!` + mock SSO provider.
 
 ---
 
-## Phase 2 — Unify stores  *(next roll)*
+## Phase 2 — Unify stores  *(shipped 2026-04-21 — dual-write bridge, not view)*
+
+**What actually shipped + why the plan below was revised.** The
+original plan (further down, kept as the aspirational future state)
+proposed `app_users becomes a VIEW`. Live audit revealed
+`app_users` is referenced by **11 foreign keys** from other tables
+(activity_feed, audit_log, dashboards, portfolios, programmes,
+project_members, saved_reports, sprint_allocations, task_comments,
+task_views, custom_column_permissions). Replacing a FK-referenced
+table with a view would mean rewriting every one of those foreign
+keys and every WPF path that inserts into them — a multi-week
+exercise touching live modules.
+
+The pragmatic shipped revision: **dual-write bridge**.
+
+Migration 116_user_store_bridge.sql:
+- Extended `secure_auth.users` with `legacy_int_id` (nullable unique),
+  `username`, `role`, `is_active`, `tenant_id`, `ad_sid`, `ad_guid`.
+- Added `app_users.secure_auth_user_id uuid` cross-reference column.
+- Backfilled every existing `app_users` row into `secure_auth.users`,
+  paired by email. Users without email got a synthesised
+  `username@central.local`. Password hashes that weren't Argon2 were
+  wrapped with a `(legacy-sha256:...)` prefix so auth-service's
+  argon2.verify fails cleanly for them (these users will bounce
+  through password-reset or Windows-SSO until a real Argon2 hash
+  lands).
+- Installed two trigger functions with `pg_trigger_depth() > 1` re-
+  entrancy guards: `mirror_to_secure_auth_users` on app_users,
+  `mirror_to_app_users` on secure_auth.users. INSERT / UPDATE in
+  either table propagates basic identity fields (username, email,
+  display_name, role, is_active, last_login_at) to the other.
+
+Migration 117_identity_providers_windows.sql:
+- Dropped + re-added `identity_providers.kind` CHECK to include
+  `'windows'` (CHECK constraints aren't ALTERable in place).
+- Seeded `provider_code='windows'` row.
+- Migrated every AD-linked app_users row into
+  `secure_auth.user_external_identities` with
+  `provider_code='windows'`, `external_id=lower(username)`, raw_claims
+  carrying `ad_guid` + `ad_sid` + `tenant_id`.
+
+Dedicated bridge endpoint on auth-service:
+- `POST /api/v1/auth/sso/windows/callback` — desktop posts
+  `{ domain_username, machine_name? }`. Accepts either `DOMAIN\user`
+  or bare `user` form (case-folded). Looks up
+  user_external_identities WHERE provider_code='windows' AND
+  external_id=$1, issues a full JWT via the shared Phase B session
+  path. No state nonce dance (desktop isn't doing a browser
+  redirect). Failure cases log to `login_attempts` with
+  `failure_reason='windows_sso_unknown_user'`.
+- **Production deployment caveat:** this endpoint MUST be IP-
+  restricted to known desktop subnets — anyone who can POST here
+  can log in as any AD-linked user. Phase 10 adds the restriction
+  via K8s NetworkPolicy + tower-http.
+
+End-to-end verified live (9 assertions):
+1. Existing app_users rows (cory.sharplin, corys) have
+   `secure_auth_user_id` linked after migration.
+2. `secure_auth.users` has matching rows with `legacy_int_id`
+   populated.
+3. Windows provider live + 2 AD identities migrated.
+4. INSERT into app_users → trigger mirrored into secure_auth.users.
+5. INSERT into secure_auth.users → trigger mirrored back into
+   app_users.
+6. No cascade loops — `pg_trigger_depth()` guards worked.
+7. POST `/sso/windows/callback` with `CORP\corys` resolved to
+   `cs@opentech.live` + issued a 345-char JWT.
+8. Unknown username → 401 + audit row logged.
+9. Cleanup (delete bridge-test rows) cascaded correctly.
+
+Not shipped (still deferred):
+- Dropping `central_platform.global_users`. Phase 4 does that when
+  admin-service replaces any legacy uses.
+- Making `app_users` a view. The view plan below is retained as
+  aspirational — requires Phase 4 + follow-on FK refactor across
+  11 tables. Realistically: landing around Phase 9 or later.
+- Updating WPF desktop's `App.xaml.cs` to call the Windows-SSO
+  bridge endpoint. Endpoint ships in this phase; desktop wiring
+  lands in Phase 9 once the JWT-based data service path is ready.
+
+---
+
+## Phase 2 (original aspirational plan — retained for Phase 9 revisit)
 
 **Goal:** one user table serves web + desktop. `app_users` becomes a view.
 Windows SSO bridges through the IDP.

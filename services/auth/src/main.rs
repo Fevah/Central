@@ -85,12 +85,20 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/auth/mfa/verify", post(mfa_verify))
         .route("/api/v1/auth/mfa/setup", post(mfa_setup))
         .route("/api/v1/auth/mfa/setup/confirm", post(mfa_setup_confirm))
+        .route("/api/v1/auth/mfa/duo/start", post(mfa_duo_start))
+        .route("/api/v1/auth/mfa/duo/callback", post(mfa_duo_callback))
         .route("/api/v1/auth/change-password", post(change_password))
         .route("/api/v1/auth/password-reset/request", post(password_reset_request))
         .route("/api/v1/auth/password-reset/confirm", post(password_reset_confirm))
         .route("/api/v1/auth/sso/providers", get(sso_providers_list))
         .route("/api/v1/auth/sso/:provider/start", post(sso_start))
         .route("/api/v1/auth/sso/:provider/callback", post(sso_callback))
+        // Dedicated Windows SSO bridge for the desktop shell — no
+        // browser redirect flow needed, so no /start. Skips the
+        // state-nonce dance the generic /sso/:provider/callback
+        // requires because there's no browser hop to guard against
+        // CSRF from.
+        .route("/api/v1/auth/sso/windows/callback", post(sso_windows_callback))
         .layer(tower_http::cors::CorsLayer::permissive())
         .layer(tower_http::trace::TraceLayer::new_for_http())
         .with_state(state);
@@ -670,9 +678,11 @@ async fn issue_mfa_challenge(
     (StatusCode::OK, Json(resp)).into_response()
 }
 
-/// Return the list of MFA methods this user has. Always includes "totp"
-/// if mfa_enabled is true + a secret exists; adds "recovery" when at
-/// least one unconsumed recovery code exists.
+/// Return the list of MFA methods this user has. Always includes
+/// "totp" when mfa_enabled is true + a secret exists; adds
+/// "recovery" when at least one unconsumed recovery code exists;
+/// adds "duo" when the user has duo_enabled + the platform's
+/// duo_config row is active.
 async fn mfa_methods_for(user_id: Uuid, pool: &PgPool) -> Vec<String> {
     let mut methods = vec!["totp".to_string()];
     let has_recovery: Option<i64> = sqlx::query_scalar(
@@ -686,6 +696,24 @@ async fn mfa_methods_for(user_id: Uuid, pool: &PgPool) -> Vec<String> {
     if has_recovery.unwrap_or(0) > 0 {
         methods.push("recovery".to_string());
     }
+
+    // Duo — add when the user is enrolled AND the platform's duo_config
+    // row exists. Phase C.1 doesn't distinguish mock vs live here; the
+    // client sees "duo" as a method + /mfa/duo/start reports the mode.
+    let duo_available: Option<bool> = sqlx::query_scalar(
+        "SELECT COUNT(*) > 0 FROM secure_auth.users u
+          WHERE u.id = $1
+            AND u.duo_enabled = true
+            AND EXISTS (SELECT 1 FROM secure_auth.duo_config)",
+    )
+    .bind(user_id)
+    .fetch_one(pool)
+    .await
+    .ok();
+    if duo_available.unwrap_or(false) {
+        methods.push("duo".to_string());
+    }
+
     methods
 }
 
@@ -1812,6 +1840,194 @@ async fn sso_callback(
     // so the audit view stays unified.
     log_login_attempt(&state.pool, &user.email, user_agent.as_deref(),
                       true, Some(&format!("sso:{}", provider))).await;
+
+    let roles = if user.is_global_admin { vec!["global_admin".into()] } else { vec!["user".into()] };
+    let resp = LoginResponse {
+        access_token,
+        refresh_token: issued.raw_refresh_token,
+        session_id:    issued.session_id.to_string(),
+        expires_in:    state.access_ttl_seconds,
+        token_type:    "Bearer".into(),
+        mfa_required:  false,
+        mfa_methods:   Vec::new(),
+        user: AuthUser {
+            id:           user.id.to_string(),
+            email:        user.email,
+            display_name: user.display_name.unwrap_or_default(),
+            first_name:   user.first_name,
+            last_name:    user.last_name,
+            roles,
+            permissions:  Vec::new(),
+            mfa_enabled:  user.mfa_enabled,
+        },
+    };
+    (StatusCode::OK, Json(resp)).into_response()
+}
+
+/// Phase C.1 Duo scaffold — start endpoint. Real Duo Universal Prompt
+/// wiring lands in Phase 5.A of the IDP buildout (see
+/// docs/IDP_BUILDOUT.md) — until then returns a 501 so the route is
+/// visible + clients can render an accurate "Duo not configured"
+/// error instead of a 404.
+async fn mfa_duo_start() -> impl IntoResponse {
+    not_implemented(
+        "Duo Universal Prompt wiring lands in Phase 5.A of the IDP buildout \
+         (see docs/IDP_BUILDOUT.md). Migration 115 stages the schema.",
+    )
+}
+
+/// Phase C.1 Duo scaffold — callback endpoint. Paired with
+/// `mfa_duo_start` above; same status until Phase 5.A.
+async fn mfa_duo_callback() -> impl IntoResponse {
+    not_implemented(
+        "Duo Universal Prompt wiring lands in Phase 5.A of the IDP buildout \
+         (see docs/IDP_BUILDOUT.md). Migration 115 stages the schema.",
+    )
+}
+
+#[derive(Debug, Deserialize)]
+struct SsoWindowsCallback {
+    /// Domain username in either `DOMAIN\user` or just `user` form.
+    /// Case-insensitive; we lowercase before lookup.
+    domain_username: String,
+
+    /// Optional diagnostic. Included in the user_external_identities
+    /// last-seen claim blob + the login_attempts audit row.
+    #[serde(default)]
+    machine_name: Option<String>,
+}
+
+/// Dedicated Windows-SSO bridge for the desktop shell (Phase 2 of
+/// the IDP buildout — see docs/IDP_BUILDOUT.md). Desktop's
+/// App.xaml.cs posts { domain_username } after resolving
+/// Environment.UserName; we look up the corresponding
+/// user_external_identities row (provider_code='windows') + issue a
+/// JWT the client uses for every Central.Api + auth-service call
+/// from then on.
+///
+/// No state nonce, no code-exchange dance: the desktop isn't doing
+/// a browser redirect, so there's no CSRF surface to mitigate.
+/// Instead this endpoint MUST be IP-restricted in production
+/// (Phase 10 deployment work) to known desktop subnets — anyone who
+/// can POST here can log in as any AD-linked user. For local dev +
+/// single-machine deployments that's acceptable.
+///
+/// Returns 401 when:
+///   - No user_external_identities row matches the username.
+///   - The matched user has deleted_at set.
+///   - The user has is_active=false on app_users / secure_auth.users.
+async fn sso_windows_callback(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    Json(req): Json<SsoWindowsCallback>,
+) -> impl IntoResponse {
+    let user_agent = headers
+        .get("user-agent")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_owned());
+
+    // Strip the DOMAIN\ prefix if present. Desktop may send either
+    // "CORP\corys" or just "corys"; the user_external_identities
+    // external_id is just the lowered username.
+    let raw  = req.domain_username.trim();
+    let bare = raw.rsplit('\\').next().unwrap_or(raw);
+    let normalised = bare.to_lowercase();
+
+    if normalised.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error":  "bad_request",
+                "detail": "domain_username required",
+            })),
+        ).into_response();
+    }
+
+    // Transaction so the user_external_identities upsert + session
+    // insert land atomically.
+    let mut tx = match state.pool.begin().await {
+        Ok(t) => t,
+        Err(e) => {
+            tracing::error!(error = %e, "windows_callback: tx begin");
+            return internal_error("database error");
+        }
+    };
+
+    let user: Option<UserRow> = sqlx::query_as::<_, UserRow>(
+        "SELECT u.id, u.email, u.password_hash, u.display_name, u.first_name,
+                u.last_name, u.is_global_admin, u.mfa_enabled
+           FROM secure_auth.users u
+           JOIN secure_auth.user_external_identities uei
+             ON uei.user_id = u.id
+          WHERE uei.provider_code = 'windows'
+            AND uei.external_id  = $1
+            AND u.deleted_at IS NULL
+            AND u.is_active = true",
+    )
+    .bind(&normalised)
+    .fetch_optional(&mut *tx)
+    .await
+    .unwrap_or(None);
+
+    let Some(user) = user else {
+        // Log the failure to login_attempts so the lockout + audit
+        // trail covers Windows-SSO paths too. email column gets the
+        // resolved username since there's no email at this stage.
+        let _ = sqlx::query(
+            "INSERT INTO secure_auth.login_attempts
+                 (email, user_agent, succeeded, failure_reason)
+             VALUES ($1, $2, false, 'windows_sso_unknown_user')",
+        )
+        .bind(&normalised)
+        .bind(user_agent.as_deref())
+        .execute(&mut *tx)
+        .await;
+        let _ = tx.commit().await;
+        return unauthorized();
+    };
+
+    // Update last_seen_at + raw_claims on the external identity.
+    let _ = sqlx::query(
+        "UPDATE secure_auth.user_external_identities
+            SET last_seen_at = now(),
+                raw_claims   = raw_claims || $3
+          WHERE provider_code = 'windows' AND external_id = $1 AND user_id = $2",
+    )
+    .bind(&normalised)
+    .bind(user.id)
+    .bind(serde_json::json!({
+        "last_machine_name": req.machine_name,
+        "last_domain_username_raw": raw,
+    }))
+    .execute(&mut *tx)
+    .await;
+
+    // Issue tokens (reuses the Phase B / E.1 path).
+    let issued = match insert_session_row(&mut *tx, user.id, user_agent.as_deref(),
+                                          state.refresh_ttl_seconds).await {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::error!(error = %e, "windows_callback: session insert");
+            return internal_error("session store failed");
+        }
+    };
+    let access_token = match sign_access_token(&state, user.id, &user.email, issued.session_id) {
+        Ok(t) => t,
+        Err(e) => {
+            tracing::error!(error = %e, "windows_callback: jwt sign");
+            return internal_error("token encode failed");
+        }
+    };
+
+    if tx.commit().await.is_err() {
+        return internal_error("database error");
+    }
+
+    // last_login_at stamp + login_attempts audit entry.
+    let _ = sqlx::query("UPDATE secure_auth.users SET last_login_at = now() WHERE id = $1")
+        .bind(user.id).execute(&state.pool).await;
+    log_login_attempt(&state.pool, &user.email, user_agent.as_deref(),
+                      true, Some("windows_sso")).await;
 
     let roles = if user.is_global_admin { vec!["global_admin".into()] } else { vec!["user".into()] };
     let resp = LoginResponse {
