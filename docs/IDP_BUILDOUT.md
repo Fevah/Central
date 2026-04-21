@@ -1,7 +1,7 @@
 # Identity Provider (IDP) Module — Full Buildout
 
 Last updated: 2026-04-21
-Status: **Phases 1 + 2 done**. Phases 3-10 pending.
+Status: **Phases 1 + 2 + 3 done**. Phases 4-10 pending.
 
 ## Why this document exists
 
@@ -27,7 +27,7 @@ point is the desktop non-functional.
 |---|-------|------|---------|
 | 1 | Foundation | auth-service with login / refresh / logout / MFA / password-mgmt / SSO-consumer scaffold | ✅ (A-E.1) |
 | 2 | Unify stores (dual-write bridge, not view — FK reality) | Cross-reference columns + triggers; Windows-SSO bridge endpoint | ✅ |
-| 3 | Restructure into `services/identity/` | Workspace with `core` lib + `auth-service` bin; foundation for Phase 4+ | ⏳ |
+| 3 | Restructure into `services/identity/` | Workspace with `core` lib + `auth-service` bin; foundation for Phase 4+ | ✅ |
 | 4 | Admin API | User CRUD + tenant mgmt + audit reader + session/device mgmt + SSO config CRUD | ⏳ |
 | 5 | Real Duo + real OIDC | Finish Phase C.1 (Duo) + Phase E.2 (OIDC providers) + Phase E.3 (SAML2) against the unified store | ⏳ |
 | 6 | Groups + RBAC + claims | `groups` + `user_groups` tables; JWT claims include effective permissions; Central.Api validates | ⏳ |
@@ -43,7 +43,7 @@ end-to-end verification works.
 
 ## Phase 1 — Foundation (**shipped**)
 
-`services/auth/` Rust crate. Endpoints:
+`services/identity/auth-service/` Rust crate (workspace member since Phase 3). Endpoints:
 - `POST /api/v1/auth/login` (Argon2 + JWT + session_id in claims)
 - `POST /api/v1/auth/refresh` (rotating refresh tokens via `secure_auth.sessions`)
 - `POST /api/v1/auth/logout` (revokes specific session by `sid` claim)
@@ -284,40 +284,53 @@ Desktop's `App.xaml.cs` changes:
 
 ---
 
-## Phase 3 — Restructure into `services/identity/`
+## Phase 3 — Restructure into `services/identity/`  *(shipped 2026-04-21)*
 
 **Goal:** the code layout supports multiple binaries sharing a core
 library + migrations. Foundation for every phase 4+.
 
-```
-services/identity/
-  Cargo.toml                 (workspace)
-  core/
-    Cargo.toml               (lib crate)
-    src/
-      lib.rs
-      config.rs              ← moves from auth-service
-      db.rs                  ← shared pool + models
-      jwt.rs                 ← sign + verify + claims
-      mfa.rs                 ← TOTP + recovery + Duo verifier traits
-      passwords.rs           ← hash + verify + history
-      sessions.rs            ← rotation + revoke
-  auth-service/              ← what we have today, slimmed
-    Cargo.toml
-    src/main.rs
-  migrations/
-    README.md                ← index of migrations 110-115+ owned by identity
+Shipped:
+- `git mv services/auth/ services/identity/auth-service/` — history
+  traces cleanly, no path refs outside docs needed updating.
+- `services/identity/Cargo.toml` — workspace manifest with shared
+  `[workspace.dependencies]` so future members don't drift on sqlx
+  / serde / argon2 versions.
+- `services/identity/core/` — new `identity-core` lib crate. Three
+  starter modules:
+  - `tokens` — `generate_refresh_token` / `generate_password_reset_token`
+    / `generate_sso_state_nonce` (typed wrappers over a shared 32-byte
+    random + prefix), plus `sha256_hex` for deterministic lookup.
+  - `passwords` — Argon2id `hash_password` + `verify_password`.
+  - `jwt` — `Claims` struct + `sign` + `decode_with_leeway`. Matches
+    the shape auth-service has been issuing since Phase A +B so
+    existing clients + tokens keep working.
+  - 11 unit tests covering the module surface.
+- `services/identity/auth-service/Cargo.toml` — now declares
+  `identity-core` as a path dep + inherits versions from the
+  workspace. main.rs unchanged on this roll (still owns its own
+  copies of the same functions); extraction happens opportunistically
+  in Phase 4+ when admin-service needs them too.
 
-apps/web/ + apps/desktop/    ← unchanged; they call via /api/v1/auth/*
-```
+Acceptance criteria met:
+1. `cargo build` green from the workspace root.
+2. `cargo test -p identity-core` — 11 passed / 0 failed.
+3. auth-service smoke-tested from the new binary path:
+   password login → 349-char JWT; Windows SSO bridge → 346-char JWT;
+   `/sso/providers` lists mock + test-google + windows.
+4. No external (non-docs) references to the old `services/auth/`
+   path in the repo — grep verified before the move.
 
-Renames happen in one commit with `git mv` so history traces cleanly.
-`cargo check + cargo test --workspace` green before push.
-
-The `core` lib crate is the seam Phase 4+ plugs into: admin-service
-imports `core::users`, federation imports `core::jwt`, etc. Without
-this split, every new binary would duplicate DB connection setup +
-JWT parsing.
+What Phase 3 deliberately didn't do:
+- Full module extraction into `core`. The lib crate exports the
+  three easiest-to-portable modules (tokens / passwords / jwt).
+  Config loading, DB handling, and all the handlers stay in
+  auth-service for now. Phase 4+ extracts what admin-service shares
+  once that code actually exists to share.
+- `services/identity/migrations/` subfolder. Migrations 110-117 stay
+  under `db/migrations/` where every other repo migration lives —
+  splitting them would fork the `schema_versions` ledger. Phase 10
+  documentation describes the identity-owned migration range.
+- Containerfile / K8s manifests. Those are Phase 10.
 
 ---
 

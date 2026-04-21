@@ -49,7 +49,9 @@ most backward-compatible option. Concretely:
 user row in the DB. No refresh, no MFA, no SSO.
 
 Deliverables:
-- `services/auth/` Cargo crate. Axum + sqlx + jsonwebtoken + argon2.
+- `services/identity/auth-service/` Cargo crate (inside the
+  `services/identity/` workspace since Phase 3 of the IDP buildout).
+  Axum + sqlx + jsonwebtoken + argon2.
 - `POST /api/v1/auth/login` endpoint: accepts `{ email, password }` with
   `X-Tenant-ID` header. Argon2-verifies against
   `secure_auth.users.password_hash`. On success returns the
@@ -299,7 +301,7 @@ Deliverables:
 networking-engine, exposed via NodePort 30081.
 
 Deliverables:
-- `Containerfile` in `services/auth/` (multi-stage Rust build).
+- `Containerfile` in `services/identity/auth-service/` (multi-stage Rust build).
 - `infra/k8s/base/auth-service-deployment.yaml` + Service + ConfigMap.
 - `/metrics` Prometheus endpoint (prometheus-client crate).
 - Structured JSON logs via `tracing-subscriber`.

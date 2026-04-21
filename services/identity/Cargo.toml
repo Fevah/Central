@@ -1,0 +1,49 @@
+# Identity Provider workspace — Phase 3 of docs/IDP_BUILDOUT.md.
+#
+# Lives under services/identity/ rather than a repo-root Cargo.toml
+# because Central is a polyglot repo (.NET + Rust + Angular) and
+# a repo-level workspace would rope every Rust service into one
+# build. Services/identity/ is its own workspace; services/networking-
+# engine/ + services/tenant-provisioner/ stay standalone.
+#
+# Members:
+#   core           — shared library: config, DB, JWT, MFA helpers,
+#                    password helpers, session logic. Extracted from
+#                    auth-service incrementally as other binaries
+#                    (admin-service, federation) start consuming.
+#   auth-service   — the HTTP surface shipped in Phases A-E.1 + 2
+#                    (login, refresh, logout, MFA, password mgmt,
+#                    SSO consumer, Windows SSO bridge).
+#
+# Phases 4+ add admin-service/ and federation/ as sibling members.
+
+[workspace]
+resolver = "2"
+members = [
+    "core",
+    "auth-service",
+]
+
+# Shared dependency versions so the two crates (soon more) don't
+# drift on e.g. sqlx or serde. Actual feature selection lives in each
+# member's Cargo.toml.
+[workspace.dependencies]
+tokio            = { version = "1", features = ["full"] }
+axum             = { version = "0.7", features = ["macros"] }
+tower-http       = { version = "0.6", features = ["trace", "cors"] }
+sqlx             = { version = "0.8", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "macros"] }
+serde            = { version = "1", features = ["derive"] }
+serde_json       = "1"
+toml             = "0.8"
+jsonwebtoken     = "9"
+argon2           = { version = "0.5", features = ["std"] }
+sha2             = "0.10"
+hex              = "0.4"
+base64           = "0.22"
+totp-rs          = { version = "5", features = ["otpauth"] }
+uuid             = { version = "1", features = ["v4", "serde"] }
+chrono           = { version = "0.4", features = ["serde"] }
+tracing          = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+anyhow           = "1"
+thiserror        = "1"

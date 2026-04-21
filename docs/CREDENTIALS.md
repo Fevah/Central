@@ -109,7 +109,7 @@ The password hash is stored as Argon2id in `secure_auth.users.password_hash`;
 to seed an additional account, run:
 
 ```bash
-cargo run -p auth-service --example hash_password -- 'your-password'
+cd services/identity && cargo run -p auth-service --example hash_password -- 'your-password'
 # Copy the printed hash into a follow-up migration INSERT.
 ```
 
@@ -134,7 +134,7 @@ table used by the **desktop** global-admin flow, not the web login.
 ```bash
 # From repo root. Reads config/auth-service.toml.
 export AUTH_SERVICE_JWT_SECRET='dev-only-change-me'   # required for real use
-cargo run -p auth-service
+cd services/identity && cargo run -p auth-service
 ```
 
 Phase A only implements `/api/v1/auth/login` + `/health`. Refresh / logout /
