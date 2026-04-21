@@ -1,7 +1,7 @@
 # Identity Provider (IDP) Module — Full Buildout
 
 Last updated: 2026-04-21
-Status: **Phases 1 + 2 + 3 + 4 done** (4.B stubs in 4). Phases 5-10 pending.
+Status: **Phases 1 + 2 + 3 + 4 done**. Phases 5-10 pending.
 
 ## Why this document exists
 
@@ -28,7 +28,7 @@ point is the desktop non-functional.
 | 1 | Foundation | auth-service with login / refresh / logout / MFA / password-mgmt / SSO-consumer scaffold | ✅ (A-E.1) |
 | 2 | Unify stores (dual-write bridge, not view — FK reality) | Cross-reference columns + triggers; Windows-SSO bridge endpoint | ✅ |
 | 3 | Restructure into `services/identity/` | Workspace with `core` lib + `auth-service` bin; foundation for Phase 4+ | ✅ |
-| 4 | Admin API | User CRUD + tenant mgmt + audit reader + session/device mgmt + SSO config CRUD | ✅ (4.B defers POST /users + DELETE + tenants + SSO CRUD + other audit endpoints to a later roll) |
+| 4 | Admin API | User CRUD + tenant mgmt + audit reader + session/device mgmt + SSO config CRUD | ✅ (4.A + 4.B both shipped) |
 | 5 | Real Duo + real OIDC | Finish Phase C.1 (Duo) + Phase E.2 (OIDC providers) + Phase E.3 (SAML2) against the unified store | ⏳ |
 | 6 | Groups + RBAC + claims | `groups` + `user_groups` tables; JWT claims include effective permissions; Central.Api validates | ⏳ |
 | 7 | OIDC provider mode | BE an IDP — `/oauth2/authorize` + `/token` + `/userinfo` + `/jwks` + client registration | ⏳ |
@@ -376,24 +376,65 @@ failure_reason, revoke-all-sessions returns count, audit/sessions
 joins correctly, stub endpoints return honest 501, display_name
 round-trip restored on cleanup.
 
-### Phase 4.B — pending work
+### Phase 4.B — shipped 2026-04-21
 
-Scaffolded but not shipped (routes return 501 stubs with an explicit
-pointer at "lands in Phase 4.B"):
-- `POST /api/v1/admin/users` — create new user (email + optional
-  initial password + role).
-- `DELETE /api/v1/admin/users/:id` — soft delete (sets `deleted_at`).
-- `GET /api/v1/admin/tenants` — tenant list.
-- `GET /POST /PATCH /DELETE /api/v1/admin/sso/providers[/:code]`
-  — SSO provider CRUD.
-- `GET /api/v1/admin/audit/password-changes`.
-- `GET /api/v1/admin/audit/sso-callbacks`.
+Completes the admin surface. All 501 stubs from 4.A replaced with
+real handlers:
 
-Deferred because (a) the stub surface is useful now for Phase 9 UI
-prototyping + (b) each endpoint wants careful validation logic
-(e.g. POST /users needs password-policy alignment with auth-service's
-/change-password + email-verification kickoff). Ships cleanly in a
-dedicated 4.B roll rather than half-done here.
+- `POST /api/v1/admin/users` — accepts email + optional password
+  (omit for SSO-only, gets `(sso-only)` sentinel hash; /login stays
+  closed for them until a real password is set). 12-char min when
+  supplied. Optional username / display_name / first_name / last_
+  name / role / is_global_admin / is_active. Returns 201 + full
+  user row. 409 on duplicate email; 400 on short password or
+  missing email.
+- `DELETE /api/v1/admin/users/:id` — soft-delete (stamps
+  `deleted_at` + flips `is_active=false`) + revokes every live
+  session in the same tx. 204 on success; 404 when already
+  deleted.
+- `GET /api/v1/admin/tenants` — thin read of
+  `central_platform.tenants` (id / slug / display_name / domain /
+  tier / is_active / created_at). Full tenant CRUD + metadata
+  editor remain in the Phase 9 admin UI scope.
+- `GET /api/v1/admin/sso/providers` — admin view INCLUDES disabled
+  + soft-deleted rows + `config_json`. Public `/sso/providers` on
+  auth-service filters these out.
+- `POST /api/v1/admin/sso/providers` — create. 400 on check-
+  constraint violations (unknown kind, bad provider_code format);
+  409 on existing code.
+- `PATCH /api/v1/admin/sso/providers/:code` — update display_name /
+  enabled / config_json. Only columns in the body change.
+- `DELETE /api/v1/admin/sso/providers/:code` — soft delete (stamps
+  `deleted_at` + `enabled=false`). Row stays for audit — SSO
+  callback logs reference it by provider_code.
+- `GET /api/v1/admin/audit/password-changes` — reads
+  `secure_auth.password_history` joined with user email. Timestamps
+  + user id only — hash values never leave the DB. Optional
+  `?user_id=` narrower. Every password change path writes here:
+  `/change-password` + `/password-reset/confirm` (auth-service) +
+  `/admin/users/:id/force-reset` (this service — fixed mid-roll to
+  archive the old hash before the sentinel UPDATE, otherwise the
+  audit missed it).
+- `GET /api/v1/admin/audit/sso-callbacks` — filters
+  `secure_auth.login_attempts` to rows where `failure_reason` is
+  either `'sso:*'` (success) or `'*_sso_*'` (failure, e.g.
+  `windows_sso_unknown_user`). Shows both paths together so the
+  audit UI can pivot by success/failure without a second query.
+
+End-to-end verified live (14 assertions + 1 follow-up for the
+audit fix):
+- POST /users creates + returns row; duplicate → 409; short
+  password → 400; new user can immediately log in against
+  auth-service.
+- GET /tenants returns the Immunocore row.
+- SSO provider GET (admin view) shows all 4 existing rows with
+  full metadata; POST corp-okta creates; PATCH disables; DELETE
+  soft-deletes.
+- force-reset archives old hash to password_history so
+  /audit/password-changes surfaces the event.
+- /audit/sso-callbacks returns windows + mock entries together;
+  confirms the LIKE pattern catches both success + failure paths.
+- DELETE user soft + reflected in list (q=phase4b → total=0).
 
 ### Original Phase 4 plan (retained for 4.B reference)
 
