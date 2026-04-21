@@ -1,7 +1,7 @@
 # Auth Service — Phased Buildout
 
-Last updated: 2026-04-20
-Status: **Phases A + B + C + D shipped**; E-G not started.
+Last updated: 2026-04-21
+Status: **Phases A + B + C + D + E.1 shipped**; E.2 / E.3 / F / G pending.
 
 ## Why this exists as a separate service
 
@@ -219,19 +219,79 @@ Not shipped (deferred):
   pipeline so we don't duplicate the SMTP integration that already
   exists on the .NET side.
 
-### Phase E — Federation + external IDPs
+### Phase E — Federation + external IDPs (split into E.1 / E.2 / E.3)
 
-**Goal:** SAML2, OIDC (generic), Entra ID, Okta, Google, Microsoft,
-GitHub — configurable per tenant.
+Phase E was larger than one roll could land cleanly — real OIDC +
+SAML + per-provider wiring is multi-day work. Split into three sub-
+phases so the SSO surface can be exercised locally (E.1) before we
+commit to specific provider libraries (E.2 / E.3).
+
+#### Phase E.1 — SSO scaffold + mock provider  **(shipped 2026-04-21)**
+
+**Goal:** the SSO surface exists, schema is migrated, the code paths
+are exercisable locally without a real IdP. Real provider wiring
+stubs return 501 Not Implemented.
+
+Shipped:
+- Migration 114 — `secure_auth.identity_providers` (provider_code,
+  kind, display_name, enabled, per-tenant scope, config_json),
+  `secure_auth.user_external_identities` (maps (provider, external_id)
+  -> our user; UNIQUE (provider, external_id) + UNIQUE (user,
+  provider) constraints), `secure_auth.sso_sessions` (short-lived
+  /start -> /callback state; state_nonce + provider_code + 5-min
+  TTL + consumed_at replay guard).
+- `GET /api/v1/auth/sso/providers` — list enabled providers.
+- `POST /api/v1/auth/sso/:provider/start` — create a state nonce,
+  persist the session row, return `{ state, redirect_url, kind }`.
+  For `kind=mock` the redirect is a local `about:blank` URL (test
+  tools POST directly to /callback); other kinds return 501.
+- `POST /api/v1/auth/sso/:provider/callback` — verify state nonce
+  against the active sso_sessions row, consume it, dispatch per
+  provider kind. For `kind=mock` accepts `{ email }` directly,
+  resolves to an existing user by email or creates one with a
+  sentinel '(sso-only)' password hash (so /login stays closed for
+  the account until a password is set via /change-password or
+  /password-reset/confirm), upserts the user_external_identities
+  link, issues tokens via the same Phase B path every other login
+  uses. All other kinds return 501.
+- End-to-end verified live: /providers lists mock, /mock/start
+  returns state, /mock/callback creates user + issues 359-char
+  access token, state replay -> 401, second login resolves the
+  same user + updates last_seen_at, unknown provider -> 404, other
+  provider kinds (google / okta / etc. seeded for testing) -> 501.
+
+Not shipped (deferred):
+- Real OIDC / SAML token exchange (Phase E.2 / E.3).
+- Per-tenant provider filtering honouring X-Tenant-ID on /providers.
+- Account-linking flow (link_user_id column present but only used
+  when populated by a later-phase UI that runs /start with the
+  caller's current session).
+
+#### Phase E.2 — OIDC providers
+
+**Goal:** Google / Microsoft / Entra / Okta / generic OIDC wired.
+All share the same code exchange + id_token verification, so this
+phase builds one `oidc` handler + config picks the issuer + scopes.
 
 Deliverables:
-- `POST /api/v1/auth/sso/:provider/start` — returns redirect URL.
-- `POST /api/v1/auth/sso/:provider/callback` — exchanges code, maps to
-  an internal user via `secure_auth.user_external_identities`.
-- Tenant-scoped IDP config in `secure_auth.identity_providers` (already
-  partially modelled by migration 047 on the `central` DB side; Phase E
-  brings the auth-service's own copy into sync).
-- Claim mapping (email / display_name / groups → roles).
+- openidconnect-rs crate integration. Cache the IdP's JWK set + rotate
+  on sig-verify failure.
+- `kind=oidc` with config_json = `{issuer, client_id, client_secret,
+  scopes}`. The `google`/`microsoft`/`entra`/`okta` kinds all delegate
+  to the oidc handler with pre-baked issuer URLs.
+- nonce + state verification per OIDC spec.
+- Claim mapping (email / name / picture) onto user row + raw_claims
+  archived on user_external_identities.
+
+#### Phase E.3 — SAML2
+
+**Goal:** enterprise-grade AuthnRequest / Response flow.
+
+Deliverables:
+- samael or similar SAML crate.
+- Signing + encryption against the IdP's public cert.
+- NameID -> external_id mapping.
+- SP metadata endpoint so admins can hand config to IdPs.
 
 ### Phase F — Deployment
 

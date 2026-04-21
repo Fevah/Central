@@ -88,6 +88,9 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/v1/auth/change-password", post(change_password))
         .route("/api/v1/auth/password-reset/request", post(password_reset_request))
         .route("/api/v1/auth/password-reset/confirm", post(password_reset_confirm))
+        .route("/api/v1/auth/sso/providers", get(sso_providers_list))
+        .route("/api/v1/auth/sso/:provider/start", post(sso_start))
+        .route("/api/v1/auth/sso/:provider/callback", post(sso_callback))
         .layer(tower_http::cors::CorsLayer::permissive())
         .layer(tower_http::trace::TraceLayer::new_for_http())
         .with_state(state);
@@ -1483,6 +1486,397 @@ async fn password_reset_confirm(
         return internal_error("database error");
     }
     StatusCode::NO_CONTENT.into_response()
+}
+
+// ─── Phase E.1 — SSO / federation scaffold ────────────────────────────────
+
+const SSO_SESSION_TTL_SECS: i64 = 5 * 60;       // 5 minutes /start → /callback
+
+#[derive(Debug, Serialize, sqlx::FromRow)]
+struct ProviderRow {
+    provider_code: String,
+    kind:          String,
+    display_name:  String,
+}
+
+/// GET /api/v1/auth/sso/providers — visible, enabled, non-deleted
+/// providers the caller can start an SSO flow against. Tenant scope
+/// is honoured in Phase E.2 when we wire the X-Tenant-ID header into
+/// the filter; Phase E.1 returns platform-wide providers (tenant_id
+/// IS NULL) + ignores tenant-scoped rows.
+async fn sso_providers_list(
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    let rows: Result<Vec<ProviderRow>, _> = sqlx::query_as(
+        "SELECT provider_code, kind, display_name
+           FROM secure_auth.identity_providers
+          WHERE enabled = true
+            AND deleted_at IS NULL
+            AND tenant_id IS NULL
+          ORDER BY display_name",
+    )
+    .fetch_all(&state.pool)
+    .await;
+    match rows {
+        Ok(v)  => (StatusCode::OK, Json(v)).into_response(),
+        Err(e) => {
+            tracing::error!(error = %e, "sso_providers_list failed");
+            internal_error("database error")
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct SsoStartRequest {
+    #[serde(default)]
+    redirect_uri: Option<String>,
+    /// When present, this is an account-linking flow — the caller is
+    /// already logged in + wants to attach the new identity to their
+    /// existing user row. Phase E.1 doesn't use it yet (mock provider
+    /// is always create-or-login) but the state carries through to
+    /// Phase E.2 without a schema change.
+    #[serde(default)]
+    link_user_id: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct SsoStartResponse {
+    state:        String,
+    redirect_url: String,
+    /// For `kind=mock` the callback is called directly by tests with
+    /// the state nonce — no real IdP round-trip. For real providers
+    /// this is where the browser navigates.
+    kind:         String,
+}
+
+async fn sso_start(
+    State(state): State<Arc<AppState>>,
+    axum::extract::Path(provider): axum::extract::Path<String>,
+    Json(req): Json<SsoStartRequest>,
+) -> impl IntoResponse {
+    let prov = match fetch_provider(&state.pool, &provider).await {
+        Some(p) => p,
+        None    => return (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({
+                "error":  "unknown_provider",
+                "detail": format!("no enabled provider with code '{provider}'"),
+            })),
+        ).into_response(),
+    };
+
+    let link_uuid = req.link_user_id.as_deref().and_then(|s| Uuid::parse_str(s).ok());
+
+    // State nonce = 32 crypto-random bytes, URL-safe base64. Stored
+    // raw in secure_auth.sso_sessions — deterministic lookup on
+    // callback + raw value never leaves the server except in the
+    // redirect URL.
+    let state_nonce = generate_refresh_token();   // shape reusable; prefix is "rt_" but that's fine
+    let _ = sqlx::query(
+        "INSERT INTO secure_auth.sso_sessions
+             (state_nonce, provider_code, redirect_uri, link_user_id,
+              expires_at)
+         VALUES ($1, $2, $3, $4, now() + make_interval(secs => $5))",
+    )
+    .bind(&state_nonce)
+    .bind(&prov.provider_code)
+    .bind(req.redirect_uri.as_deref())
+    .bind(link_uuid)
+    .bind(SSO_SESSION_TTL_SECS as f64)
+    .execute(&state.pool)
+    .await;
+
+    let redirect_url = match prov.kind.as_str() {
+        "mock" => {
+            // For the mock provider, the "redirect" is just a pointer
+            // at our own callback. Dev tools POST to
+            // /sso/mock/callback with { state, email } directly.
+            format!("about:blank?sso_state={state_nonce}")
+        }
+        // E.2 / E.3: build the real redirect URL from config_json
+        // (issuer, client_id, scopes, etc.). Until then, we tell the
+        // client the provider isn't wired yet.
+        _ => return not_implemented(
+            "provider kind not yet supported — see docs/AUTH_SERVICE_BUILDOUT.md Phase E.2/E.3",
+        ),
+    };
+
+    (StatusCode::OK, Json(SsoStartResponse {
+        state:        state_nonce,
+        redirect_url,
+        kind:         prov.kind,
+    })).into_response()
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]   // `code` wires to the IdP exchange in Phase E.2
+struct SsoCallbackRequest {
+    state: String,
+    /// Real providers send { code } which the callback exchanges with
+    /// the IdP for an id_token / userinfo. Phase E.1's mock provider
+    /// takes { email } directly — tests supply the email they want
+    /// the issued user to resolve to.
+    #[serde(default)]
+    code:  Option<String>,
+    #[serde(default)]
+    email: Option<String>,
+}
+
+async fn sso_callback(
+    State(state): State<Arc<AppState>>,
+    headers: HeaderMap,
+    axum::extract::Path(provider): axum::extract::Path<String>,
+    Json(req): Json<SsoCallbackRequest>,
+) -> impl IntoResponse {
+    let user_agent = headers
+        .get("user-agent")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_owned());
+
+    let mut tx = match state.pool.begin().await {
+        Ok(t) => t,
+        Err(e) => {
+            tracing::error!(error = %e, "sso_callback: begin tx");
+            return internal_error("database error");
+        }
+    };
+
+    // Look up + lock the sso_sessions row. Checks: unconsumed + not
+    // expired + matches the provider slug in the URL (guards against
+    // a state nonce from one provider being replayed at another's
+    // callback).
+    let row: Result<Option<(Uuid, String, Option<Uuid>)>, _> = sqlx::query_as(
+        "SELECT id, provider_code, link_user_id
+           FROM secure_auth.sso_sessions
+          WHERE state_nonce  = $1
+            AND provider_code = $2
+            AND consumed_at IS NULL
+            AND expires_at  > now()
+          FOR UPDATE",
+    )
+    .bind(&req.state)
+    .bind(&provider)
+    .fetch_optional(&mut *tx)
+    .await;
+
+    let (sso_id, _prov, link_user_id) = match row {
+        Ok(Some(r)) => r,
+        _ => return unauthorized(),
+    };
+
+    let prov = match fetch_provider_tx(&mut tx, &provider).await {
+        Some(p) => p,
+        None    => return unauthorized(),
+    };
+
+    // Handler dispatch per provider kind. E.1 only implements `mock`;
+    // the others return a 501 so the client gets an honest "not
+    // wired yet" + the state row stays unconsumed for retry.
+    let (email, external_id, claims_json) = match prov.kind.as_str() {
+        "mock" => {
+            let email = match req.email.as_deref() {
+                Some(e) if !e.is_empty() => e.to_lowercase(),
+                _ => return (
+                    StatusCode::BAD_REQUEST,
+                    Json(serde_json::json!({
+                        "error":  "bad_request",
+                        "detail": "mock provider requires { email } in body",
+                    })),
+                ).into_response(),
+            };
+            (email.clone(), email.clone(),
+             serde_json::json!({"via": "mock", "email": email}))
+        }
+        _ => return not_implemented(
+            "provider kind not yet supported — see docs/AUTH_SERVICE_BUILDOUT.md Phase E.2/E.3",
+        ),
+    };
+
+    // Consume the sso_session row regardless of what happens next —
+    // a consumed state nonce is dead for replay purposes whether the
+    // user successfully binds or the handler fails.
+    let _ = sqlx::query(
+        "UPDATE secure_auth.sso_sessions SET consumed_at = now() WHERE id = $1",
+    )
+    .bind(sso_id)
+    .execute(&mut *tx)
+    .await;
+
+    // Resolve the user: (a) if this is a link-flow + we already know
+    // who the user is, link the external identity to them; (b) else
+    // find an existing user by email; (c) else create a new user.
+    let user_id: Uuid = if let Some(uid) = link_user_id {
+        uid
+    } else {
+        let existing: Result<Option<(Uuid,)>, _> = sqlx::query_as(
+            "SELECT id FROM secure_auth.users
+              WHERE email = $1 AND deleted_at IS NULL",
+        )
+        .bind(&email)
+        .fetch_optional(&mut *tx)
+        .await;
+        match existing {
+            Ok(Some((uid,))) => uid,
+            Ok(None) => {
+                // Create a new user with no password hash (SSO-only).
+                // Phase E places a sentinel hash that can't be Argon2-
+                // verified by anything, so the /login path stays
+                // closed for this account until /change-password or
+                // /password-reset/confirm sets a real one.
+                let new_id: Uuid = match sqlx::query_scalar(
+                    "INSERT INTO secure_auth.users
+                         (email, password_hash, display_name)
+                     VALUES ($1, '(sso-only)', $2)
+                     RETURNING id",
+                )
+                .bind(&email)
+                .bind(&email)
+                .fetch_one(&mut *tx)
+                .await {
+                    Ok(id) => id,
+                    Err(e) => {
+                        tracing::error!(error = %e, "sso_callback: user create");
+                        return internal_error("database error");
+                    }
+                };
+                new_id
+            }
+            Err(e) => {
+                tracing::error!(error = %e, "sso_callback: user lookup");
+                return internal_error("database error");
+            }
+        }
+    };
+
+    // Link the external identity (upsert). Updates last_seen_at +
+    // raw_claims on each login.
+    let _ = sqlx::query(
+        "INSERT INTO secure_auth.user_external_identities
+             (user_id, provider_code, external_id, raw_claims)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (provider_code, external_id) DO UPDATE
+           SET last_seen_at = now(),
+               raw_claims   = EXCLUDED.raw_claims",
+    )
+    .bind(user_id)
+    .bind(&provider)
+    .bind(&external_id)
+    .bind(&claims_json)
+    .execute(&mut *tx)
+    .await;
+
+    // Issue tokens + session row (same shape as the password + MFA
+    // login paths — Phase B's rotation chain + Phase D's audit log
+    // both benefit for free).
+    let issued = match insert_session_row(&mut *tx, user_id, user_agent.as_deref(),
+                                          state.refresh_ttl_seconds).await {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::error!(error = %e, "sso_callback: session insert");
+            return internal_error("session store failed");
+        }
+    };
+
+    // Fetch user for the response.
+    let user = match sqlx::query_as::<_, UserRow>(
+        "SELECT id, email, password_hash, display_name, first_name, last_name,
+                is_global_admin, mfa_enabled
+           FROM secure_auth.users
+          WHERE id = $1",
+    )
+    .bind(user_id)
+    .fetch_one(&mut *tx)
+    .await
+    {
+        Ok(u) => u,
+        Err(e) => {
+            tracing::error!(error = %e, "sso_callback: user refetch");
+            return internal_error("database error");
+        }
+    };
+
+    let access_token = match sign_access_token(&state, user.id, &user.email, issued.session_id) {
+        Ok(t) => t,
+        Err(e) => {
+            tracing::error!(error = %e, "sso_callback: jwt sign");
+            return internal_error("token encode failed");
+        }
+    };
+
+    if tx.commit().await.is_err() {
+        return internal_error("database error");
+    }
+    let _ = sqlx::query("UPDATE secure_auth.users SET last_login_at = now() WHERE id = $1")
+        .bind(user_id).execute(&state.pool).await;
+    // Log the SSO success through the same ledger as password logins
+    // so the audit view stays unified.
+    log_login_attempt(&state.pool, &user.email, user_agent.as_deref(),
+                      true, Some(&format!("sso:{}", provider))).await;
+
+    let roles = if user.is_global_admin { vec!["global_admin".into()] } else { vec!["user".into()] };
+    let resp = LoginResponse {
+        access_token,
+        refresh_token: issued.raw_refresh_token,
+        session_id:    issued.session_id.to_string(),
+        expires_in:    state.access_ttl_seconds,
+        token_type:    "Bearer".into(),
+        mfa_required:  false,
+        mfa_methods:   Vec::new(),
+        user: AuthUser {
+            id:           user.id.to_string(),
+            email:        user.email,
+            display_name: user.display_name.unwrap_or_default(),
+            first_name:   user.first_name,
+            last_name:    user.last_name,
+            roles,
+            permissions:  Vec::new(),
+            mfa_enabled:  user.mfa_enabled,
+        },
+    };
+    (StatusCode::OK, Json(resp)).into_response()
+}
+
+async fn fetch_provider(pool: &PgPool, code: &str) -> Option<ProviderRow> {
+    sqlx::query_as::<_, ProviderRow>(
+        "SELECT provider_code, kind, display_name
+           FROM secure_auth.identity_providers
+          WHERE provider_code = $1
+            AND enabled = true
+            AND deleted_at IS NULL",
+    )
+    .bind(code)
+    .fetch_optional(pool)
+    .await
+    .ok()
+    .flatten()
+}
+
+async fn fetch_provider_tx(
+    tx: &mut sqlx::PgConnection,
+    code: &str,
+) -> Option<ProviderRow> {
+    sqlx::query_as::<_, ProviderRow>(
+        "SELECT provider_code, kind, display_name
+           FROM secure_auth.identity_providers
+          WHERE provider_code = $1
+            AND enabled = true
+            AND deleted_at IS NULL",
+    )
+    .bind(code)
+    .fetch_optional(tx)
+    .await
+    .ok()
+    .flatten()
+}
+
+fn not_implemented(detail: &'static str) -> axum::response::Response {
+    (
+        StatusCode::NOT_IMPLEMENTED,
+        Json(serde_json::json!({
+            "error":  "not_implemented",
+            "detail": detail,
+        })),
+    ).into_response()
 }
 
 // ─── DB row types ──────────────────────────────────────────────────────────
