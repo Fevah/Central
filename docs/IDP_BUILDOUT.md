@@ -1,7 +1,7 @@
 # Identity Provider (IDP) Module — Full Buildout
 
 Last updated: 2026-04-21
-Status: **Phases 1 + 2 + 3 done**. Phases 4-10 pending.
+Status: **Phases 1 + 2 + 3 + 4 done** (4.B stubs in 4). Phases 5-10 pending.
 
 ## Why this document exists
 
@@ -28,7 +28,7 @@ point is the desktop non-functional.
 | 1 | Foundation | auth-service with login / refresh / logout / MFA / password-mgmt / SSO-consumer scaffold | ✅ (A-E.1) |
 | 2 | Unify stores (dual-write bridge, not view — FK reality) | Cross-reference columns + triggers; Windows-SSO bridge endpoint | ✅ |
 | 3 | Restructure into `services/identity/` | Workspace with `core` lib + `auth-service` bin; foundation for Phase 4+ | ✅ |
-| 4 | Admin API | User CRUD + tenant mgmt + audit reader + session/device mgmt + SSO config CRUD | ⏳ |
+| 4 | Admin API | User CRUD + tenant mgmt + audit reader + session/device mgmt + SSO config CRUD | ✅ (4.B defers POST /users + DELETE + tenants + SSO CRUD + other audit endpoints to a later roll) |
 | 5 | Real Duo + real OIDC | Finish Phase C.1 (Duo) + Phase E.2 (OIDC providers) + Phase E.3 (SAML2) against the unified store | ⏳ |
 | 6 | Groups + RBAC + claims | `groups` + `user_groups` tables; JWT claims include effective permissions; Central.Api validates | ⏳ |
 | 7 | OIDC provider mode | BE an IDP — `/oauth2/authorize` + `/token` + `/userinfo` + `/jwks` + client registration | ⏳ |
@@ -334,7 +334,68 @@ What Phase 3 deliberately didn't do:
 
 ---
 
-## Phase 4 — Admin API
+## Phase 4 — Admin API  *(4.A shipped 2026-04-21; 4.B pending)*
+
+**4.A shipped.** New `services/identity/admin-service/` binary in the
+workspace, listens on port 8083 (overridable via `ADMIN_SERVICE_PORT`).
+Reads the same `config/auth-service.toml` + `AUTH_SERVICE_JWT_SECRET`
+so it agrees with auth-service on JWT signing. Separate binary
+because blast radius + auth posture differ (auth-service handles
+every login; admin-service requires an already-issued global_admin
+JWT).
+
+Shipped endpoints (all gated by `require_global_admin` middleware
+that verifies the bearer JWT + checks the DB's is_global_admin OR
+role='global_admin' — claims can lie, the DB row is authoritative):
+
+- `GET  /api/v1/admin/users` — paginated (default 50, max 200) + `?q=`
+  search across email / username / display_name.
+- `GET  /api/v1/admin/users/:id` — full row.
+- `PATCH /api/v1/admin/users/:id` — partial update (role, is_active,
+  display_name, first_name, last_name, email, mfa_enabled, duo_enabled).
+  Dynamic UPDATE builds only the columns the caller supplied.
+- `POST /api/v1/admin/users/:id/unlock` — DELETE failures in the
+  last 15 min so lockout counter resets.
+- `POST /api/v1/admin/users/:id/revoke-all-sessions` — sets
+  `revoked_at` on every live session for the user.
+- `POST /api/v1/admin/users/:id/force-reset` — sentinel password
+  hash `(forced-reset)` + revoke every session. User regains access
+  only via `/api/v1/auth/password-reset/request` + confirm.
+- `GET  /api/v1/admin/audit/logins` — read of `secure_auth.login_attempts`
+  with optional `?email=` + `?succeeded=` filters. Admin UI shows
+  who's been trying to log in + why failing.
+- `GET  /api/v1/admin/audit/sessions` — join of `secure_auth.sessions`
+  with the user row for email context. Optional `?user_id=`,
+  `?include_revoked=true`.
+- `GET  /health` — 200 when DB reachable (skips the admin middleware).
+
+Verified live (12 assertions): both services up, no-token → 401,
+global_admin token grants access, list paginated correctly, search
+narrows results, PATCH updates + persists, lockout audit shows
+failure_reason, revoke-all-sessions returns count, audit/sessions
+joins correctly, stub endpoints return honest 501, display_name
+round-trip restored on cleanup.
+
+### Phase 4.B — pending work
+
+Scaffolded but not shipped (routes return 501 stubs with an explicit
+pointer at "lands in Phase 4.B"):
+- `POST /api/v1/admin/users` — create new user (email + optional
+  initial password + role).
+- `DELETE /api/v1/admin/users/:id` — soft delete (sets `deleted_at`).
+- `GET /api/v1/admin/tenants` — tenant list.
+- `GET /POST /PATCH /DELETE /api/v1/admin/sso/providers[/:code]`
+  — SSO provider CRUD.
+- `GET /api/v1/admin/audit/password-changes`.
+- `GET /api/v1/admin/audit/sso-callbacks`.
+
+Deferred because (a) the stub surface is useful now for Phase 9 UI
+prototyping + (b) each endpoint wants careful validation logic
+(e.g. POST /users needs password-policy alignment with auth-service's
+/change-password + email-verification kickoff). Ships cleanly in a
+dedicated 4.B roll rather than half-done here.
+
+### Original Phase 4 plan (retained for 4.B reference)
 
 **Goal:** an admin can manage users, tenants, SSO providers, groups,
 and see audit trails — all via API, without `psql` + raw UPDATEs.
